@@ -1,14 +1,28 @@
 const express = require("express");
 
+const bcrypt = require('bcrypt');
+
+const { v4: uuidv4  } = require('uuid');
+
 const route = express.Router();
+
+const connection = require("../../config/db.config");
 
 //require the Model
 
 const Organisations = require("../../model/business/Organisations");
 
+const Assignees = require("../../model/resources/Assignees");
+
+const Assignors = require("../../model/resources/Assignors");
+
 const authJWT = require("../../helpers/verifyJwtToken");
 
+const userExist = require("../../helpers/verifySignUp");
+
 const helpers = require("../../helpers/helper");
+
+
 
 /**
  * List all customers
@@ -17,7 +31,8 @@ const helpers = require("../../helpers/helper");
 route.get("/customers", [authJWT.verifyToken, authJWT.isAdmin], (req, res, next) => {
 
     Organisations.findAll({
-        attributes: ['organisation_id', 'name']
+        attributes: [['organisation_id', 'id'], 'name'],
+        where: {type:{[connection.Op.ne]: 2}}
     })
     .then((list)=>{
         res.status(200).json(list);
@@ -52,12 +67,147 @@ route.get("/customers/:id", [authJWT.verifyToken, authJWT.isAdmin], (req, res, n
     })();     
 });
 
+/**
+ * Get Customer assignor and assignees
+ */
+route.get("/customers/customers/:company_name", [authJWT.verifyToken, authJWT.isAdmin], (req, res, next) => {
+    (async () => {
+        try{
+            
+            let companyName = req.params.company_name;
+            let list = await helpers.findCompanyCustomersByName(companyName);
+            res.status(200).json(list);
+        } catch (e){
+            console.log(e);
+            res.status(402).send("No customers found");
+        }
+    })();
+});
+
+route.get("/customers/:id/users", [authJWT.verifyToken, authJWT.isAdmin], (req, res, next) => {
+    (async () => {
+        try{
+            let organisationID = req.params.id;
+            if(organisationID > 0){
+                const organisation  = await helpers.findOrganisationbyID(organisationID);
+                if(organisation != null && organisation.organisation_id > 0){
+                    const list = await helpers.getAllUsers(organisation.organisation_id);
+                    res.status(200).json(list);
+                } else {
+                    res.status(200).json([]);
+                }
+            } else {
+                res.status(400).send("Invalid inputs");
+            }       
+        } catch( err ) {
+            console.log(err);
+            res.status(400).send("Invalid inputs");
+        }
+    })(); 
+});
+
+/**
+ * Create new user in same organisation
+ */
+
+route.post("/customers/:id/users", [authJWT.verifyToken, authJWT.isAdmin, userExist.checkDuplicateUsername], function (req, res){
+    (async () => {
+        try{
+            let organisationID = req.params.id;
+            if(organisationID > 0){
+                const organisation  = await helpers.findOrganisationbyID(organisationID);
+                if(organisation != null && organisation.organisation_id > 0){
+                    console.log(req.body);
+                    User.create({
+                        first_name: req.body.first_name,
+                        last_name: req.body.last_name,
+                        email_address: req.body.email_address,
+                        username: req.body.email_address,						
+                        password: bcrypt.hashSync(req.body.last_name, 8),
+                        job_title: req.body.job_title,
+                        linkedin_url: req.body.person_linkedin_url,
+                        type: req.body.type,
+                        logo: req.body.logo,
+                        role_id: req.body.type == 0 ? 1 : 2,
+                        organisation_id: organisationID
+                    })
+                    .then(function( user ){
+                        if(user != null) {                            
+                            console.log("User"+user.id);
+                            console.log("User created successfully");
+                            res.status(200).json(user);
+                        }  else {
+                            res.status(400).send("Bad inputs");
+                        }                  
+                    })
+                    .catch(function(err){
+                        console.log(err);
+                        res.status(400).send("Bad inputs");
+                    })
+                }
+            }
+        } catch( err ) {
+            console.log(err);
+            res.status(400).send("Invalid inputs");
+        }
+    })();
+});
+	
+/**
+ * UPdate Users list
+ */
+
+route.put("/customers/:id/users/:user_id", [authJWT.verifyToken, authJWT.isAdmin], function (req, res){
+    (async () => {
+        const t = await db.sequelize.transaction();
+        try{
+            let organisationID = req.params.id;
+            if(organisationID > 0){
+                const organisation  = await helpers.findOrganisationbyID(organisationID);
+                if(organisation != null && organisation.organisation_id > 0){
+                    User.findOne({
+                        where: {user_id: req.params.user_id, organisation_id: organisationID}
+                    })
+                    .then( u => {
+                        if( u != null && u.id > 0){								
+                            let user = {};
+                            if(req.body.password != undefined && req.body.password != null && req.body.password != ""){
+                                user.password = bcrypt.hashSync(req.body.password, 8);
+                            } else {
+                                user.first_name = req.body.first_name;
+                                user.last_name = req.body.last_name;
+                                user.email_address = req.body.email_address;
+                                user.linkedin_url = req.body.linkedin_url;
+                            }
+                            console.log(user);
+                            (async () => {									
+                                const update = await User.update(user,{where: {user_id: req.params.user_id}, transaction: t});
+                                if (t) await t.commit();
+                                res.status(200).send("Updated successfully");
+                            })();
+                        } else {
+                            res.status(400).send("Invalid inputs");
+                        }
+                    })
+                } else {
+                    res.status(400).send("Invalid inputs");
+                }
+            } else {
+                res.status(400).send("Invalid inputs");
+            }       
+        } catch( err ) {
+            console.log(err);
+            if (t) await t.rollback();
+            res.status(400).send("Invalid inputs");
+        }
+    })();    
+});
 
 /**
  * Get customer by ID
  */
 
-route.get("/customers/:id/libraries/:company_name", [authJWT.verifyToken, authJWT.isAdmin], (req, res, next) => {
+route.get("/customers/:id/libraries", [authJWT.verifyToken, authJWT.isAdmin], (req, res, next) => {
     (async () => {
         try{
             let organisationID = req.params.id;
@@ -67,7 +217,36 @@ route.get("/customers/:id/libraries/:company_name", [authJWT.verifyToken, authJW
                     /**
                      * Get list of all from resources database.
                      */
-                    let companyName = req.params.company_name;
+                    let companyName = org.name;
+                    let companyData = await helpers.checkRepresentativeCompany(companyName);
+                    let list = [];
+                    if(companyData != null && companyData.representative_id > 0) {
+                        list = await helpers.findCompanyCustomersByID(companyData.representative_id);
+                    }
+                    res.status(200).json(list);
+                } else {
+                    res.status(402).send("Not found ");
+                }
+            } else {
+                res.status(402).send("Not found ");
+            }
+        } catch(e) {
+            console.log(e);
+            res.status(402).send("Not found ");
+        }
+    })();
+});
+
+
+/**
+ * (async () => {
+        try{
+            let organisationID = req.params.id;
+            if(organisationID > 0){
+                let org = await helpers.findOrganisationbyID( organisationID );
+                if(org != null && org.organisation_id > 0) {
+                    
+                    let companyName = org.name;
 
                     let companiesList = [];
 
@@ -91,7 +270,7 @@ route.get("/customers/:id/libraries/:company_name", [authJWT.verifyToken, authJW
                                 }
                                 if(!nameList.includes(name)) {
                                    nameList.push(name);
-                                   companiesList.push({name: name, type: company.type, company_name: company.name, normalize_name: company.normalize_name});
+                                   companiesList.push({id: uuidv4(),name: name, type: company.type, company_name: company.name, normalize_name: company.normalize_name});
                                 }
                             })
                         }
@@ -107,8 +286,8 @@ route.get("/customers/:id/libraries/:company_name", [authJWT.verifyToken, authJW
             console.log(e);
             res.status(402).send("Not found ");
         }         
-    })();     
-});
+    })();  
+ */
 
 /**
  * Create new Customer
@@ -120,7 +299,7 @@ route.post("/customers", [authJWT.verifyToken, authJWT.isAdmin], (req, res, next
             let companyName = req.body.company_name;
 
             if(companyName != undefined && companyName.length > 0) {
-                Organisation.create({
+                Organisations.create({
                     name: req.body.company_name,
                     country_id:1,
                 }).then( org => {

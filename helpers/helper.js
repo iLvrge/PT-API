@@ -1,19 +1,82 @@
 
 const connection = require("../config/db.config");
 
+const FtsQuery = require("full-text-search-query");
+
+const { v4: uuidv4  } = require('uuid');
+
 const Organisations = require("../model/business/Organisations");
 
+const Representatives = require("../model/resources/Representatives");
 
-let searchCompany = async(companyName) => {
+const Users = require("../model/business/Users");
 
-    let queryCompany = 'SELECT a.name, a.instances, a.company_name as normalize_name FROM company as a LEFT JOIN representative as c ON c.representative_id = a.representative_id WHERE a.name LIKE ":search%" OR c.company_name LIKE ":search%" GROUP BY a.name ';
+const Roles = require("../model/business/Roles");
 
-    let getCompanyData = await csv.query(queryCompany,{
-        type: db.Sequelize.QueryTypes.SELECT,
+
+let searchCompany = async(search) => {
+
+    let searchTerm, queryCompany;
+
+    const splitSearch = search.toString().split(' ');
+
+    if(splitSearch.length > 1){				
+        if(splitSearch.length == 2) {
+            if(splitSearch[1] == '') {
+                searchTerm = `${search}*`;
+            } else {
+                const ftsQuery = new FtsQuery(true);			
+                searchTerm = ftsQuery.transform(search);
+                searchTerm = `${searchTerm}*`;
+                searchTerm = searchTerm.replace(" AND ", " ");
+                searchTerm = searchTerm.replace(" OR ", " ");
+                searchTerm = searchTerm.replace(" NEAR ", " ");
+            }
+        } else {
+            const ftsQuery = new FtsQuery(true);			
+            searchTerm = ftsQuery.transform(search);
+            if(!!searchTerm.indexOf('"')){
+                searchTerm = `${searchTerm}*`;
+            }
+            searchTerm = searchTerm.replace(" AND ", " ");
+            searchTerm = searchTerm.replace(" OR ", " ");
+            searchTerm = searchTerm.replace(" NEAR ", " ");
+        }				
+    } else {
+        searchTerm = `${search}*`;
+    }
+
+    queryCompany = "SELECT a.company_id, a.name, sum(a.instances) as counter, c.company_name as normalize_name FROM company as a LEFT JOIN representative as c ON c.representative_id = a.representative_id WHERE MATCH(a.name) AGAINST (:search IN BOOLEAN MODE) GROUP BY a.name";
+
+    let getCompanyData = await connection.resources.query(queryCompany,{
+        type: connection.Sequelize.QueryTypes.SELECT,
         raw: true,
-        replacements: { search: companyName },
+        replacements: { search: searchTerm },
         logging: console.log,
     });
+
+    if(getCompanyData.length == 0){
+        queryCompany = `SELECT a.company_id, a.name, sum(a.instances) as counter, c.company_name as normalize_name FROM company as a LEFT JOIN representative as c ON c.representative_id = a.representative_id where a.name LIKE ":search%" GROUP BY a.name`;
+        
+        getCompanyData = await csv.query(queryCompany,{
+            type: connection.Sequelize.QueryTypes.SELECT,
+            raw: true,
+            replacements: { search: searchTerm },
+            logging: console.log,
+          }
+        );
+        if(getCompanyData.length == 0){
+            queryCompany = `SELECT a.company_id, a.name, sum(a.instances) as counter, c.company_name as normalize_name FROM company as a LEFT JOIN representative as c ON c.representative_id = a.representative_id where a.name LIKE "%:search%" GROUP BY a.name`;
+            
+            getCompanyData = await csv.query(queryCompany,{
+                type: connection.Sequelize.QueryTypes.SELECT,
+                raw: true,
+                replacements: { search: searchTerm },
+                logging: console.log,
+              }
+            );
+        }
+    }
 
     return getCompanyData;
 }
@@ -29,7 +92,7 @@ let getCompanyListByEmployee = async(companyName) => {
     let queryEmployee = "SELECT ac.or_name as name, c1.company_name as normalize_name, 'Invented' as type FROM assignor as ac INNER JOIN (SELECT a.rf_id FROM assignment as a INNER JOIN assignment_conveyance as ass ON ass.rf_id = a.rf_id INNER JOIN assignee as acc ON acc.rf_id = a.rf_id LEFT JOIN representative as c ON c.representative_id = acc.representative_id WHERE ass.convey_ty = :convey_type AND ass.employer_assign = 1 AND (acc.ee_name = :name OR c.company_name = :name) GROUP BY a.rf_id) as temp ON temp.rf_id = ac.rf_id LEFT JOIN representative as c1 ON c1.representative_id = ac.representative_id GROUP BY name, normalize_name ORDER BY normalize_name ASC, name ASC ";
 
     let allCustomers =  await connection.resources.query(queryEmployee,{
-        type: db.Sequelize.QueryTypes.SELECT,
+        type: connection.Sequelize.QueryTypes.SELECT,
         replacements: { name: companyName, convey_type: 'assignment' },
         raw: true,
         logging: console.log,
@@ -48,7 +111,7 @@ let getCompanyListByOwnership = async(companyName) => {
     let queryPurchase = "SELECT ac.or_name as name, c1.company_name as normalize_name, 'Purchased' as type FROM assignor as ac INNER JOIN (SELECT a.rf_id FROM assignment as a INNER JOIN assignment_conveyance as ass ON ass.rf_id = a.rf_id INNER JOIN assignee as acc ON acc.rf_id = a.rf_id LEFT JOIN representative as c ON c.representative_id = acc.representative_id WHERE ass.convey_ty = :convey_type AND ass.employer_assign = 0 AND (acc.ee_name = :name OR c.company_name = :name) GROUP BY a.rf_id) as temp ON temp.rf_id = ac.rf_id LEFT JOIN representative as c1 ON c1.representative_id = ac.representative_id GROUP BY name, normalize_name ORDER BY normalize_name ASC, name ASC ";
 
     let getPurchaseData = await csv.query(queryPurchase,{
-        type: db.Sequelize.QueryTypes.SELECT,
+        type: connection.Sequelize.QueryTypes.SELECT,
         replacements: { name: companyName, convey_type: 'assignment' },
         raw: true,
         logging: console.log,
@@ -58,7 +121,7 @@ let getCompanyListByOwnership = async(companyName) => {
     let querySale = "SELECT ac.ee_name as name, c1.company_name as normalize_name, 'Sale' as type FROM assignee as ac INNER JOIN (SELECT a.rf_id FROM assignment as a INNER JOIN assignment_conveyance as ass ON ass.rf_id = a.rf_id INNER JOIN assignor as acc ON acc.rf_id = a.rf_id LEFT JOIN representative as c ON c.representative_id = acc.representative_id WHERE ass.convey_ty = :convey_type AND (acc.or_name = :name OR c.company_name = :name) GROUP BY a.rf_id) as temp ON temp.rf_id = ac.rf_id LEFT JOIN representative as c1 ON c1.representative_id = ac.representative_id GROUP BY name, normalize_name ORDER BY normalize_name ASC, name ASC ";
 									
     let getSaleData = await csv.query(querySale,{
-        type: db.Sequelize.QueryTypes.SELECT,
+        type: connection.Sequelize.QueryTypes.SELECT,
         replacements: { name: companyName, convey_type: 'assignment' },
         raw: true,
         logging: console.log,
@@ -68,7 +131,7 @@ let getCompanyListByOwnership = async(companyName) => {
     let queryMergerIn = "SELECT ac.or_name as name, c1.company_name as normalize_name, 'MergerIn' as type FROM assignor as ac INNER JOIN (SELECT a.rf_id FROM assignment as a INNER JOIN assignment_conveyance as ass ON ass.rf_id = a.rf_id INNER JOIN assignee as acc ON acc.rf_id = a.rf_id LEFT JOIN representative as c ON c.representative_id = acc.representative_id WHERE ass.convey_ty = :convey_type AND ass.employer_assign = 0 AND (acc.ee_name = :name OR c.company_name = :name) GROUP BY a.rf_id) as temp ON temp.rf_id = ac.rf_id LEFT JOIN representative as c1 ON c1.representative_id = ac.representative_id GROUP BY name, normalize_name ORDER BY normalize_name ASC, name ASC ";
 									
     let getMergerInData = await csv.query(queryMergerIn,{
-        type: db.Sequelize.QueryTypes.SELECT,
+        type: connection.Sequelize.QueryTypes.SELECT,
         replacements: { name: companyName, convey_type: 'merger' },
         raw: true,
         logging: console.log,
@@ -78,7 +141,7 @@ let getCompanyListByOwnership = async(companyName) => {
     let queryMergerOut = "SELECT ac.ee_name as name, c1.company_name as normalize_name, 'MergerOut' as type FROM assignee as ac INNER JOIN (SELECT a.rf_id FROM assignment as a INNER JOIN assignment_conveyance as ass ON ass.rf_id = a.rf_id INNER JOIN assignor as acc ON acc.rf_id = a.rf_id LEFT JOIN representative as c ON c.representative_id = acc.representative_id WHERE ass.convey_ty = :convey_type AND (acc.or_name = :name OR c.company_name = :name) GROUP BY a.rf_id) as temp ON temp.rf_id = ac.rf_id LEFT JOIN representative as c1 ON c1.representative_id = ac.representative_id GROUP BY name, normalize_name ORDER BY normalize_name ASC, name ASC ";
 									
     let getMergerOutData = await csv.query(queryMergerOut,{
-        type: db.Sequelize.QueryTypes.SELECT,
+        type: connection.Sequelize.QueryTypes.SELECT,
         replacements: { name: companyName, convey_type: 'merger' },
         raw: true,
         logging: console.log,
@@ -99,7 +162,7 @@ let getCompanyListBySecurity = async(companyName) => {
     let querySecurity = "SELECT ac.ee_name as name, c1.company_name as normalize_name, 'Security' as type FROM assignee as ac INNER JOIN (SELECT a.rf_id FROM assignment as a INNER JOIN assignment_conveyance as ass ON ass.rf_id = a.rf_id INNER JOIN assignor as acc ON acc.rf_id = a.rf_id LEFT JOIN representative as c ON c.representative_id = acc.representative_id WHERE ass.convey_ty = :convey_type AND (acc.or_name = :name OR c.company_name = :name) GROUP BY a.rf_id) as temp ON temp.rf_id = ac.rf_id LEFT JOIN representative as c1 ON c1.representative_id = ac.representative_id GROUP BY name, normalize_name ORDER BY normalize_name ASC, name ASC ";
 
     let getSecurityData =  await connection.resources.query(querySecurity,{
-        type: db.Sequelize.QueryTypes.SELECT,
+        type: connection.Sequelize.QueryTypes.SELECT,
         replacements: { name: companyName, convey_type: 'security' },
         raw: true,
         logging: console.log,
@@ -109,7 +172,7 @@ let getCompanyListBySecurity = async(companyName) => {
     let queryRelease = "SELECT ac.or_name as name, c1.company_name as normalize_name, 'Release' as type FROM assignors_copy as ac INNER JOIN (SELECT a.rf_id FROM assignments_copy as a INNER JOIN assignment_conveyances_copy as ass ON ass.rf_id = a.rf_id INNER JOIN assignees_copy as acc ON acc.rf_id = a.rf_id LEFT JOIN representative as c ON c.representative_id = acc.representative_id WHERE ass.convey_ty = :convey_type AND (acc.ee_name = :name OR c.company_name = :name) GROUP BY a.rf_id) as temp ON temp.rf_id = ac.rf_id LEFT JOIN representative as c1 ON c1.representative_id = ac.representative_id GROUP BY name, normalize_name ORDER BY normalize_name ASC, name ASC ";
 
     let getReleaseData =  await connection.resources.query(queryRelease,{
-        type: db.Sequelize.QueryTypes.SELECT,
+        type: connection.Sequelize.QueryTypes.SELECT,
         replacements: { name: companyName, convey_type: 'release' },
         raw: true,
         logging: console.log,
@@ -128,7 +191,7 @@ let getCompanyListByOther = async(companyName) => {
     let queryNameChange = "SELECT ac.or_name as name, c1.company_name as normalize_name, 'Name Change' as type FROM assignors_copy as ac INNER JOIN (SELECT a.rf_id FROM assignments_copy as a INNER JOIN assignment_conveyances_copy as ass ON ass.rf_id = a.rf_id INNER JOIN assignees_copy as acc ON acc.rf_id = a.rf_id LEFT JOIN representative as c ON c.representative_id = acc.representative_id WHERE ass.convey_ty = :convey_type AND (acc.ee_name = :name OR c.company_name = :name) GROUP BY a.rf_id) as temp ON temp.rf_id = ac.rf_id LEFT JOIN representative as c1 ON c1.representative_id = ac.representative_id GROUP BY name, normalize_name ORDER BY normalize_name ASC, name ASC ";
 									
     let getNameChgData = await csv.query(queryNameChange,{
-        type: db.Sequelize.QueryTypes.SELECT,
+        type: connection.Sequelize.QueryTypes.SELECT,
         replacements: { name: companyName, convey_type: 'namechg' },
         raw: true,
         logging: console.log,
@@ -138,7 +201,7 @@ let getCompanyListByOther = async(companyName) => {
     let queryGovernChange = "SELECT ac.or_name as name, c1.company_name as normalize_name, 'Govt.' as type FROM assignors_copy as ac INNER JOIN (SELECT a.rf_id FROM assignments_copy as a INNER JOIN assignment_conveyances_copy as ass ON ass.rf_id = a.rf_id INNER JOIN assignees_copy as acc ON acc.rf_id = a.rf_id LEFT JOIN representative as c ON c.representative_id = acc.representative_id WHERE ass.convey_ty = :convey_type AND (acc.ee_name = :name OR c.company_name = :name) GROUP BY a.rf_id) as temp ON temp.rf_id = ac.rf_id LEFT JOIN representative as c1 ON c1.representative_id = ac.representative_id GROUP BY name, normalize_name ORDER BY normalize_name ASC, name ASC ";
 
     let getGovernData = await csv.query(queryGovernChange,{
-        type: db.Sequelize.QueryTypes.SELECT,
+        type: connection.Sequelize.QueryTypes.SELECT,
         replacements: { name: companyName, convey_type: 'govern' },
         raw: true,
         logging: console.log,
@@ -150,6 +213,144 @@ let getCompanyListByOther = async(companyName) => {
     return allCustomers;
 }
 
+let checkRepresentativeCompany = async(companyName) => {
+    return await Representatives.findOne({
+        where: {company_name: companyName}
+    });
+};
+
+let getAllUsers = async (organisationID) => {
+    return await Users.findAll({
+        where: {organisation_id: organisationID},
+        attributes: [['user_id','id'], 'first_name', 'last_name','email_address', 'job_title' ,'linkedin_url','username','telephone', 'telephone1','status','created_at'],
+        include:[
+            {
+                model: Roles,
+                as: "role",
+                attributes: ['name']
+            }
+        ]
+    });
+}
+
+let findCompanyCustomersByName = async(companyName) => {
+    let customer_list = [], assignees = [], assignors = [];
+
+    if(companyName != undefined  && companyName.length > 0) {
+        let queryAssignor = "SELECT a.or_name as name, count(a.or_name) as counter, r.company_name as normalize_name FROM assignor as a LEFT JOIN representative as r ON r.representative_id = a.representative_id INNER JOIN (SELECT a.rf_id FROM assignee as a LEFT JOIN representative as r ON r.representative_id = a.representative_id WHERE a.ee_name = :name OR r.company_name = :name GROUP BY a.rf_id) as b ON b.rf_id = a.rf_id  GROUP BY a.or_name";
+
+        assignors = await connection.resources.query(queryAssignor,{
+            type: connection.Sequelize.QueryTypes.SELECT,
+            replacements: { name: companyName },
+            raw: true,
+            logging: console.log,
+            }
+        );	
+
+        let queryAssignee = "SELECT a.ee_name as name, count(a.ee_name) as counter, r.company_name as normalize_name FROM assignee as a LEFT JOIN representative as r ON r.representative_id = a.representative_id INNER JOIN (SELECT a.rf_id FROM assignor as a LEFT JOIN representative as r ON r.representative_id = a.representative_id WHERE a.or_name = :name OR r.company_name = :name GROUP BY a.rf_id) as b ON b.rf_id = a.rf_id  GROUP BY a.ee_name";
+
+        assignees = await connection.resources.query(queryAssignee,{
+            type: connection.Sequelize.QueryTypes.SELECT,
+            replacements: { name: companyName },
+            raw: true,
+            logging: console.log,
+            }
+        );               
+        
+        customer_list = [...assignees, ...assignors];
+    }
+    let list = [];
+    if(customer_list.length > 0) {
+        let names = [];
+        customer_list.forEach( async name => {
+            let n = name.normalize_name;
+            if(n == "" || n == null || n != undefined){
+                n = name.name;
+            }
+            n = n.trim().toLowerCase();
+            if(!names.includes(n)){
+                await names.push(n);
+            }
+        })
+
+        for(let i = 0; i < names.length; i++) {
+            let nam = names[i];
+            let getList = await customer_list.filter(n => {
+                let name = n.normalize_name;
+                if(name == "" || name == null || name == undefined) {
+                    name = n.name;
+                }
+                name = name.trim().toLowerCase();
+                return (name == nam.trim().toLowerCase())? n : undefined;
+            })/*(n.normalize_name.toLowerCase() == nam || n.name.trim().toLowerCase() == nam )? n : undefined);*/
+            if(getList != undefined && getList.length > 0){
+                let getCounter = await getList.reduce((a, b) => +a + +b.counter, 0);
+                await list.push({id: uuidv4(), name: getList[0].name, normalize_name: getList[0].normalize_name, counter: getCounter});
+            }
+        }
+    }
+    return list;
+}
+
+let findCompanyCustomersByID = async(ID) => {
+    let customer_list = [], assignees = [], assignors = [];
+
+    if(ID != undefined  && ID > 0) {
+        let queryAssignor = "SELECT a.or_name as name, count(a.or_name) as counter, r.company_name as normalize_name FROM assignor as a LEFT JOIN representative as r ON r.representative_id = a.representative_id INNER JOIN (SELECT a.rf_id FROM assignee as a LEFT JOIN representative as r ON r.representative_id = a.representative_id WHERE a.representative_id = :ID GROUP BY a.rf_id) as b ON b.rf_id = a.rf_id  GROUP BY a.or_name";
+
+        assignors = await connection.resources.query(queryAssignor,{
+            type: connection.Sequelize.QueryTypes.SELECT,
+            replacements: { ID: ID },
+            raw: true,
+            logging: console.log,
+            }
+        );	
+
+        let queryAssignee = "SELECT a.ee_name as name, count(a.ee_name) as counter, r.company_name as normalize_name FROM assignee as a LEFT JOIN representative as r ON r.representative_id = a.representative_id INNER JOIN (SELECT a.rf_id FROM assignor as a LEFT JOIN representative as r ON r.representative_id = a.representative_id WHERE a.representative_id = :ID  GROUP BY a.rf_id) as b ON b.rf_id = a.rf_id  GROUP BY a.ee_name";
+
+        assignees = await connection.resources.query(queryAssignee,{
+            type: connection.Sequelize.QueryTypes.SELECT,
+            replacements: { ID: ID },
+            raw: true,
+            logging: console.log,
+            }
+        );               
+        
+        customer_list = [...assignees, ...assignors];
+    }
+    let list = [];
+    if(customer_list.length > 0) {
+        let names = [];
+        customer_list.forEach( async name => {
+            let n = name.normalize_name;
+            if(n == "" || n == null || n != undefined){
+                n = name.name;
+            }
+            n = n.trim().toLowerCase();
+            if(!names.includes(n)){
+                await names.push(n);
+            }
+        })
+
+        for(let i = 0; i < names.length; i++) {
+            let nam = names[i];
+            let getList = await customer_list.filter(n => {
+                let name = n.normalize_name;
+                if(name == "" || name == null || name == undefined) {
+                    name = n.name;
+                }
+                name = name.trim().toLowerCase();
+                return (name == nam.trim().toLowerCase())? n : undefined;
+            })/*(n.normalize_name.toLowerCase() == nam || n.name.trim().toLowerCase() == nam )? n : undefined);*/
+            if(getList != undefined && getList.length > 0){
+                let getCounter = await getList.reduce((a, b) => +a + +b.counter, 0);
+                await list.push({id: uuidv4(), name: getList[0].name, normalize_name: getList[0].normalize_name, counter: getCounter, projects:[]});
+            }
+        }
+    }
+    return list;
+}
+
 const helper = {};
 helper.findOrganisationbyID = findOrganisationbyID;
 helper.getCompanyListByEmployee = getCompanyListByEmployee;
@@ -157,5 +358,8 @@ helper.getCompanyListByOwnership = getCompanyListByOwnership;
 helper.getCompanyListBySecurity = getCompanyListBySecurity;
 helper.getCompanyListByOther = getCompanyListByOther;
 helper.searchCompany = searchCompany;
-
+helper.checkRepresentativeCompany = checkRepresentativeCompany;
+helper.getAllUsers = getAllUsers;
+helper.findCompanyCustomersByName = findCompanyCustomersByName;
+helper.findCompanyCustomersByID = findCompanyCustomersByID;
 module.exports = helper;

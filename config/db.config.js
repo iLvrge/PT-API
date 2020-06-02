@@ -40,10 +40,27 @@ const business = new Sequelize('db_business', 'db_user_all', 'wDv%5tgn0O0kMkM', 
         idle: 5000
     }
 });
-
+/*productsDb.dialect.supports.schemas = true; // add this line
+{
+      tableName: "product",
+      timestamps: false,
+      schema: "products" // add this line
+    }
+    include: [
+    {
+      model: ProductsDb.models.product,
+      on: {
+        // this is where magic happens
+        order_id: Sequelize.literal("`order`.`id` = `products`.`products`.`order_id`") 
+      }
+    }
+  ]
+ */
 const db = {};
  
 db.Sequelize = Sequelize;
+
+db.Op = Op;
 
 db.application = application;
 

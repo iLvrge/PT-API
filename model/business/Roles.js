@@ -2,15 +2,14 @@ const Sequelize = require("sequelize");
 
 const connection = require("../../config/db.config");
 
-
-const Representatives = connection.resources.define('representative',{
-    representative_id: {
+const Roles = connection.business.define('role',{
+    role_id: {
         type: Sequelize.INTEGER,
         primaryKey: true,
         autoIncrement: true
     },        
-    company_name:{
-        type: Sequelize.STRING,
+    name:{
+        type: Sequelize.INTEGER,
         allowNull: false,
     },
     created_at:{
@@ -25,11 +24,7 @@ const Representatives = connection.resources.define('representative',{
 {
     underscored: true,
     timestamps: false,
-    freezeTableName: true,
-    tableName: 'representative'
+    freezeTableName: true
 });
 
-
-
-
-module.exports = Representatives;
+module.exports = Roles;

@@ -2,6 +2,9 @@ const Sequelize = require("sequelize");
 
 const connection = require("../../config/db.config");
 
+const Roles = require("./Roles");
+
+const Organisations = require("./Organisations");
 
 const Users = connection.business.define('user',{
     user_id: {
@@ -52,6 +55,10 @@ const Users = connection.business.define('user',{
     role_id:{
         type: Sequelize.INTEGER,
         allowNull: true,
+        references: {
+            model: Roles,
+            key: 'role_id',
+        }
     },
     type:{
         type: Sequelize.STRING,
@@ -60,6 +67,10 @@ const Users = connection.business.define('user',{
     organisation_id:{
         type: Sequelize.INTEGER,
         allowNull: true,
+        references: {
+            model: Organisations,
+            key: 'organisation_id',
+        }
     },
     authentication_code:{
         type: Sequelize.STRING,
@@ -85,7 +96,11 @@ const Users = connection.business.define('user',{
 {
     underscored: true,
     timestamps: false,
-    freezeTableName: true
+    freezeTableName: true,
+    tableName: 'user'
 });
+
+Users.belongsTo(Roles, { foreignKey: 'role_id', as: 'role' });
+Users.belongsTo(Organisations, { foreignKey: 'organisation_id', as: 'organisation' });
 
 module.exports = Users;

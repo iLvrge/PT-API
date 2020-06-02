@@ -10,7 +10,13 @@ const authJWT = require("../../helpers/verifyJwtToken");
 
 const helpers = require("../../helpers/helper");
 
-const Representative = require('../../model/resources/Representatives')
+const Representative = require('../../model/resources/Representatives');
+
+const Assignors = require('../../model/resources/Assignors');
+
+const Assignees = require('../../model/resources/Assignees');
+
+const Companies = require('../../model/resources/Companies');
 
 /**
  * List all customers
@@ -59,7 +65,7 @@ route.put("/company/search/all/", [authJWT.verifyToken, authJWT.isAdmin], (req, 
         try {
 
             let name = req.body.name, normalize_name = req.body.normalize_name;
-            if(name != ""){
+            if(name != "" && normalize_name != ""){
 
                 let  representativeCompany = await helpers.checkRepresentativeCompany(normalize_name);
 
@@ -79,17 +85,32 @@ route.put("/company/search/all/", [authJWT.verifyToken, authJWT.isAdmin], (req, 
                     const item = {representative_id: representativeCompany.representative_id};
 
 
-                    await Assignee.update(item, {where: {ee_name: name}, transaction: t});
+                    await Assignees.update(item, {where: {ee_name: name}, transaction: t});
 
-                    await Assignee.update(item, {where: {or_name: name}, transaction: t});
+                    await Assignors.update(item, {where: {or_name: name}, transaction: t});
 
-                    await Company.update(item, {where: {name: name}, transaction: t});
+                    await Companies.update(item, {where: {name: name}, transaction: t});
                 }
                 
                 if (t) await t.commit();               
                 res.status(200).send("Updated successfully");				
             }  else {
-                res.status(402).send("Bad inputs");
+                if(name != "" && normalize_name == ""){
+                    let t = await connection.resources.transaction();
+                    	
+                    const item = {representative_id: 0};
+
+                    await Assignees.update(item, {where: {ee_name: name}, transaction: t});
+
+                    await Assignors.update(item, {where: {or_name: name}, transaction: t});
+
+                    await Companies.update(item, {where: {name: name}, transaction: t});
+
+                    if (t) await t.commit();               
+                    res.status(200).send("Updated successfully");		
+                } else {
+                    res.status(402).send("Bad inputs");
+                }
             }      
         } catch(e) {
             console.log(e);
