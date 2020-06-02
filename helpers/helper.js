@@ -1,5 +1,5 @@
 
-const connection = require("../../config/db.config");
+const connection = require("../config/db.config");
 
 const Organisations = require("../model/business/Organisations");
 
