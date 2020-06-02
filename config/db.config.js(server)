@@ -1,0 +1,54 @@
+const Sequelize = require('sequelize');
+
+const Op = Sequelize.Op;
+
+const application = new Sequelize(process.env.DATABASE_APPLICATION, process.env.USER, process.env.PASSWORD, {
+    host: process.env.HOST,
+    dialect: process.env.DIALECT,
+    operatorsAliases: Op,
+   
+    pool: {
+      max: process.env.MAX,
+      min: process.env.MIN,
+      acquire: process.env.ACQUIRE,
+      idle: process.env.IDLE
+    }
+});
+
+const resources = new Sequelize(process.env.DATABASE_RAW, process.env.USER, process.env.PASSWORD, {
+    host: process.env.HOST,
+    dialect: process.env.DIALECT,
+    operatorsAliases: Op,
+   
+    pool: {
+        max: process.env.MAX,
+        min: process.env.MIN,
+        acquire: process.env.ACQUIRE,
+        idle: process.env.IDLE
+    }
+});
+
+const business = new Sequelize(process.env.DATABASE_BUSINESS, process.env.USER, process.env.PASSWORD, {
+    host: process.env.HOST,
+    dialect: process.env.DIALECT,
+    operatorsAliases: Op,
+   
+    pool: {
+        max: process.env.MAX,
+        min: process.env.MIN,
+        acquire: process.env.ACQUIRE,
+        idle: process.env.IDLE
+    }
+});
+
+const db = {};
+ 
+db.Sequelize = Sequelize;
+
+db.application = application;
+
+db.resources = resources;
+
+db.business = business;
+
+module.exports = db;
