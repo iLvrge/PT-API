@@ -14,6 +14,11 @@ const Users = require("../model/business/Users");
 const Roles = require("../model/business/Roles");
 
 
+/**
+ * 
+ * @param {SearchCompanies} search 
+ */
+
 let searchCompany = async(search) => {
 
     let searchTerm, queryCompany;
@@ -45,8 +50,9 @@ let searchCompany = async(search) => {
     } else {
         searchTerm = `${search}*`;
     }
+    console.log("SEARCH:",search);
 
-    queryCompany = "SELECT a.company_id, a.name, sum(a.instances) as counter, c.company_name as normalize_name FROM company as a LEFT JOIN representative as c ON c.representative_id = a.representative_id WHERE MATCH(a.name) AGAINST (:search IN BOOLEAN MODE) GROUP BY a.name";
+    queryCompany = "SELECT a.assignor_and_assignee_id, a.name, sum(a.instances) as counter, c.representative_name as normalize_name FROM assignor_and_assignee as a LEFT JOIN representative as c ON c.representative_id = a.representative_id WHERE MATCH(a.name) AGAINST (:search IN BOOLEAN MODE) GROUP BY a.name";
 
     let getCompanyData = await connection.resources.query(queryCompany,{
         type: connection.Sequelize.QueryTypes.SELECT,
@@ -56,9 +62,9 @@ let searchCompany = async(search) => {
     });
 
     if(getCompanyData.length == 0){
-        queryCompany = `SELECT a.company_id, a.name, sum(a.instances) as counter, c.company_name as normalize_name FROM company as a LEFT JOIN representative as c ON c.representative_id = a.representative_id where a.name LIKE ":search%" GROUP BY a.name`;
+        queryCompany = `SELECT a.assignor_and_assignee_id, a.name, sum(a.instances) as counter, c.representative_name as normalize_name FROM assignor_and_assignee as a LEFT JOIN representative as c ON c.representative_id = a.representative_id where a.name LIKE ":search%" GROUP BY a.name`;
         
-        getCompanyData = await csv.query(queryCompany,{
+        getCompanyData = await connection.resources.query(queryCompany,{
             type: connection.Sequelize.QueryTypes.SELECT,
             raw: true,
             replacements: { search: searchTerm },
@@ -66,9 +72,9 @@ let searchCompany = async(search) => {
           }
         );
         if(getCompanyData.length == 0){
-            queryCompany = `SELECT a.company_id, a.name, sum(a.instances) as counter, c.company_name as normalize_name FROM company as a LEFT JOIN representative as c ON c.representative_id = a.representative_id where a.name LIKE "%:search%" GROUP BY a.name`;
+            queryCompany = `SELECT a.assignor_and_assignee_id, a.name, sum(a.instances) as counter, c.representative_name as normalize_name FROM assignor_and_assignee as a LEFT JOIN representative as c ON c.representative_id = a.representative_id where a.name LIKE "%:search%" GROUP BY a.name`;
             
-            getCompanyData = await csv.query(queryCompany,{
+            getCompanyData = await connection.resources.query(queryCompany,{
                 type: connection.Sequelize.QueryTypes.SELECT,
                 raw: true,
                 replacements: { search: searchTerm },
@@ -215,7 +221,7 @@ let getCompanyListByOther = async(companyName) => {
 
 let checkRepresentativeCompany = async(companyName) => {
     return await Representatives.findOne({
-        where: {company_name: companyName}
+        where: {representative_name: companyName}
     });
 };
 
@@ -237,7 +243,7 @@ let findCompanyCustomersByName = async(companyName) => {
     let customer_list = [], assignees = [], assignors = [];
 
     if(companyName != undefined  && companyName.length > 0) {
-        let queryAssignor = "SELECT a.or_name as name, count(a.or_name) as counter, r.company_name as normalize_name FROM assignor as a LEFT JOIN representative as r ON r.representative_id = a.representative_id INNER JOIN (SELECT a.rf_id FROM assignee as a LEFT JOIN representative as r ON r.representative_id = a.representative_id WHERE a.ee_name = :name OR r.company_name = :name GROUP BY a.rf_id) as b ON b.rf_id = a.rf_id  GROUP BY a.or_name";
+        let queryAssignor = "SELECT a.or_name as name, count(a.or_name) as counter, r.representative_name as normalize_name FROM db_uspto.assignor as a LEFT JOIN assignor_and_assignee as aaa ON aaa.assignor_and_assignee_id = a.assignor_and_assignee_id LEFT JOIN representative as r ON r.representative_id = aaa.representative_id INNER JOIN (SELECT rf_id FROM db_uspto.assignee as ac WHERE ee_name IN ( SELECT aa.name FROM assignor_and_assignee as aa INNER JOIN representative as r1 ON r1.representative_id = aa.representative_id where r1.representative_name=:name)) as b ON  b.rf_id = a.rf_id GROUP BY a.or_name";
 
         assignors = await connection.resources.query(queryAssignor,{
             type: connection.Sequelize.QueryTypes.SELECT,
@@ -247,7 +253,7 @@ let findCompanyCustomersByName = async(companyName) => {
             }
         );	
 
-        let queryAssignee = "SELECT a.ee_name as name, count(a.ee_name) as counter, r.company_name as normalize_name FROM assignee as a LEFT JOIN representative as r ON r.representative_id = a.representative_id INNER JOIN (SELECT a.rf_id FROM assignor as a LEFT JOIN representative as r ON r.representative_id = a.representative_id WHERE a.or_name = :name OR r.company_name = :name GROUP BY a.rf_id) as b ON b.rf_id = a.rf_id  GROUP BY a.ee_name";
+        let queryAssignee = "SELECT a.ee_name as name, count(a.ee_name) as counter, r.representative_name as normalize_name FROM db_uspto.assignee as a LEFT JOIN assignor_and_assignee as aaa ON aaa.assignor_and_assignee_id = a.assignor_and_assignee_id LEFT JOIN representative as r ON r.representative_id = aaa.representative_id INNER JOIN (SELECT rf_id FROM db_uspto.assignor as ac WHERE or_name IN ( SELECT aa.name FROM assignor_and_assignee as aa INNER JOIN representative as r1 ON r1.representative_id = aa.representative_id where r1.representative_name=:name)) as b ON  b.rf_id = a.rf_id GROUP BY a.ee_name";
 
         assignees = await connection.resources.query(queryAssignee,{
             type: connection.Sequelize.QueryTypes.SELECT,

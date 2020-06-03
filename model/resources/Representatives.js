@@ -9,7 +9,7 @@ const Representatives = connection.resources.define('representative',{
         primaryKey: true,
         autoIncrement: true
     },        
-    company_name:{
+    representative_name:{
         type: Sequelize.STRING,
         allowNull: false,
     },

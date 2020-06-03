@@ -221,7 +221,8 @@ route.get("/customers/:id/libraries", [authJWT.verifyToken, authJWT.isAdmin], (r
                     let companyData = await helpers.checkRepresentativeCompany(companyName);
                     let list = [];
                     if(companyData != null && companyData.representative_id > 0) {
-                        list = await helpers.findCompanyCustomersByID(companyData.representative_id);
+/*                      list = await helpers.findCompanyCustomersByID(companyData.representative_id);*/
+                        list = await helpers.findCompanyCustomersByName(companyName);
                     }
                     res.status(200).json(list);
                 } else {

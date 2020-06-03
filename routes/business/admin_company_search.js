@@ -10,53 +10,52 @@ const authJWT = require("../../helpers/verifyJwtToken");
 
 const helpers = require("../../helpers/helper");
 
-const Representative = require('../../model/resources/Representatives');
+const Representatives = require('../../model/resources/Representatives');
 
 const Assignors = require('../../model/resources/Assignors');
 
 const Assignees = require('../../model/resources/Assignees');
 
-const Companies = require('../../model/resources/Companies');
+const AssignorAndAssignee = require('../../model/resources/AssignorAndAssignee');
 
 /**
  * List all customers
  */
 
-route.get("/company/search/all/", [authJWT.verifyToken, authJWT.isAdmin], (req, res, next) => {
-    (async () => {
-        try {
+route.get("/company/search/all/", [authJWT.verifyToken, authJWT.isAdmin], async (req, res, next) => {
 
-            let searchCompanies = [];
+    try {
 
-            let filter = req.query.filter, searchItem = "";	
+        let searchCompanies = [];
 
-            if(filter != 'undefined' && filter != undefined){
-				try{
-					filter = JSON.parse(filter);
-					if(Array.isArray(filter) && filter.length > 0) {						
-						if(filter[0].property != ""){
-							queryProperty = filter[0].property;
-						}
-						
-						if(filter[0].value != ""){
-							searchItem = filter[0].value;
-						}						
-					}
-				} catch(e){
-					
-				}
-			}
-    
-            if(searchItem != null && searchItem != undefined && searchItem.length > 0) {
+        let filter = req.query.filter, searchItem = "";	
+
+        if(filter != 'undefined' && filter != undefined){
+            try{
+                filter = JSON.parse(filter);
+                if(Array.isArray(filter) && filter.length > 0) {						
+                    if(filter[0].property != ""){
+                        queryProperty = filter[0].property;
+                    }
+                    
+                    if(filter[0].value != ""){
+                        searchItem = filter[0].value;
+                    }						
+                }
+            } catch(e){
                 
-                searchCompanies  = await helpers.searchCompany(searchItem);
             }
-            res.status(200).json(searchCompanies);           
-        } catch(e) {
-            console.log(e);
-            res.status(402).send("Not found ");
         }
-    })();
+
+        if(searchItem != null && searchItem != undefined && searchItem.length > 0) {
+            
+            searchCompanies  = await helpers.searchCompany(searchItem);
+        }
+        res.status(200).json(searchCompanies);           
+    } catch(e) {
+        console.log(e);
+        res.status(402).send("Not found ");
+    }
 });
 
 
@@ -75,21 +74,15 @@ route.put("/company/search/all/", [authJWT.verifyToken, authJWT.isAdmin], (req, 
                     /**
                      * Insert representative company
                      */
-                    representativeCompany = await Representative.create({
-                        company_name: normalize_name
+                    representativeCompany = await Representatives.create({
+                        representative_name: normalize_name
                     });
                 }
 
                 if(representativeCompany != null && representativeCompany.representative_id > 0) {
 
                     const item = {representative_id: representativeCompany.representative_id};
-
-
-                    await Assignees.update(item, {where: {ee_name: name}, transaction: t});
-
-                    await Assignors.update(item, {where: {or_name: name}, transaction: t});
-
-                    await Companies.update(item, {where: {name: name}, transaction: t});
+                    await AssignorAndAssignee.update(item, {where: {name: name}, transaction: t});
                 }
                 
                 if (t) await t.commit();               
@@ -97,14 +90,9 @@ route.put("/company/search/all/", [authJWT.verifyToken, authJWT.isAdmin], (req, 
             }  else {
                 if(name != "" && normalize_name == ""){
                     let t = await connection.resources.transaction();
-                    	
-                    const item = {representative_id: 0};
 
-                    await Assignees.update(item, {where: {ee_name: name}, transaction: t});
-
-                    await Assignors.update(item, {where: {or_name: name}, transaction: t});
-
-                    await Companies.update(item, {where: {name: name}, transaction: t});
+                    const item = {representative_id: 0};                    
+                    await AssignorAndAssignee.update(item, {where: {name: name}, transaction: t});
 
                     if (t) await t.commit();               
                     res.status(200).send("Updated successfully");		

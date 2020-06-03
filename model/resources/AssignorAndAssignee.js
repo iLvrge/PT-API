@@ -5,8 +5,8 @@ const connection = require("../../config/db.config");
 const Representatives = require("./Representatives");
 
 
-const Company = connection.resources.define('company',{
-    company_id: {
+const AssignorAndAssignee = connection.resources.define('assignor_and_assignee',{
+    assignor_and_assignee_id: {
         type: Sequelize.INTEGER,
         primaryKey: true,
         autoIncrement: true
@@ -31,7 +31,10 @@ const Company = connection.resources.define('company',{
 {
     underscored: true,
     timestamps: false,
-    freezeTableName: true
+    freezeTableName: true,
+    tableName: 'assignor_and_assignee'
 });
 
-module.exports = Company;
+AssignorAndAssignee.belongsTo(Representatives, { foreignKey: 'representative_id', as: 'representative' });
+
+module.exports = AssignorAndAssignee;
