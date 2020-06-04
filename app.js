@@ -37,8 +37,9 @@ const appLogin = require("./routes/business/login");
  * Route for Admin Login
  */
 const adminLogin = require("./routes/business/admin_login");
-const customers = require("./routes/business/admin_customers");
+const adminCustomers = require("./routes/business/admin_customers");
 const companySearch = require("./routes/business/admin_company_search");
+const customers = require("./routes/application/customers");
 
 
 //routes for application
@@ -54,7 +55,7 @@ app.use("/", errors);
 //routes for admin
 app.use("/admin/", adminLogin);
 
-app.use("/admin/", customers);
+app.use("/admin/", adminCustomers);
 
 app.use("/admin/", companySearch);
 
@@ -62,6 +63,7 @@ app.use("/admin/", companySearch);
 
 //routes for client
 app.use("/", appLogin);
+app.use("/customers", customers);
 
 app.use((req,res,next)=>{
     const error = new Error("Unable to manage the request");

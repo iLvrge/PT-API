@@ -252,7 +252,10 @@ route.get("/customers/create_tree/:organisation_id", [authJWT.verifyToken, authJ
                 let companyName = org.name;
                 let companyData = await helpers.checkRepresentativeCompany(companyName);
                 if(companyData != null && companyData.representative_id > 0) {
+                    console.log(`php -f /var/www/html/trash/tree_script.php ${companyName}`);
                     await exec(`php -f /var/www/html/trash/tree_script.php ${companyName}`, function (error, stdout, stderr) {
+                        console.log(error);
+                        console.log(stderr);
                         res.status(200).send(stdout);
                     });
                 } else {
