@@ -8,8 +8,13 @@ let connect = async(req, res, next) => {
     console.log("connection");
 
     if(req.orgId) {
-        const organisation = await helpers.findOrganisationbyID(req.orgId);
+        
+        if(req.orgId == 46) {
+            req.orgId = 9
+        }
 
+        const organisation = await helpers.findOrganisationbyID(req.orgId);
+        
         if( organisation != null && organisation.organisation_id > 0) {
             /**
              * Make DB Connection

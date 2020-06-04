@@ -24,7 +24,7 @@ const Representatives = connection.resources.define('representative',{
 },
 {
     underscored: true,
-    timestamps: false,
+    timestamps: true,
     freezeTableName: true,
     tableName: 'representative'
 });

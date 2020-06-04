@@ -13,6 +13,8 @@ const Users = require("../model/business/Users");
 
 const Roles = require("../model/business/Roles");
 
+const ClientRepesentative = require("../model/client/representatives");
+
 
 /**
  * 
@@ -239,6 +241,14 @@ let getAllUsers = async (organisationID) => {
     });
 }
 
+let getCompaniesList = async (DBConnection) => {
+    const Representative = DBConnection.define('ClientRepesentative', ClientRepesentative.mainStructure, ClientRepesentative.options);
+
+    return await Representative.findAll({
+        where: {representative_name: {[connection.Op.eq]: null}}
+    });
+}
+
 let findCompanyCustomersByName = async(companyName) => {
     let customer_list = [], assignees = [], assignors = [];
 
@@ -368,4 +378,5 @@ helper.checkRepresentativeCompany = checkRepresentativeCompany;
 helper.getAllUsers = getAllUsers;
 helper.findCompanyCustomersByName = findCompanyCustomersByName;
 helper.findCompanyCustomersByID = findCompanyCustomersByID;
+helper.getCompaniesList = getCompaniesList;
 module.exports = helper;
