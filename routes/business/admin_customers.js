@@ -4,6 +4,8 @@ const bcrypt = require('bcrypt');
 
 const { v4: uuidv4  } = require('uuid');
 
+const exec = require("child_process").exec;
+
 const route = express.Router();
 
 const connection = require("../../config/db.config");
@@ -238,6 +240,37 @@ route.get("/customers/:id/libraries", [authJWT.verifyToken, authJWT.isAdmin], (r
     })();
 });
 
+route.get("/customers/create_tree/:organisation_id", [authJWT.verifyToken, authJWT.isAdmin], async(req, res, next) => {
+    try{
+        let organisationID = req.params.organisation_id;
+        if(organisationID > 0){
+            let org = await helpers.findOrganisationbyID( organisationID );
+            if(org != null && org.organisation_id > 0) {
+                /**
+                 * Get list of all from resources database.
+                 */
+                let companyName = org.name;
+                let companyData = await helpers.checkRepresentativeCompany(companyName);
+                if(companyData != null && companyData.representative_id > 0) {
+                    await exec(`php -f /var/www/html/trash/tree_script.php ${companyName}`, function (error, stdout, stderr) {
+                        res.status(200).send(stdout);
+                    });
+                } else {
+                    res.status(402).send("Bad Inputs");
+                }
+            } else {
+                res.status(402).send("Bad Inputs");
+            }
+        } else {
+            res.status(402).send("Bad Inputs");
+        }
+        
+    } catch(e) {
+        console.log("ERROR:");
+        console.log(e);
+        res.status(402).send("Not found ");
+    } 
+});
 
 /**
  * (async () => {
