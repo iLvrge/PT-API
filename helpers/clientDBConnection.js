@@ -11,10 +11,12 @@ let connect = async(req, res, next) => {
         
         if(req.orgId == 46) {
             req.orgId = 9
+        }else if(req.orgId == 52) {
+            req.orgId = 10;
         }
 
         const organisation = await helpers.findOrganisationbyID(req.orgId);
-        
+
         if( organisation != null && organisation.organisation_id > 0) {
             /**
              * Make DB Connection
