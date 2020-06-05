@@ -21,6 +21,7 @@ const ClientRepesentative = require("../model/client/Representatives");
  * @param {SearchCompanies} search 
  */
 
+ 
 let searchCompany = async(search) => {
 
     let searchTerm, queryCompany;

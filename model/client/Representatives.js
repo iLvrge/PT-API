@@ -28,6 +28,4 @@ const ClientRepresentatives = {
     }
 }
 
-
-
 module.exports = ClientRepresentatives;
