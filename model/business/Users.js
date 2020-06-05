@@ -95,7 +95,7 @@ const Users = connection.business.define('user',{
 },
 {
     underscored: true,
-    timestamps: false,
+    timestamps: true,
     freezeTableName: true,
     tableName: 'user'
 });

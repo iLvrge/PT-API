@@ -14,6 +14,8 @@ const connection = require("../../config/db.config");
 
 const Organisations = require("../../model/business/Organisations");
 
+const Users = require("../../model/business/Users");
+
 const Assignees = require("../../model/resources/Assignees");
 
 const Assignors = require("../../model/resources/Assignors");
@@ -120,7 +122,7 @@ route.post("/customers/:id/users", [authJWT.verifyToken, authJWT.isAdmin, userEx
                 const organisation  = await helpers.findOrganisationbyID(organisationID);
                 if(organisation != null && organisation.organisation_id > 0){
                     console.log(req.body);
-                    User.create({
+                    Users.create({
                         first_name: req.body.first_name,
                         last_name: req.body.last_name,
                         email_address: req.body.email_address,
@@ -135,9 +137,11 @@ route.post("/customers/:id/users", [authJWT.verifyToken, authJWT.isAdmin, userEx
                     })
                     .then(function( user ){
                         if(user != null) {                            
-                            console.log("User"+user.id);
+                            console.log("User"+user.user_id);
                             console.log("User created successfully");
-                            res.status(200).json(user);
+                            const newUser = user.toJSON();
+                            newUser.id = newUser.user_id;
+                            res.status(200).json(newUser);
                         }  else {
                             res.status(400).send("Bad inputs");
                         }                  
