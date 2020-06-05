@@ -26,6 +26,11 @@ const assets = require("./routes/application/assets");
 const updates = require("./routes/application/updates");
 const errors = require("./routes/application/errors");
 
+/**
+ * Route for Applications database
+ */
+const customers = require("./routes/client/customers");
+const activities = require("./routes/client/activities");
 
 /**
  * Route for Client Login
@@ -39,10 +44,13 @@ const appLogin = require("./routes/business/login");
 const adminLogin = require("./routes/business/admin_login");
 const adminCustomers = require("./routes/business/admin_customers");
 const companySearch = require("./routes/business/admin_company_search");
-const customers = require("./routes/application/customers");
 
 
-//routes for application
+
+//routes for application / client
+app.use("/", appLogin);
+
+
 app.use("/", transactions);
 
 app.use("/", assets);
@@ -51,6 +59,11 @@ app.use("/", updates);
 
 app.use("/", errors);
 
+app.use("/customers", customers);
+
+//app.use("/", activities);
+
+app.use("/", activities);
 
 //routes for admin
 app.use("/admin/", adminLogin);
@@ -62,8 +75,8 @@ app.use("/admin/", companySearch);
 
 
 //routes for client
-app.use("/", appLogin);
-app.use("/customers", customers);
+
+
 
 app.use((req,res,next)=>{
     const error = new Error("Unable to manage the request");

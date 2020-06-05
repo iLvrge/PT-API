@@ -13,7 +13,7 @@ const Users = require("../model/business/Users");
 
 const Roles = require("../model/business/Roles");
 
-const ClientRepesentative = require("../model/client/representatives");
+const ClientRepesentative = require("../model/client/Representatives");
 
 
 /**
@@ -272,10 +272,12 @@ let findCompanyCustomersByName = async(companyName) => {
             logging: console.log,
             }
         );               
-        
+        console.log(assignees.length);
+        console.log(assignors.length);
         customer_list = [...assignees, ...assignors];
     }
     let list = [];
+    console.log(customer_list.length);
     if(customer_list.length > 0) {
         let names = [];
         customer_list.forEach( async name => {
@@ -292,10 +294,11 @@ let findCompanyCustomersByName = async(companyName) => {
         for(let i = 0; i < names.length; i++) {
             let nam = names[i];
             let getList = await customer_list.filter(n => {
-                let name = n.normalize_name;
+                /*let name = n.normalize_name;
                 if(name == "" || name == null || name == undefined) {
                     name = n.name;
-                }
+                }*/
+                let name = n.name;
                 name = name.trim().toLowerCase();
                 return (name == nam.trim().toLowerCase())? n : undefined;
             })/*(n.normalize_name.toLowerCase() == nam || n.name.trim().toLowerCase() == nam )? n : undefined);*/
@@ -305,6 +308,7 @@ let findCompanyCustomersByName = async(companyName) => {
             }
         }
     }
+    console.log(list.length);
     return list;
 }
 
