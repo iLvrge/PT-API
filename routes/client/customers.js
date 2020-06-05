@@ -164,9 +164,15 @@ route.get("/:type", [authJWT.verifyToken, clientDBConnection.connect], async(req
 
 route.get("/:name/collections",[authJWT.verifyToken], async(req, res, next) => {    
     try{
+        if(req.orgId == 46) {
+            req.orgId = 9
+        }else if(req.orgId == 52) {
+            req.orgId = 10;
+        }
         const organisationData = await helpers.findOrganisationbyID(req.orgId);
         let allFrames = [];
         if(organisationData != null && organisationData.organisation_id > 0){
+            
             const customerName = req.params.name;					
             if(customerName != "") {
                 let customQueryAssignee = "SELECT ac.rf_id, ac.rf_id as name, date_format(ac.exec_dt, '%m-%d-%Y') as exec_dt FROM assignor as ac INNER JOIN assignor_and_assignee as aa ON aa.assignor_and_assignee_id = ac.assignor_and_assignee_id LEFT JOIN representative as rr ON rr.representative_id = aa.representative_id INNER JOIN (SELECT a.rf_id FROM assignment as a INNER JOIN assignment_conveyance as ass ON ass.rf_id = a.rf_id INNER JOIN assignee as acc ON acc.rf_id = a.rf_id INNER JOIN assignor_and_assignee as aaa ON aaa.assignor_and_assignee_id = acc.assignor_and_assignee_id LEFT JOIN representative as r ON r.representative_id = aaa.representative_id WHERE (aaa.name = :name OR r.representative_name = :name) GROUP BY a.rf_id) as temp ON temp.rf_id = ac.rf_id WHERE (aa.name = :customer_name OR rr.representative_name = :customer_name) GROUP BY ac.rf_id ORDER BY exec_dt ASC, ac.rf_id ASC";
@@ -181,7 +187,7 @@ route.get("/:name/collections",[authJWT.verifyToken], async(req, res, next) => {
 
                 let customQueryAssignor = "SELECT ac.rf_id, ac.rf_id as name,  (SELECT date_format(ap.exec_dt, '%m-%d-%Y') FROM assignor as ap WHERE ap.rf_id = ac.rf_id ORDER BY ap.exec_dt ASC LIMIT 1) as exec_dt  FROM assignee as ac INNER JOIN assignor_and_assignee as aa ON aa.assignor_and_assignee_id = ac.assignor_and_assignee_id LEFT JOIN representative as rr ON rr.representative_id = aa.representative_id INNER JOIN (SELECT a.rf_id FROM assignment as a INNER JOIN assignment_conveyance as ass ON ass.rf_id = a.rf_id INNER JOIN assignor as acc ON acc.rf_id = a.rf_id INNER JOIN assignor_and_assignee as aaa ON aaa.assignor_and_assignee_id = acc.assignor_and_assignee_id LEFT JOIN representative as r ON r.representative_id = aaa.representative_id WHERE (aaa.name = :name OR r.representative_name = :name) GROUP BY a.rf_id) as temp ON temp.rf_id = ac.rf_id WHERE (aa.name = :customer_name OR rr.representative_name = :customer_name) GROUP BY ac.rf_id ORDER BY exec_dt ASC, ac.rf_id ASC";
                 
-                let getAssigneeData = await csv.query(customQueryAssignor,{
+                let getAssigneeData = await connection.application.query(customQueryAssignor,{
                     type: connection.Sequelize.QueryTypes.SELECT,
                     replacements: { name: organisationData.name, customer_name: customerName },
                     raw: true,
@@ -199,7 +205,7 @@ route.get("/:name/collections",[authJWT.verifyToken], async(req, res, next) => {
                             if( !allReel.includes(reel.rf_id) ){
                                 allReel.push( reel.rf_id );
                                 const newReel = {...reel};
-                                newReel.id = uuidv4();
+                                newReel.id = reel.rf_id;
                                 newReel.level = 2;
                                 await allFrames.push(newReel);
                             }
@@ -218,6 +224,11 @@ route.get("/:name/collections",[authJWT.verifyToken], async(req, res, next) => {
 
 route.get("/:rf_id/assets",[authJWT.verifyToken], async(req, res, next) => {   
     try{
+        if(req.orgId == 46) {
+            req.orgId = 9
+        }else if(req.orgId == 52) {
+            req.orgId = 10;
+        }
         const organisationData = await helpers.findOrganisationbyID(Organisation, req.orgId);
         let allPatents = [];
         if(organisationData != null && organisationData.id > 0){
