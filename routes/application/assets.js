@@ -8,7 +8,7 @@ const connection = require("../../config/db.config");
 
 const Assets = require("../../model/application/Assets");
 
-const Documentids = require("../../model/application/Documentids");
+const Documentids = require("../../model/application/DocumentIds");
 
 const authJWT = require("../../helpers/verifyJwtToken");
 
