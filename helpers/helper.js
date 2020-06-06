@@ -382,7 +382,7 @@ let generateJSON = async(req, res) => {
             orgID = req.orgId;
             userID = req.userId;
         }
-        /*console.log(process.env.BACKGROUND_JOB_URL+""+process.env.JSON_GENERATE+"?p="+req.params.patentNumber+"&o="+orgID+"&u="+userID);*/
+        console.log(process.env.BACKGROUND_JOB_URL+""+process.env.JSON_GENERATE+"?p="+req.params.patentNumber+"&o="+orgID+"&u="+userID);
         await request(process.env.BACKGROUND_JOB_URL+""+process.env.JSON_GENERATE+"?p="+req.params.patentNumber+"&o="+orgID+"&u="+userID,function (error, response, body) {
             if (!error && response.statusCode == 200) {
                 console.log("request complete");
