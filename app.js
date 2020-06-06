@@ -26,6 +26,8 @@ const assets = require("./routes/application/assets");
 const updates = require("./routes/application/updates");
 const errors = require("./routes/application/errors");
 
+const timelines = require("./routes/application/timelines");
+
 /**
  * Route for Applications database
  */
@@ -61,6 +63,8 @@ app.use("/", errors);
 
 app.use("/customers", customers);
 
+app.use("/timeline", timelines);
+
 //app.use("/", activities);
 
 app.use("/", activities);
@@ -79,7 +83,7 @@ app.use("/admin/", companySearch);
 
 
 app.use((req,res,next)=>{
-    const error = new Error("Unable to manage the request");
+    const error = new Error("Invalid route");
     //send a status code error
     error.status= 404;
     //forward the request with the error

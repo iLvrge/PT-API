@@ -1,6 +1,8 @@
 
 const connection = require("../config/db.config");
 
+const request = require("request");
+
 const FtsQuery = require("full-text-search-query");
 
 const { v4: uuidv4  } = require('uuid');
@@ -372,6 +374,42 @@ let findCompanyCustomersByID = async(ID) => {
     return list;
 }
 
+let generateJSON = async(req, res) => {
+    try {
+        console.log("SAAAPPAPAP: "+req.params.patentNumber);
+        let orgID = 0, userID = 0;
+        if( req.orgId != undefined && req.orgId > 0 ) {
+            orgID = req.orgId;
+            userID = req.userId;
+        }
+        /*console.log(process.env.BACKGROUND_JOB_URL+""+process.env.JSON_GENERATE+"?p="+req.params.patentNumber+"&o="+orgID+"&u="+userID);*/
+        await request(process.env.BACKGROUND_JOB_URL+""+process.env.JSON_GENERATE+"?p="+req.params.patentNumber+"&o="+orgID+"&u="+userID,function (error, response, body) {
+            if (!error && response.statusCode == 200) {
+                console.log("request complete");
+                if(body != ""){
+                    try{
+                        if(body.indexOf('box') >= 0){
+                            body.share = 2;
+                            res.status(200).send(body);
+                        } else {
+                            res.status(200).send("");
+                        }
+                    }catch(e){
+                        res.status(200).send("");
+                    }
+                } else {
+                    res.status(200).send("");
+                }                            
+            } else {
+                console.log(error);
+                res.status(200).send("");
+            }
+        });
+    } catch (err) {
+        console.log(err);
+    }
+}
+
 const helper = {};
 helper.findOrganisationbyID = findOrganisationbyID;
 helper.getCompanyListByEmployee = getCompanyListByEmployee;
@@ -384,4 +422,5 @@ helper.getAllUsers = getAllUsers;
 helper.findCompanyCustomersByName = findCompanyCustomersByName;
 helper.findCompanyCustomersByID = findCompanyCustomersByID;
 helper.getCompaniesList = getCompaniesList;
+helper.generateJSON = generateJSON;
 module.exports = helper;

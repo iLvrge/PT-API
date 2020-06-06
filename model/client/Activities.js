@@ -1,8 +1,5 @@
 const Sequelize = require("sequelize");
 
-
-
-
 const Activities = {
     mainStructure: {
         activity_id: {

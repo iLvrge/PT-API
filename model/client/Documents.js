@@ -7,41 +7,24 @@ const Documents = {
             primaryKey: true,
             autoIncrement: true
         },  
-		user_id:{
-            type: Sequelize.INTEGER,
-			allowNull: false,
-        },
-		title:{
-            type: Sequelize.INTEGER,
-			allowNull: false,
-        },
-        subject:{
+        title:{
             type: Sequelize.STRING,
-			allowNull: false,
+            allowNull: false,
         },
-        comment:{
+		file:{
             type: Sequelize.STRING,
-            allowNull: true,
-        },
+            allowNull: false,
+        },        
 		type:{
             type: Sequelize.INTEGER,
-			allowNull: true,
-        },
-        subject_type:{
-            type: Sequelize.INTEGER,
-			allowNull: true,
-        },
-		document_id:{
-            type: Sequelize.INTEGER,
-			allowNull: true,
-        },
-		complete:{
-            type: Sequelize.INTEGER,
             allowNull: true,
         },
-		share_url:{
+		description:{
             type: Sequelize.STRING,
             allowNull: true,
+        },
+        user_id:{
+            type: Sequelize.INTEGER
         },
         created_at:{
             type: Sequelize.DATE,
@@ -62,4 +45,4 @@ const Documents = {
 
 
 
-module.exports = Activities;
+module.exports = Documents;

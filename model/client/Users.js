@@ -1,8 +1,8 @@
 const Sequelize = require("sequelize");
 
-const Professionals = {
+const Users = {
     mainStructure: {
-        professional_id: {
+        user_id: {
             type: Sequelize.INTEGER,
             primaryKey: true,
             autoIncrement: true
@@ -14,10 +14,26 @@ const Professionals = {
 		last_name:{
             type: Sequelize.STRING,
             allowNull: false,
-        },        
-		email_address:{
-            type: Sequelize.INTEGER,
+        },    
+        username:{
+            type: Sequelize.STRING,
             allowNull: true,
+        },      
+		email_address:{
+            type: Sequelize.STRING,
+            allowNull: false,
+        },
+        password:{
+            type: Sequelize.STRING,
+            allowNull: false,
+        },
+        linkedin_url:{
+            type: Sequelize.STRING,
+            allowNull: false,
+        },
+        job_title:{
+            type: Sequelize.STRING,
+            allowNull: false,
         },
 		telephone:{
             type: Sequelize.STRING,
@@ -26,18 +42,19 @@ const Professionals = {
         telephone1:{
             type: Sequelize.INTEGER
         },
-        linkedin_url:{
-            type: Sequelize.INTEGER
-        },
-        profile_logo:{
+        logo:{
             type: Sequelize.STRING,
             allowNull: true,
         },
-        firm_id:{
+        authentication_code:{
             type: Sequelize.STRING,
             allowNull: true,
         },
-        type:{
+        auth_token_expire:{
+            type: Sequelize.DATE,
+            allowNull: true,
+        },
+        auth_token_expire:{
             type: Sequelize.INTEGER,
             allowNull: true,
         },
@@ -54,8 +71,8 @@ const Professionals = {
         underscored: true,
         timestamps: true,
         freezeTableName: true,
-        tableName: 'professional'
+        tableName: 'user'
     }
 }
 
-module.exports = Professionals;
+module.exports = Users;
