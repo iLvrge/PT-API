@@ -13,7 +13,7 @@ const Activities = {
         },
 		professional_id:{
             type: Sequelize.INTEGER,
-			allowNull: false,
+			allowNull: true,
         },
         subject:{
             type: Sequelize.STRING,
@@ -25,15 +25,15 @@ const Activities = {
         },
 		type:{
             type: Sequelize.INTEGER,
-			allowNull: true,
+			allowNull: false,
         },
         subject_type:{
             type: Sequelize.INTEGER,
-			allowNull: true,
+			allowNull: false,
         },
 		document_id:{
             type: Sequelize.INTEGER,
-			allowNull: true,
+			allowNull: false,
         },
 		complete:{
             type: Sequelize.INTEGER,

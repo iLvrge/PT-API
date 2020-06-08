@@ -15,6 +15,8 @@ const Users = require("../model/business/Users");
 
 const Roles = require("../model/business/Roles");
 
+const ShareLink = require("../model/business/ShareLinks");
+
 const ClientRepesentative = require("../model/client/Representatives");
 
 
@@ -410,6 +412,30 @@ let generateJSON = async(req, res) => {
     }
 }
 
+let getNewCode = async () => {
+    const retryLimit = 50;
+    let newCode = undefined;
+    let run =  true;
+    for (let i = 0; i < retryLimit; i++) {
+        if(run === true){
+            const code = (Math.random()*1e32).toString(36).substr(0,10);
+            await ShareLink.findOne({
+                where:{code: code},
+                attributes: ['share_id']
+            })
+            .then( s => {
+                if(s == null){ 
+                    newCode = code ;
+                    run = false;
+                }
+            })  
+        } else {
+            return newCode;
+        }        
+    }
+    return newCode;
+};
+
 const helper = {};
 helper.findOrganisationbyID = findOrganisationbyID;
 helper.getCompanyListByEmployee = getCompanyListByEmployee;
@@ -423,4 +449,5 @@ helper.findCompanyCustomersByName = findCompanyCustomersByName;
 helper.findCompanyCustomersByID = findCompanyCustomersByID;
 helper.getCompaniesList = getCompaniesList;
 helper.generateJSON = generateJSON;
+helper.getNewCode = getNewCode;
 module.exports = helper;

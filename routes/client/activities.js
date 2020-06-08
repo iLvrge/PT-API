@@ -9,65 +9,66 @@ const Firms = require("../../model/client/Firms");
 const Users = require("../../model/client/Users");
 const Documents = require("../../model/client/Documents");
 
+const ShareLink = require("../../model/business/ShareLinks");
 
 const authJWT = require("../../helpers/verifyJwtToken");
 const clientDBConnection = require("../../helpers/clientDBConnection");
+
+const helpers = require("../../helpers/helper");
+
+/**Get activities list */
 
 route.get("/activities/:type/:option", [authJWT.verifyToken, clientDBConnection.connect], async(req, res, next) => {
     try{
         if(typeof req.connection_db != "undefined" && req.connection_db != null ) {
             const type = req.params.type, option = req.params.option;
-            const Activities = req.connection_db.define('Activities', Activities.mainStructure, Activities.options);
+            const Activity = req.connection_db.define('Activities', Activities.mainStructure, Activities.options);
 
             if(option == "count"){
 
-                let where = {type: type, complete: 0};
+                const where = {type: type, complete: type == '3' ? 1 : 0};
 
-                if(type == '3') {
-                    where = {type: type};
-                }
-
-                const countItem = await Activities.findAll({
-					attributes: [[db.sequelize.fn('COUNT', 'id'), 'count_items']],
+                const countItem = await Activity.findAll({
+					attributes: [[req.connection_db.fn('COUNT', 'id'), 'count_items']],
 					where:where
 				});
 				res.status(200).json(countItem);
             } else if(option == "list") {
-                const Professionals = req.connection_db.define('Professionals', Professionals.mainStructure, Professionals.options);
-                const Firms = req.connection_db.define('Firms', Firms.mainStructure, Firms.options);
-                const Users = req.connection_db.define('Users', Users.mainStructure, Users.options);
-                const Documents = req.connection_db.define('Documents', Documents.mainStructure, Documents.options);
+                const Professional = req.connection_db.define('Professionals', Professionals.mainStructure, Professionals.options);
+                const Firm = req.connection_db.define('Firms', Firms.mainStructure, Firms.options);
+                const User = req.connection_db.define('Users', Users.mainStructure, Users.options);
+                const Document = req.connection_db.define('Documents', Documents.mainStructure, Documents.options);
                 
-                Activities.belongsTo(Professionals, { foreignKey: 'professional_id', as: 'professionals' });
-                Activities.belongsTo(Users, { foreignKey: 'user_id', as: 'users' });
-                Activities.belongsTo(Documents, { foreignKey: 'document_id', as: 'documents' });
+                Professional.belongsTo(Firm, { foreignKey: 'firm_id', as: 'firms' });
 
-                Professionals.belongsTo(Firms, { foreignKey: 'firm_id', as: 'firms' });
+                Activity.belongsTo(Professional, { foreignKey: 'professional_id', as: 'professionals' });
+                Activity.belongsTo(User, { foreignKey: 'user_id', as: 'users' });
+                Activity.belongsTo(Document, { foreignKey: 'document_id', as: 'documents' });
 
-                const itemListToDO = await Activities.findAll({
+                const itemListToDO = await Activity.findAll({
 					attributes: [['activity_id','id'],'subject', 'subject_type', 'complete', 'comment', 'share_url','created_at'],
 					where:{ type: type, complete: 0},
 					include:[
 						{
-							model: Professionals,
-							as: 'professional',
-                            attributes:['first_name', 'last_name','email_address','telephone','firm_name'],
+							model: Professional,
+							as: 'professionals',
+                            attributes:['first_name', 'last_name','email_address','telephone'],
                             include:[
 								{
-									model: Firms,
-									as: 'firm',
+									model: Firm,
+									as: 'firms',
 									attributes:['firm_name']
 								}
 							]
 						},
 						{
-							model: Users,
+							model: User,
 							as: 'users',
 							attributes:['first_name', 'last_name','email_address','telephone']
                         },
                         {
-							model: Documents,
-							as: 'document',
+							model: Document,
+							as: 'documents',
 							attributes:['title', 'file','type','description']
 						}
 					],
@@ -76,35 +77,35 @@ route.get("/activities/:type/:option", [authJWT.verifyToken, clientDBConnection.
 					],
                 });
                 
-                const itemListComplete = await Activities.findAll({
+                const itemListComplete = await Activity.findAll({
 					attributes: [['activity_id','id'],'subject', 'subject_type', 'complete', 'comment', 'share_url','created_at'],
 					where:{complete: 1},
 					include:[
 						{
-							model: Professionals,
-							as: 'professional',
-                            attributes:['first_name', 'last_name','email_address','telephone','firm_name'],
+							model: Professional,
+							as: 'professionals',
+                            attributes:['first_name', 'last_name','email_address','telephone'],
                             include:[
 								{
-									model: Firms,
-									as: 'firm',
+									model: Firm,
+									as: 'firms',
 									attributes:['firm_name']
 								}
 							]
 						},
 						{
-							model: Users,
+							model: User,
 							as: 'users',
 							attributes:['first_name', 'last_name','email_address','telephone']
                         },
                         {
-							model: Documents,
-							as: 'document',
+							model: Document,
+							as: 'documents',
 							attributes:['title', 'file','type','description']
 						}
 					],
 					order: [
-						['created_at', 'DESC'],
+						['updated_at', 'DESC'],
 					],
                 });
                 res.status(200).json({todo: itemListToDO, complete: itemListComplete});
@@ -115,32 +116,58 @@ route.get("/activities/:type/:option", [authJWT.verifyToken, clientDBConnection.
         }
     } catch (err) {
         console.log('REQUEST GET, activities: '+ err);
-        res.status(402).json("Invalid option");
+        res.status(402).send("Invalid option");
     }    
 });
 
-route.post("/activities/:type", [authJWT.verifyToken, clientDBConnection.connect], async(req, res, next) => {
+/**Get only activities comments list */
+
+route.get("/activities/comments/:subject_type/:subject", [authJWT.verifyToken, clientDBConnection.connect], async(req, res, next) => {
     try{
         if(typeof req.connection_db != "undefined" && req.connection_db != null ) {
-            const Activities = req.connection_db.define('Activities', Activities.mainStructure, Activities.options);
-            const Documents = req.connection_db.define('Documents', Documents.mainStructure, Activities.options);
+            const subject_type = req.params.subject_type, subject = req.params.subject;
+            const Activity = req.connection_db.define('Activities', Activities.mainStructure, Activities.options);
+            const getCommentList = await Activity.findAll({
+                where: {subject_type: subject_type, subject: subject},
+                attributes: ['comment', 'created_at'],
+                order: [
+                    ['created_at', 'DESC'],
+                ],
+            })
+            res.status(200).json(getCommentList);
+        }
+    } catch ( err ) {
+        res.status(402).send("Invalid option");
+    }
+});
 
-            const findRecord = await Activities.findOne({
-                where: {id: req.params.ID, organisation_id: req.orgId},
-                attributes: ['id', 'comment', 'created_at', 'type', 'subject', 'subject_type'],
+/**Get activties by ID */
+
+route.get("/activities/:ID", [authJWT.verifyToken, clientDBConnection.connect], async(req, res, next) => {
+    try{
+        if(typeof req.connection_db != "undefined" && req.connection_db != null ) {
+            const Activity = req.connection_db.define('Activities', Activities.mainStructure, Activities.options);
+            const Document = req.connection_db.define('Documents', Documents.mainStructure, Documents.options);
+
+            Activity.belongsTo(Document, { foreignKey: 'document_id', as: 'documents' });
+
+            const findData = await Activity.findOne({
+                where: {activity_id: req.params.ID},
+                attributes: [['activity_id','id'], 'comment', 'created_at', 'type', 'subject', 'subject_type'],
                 include:[
                     {
-                        model: Documents,
+                        model: Document,
                         as: 'documents',
                         required:false,
                         attributes:['file','title']                    
                     }
                 ] 	
-            })
-            if(findRecord != null && findRecord.id > 0) {
-                res.status(200).json(findRecord);
+            });
+
+            if(findData != null) {
+                res.status(200).json(findData);
             } else {
-                res.status(404).json("No found!");
+                res.status(404).send("No found!");
             }
         } else {
             console.log("Client DB not connected");
@@ -148,71 +175,106 @@ route.post("/activities/:type", [authJWT.verifyToken, clientDBConnection.connect
         }
     } catch ( err ) {
         console.log('REQUEST GET, activities: '+ err);
-        res.status(402).json("Invalid option");
+        res.status(402).send("Invalid option");
     }
 });
+
+/**Insert new activities */
 
 route.post("/activities/:type", [authJWT.verifyToken, clientDBConnection.connect], async(req, res, next) => {
     try{
         if(typeof req.connection_db != "undefined" && req.connection_db != null ) {
             const type = req.params.type;
-            const Activities = req.connection_db.define('Activities', Activities.mainStructure, Activities.options);
             let postData = {		
                 user_id: req.userId,
-                professional_id: req.body.user_id,	
+                professional_id: req.body.professional_id,	
                 subject: req.body.subject,
-                subject_type: req.body.option,
+                subject_type: req.body.subject_type, /** Company, Party, RfID, Application, PatentNumber*/
                 comment: req.body.comment,
-                type: type,
-                document_id: 0,
-                share_url: ''
+                type: type, /**RecordIt, FixIt, Comment */
+                share_url: '',
+                document_id: '1'
             };
-            if(req.body.user_id > 0) {
+            let insertData = true;
+            /**For RecordIt or FixIt */
+            if((type == 1 || type == 2) && req.body.professional_id > 0) {
                 /**
                  * Find Professional
                  */
                 let professional;
-                if(req.body.user_id > 0) {
-                    professional = await Professionals.findOne({
-                        where: {id: req.body.user_id},
+                if(req.body.professional_id > 0) {
+                    const Professional = req.connection_db.define('Professionals', Professionals.mainStructure, Professionals.options);
+                    professional = await Professional.findOne({
+                        where: {professional_id: req.body.professional_id, type: 1},
                         attributes: ['professional_id', 'email_address']
                     });
-                }             
+                }  
+            } else if( type  == 3) {    
+                console.log("Asdsadada");            
+                const User = req.connection_db.define('Users', Users.mainStructure, Users.options);
+                const findUser = await User.findOne({
+                    where: {user_id: req.userId}
+                });
+                console.log(findUser);
+                if(findUser != null) {
+                    const Professional = req.connection_db.define('Professionals', Professionals.mainStructure, Professionals.options);
+                    professional = await Professional.findOne({
+                        where: {email_address: findUser.email_address, type: 0},
+                        attributes: ['professional_id', 'email_address']
+                    });
 
-                let documentData;
-                if(req.params.type == 2) {
-                    documentData = await Document.findOne({
-                        where: {document_id: req.body.document_id},
-                        attributes: ['document_id', 'file']
-                    })
-                    postData.document_id = req.body.document_id;
-                }
-
-                if(req.params.type == 1) {
-                    /**
-                     * create sharing code
-                     */
-                    let code = await helpers.getNewCode();
-                    let shareUrl = {
-                        code: code,
-                        organisation_id: req.orgId,
-                        user_id: req.userId,
-                        subject: req.body.subject,
-                        subject_type: req.body.option,
-                    }
-                    /**
-                     * insert sharelink
-                     */
-                    const shareLink = await ShareLink.create(shareUrl);
-                    if(shareLink != null && shareLink.share_id > 0) {
-                        postData.share_url = "https://share.patentrack.com/"+code;
+                    if(professional != null) {
+                        postData.professional_id = professional.professional_id;
                     }
                 }
+            } else {
+                insertData = false;
+            }
+            /**Find Document */          
 
-                const newActivity = Activity.create(postData);
-                if(newActivity != null && newActivity.activity_id > 0){
+            let documentData;
+            /**If type is RecordIt */
+            if(req.params.type == 2) {
+                const Document = req.connection_db.define('Documents', Documents.mainStructure, Documents.options);
+                documentData = await Document.findOne({
+                    where: {document_id: req.body.document_id},
+                    attributes: ['document_id', 'file']
+                })
+                postData.document_id = req.body.document_id;
+            }   
+
+            /**For FixIt or RecordIt */
+            if(req.params.type == 1 || req.params.type == 2) {
+                /**
+                 * create sharing code
+                 */
+                let code = await helpers.getNewCode();
+                let shareUrl = {
+                    code: code,
+                    organisation_id: req.orgId,
+                    user_id: req.userId,
+                    subject: req.body.subject,
+                    subject_type: req.body.subject_type,
+                }
+                console.log(shareUrl);
+                /**
+                 * insert sharelink
+                 */
+                const shareLink = await ShareLink.create(shareUrl);
+                if(shareLink != null && shareLink.share_id > 0) {
+                    postData.share_url = "https://share.patentrack.com/"+code;
+                }
+            }
+            console.log(postData);
+            /**Insert new activity */
+            if(insertData === true) {
+                const Activity = req.connection_db.define('Activities', Activities.mainStructure, Activities.options);
+            
+                const newActivity = await Activity.create(postData);
+                if(newActivity != null && newActivity.activity_id > 0){                    
                     let response = newActivity.toJSON();
-                    if(req.params.type == 1 && documentData != null) {
+                    /**If type is RecordIt */
+                    if(req.params.type == 2 && documentData != '1') {
                         response.document = documentData.file;
                     }
                     if(req.params.type == 1 || req.params.type == 2 ) {
@@ -223,8 +285,8 @@ route.post("/activities/:type", [authJWT.verifyToken, clientDBConnection.connect
                     res.status(500).send("Internal server error.");
                 }
             } else {
-                res.status(402).send("Please select professional.");
-            }
+                res.status(401).send("Bad inputs.");
+            }            
         } else {
             console.log("Client DB not connected");
             res.status(401).send("Bad inputs.");
@@ -235,19 +297,21 @@ route.post("/activities/:type", [authJWT.verifyToken, clientDBConnection.connect
     }    
 });
 
+/**Update activities */
+
 route.put("/activities", [authJWT.verifyToken, clientDBConnection.connect], async(req, res, next) => {
     try{
         const ID = req.body.complete, type = req.params.type;
         if(typeof req.connection_db != "undefined" && req.connection_db != null ) {
-            const Activities = req.connection_db.define('Activities', Activities.mainStructure, Activities.options);
+            const Activity = req.connection_db.define('Activities', Activities.mainStructure, Activities.options);
 
-            const findData = await Activities.findOne({
-                where:{ type: type, id: ID}
+            const findData = await Activity.findOne({
+                where:{ type: type, activity_id: ID}
             });
 
             if( findData != null && findData.id > 0) {
                 const t = await req.connection_db.transaction();
-                const items = await RecordItem.update({complete: 1},{where: {id: ID}, transaction: t});
+                const items = await Activity.update({complete: 1},{where: {activity_id: ID}, transaction: t});
                 if (t) await t.commit();
                 res.status(200).send("Updated successfully");
             } else {

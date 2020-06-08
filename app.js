@@ -29,11 +29,11 @@ const errors = require("./routes/application/errors");
 const timelines = require("./routes/application/timelines");
 
 /**
- * Route for Applications database
+ * Route for Client database
  */
 const customers = require("./routes/client/customers");
 const activities = require("./routes/client/activities");
-
+const professionals = require("./routes/client/professionals");
 /**
  * Route for Client Login
  */
@@ -64,6 +64,8 @@ app.use("/", errors);
 app.use("/customers", customers);
 
 app.use("/timeline", timelines);
+
+app.use("/professionals", professionals);
 
 //app.use("/", activities);
 
