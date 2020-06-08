@@ -13,19 +13,28 @@ const Updates = connection.application.define('update',{
         type: Sequelize.INTEGER,
         allowNull: false,
     },
-    type:{
+    update_type:{
         type: Sequelize.STRING,
         allowNull: true,
     },
-    value:{
+    update_assignment_count:{
         type: Sequelize.INTEGER,
+        allowNull: false,
+    },
+    update_asset_count:{
+        type: Sequelize.INTEGER,
+        allowNull: false,
+    },
+    update_list:{
+        type: Sequelize.STRING,
         allowNull: false,
     }
 },
 {
     underscored: true,
     timestamps: false,
-    freezeTableName: true
+    freezeTableName: true,
+    tableName: 'update'
 });
 
 module.exports = Updates;

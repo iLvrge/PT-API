@@ -8,7 +8,7 @@ const Transactions = require("../../model/application/Transactions");
 
 const authJWT = require("../../helpers/verifyJwtToken");
 
-route.get("/transactions", [authJWT.verifyToken], (req, res, next) => {
+route.get("/transactions", [authJWT.verifyToken], async(req, res, next) => {
 
     Transactions.findAll({
         where: {organisation_id: req.orgId}

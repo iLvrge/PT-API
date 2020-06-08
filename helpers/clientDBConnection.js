@@ -28,7 +28,7 @@ let connect = async(req, res, next) => {
                     operatorsAliases: Op,
                    
                     pool: {
-                        max: 1,
+                        max: 100,
                         min: 1,
                         acquire: 1000000,
                         idle: 5000

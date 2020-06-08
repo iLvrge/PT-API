@@ -10,7 +10,15 @@ const authJWT = require("../../helpers/verifyJwtToken");
 
 route.get("/updates", [authJWT.verifyToken], async(req, res, next) => {
 
-    /*const customQuery = "SELECT count(rf_id) FROM assignment as a INNER JOIN assignor as `or` ON `or`.rf_id = a.rf_id WHERE `or`.exec_dt BETWEEN "*/
+    Updates.findAll({
+        where: {organisation_id: req.orgId}
+    })
+    .then((list)=>{
+        res.status(200).json(list);
+    }).catch((err)=>{
+        console.log(err);
+        res.status(500).json({message: "Unable to retrieve transactions"})
+    });
     
 });
 
