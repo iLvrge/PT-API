@@ -25,6 +25,7 @@ const transactions = require("./routes/application/transactions");
 const assets = require("./routes/application/assets");
 const updates = require("./routes/application/updates");
 const errors = require("./routes/application/errors");
+const validity = require("./routes/application/validity");
 
 const timelines = require("./routes/application/timelines");
 
@@ -52,6 +53,7 @@ const companySearch = require("./routes/business/admin_company_search");
 //routes for application / client
 app.use("/", appLogin);
 
+app.use("/", validity);
 
 app.use("/", transactions);
 
