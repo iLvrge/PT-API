@@ -52,4 +52,24 @@ route.get("/assets/:patentNumber",[authJWT.verifyToken], async (req, res) =>{
     })
 });
 
+route.get("/assets/:patentNumber/outsource",[authJWT.verifyToken], async (req, res) =>{        
+    let patentNumber = req.params.patentNumber;
+    Documentids.findAll({
+        where:{[connection.Op.or]:[{grant_doc_num: patentNumber},{appno_doc_num: patentNumber}]},
+        attributes:['rf_id',['grant_doc_num','number'], ['appno_doc_num','application']],
+    })
+    .then(p => {
+        let type = "patNum";
+					
+        if(p.number == null || p.number == ''){
+            patentNumber = p.application;
+            type = "applNum";
+        }      
+        res.status(200).json({url:`https://assignment.uspto.gov/patent/index.html#/patent/search/resultAbstract?id=${patentNumber}&type=${type}`});
+    }).catch(err => {
+        console.log(err);
+        res.status(400).send("Invalid number");
+    })
+});
+
 module.exports = route;
