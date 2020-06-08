@@ -13,19 +13,24 @@ const Transactions = connection.application.define('transaction',{
         type: Sequelize.INTEGER,
         allowNull: false,
     },
-    type:{
+    transaction_type:{
         type: Sequelize.STRING,
         allowNull: true,
     },
-    value:{
+    transaction_count:{
         type: Sequelize.INTEGER,
+        allowNull: false,
+    },
+    transaction_list:{
+        type: Sequelize.STRING,
         allowNull: false,
     }
 },
 {
     underscored: true,
     timestamps: false,
-    freezeTableName: true
+    freezeTableName: true,
+    tableName: 'transaction'
 });
 
 module.exports = Transactions;
