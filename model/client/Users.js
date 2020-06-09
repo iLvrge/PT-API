@@ -23,10 +23,6 @@ const Users = {
             type: Sequelize.STRING,
             allowNull: false,
         },
-        password:{
-            type: Sequelize.STRING,
-            allowNull: false,
-        },
         linkedin_url:{
             type: Sequelize.STRING,
             allowNull: false,
@@ -46,18 +42,14 @@ const Users = {
             type: Sequelize.STRING,
             allowNull: true,
         },
-        authentication_code:{
-            type: Sequelize.STRING,
-            allowNull: true,
-        },
-        auth_token_expire:{
-            type: Sequelize.DATE,
-            allowNull: true,
-        },
-        auth_token_expire:{
+        role_id:{
+            type: Sequelize.INTEGER,
+            allowNull: false,
+        }, 
+        status:{
             type: Sequelize.INTEGER,
             allowNull: true,
-        },
+        },       
         created_at:{
             type: Sequelize.DATE,
             defaultValue: Sequelize.DATE

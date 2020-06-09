@@ -35,6 +35,9 @@ const timelines = require("./routes/application/timelines");
 const customers = require("./routes/client/customers");
 const activities = require("./routes/client/activities");
 const professionals = require("./routes/client/professionals");
+const users = require("./routes/client/users");
+const documents = require("./routes/client/documents");
+const company = require("./routes/client/company");
 /**
  * Route for Client Login
  */
@@ -63,15 +66,19 @@ app.use("/", updates);
 
 app.use("/", errors);
 
+app.use("/", activities);
+
 app.use("/customers", customers);
 
 app.use("/timeline", timelines);
 
+app.use("/users", users);
+
 app.use("/professionals", professionals);
 
-//app.use("/", activities);
+app.use("/documents", documents);
 
-app.use("/", activities);
+app.use("/companies", company);
 
 //routes for admin
 app.use("/admin/", adminLogin);

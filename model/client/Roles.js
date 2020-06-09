@@ -1,33 +1,25 @@
 const Sequelize = require("sequelize");
 
-const Firms = {
+const connection = require("../../config/db.config");
+
+const Roles = {
     mainStructure: {
-        firm_id: {
+        role_id: {
             type: Sequelize.INTEGER,
             primaryKey: true,
             autoIncrement: true
-        },  
-        firm_name:{
+        },        
+        name:{
             type: Sequelize.STRING,
             allowNull: false,
-        },
-		firm_logo:{
-            type: Sequelize.STRING,
-            allowNull: true,
-        },        
-		firm_linkedin_url:{
-            type: Sequelize.INTEGER,
-            allowNull: true,
         }
     },
     options: {
         underscored: true,
         timestamps: false,
         freezeTableName: true,
-        tableName: 'firm'
+        tableName: 'role'
     }
 }
 
-
-
-module.exports = Firms;
+module.exports = Roles;
