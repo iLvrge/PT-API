@@ -42,7 +42,7 @@ route.get("/", [authJWT.verifyToken, clientDBConnection.connect], async(req, res
                 ); 
                 if(childCompanies.length == 0) {
                     for(let i = 0; i < companies.length; i++) {
-                        companies[i]['children'] = {...companies[i]};
+                        companies[i]['children'] = [{...companies[i]}];
                     }
                 } else {
                     for(let i = 0; i < companies.length; i++) {
