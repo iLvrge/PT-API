@@ -234,7 +234,7 @@ route.get("/:rf_id/assets",[authJWT.verifyToken], async(req, res, next) => {
         if(organisationData != null && organisationData.organisation_id > 0){
             const rfID = req.params.rf_id;					
             if(rfID > 0) {
-                let customQueryList = "Select CONCAT(appno_doc_num, grant_doc_num) as id, CASE WHEN grant_doc_num = '' THEN appno_doc_num ELSE grant_doc_num END as name, CASE WHEN grant_doc_num = '' THEN 1 ELSE 0 END as type,  appno_doc_num, grant_doc_num, 3 as level FROM documentid WHERE rf_id = :rf_id ORDER BY name ASC";
+                let customQueryList = "Select CONCAT(appno_doc_num, grant_doc_num) as id, CASE WHEN grant_doc_num = '' THEN appno_doc_num ELSE grant_doc_num END as name, CASE WHEN grant_doc_num = '' THEN 1 ELSE 0 END as type,  appno_doc_num, grant_doc_num, 3 as level FROM documentid WHERE rf_id = :rf_id ORDER BY cast(name as unsigned) ASC";
                 
                 allPatents = await connection.application.query(customQueryList,{
                     type: connection.Sequelize.QueryTypes.SELECT,
