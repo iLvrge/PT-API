@@ -27,12 +27,12 @@ let connect = async(req, res, next) => {
                     dialect: 'mysql',
                     operatorsAliases: Op,
                    
-                    pool: {
+                    /*pool: {
                         max: 100,
                         min: 1,
                         acquire: 1000000,
                         idle: 5000
-                    }
+                    }*/
                 });
                 req.connection_db = newConnection;
             }catch( err ){
