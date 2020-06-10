@@ -38,6 +38,7 @@ const professionals = require("./routes/client/professionals");
 const users = require("./routes/client/users");
 const documents = require("./routes/client/documents");
 const company = require("./routes/client/company");
+const charts = require("./routes/client/charts");
 /**
  * Route for Client Login
  */
@@ -67,6 +68,8 @@ app.use("/", updates);
 app.use("/", errors);
 
 app.use("/", activities);
+
+app.use("/charts", charts);
 
 app.use("/customers", customers);
 

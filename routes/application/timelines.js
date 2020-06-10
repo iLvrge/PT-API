@@ -67,7 +67,7 @@ route.get("/", [authJWT.verifyToken], async(req, res, next) => {
                 assignors: getRFAssignorsData,
                 assignees: getRFAssigneeData,
                 className: 'red',
-                group: ["Employees", "Acquisition", "Security", "Other"]
+                group: ["Employee", "Acquisition", "Security", "Other"]
             });    
         } else {
             res.status(400).send("Bad Inputs");
