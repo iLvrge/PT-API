@@ -58,7 +58,7 @@ route.get("/:type", [authJWT.verifyToken, clientDBConnection.connect], async(req
                     acquisitionData = await connection.application.query(queryAcquisition,{
                         type: connection.Sequelize.QueryTypes.SELECT,
                         raw: true,
-                        replacements: { IDs: IDs.join(','), employerAssign: 1},
+                        replacements: { IDs: IDs.join(','), employerAssign: 0},
                         logging: console.log,
                       }
                     );
