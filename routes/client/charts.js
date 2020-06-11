@@ -65,6 +65,30 @@ route.get("/:type", [authJWT.verifyToken, clientDBConnection.connect], async(req
                 }
             }
             res.status(200).json(acquisitionData);
+        } else if(type == 3) {
+            /**Sales */
+            const Representative = req.connection_db.define('Representatives', Representatives.mainStructure, Representatives.options);
+            const getAllRepresentative = await  Representative.findAll({
+                                                    where: {parent_id: 0}
+                                                });
+            let salesData = []
+            if(getAllRepresentative.length > 0) {
+                const IDs = [];
+                getAllRepresentative.map( r => IDs.push(r.representative_id));
+
+                if(IDs.length > 0) {
+                    const queryAcquisition = "Select exec_dt as label , count(or.rf_id) as value, sum(temp1.assets) as assets FROM assignor as `or` INNER JOIN (SELECT or.rf_id, (select count(d.appno_doc_num) FROM documentid as d where d.rf_id = or.rf_id) as assets from assignor as `or` INNER JOIN (SELECT or.rf_id FROM assignor as or INNER JOIN assignment_conveyance as ac ON ac.rf_id = or.rf_id INNER JOIN assignor_and_assignee as aaa ON aaa.assignor_and_assignee_id = or.assignor_and_assignee_id INNER JOIN representative as r ON r.representative_id = aaa.representative_id WHERE r.representative_id IN (:IDs) AND ac.employer_assign = :employerAssign AND ac.convey_ty = 'assignment') as temp ON temp.rf_id = or.rf_id GROUP BY or.rf_id) as temp1 ON temp1.rf_id = `or`.rf_id GROUP BY label";
+
+                    salesData = await connection.application.query(queryAcquisition,{
+                        type: connection.Sequelize.QueryTypes.SELECT,
+                        raw: true,
+                        replacements: { IDs: IDs.join(','), employerAssign: 0},
+                        logging: console.log,
+                      }
+                    );
+                }
+            }
+            res.status(200).json(salesData);
         }
     } catch (err) {
         console.log(err)
