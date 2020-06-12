@@ -4,6 +4,8 @@ const connection = require("../../config/db.config");
 
 const Organisations = require("./Organisations");
 
+const Roles = require("./Roles");
+
 const Users = connection.business.define('user',{
     user_id: {
         type: Sequelize.INTEGER,
@@ -67,5 +69,7 @@ const Users = connection.business.define('user',{
 });
 
 Users.belongsTo(Organisations, { foreignKey: 'organisation_id', as: 'organisation' });
+
+Users.belongsTo(Roles, { foreignKey: 'role_id', as: 'role' });
 
 module.exports = Users;

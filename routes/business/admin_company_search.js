@@ -66,6 +66,24 @@ route.put("/company/search/all/", [authJWT.verifyToken, authJWT.isAdmin], (req, 
             let name = req.body.name, normalize_name = req.body.normalize_name;
             if(name != "" && normalize_name != ""){
 
+                /**Is this company already normalised with other representative if yes then find all other companies that point to representative and add new representative company
+                 * and point all other companies to the newly added representative Company
+                 */
+
+                const findIsNormalized  = await AssignorAndAssignee.findOne({
+                                            where:{name: name, representative_id: {[connection.Op.gt]: 0}}
+                                        });
+                let oldRepresentativeCompanyID = 0, oldRepresentativeCompanyName = "";
+                if(findIsNormalized != null && findIsNormalized.representative_id > 0) {
+                    const oldRepresentativeCompany = await Representatives.findOne({
+                                                        where:{representative_id: findIsNormalized.representative_id}
+                                                    });
+                    if(oldRepresentativeCompany != null && oldRepresentativeCompany.representative_id > 0) {
+                        oldRepresentativeCompanyID = oldRepresentativeCompany.representative_id;
+                        oldRepresentativeCompanyName = oldRepresentativeCompany.representative_name;
+                    }
+                }
+
                 let  representativeCompany = await helpers.checkRepresentativeCompany(normalize_name);
 
                 let t = await connection.resources.transaction();	
@@ -83,6 +101,13 @@ route.put("/company/search/all/", [authJWT.verifyToken, authJWT.isAdmin], (req, 
 
                     const item = {representative_id: representativeCompany.representative_id};
                     await AssignorAndAssignee.update(item, {where: {name: name}, transaction: t});
+                    if(oldRepresentativeCompanyID > 0) {
+                        await AssignorAndAssignee.update(item, {where: {representative_id: oldRepresentativeCompanyID}, transaction: t});
+                        await AssignorAndAssignee.update(item, {where: {name: oldRepresentativeCompanyName}, transaction: t});
+                        await Representatives.destroy({
+                            where:{representative_id: oldRepresentativeCompanyID}
+                        })
+                    }
                 }
                 
                 if (t) await t.commit();               

@@ -85,7 +85,8 @@ const Organisations = connection.business.define('organisation',{
 {
     underscored: true,
     timestamps: false,
-    freezeTableName: true
+    freezeTableName: true,
+    tableName: 'organisation'
 });
 
 module.exports = Organisations;

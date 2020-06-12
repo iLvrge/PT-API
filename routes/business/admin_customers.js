@@ -101,11 +101,11 @@ route.get("/customers/:id/users", [authJWT.verifyToken, authJWT.isAdmin], (req, 
                     res.status(200).json([]);
                 }
             } else {
-                res.status(400).send("Invalid inputs");
+                res.status(400).send("Invalid inputs2");
             }       
         } catch( err ) {
             console.log(err);
-            res.status(400).send("Invalid inputs");
+            res.status(400).send("Invalid inputs1");
         }
     })(); 
 });
@@ -359,6 +359,35 @@ route.post("/customers", [authJWT.verifyToken, authJWT.isAdmin], (req, res, next
             res.status(402).send("Not able to create new customer ");
         }         
     })();     
+});
+
+route.get("/customers/:id/patents", [authJWT.verifyToken, authJWT.isAdmin], async (req, res, next) => {
+    try{
+        let organisationID = req.params.id;
+        let patentList = [];
+        if(organisationID > 0){
+            let org = await helpers.findOrganisationbyID( organisationID );
+            if(org != null && org.organisation_id > 0) {
+                const findRepresentative = await helpers.findRepresentative(org.name);
+                if(findRepresentative != null) {
+                    let representativeID = [];
+                    representativeID.push(findRepresentative.representative_id);
+                    const queryAllPatentList = "SELECT d1.grant_doc_num as number, d1.appno_doc_num as application FROM documentid as d1 WHERE d1.rf_id IN (Select d.rf_id from documentid as d LEFT JOIN (SELECT `or`.rf_id FROM assignor as `or` INNER JOIN assignor_and_assignee as aaa ON aaa.assignor_and_assignee_id = `or`.assignor_and_assignee_id LEFT JOIN representative as r ON r.representative_id = aaa.representative_id WHERE r.representative_id IN (:representativeCompanies)) as temp ON temp.rf_id = d.rf_id LEFT JOIN (SELECT `ee`.rf_id FROM assignee as `ee` INNER JOIN assignor_and_assignee as aa ON aa.assignor_and_assignee_id = ee.assignor_and_assignee_id LEFT JOIN representative as r1 ON r1.representative_id = aa.representative_id WHERE r1.representative_id IN (:representativeCompanies)) as temp1 ON temp1.rf_id = d.rf_id GROUP BY d.rf_id)";
+                    patentList = await connection.application.query(queryAllPatentList,{
+                        type: connection.Sequelize.QueryTypes.SELECT,
+                        replacements: { representativeCompanies: representativeID },
+                        raw: true,
+                        logging: console.log,
+                        }
+                    ); 
+                }                
+            }
+        }
+        res.status(200).json(patentList);
+    } catch(e) {
+        console.log(e);
+        res.status(402).send("No patents");
+    }
 });
 
 module.exports = route;

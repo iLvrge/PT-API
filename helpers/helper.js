@@ -9,7 +9,11 @@ const { v4: uuidv4  } = require('uuid');
 
 const Organisations = require("../model/business/Organisations");
 
+const BusinessRoles = require("../model/business/Roles");
+
 const Representatives = require("../model/resources/Representatives");
+
+const RepresentativeApplication = require("../model/resources/Representatives");
 
 const Users = require("../model/business/Users");
 
@@ -98,6 +102,12 @@ let findOrganisationbyID = async (organisationID) => {
     return await Organisations.findOne({
                     where: {organisation_id: organisationID}
                 });
+}
+
+let findRepresentative = async (OrganisationName) => {
+    return await RepresentativeApplication.findOne({
+        where:{representative_name: OrganisationName}
+    });
 }
 
 let getCompanyListByEmployee = async(companyName) => {
@@ -238,7 +248,7 @@ let getAllUsers = async (organisationID) => {
         attributes: [['user_id','id'], 'first_name', 'last_name','email_address', 'job_title' ,'linkedin_url','username','telephone', 'telephone1','status','created_at'],
         include:[
             {
-                model: Roles,
+                model: BusinessRoles,
                 as: "role",
                 attributes: ['name']
             }
@@ -438,6 +448,7 @@ let getNewCode = async () => {
 
 const helper = {};
 helper.findOrganisationbyID = findOrganisationbyID;
+helper.findRepresentative = findRepresentative;
 helper.getCompanyListByEmployee = getCompanyListByEmployee;
 helper.getCompanyListByOwnership = getCompanyListByOwnership;
 helper.getCompanyListBySecurity = getCompanyListBySecurity;
