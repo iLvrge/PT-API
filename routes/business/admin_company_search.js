@@ -113,7 +113,7 @@ route.put("/company/search/all/", [authJWT.verifyToken, authJWT.isAdmin], (req, 
                         console.log("NAME:"+oldRepresentativeCompanyName);
                         await AssignorAndAssignee.update(item, {where: {name: oldRepresentativeCompanyName}, transaction: t});
                         await Representatives.destroy({
-                            where:{representative_id: oldRepresentativeCompanyID}
+                            where:{representative_id: oldRepresentativeCompanyID}, transaction: t
                         })
                     }
                 }
