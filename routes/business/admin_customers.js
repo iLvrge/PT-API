@@ -405,13 +405,32 @@ route.get("/customers/:organisation_id/publish", [authJWT.verifyToken, authJWT.i
                 /**
                  * Get list of all from resources database.
                  */
-                
-                console.log(`php -f /var/www/html/trash/script_create_customer_db.php "${organisationID}"`);
-                await exec(`php -f /var/www/html/trash/script_create_customer_db.php "${organisationID}"`, function (error, stdout, stderr) {
-                    console.log(error);
-                    console.log(stderr);
-                    res.status(200).send(stdout);
+                const findUsers = await Users.count({
+                    where:{organisation_id: org.organisation_id},
+                    col: 'user_id'
                 });
+                if(findUsers > 0) {
+                    console.log(`php -f /var/www/html/trash/tree_script.php "${companyName}"`);
+                    await exec(`php -f /var/www/html/trash/tree_script.php "${companyName}"`, function (error, stdout, stderr) {
+                        console.log(error);
+                        console.log(stderr);
+                        /*res.status(200).send(stdout);*/
+                        if(stdout == "Tree created") {
+                            console.log(`php -f /var/www/html/trash/script_create_customer_db.php "${organisationID}"`);
+                            await exec(`php -f /var/www/html/trash/script_create_customer_db.php "${organisationID}"`, function (error, stdout, stderr) {
+                                console.log(error);
+                                console.log(stderr);
+                                res.status(200).send(stdout);
+                            });
+                        } else {
+                            res.status(200).send("Error while creating database for the customer.");
+                        }
+                    });
+                } else {
+                    res.status(200).send("Please create a admin user first for this customer.");
+                }
+
+                
             } else {
                 res.status(402).send("Bad Inputs");
             }
