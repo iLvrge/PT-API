@@ -244,7 +244,7 @@ route.get("/customers/:id/libraries", [authJWT.verifyToken, authJWT.isAdmin], (r
     })();
 });
 
-route.get("/customers/create_tree/:organisation_id", [authJWT.verifyToken, authJWT.isAdmin], async(req, res, next) => {
+route.get("/customers/:organisation_id/create_tree", [authJWT.verifyToken, authJWT.isAdmin], async(req, res, next) => {
     try{
         let organisationID = req.params.organisation_id;
         if(organisationID > 0){
@@ -254,7 +254,7 @@ route.get("/customers/create_tree/:organisation_id", [authJWT.verifyToken, authJ
                  * Get list of all from resources database.
                  */
                 let companyName = org.name;
-                let companyData = await helpers.checkRepresentativeCompany(companyName);
+                /*let companyData = await helpers.checkRepresentativeCompany(companyName);
                 if(companyData != null && companyData.representative_id > 0) {
                     console.log(`php -f /var/www/html/trash/tree_script.php "${companyName}"`);
                     await exec(`php -f /var/www/html/trash/tree_script.php "${companyName}"`, function (error, stdout, stderr) {
@@ -264,7 +264,13 @@ route.get("/customers/create_tree/:organisation_id", [authJWT.verifyToken, authJ
                     });
                 } else {
                     res.status(402).send("Bad Inputs");
-                }
+                }*/
+                console.log(`php -f /var/www/html/trash/tree_script.php "${companyName}"`);
+                await exec(`php -f /var/www/html/trash/tree_script.php "${companyName}"`, function (error, stdout, stderr) {
+                    console.log(error);
+                    console.log(stderr);
+                    res.status(200).send(stdout);
+                });
             } else {
                 res.status(402).send("Bad Inputs");
             }
@@ -388,6 +394,36 @@ route.get("/customers/:id/patents", [authJWT.verifyToken, authJWT.isAdmin], asyn
         console.log(e);
         res.status(402).send("No patents");
     }
+});
+
+route.get("/customers/:organisation_id/publish", [authJWT.verifyToken, authJWT.isAdmin], async(req, res, next) => {
+    try{
+        let organisationID = req.params.organisation_id;
+        if(organisationID > 0){
+            let org = await helpers.findOrganisationbyID( organisationID );
+            if(org != null && org.organisation_id > 0) {
+                /**
+                 * Get list of all from resources database.
+                 */
+                let companyName = org.name;
+                console.log(`php -f /var/www/html/trash/script_create_customer_db.php "${companyName}"`);
+                await exec(`php -f /var/www/html/trash/script_create_customer_db.php "${organisationID}"`, function (error, stdout, stderr) {
+                    console.log(error);
+                    console.log(stderr);
+                    res.status(200).send(stdout);
+                });
+            } else {
+                res.status(402).send("Bad Inputs");
+            }
+        } else {
+            res.status(402).send("Bad Inputs");
+        }
+        
+    } catch(e) {
+        console.log("ERROR:");
+        console.log(e);
+        res.status(402).send("Not found ");
+    } 
 });
 
 module.exports = route;
