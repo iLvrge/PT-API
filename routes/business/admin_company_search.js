@@ -70,18 +70,17 @@ route.put("/company/search/all/", [authJWT.verifyToken, authJWT.isAdmin], (req, 
                  * and point all other companies to the newly added representative Company
                  */
 
-                const findIsNormalized  = await AssignorAndAssignee.findOne({
+                /*const findIsNormalized  = await AssignorAndAssignee.findOne({
                                             where:{name: name, representative_id: {[connection.Op.gt]: 0}}
-                                        });
+                                        });*/
+                const findIsNormalized  = await Representatives.findOne({
+                    where:{representative_name: name}
+                });
                 let oldRepresentativeCompanyID = 0, oldRepresentativeCompanyName = "";
                 if(findIsNormalized != null && findIsNormalized.representative_id > 0) {
-                    const oldRepresentativeCompany = await Representatives.findOne({
-                                                        where:{representative_id: findIsNormalized.representative_id}
-                                                    });
-                    if(oldRepresentativeCompany != null && oldRepresentativeCompany.representative_id > 0) {
-                        oldRepresentativeCompanyID = oldRepresentativeCompany.representative_id;
-                        oldRepresentativeCompanyName = oldRepresentativeCompany.representative_name;
-                    }
+                    console.log("Representative Company Found!");
+                    oldRepresentativeCompanyID = findIsNormalized.representative_id;
+                    oldRepresentativeCompanyName = findIsNormalized.representative_name;
                 }
 
                 let  representativeCompany = await helpers.checkRepresentativeCompany(normalize_name);
@@ -92,13 +91,14 @@ route.put("/company/search/all/", [authJWT.verifyToken, authJWT.isAdmin], (req, 
                     /**
                      * Insert representative company
                      */
+                    console.log("New Company");
                     representativeCompany = await Representatives.create({
                         representative_name: normalize_name
                     });
                 }
 
                 if(representativeCompany != null && representativeCompany.representative_id > 0) {
-
+                    console.log("Updating items!");
                     const item = {representative_id: representativeCompany.representative_id};
                     await AssignorAndAssignee.update(item, {where: {name: name}, transaction: t});
                     if(oldRepresentativeCompanyID > 0) {
