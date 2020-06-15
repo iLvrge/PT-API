@@ -92,7 +92,7 @@ route.put("/company/search/all/", [authJWT.verifyToken, authJWT.isAdmin], (req, 
 
                 let  representativeCompany = await helpers.checkRepresentativeCompany(normalize_name);
 
-                let t = await connection.resources.transaction();	
+                
 
                 if(representativeCompany == null) {
                     /**
@@ -105,6 +105,7 @@ route.put("/company/search/all/", [authJWT.verifyToken, authJWT.isAdmin], (req, 
                 }
 
                 if(representativeCompany != null && representativeCompany.representative_id > 0) {
+                    let t = await connection.resources.transaction();	
                     console.log("Updating items!");
                     const item = {representative_id: representativeCompany.representative_id};
                     await AssignorAndAssignee.update(item, {where: {name: name}, transaction: t});
