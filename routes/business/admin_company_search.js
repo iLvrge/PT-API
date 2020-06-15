@@ -69,14 +69,19 @@ route.put("/company/search/all/", [authJWT.verifyToken, authJWT.isAdmin], (req, 
                 /**Is this company already normalised with other representative if yes then find all other companies that point to representative and add new representative company
                  * and point all other companies to the newly added representative Company
                  */
-
-                /*const findIsNormalized  = await AssignorAndAssignee.findOne({
-                                            where:{name: name, representative_id: {[connection.Op.gt]: 0}}
-                                        });*/
-                const findIsNormalized  = await Representatives.findOne({
-                    where:{representative_name: name}
-                });
                 let oldRepresentativeCompanyID = 0, oldRepresentativeCompanyName = "";
+                let findIsNormalized  = await AssignorAndAssignee.findOne({
+                                            where:{name: name}
+                                        });
+                if(findIsNormalized != null && findIsNormalized.representative_id > 0) {
+                    findIsNormalized  = await Representatives.findOne({
+                        where:{representative_name: name}
+                    });
+                } else {
+                    findIsNormalized  = await Representatives.findOne({
+                        where:{representative_name: name}
+                    });
+                }
                 if(findIsNormalized != null && findIsNormalized.representative_id > 0) {
                     console.log("Representative Company Found!");
                     oldRepresentativeCompanyID = findIsNormalized.representative_id;
