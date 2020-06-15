@@ -63,7 +63,7 @@ let searchCompany = async(search) => {
     }
     console.log("SEARCH:",search);
 
-    queryCompany = "SELECT a.assignor_and_assignee_id as id, a.name, sum(a.instances) as counter, c.representative_name as normalize_name, (select representative_name FROM representative as rr WHERE rr.name = a.name) as representativeCompany FROM assignor_and_assignee as a LEFT JOIN representative as c ON c.representative_id = a.representative_id WHERE MATCH(a.name) AGAINST (:search IN BOOLEAN MODE) GROUP BY a.name";
+    queryCompany = "SELECT a.assignor_and_assignee_id as id, a.name, sum(a.instances) as counter, c.representative_name as normalize_name, (select rr.representative_name FROM representative as rr WHERE rr.representative_name = a.name) as representativeCompany FROM assignor_and_assignee as a LEFT JOIN representative as c ON c.representative_id = a.representative_id WHERE MATCH(a.name) AGAINST (:search IN BOOLEAN MODE) GROUP BY a.name";
 
     let getCompanyData = await connection.resources.query(queryCompany,{
         type: connection.Sequelize.QueryTypes.SELECT,
@@ -73,7 +73,7 @@ let searchCompany = async(search) => {
     });
 
     if(getCompanyData.length == 0){
-        queryCompany = `SELECT a.assignor_and_assignee_id as id, a.name, sum(a.instances) as counter, c.representative_name as normalize_name, (select representative_name FROM representative as rr WHERE rr.name = a.name) as representativeCompany FROM assignor_and_assignee as a LEFT JOIN representative as c ON c.representative_id = a.representative_id where a.name LIKE ":search%" GROUP BY a.name`;
+        queryCompany = `SELECT a.assignor_and_assignee_id as id, a.name, sum(a.instances) as counter, c.representative_name as normalize_name, (select rr.representative_name FROM representative as rr WHERE rr.representative_name = a.name) as representativeCompany FROM assignor_and_assignee as a LEFT JOIN representative as c ON c.representative_id = a.representative_id where a.name LIKE ":search%" GROUP BY a.name`;
         
         getCompanyData = await connection.resources.query(queryCompany,{
             type: connection.Sequelize.QueryTypes.SELECT,
@@ -83,7 +83,7 @@ let searchCompany = async(search) => {
           }
         );
         if(getCompanyData.length == 0){
-            queryCompany = `SELECT a.assignor_and_assignee_id as id, a.name, sum(a.instances) as counter, c.representative_name as normalize_name, (select representative_name FROM representative as rr WHERE rr.name = a.name) as representativeCompany FROM assignor_and_assignee as a LEFT JOIN representative as c ON c.representative_id = a.representative_id where a.name LIKE "%:search%" GROUP BY a.name`;
+            queryCompany = `SELECT a.assignor_and_assignee_id as id, a.name, sum(a.instances) as counter, c.representative_name as normalize_name, (select rr.representative_name FROM representative as rr WHERE rr.representative_name = a.name) as representativeCompany FROM assignor_and_assignee as a LEFT JOIN representative as c ON c.representative_id = a.representative_id where a.name LIKE "%:search%" GROUP BY a.name`;
             
             getCompanyData = await connection.resources.query(queryCompany,{
                 type: connection.Sequelize.QueryTypes.SELECT,
