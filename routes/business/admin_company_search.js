@@ -74,10 +74,12 @@ route.put("/company/search/all/", [authJWT.verifyToken, authJWT.isAdmin], (req, 
                                             where:{name: name}
                                         });
                 if(findIsNormalized != null && findIsNormalized.representative_id > 0) {
+                    console.log('FIND ASSINGOR AND ASSIGNEE');
                     findIsNormalized  = await Representatives.findOne({
                         where:{representative_id: findIsNormalized.representative_id}
                     });
                 } else {
+                    console.log('NOT FIND ASSINGOR AND ASSIGNEE');
                     findIsNormalized  = await Representatives.findOne({
                         where:{representative_name: name}
                     });
