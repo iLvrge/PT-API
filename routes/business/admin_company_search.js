@@ -75,7 +75,7 @@ route.put("/company/search/all/", [authJWT.verifyToken, authJWT.isAdmin], (req, 
                                         });
                 if(findIsNormalized != null && findIsNormalized.representative_id > 0) {
                     findIsNormalized  = await Representatives.findOne({
-                        where:{representative_name: name}
+                        where:{representative_id: findIsNormalized.representative_id}
                     });
                 } else {
                     findIsNormalized  = await Representatives.findOne({
