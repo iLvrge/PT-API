@@ -405,8 +405,8 @@ route.get("/customers/:organisation_id/publish", [authJWT.verifyToken, authJWT.i
                 /**
                  * Get list of all from resources database.
                  */
-                let companyName = org.name;
-                console.log(`php -f /var/www/html/trash/script_create_customer_db.php "${companyName}"`);
+                
+                console.log(`php -f /var/www/html/trash/script_create_customer_db.php "${organisationID}"`);
                 await exec(`php -f /var/www/html/trash/script_create_customer_db.php "${organisationID}"`, function (error, stdout, stderr) {
                     console.log(error);
                     console.log(stderr);
