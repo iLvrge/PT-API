@@ -108,6 +108,7 @@ route.put("/company/search/all/", [authJWT.verifyToken, authJWT.isAdmin], (req, 
                     await AssignorAndAssignee.update(item, {where: {name: name}, transaction: t});
                     if(oldRepresentativeCompanyID > 0) {
                         await AssignorAndAssignee.update(item, {where: {representative_id: oldRepresentativeCompanyID}, transaction: t});
+                        console.log("NAME:"+oldRepresentativeCompanyName);
                         await AssignorAndAssignee.update(item, {where: {name: oldRepresentativeCompanyName}, transaction: t});
                         await Representatives.destroy({
                             where:{representative_id: oldRepresentativeCompanyID}
