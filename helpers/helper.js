@@ -260,7 +260,7 @@ let getCompaniesList = async (DBConnection) => {
     const Representative = DBConnection.define('ClientRepesentative', ClientRepesentative.mainStructure, ClientRepesentative.options);
 
     return await Representative.findAll({
-        where: {representative_name: {[connection.Op.eq]: null}}
+        where: {parent_id: 0}
     });
 }
 
