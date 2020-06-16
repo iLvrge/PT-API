@@ -414,14 +414,24 @@ route.get("/customers/:organisation_id/publish", [authJWT.verifyToken, authJWT.i
                 if(findUsers > 0) {
                     console.log(`php -f /var/www/html/trash/tree_script.php "${companyName}"`);
                     await exec(`php -f /var/www/html/trash/tree_script.php "${companyName}"`, async (error, stdout, stderr) => {
+                        console.log("tree_script");
                         console.log(error);
                         console.log(stderr);
                         /*res.status(200).send(stdout);*/
                         if(stdout == "Tree created") {
-                            console.log(`php -f /var/www/html/trash/script_create_customer_db.php "${organisationID}"`);
+                            //console.log(`php -f /var/www/html/trash/script_create_customer_db.php "${organisationID}"`);
                             await exec(`php -f /var/www/html/trash/script_create_customer_db.php "${organisationID}"`, function (error, stdout, stderr) {
+                                console.log("script_create_customer_db");
                                 console.log(error);
                                 console.log(stderr);
+                                
+                                await exec(`php -f /var/www/html/trash/find_missing_inventor.php "${companyName}"`, function (error, stdout, stderr) {
+                                    console.log("find_missing_inventor....")
+                                    console.log(error);
+                                    console.log(stderr);
+                                    //res.status(200).send(stdout);
+                                    
+                                });
                                 res.status(200).send(stdout);
                             });
                         } else {
