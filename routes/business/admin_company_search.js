@@ -117,10 +117,11 @@ route.put("/company/search/all/", [authJWT.verifyToken, authJWT.isAdmin], (req, 
                             where:{representative_id: oldRepresentativeCompanyID}, transaction: t
                         })
                     }
-                }
-                
-                if (t) await t.commit();               
-                res.status(200).send("Updated successfully");				
+                    if (t) await t.commit();    
+                    res.status(200).send("Updated successfully");	
+                } else {
+                    res.status(200).send("Company not created");	
+                }	
             }  else {
                 if(name != "" && normalize_name == ""){
                     let t = await connection.resources.transaction();
