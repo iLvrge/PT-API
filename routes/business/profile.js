@@ -17,7 +17,7 @@ route.get("/profile", [authJWT.verifyToken], (req, res, next) => {
 
     User.findOne({
         where: {id: req.userId, status:0},
-        attributes: ['id','first_name', 'last_name', 'email_address', 'logo', 'job_title'],
+        attributes: [['user_id','id'],'first_name', 'last_name', 'email_address', 'logo', 'job_title'],
         include: [
             {
                 model: Role,
