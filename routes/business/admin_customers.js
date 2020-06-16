@@ -176,7 +176,7 @@ route.put("/customers/:id/users/:user_id", [authJWT.verifyToken, authJWT.isAdmin
                         where: {user_id: req.params.user_id, organisation_id: organisationID}
                     })
                     .then( u => {
-                        if( u != null && u.id > 0){						
+                        if( u != null && u.user_id > 0){						
                             
                             let user = {};
                             if(req.body.password != undefined && req.body.password != null && req.body.password != ""){
