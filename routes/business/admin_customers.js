@@ -165,7 +165,7 @@ route.post("/customers/:id/users", [authJWT.verifyToken, authJWT.isAdmin, userEx
 
 route.put("/customers/:id/users/:user_id", [authJWT.verifyToken, authJWT.isAdmin], function (req, res){
     (async () => {
-        const t = await db.sequelize.transaction();
+        
         try{
             let organisationID = req.params.id;
             if(organisationID > 0){
@@ -175,7 +175,8 @@ route.put("/customers/:id/users/:user_id", [authJWT.verifyToken, authJWT.isAdmin
                         where: {user_id: req.params.user_id, organisation_id: organisationID}
                     })
                     .then( u => {
-                        if( u != null && u.id > 0){								
+                        if( u != null && u.id > 0){						
+                            const t = await connection.business.transaction();		
                             let user = {};
                             if(req.body.password != undefined && req.body.password != null && req.body.password != ""){
                                 user.password = bcrypt.hashSync(req.body.password, 8);
