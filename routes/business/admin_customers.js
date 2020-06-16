@@ -445,4 +445,36 @@ route.get("/customers/:organisation_id/publish", [authJWT.verifyToken, authJWT.i
     } 
 });
 
+route.delete("/customers/:organisation_id", [authJWT.verifyToken, authJWT.isAdmin], async(req, res, next) => {
+    try{
+        let organisationID = req.params.organisation_id;
+        if(organisationID > 0){
+            let org = await helpers.findOrganisationbyID( organisationID );
+            if(org != null && org.organisation_id > 0) {
+                if(org.org_usr != "" && org.org_pass != "" && org.org_host != "" && org.org_db != "") {
+                    res.status(403).send("Cannot delete customer account.");
+                } else {
+                    let t = await connection.resources.transaction();
+
+                    const deleteCompany = await Organisations.destroy({
+                        where:{representative_id: organisationID}, transaction: t
+                    });
+
+                    if(deleteCompany != null) {
+                        res.status(200).send("Customer deleted successfully.");
+                    }
+                }
+            } else {
+                res.status(402).send("Bad Inputs");
+            }
+        } else {
+            res.status(402).send("Bad Inputs");
+        }
+    } catch(e) {
+        console.log("ERROR:");
+        console.log(e);
+        res.status(402).send("Not found ");
+    } 
+});
+
 module.exports = route;
