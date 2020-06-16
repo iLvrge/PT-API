@@ -2,7 +2,6 @@ const Sequelize = require("sequelize");
 
 const connection = require("../../config/db.config");
 
-
 const Errors = connection.application.define('error',{
     error_id: {
         type: Sequelize.INTEGER,
@@ -17,7 +16,7 @@ const Errors = connection.application.define('error',{
         type: Sequelize.STRING,
         allowNull: true,
     },
-    value:{
+    appno_doc_num:{
         type: Sequelize.INTEGER,
         allowNull: false,
     }
@@ -25,7 +24,9 @@ const Errors = connection.application.define('error',{
 {
     underscored: true,
     timestamps: false,
-    freezeTableName: true
+    freezeTableName: true,
+    tableName: 'error'
 });
+
 
 module.exports = Errors;

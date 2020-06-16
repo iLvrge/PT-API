@@ -3,7 +3,9 @@ const Sequelize = require("sequelize");
 const connection = require("../../config/db.config");
 
 
-const Documentids = connection.application.define('documentids',{
+
+
+const Documentids = connection.application.define('documentid',{
     rf_id: {
         type: Sequelize.INTEGER,
         primaryKey: true,
@@ -60,5 +62,6 @@ const Documentids = connection.application.define('documentids',{
     tableName: 'documentid',
     freezeTableName: true
 });
+
 
 module.exports = Documentids;

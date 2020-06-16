@@ -8,17 +8,33 @@ const Errors = require("../../model/application/Errors");
 
 const authJWT = require("../../helpers/verifyJwtToken");
 
-route.get("/errors", [authJWT.verifyToken], (req, res, next) => {
+const connection = require("../../config/db.config");
 
-    Errors.findAll({
-        where: {organisation_id: req.orgId}
-    })
-    .then((list)=>{
-        res.status(200).json(list);
-    }).catch((err)=>{
-        console.log(err);
-        res.status(500).json({message: "Unable to retrieve errors"})
-    });
+route.get("/errors/:type", [authJWT.verifyToken], async(req, res, next) => {
+
+    const type = req.params.type;
+
+    if(type == 'count') {        
+        const errorCount = await Errors.count({
+                            where: {organisation_id: req.orgId},
+                            col: 'error_id',                            
+                        });
+        res.status(200).json({uspto: errorCount, patent: 0});
+    } else if(type == 'list') {
+
+        const queryErrorList = "SELECT e.* , ass.record_dt FROM error as e INNER JOIN documentid as d ON d.appno_doc_num = e.appno_doc_num INNER JOIN assignment as ass ON ass.rf_id = d.rf_id WHERE e.organisation_id = :organisationID GROUP BY e.appno_doc_num ORDER BY ass.record_dt DESC";
+
+        const getErrorList = await connection.application.query(queryErrorList,{
+            type: connection.Sequelize.QueryTypes.SELECT,
+            raw: true,
+            replacements: { organisationID: req.orgId },
+            logging: console.log,
+          }
+        );
+        
+        res.status(200).json({invent:getErrorList, assign: [], corr: [], address: []});
+    }
+    
 });
 
 module.exports = route;
