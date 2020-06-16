@@ -44,6 +44,8 @@ const charts = require("./routes/client/charts");
  */
 const appLogin = require("./routes/business/login");
 
+const profile = require("./routes/business/profile");
+
 
 /**
  * Route for Admin Login
@@ -56,6 +58,8 @@ const companySearch = require("./routes/business/admin_company_search");
 
 //routes for application / client
 app.use("/", appLogin);
+
+app.use("/", profile);
 
 app.use("/", validity);
 
