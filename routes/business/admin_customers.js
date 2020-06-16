@@ -462,6 +462,8 @@ route.delete("/customers/:organisation_id", [authJWT.verifyToken, authJWT.isAdmi
 
                     if(deleteCompany != null) {
                         res.status(200).send("Customer deleted successfully.");
+                    } else {
+                        res.status(500).send("Error while deleting customer.");
                     }
                 }
             } else {
