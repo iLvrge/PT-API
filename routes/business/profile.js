@@ -8,6 +8,10 @@ const authJWT = require("../../helpers/verifyJwtToken");
 
 const User = require("../../model/business/Users");
 
+const Role = require("../../model/business/Roles");
+
+const Organisation = require("../../model/business/Organisations");
+
 
 route.get("/profile", [authJWT.verifyToken], (req, res, next) => {
 
@@ -23,7 +27,7 @@ route.get("/profile", [authJWT.verifyToken], (req, res, next) => {
             {
                 model: Organisation,
                 as: 'organisation',
-                attributes: ['name', 'logo', 'id']
+                attributes: ['name', 'logo', 'organisation_id']
             },
         ]
     }).then(user => {
