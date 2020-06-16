@@ -172,7 +172,7 @@ route.put("/customers/:id/users/:user_id", [authJWT.verifyToken, authJWT.isAdmin
                 const t = await connection.business.transaction();		
                 const organisation  = await helpers.findOrganisationbyID(organisationID);
                 if(organisation != null && organisation.organisation_id > 0){
-                    User.findOne({
+                    Users.findOne({
                         where: {user_id: req.params.user_id, organisation_id: organisationID}
                     })
                     .then( u => {
@@ -189,7 +189,7 @@ route.put("/customers/:id/users/:user_id", [authJWT.verifyToken, authJWT.isAdmin
                             }
                             console.log(user);
                             (async () => {									
-                                const update = await User.update(user,{where: {user_id: req.params.user_id}, transaction: t});
+                                const update = await Users.update(user,{where: {user_id: req.params.user_id}, transaction: t});
                                 if (t) await t.commit();
                                 res.status(200).send("Updated successfully");
                             })();
