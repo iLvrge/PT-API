@@ -169,6 +169,7 @@ route.put("/customers/:id/users/:user_id", [authJWT.verifyToken, authJWT.isAdmin
         try{
             let organisationID = req.params.id;
             if(organisationID > 0){
+                const t = await connection.business.transaction();		
                 const organisation  = await helpers.findOrganisationbyID(organisationID);
                 if(organisation != null && organisation.organisation_id > 0){
                     User.findOne({
@@ -176,7 +177,7 @@ route.put("/customers/:id/users/:user_id", [authJWT.verifyToken, authJWT.isAdmin
                     })
                     .then( u => {
                         if( u != null && u.id > 0){						
-                            const t = await connection.business.transaction();		
+                            
                             let user = {};
                             if(req.body.password != undefined && req.body.password != null && req.body.password != ""){
                                 user.password = bcrypt.hashSync(req.body.password, 8);
