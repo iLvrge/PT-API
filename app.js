@@ -65,7 +65,7 @@ app.use("/", assets);
 
 app.use("/", updates);
 
-app.use("/", errors);
+app.use("/", errors); 
 
 app.use("/", activities);
 
