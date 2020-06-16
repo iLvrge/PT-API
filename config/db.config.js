@@ -56,6 +56,16 @@ const business = new Sequelize('db_business', 'db_user_all', 'wDv%5tgn0O0kMkM', 
     }
   ]
  */
+const config = {
+  'secret': process.env.SECRET || 'p@nt3nt8@60',
+  'pusher_appId': '938985',
+  'pusher_key': '3252bb191d77e92ddb3c',
+  'pusher_secret': '2a3dd823cd1abcd45c71',
+  'pusher_cluster': 'us3',
+  'pusher_encrypted': true,
+  'pusher_channel': 'patentrack-channel',
+  'pusher_event': 'patentrack-event',
+}
 const db = {};
  
 db.Sequelize = Sequelize;
@@ -67,5 +77,7 @@ db.application = application;
 db.resources = resources;
 
 db.business = business;
+
+db.config = config;
 
 module.exports = db;

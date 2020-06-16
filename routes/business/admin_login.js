@@ -5,6 +5,8 @@ const   jwt = require('jsonwebtoken'),
 
 const route = express.Router();
 
+const config = require("../../config/db.config");
+
 //require the Model
 
 const User = require("../../model/business/Users");
@@ -29,7 +31,7 @@ route.get("/signin", (req, res, next) => {
             return res.status(401).send("Invalid Username and/or Password!");
         }
         
-        let token = jwt.sign({ id: user.id,orgId:user.organisation_id }, config.secret, {
+        let token = jwt.sign({ id: user.user_id,orgId:user.organisation_id }, config.secret, {
             expiresIn: 86400 // expires in 24 hours
         });
 
