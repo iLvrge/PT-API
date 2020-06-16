@@ -19,7 +19,7 @@ route.get("/", [authJWT.verifyToken, clientDBConnection.connect], async(req, res
     try{
         if(typeof req.connection_db != "undefined" && req.connection_db != null ) {
 
-            const parentCompanyQuery = "SELECT representative_id as id, original_name, representative_name, (Select sum(instances) FROM representative as r1 WHERE r1.parent_id = r.parent_id) as counter FROM representative as r WHERE r.parent_id = 0";
+            const parentCompanyQuery = "SELECT representative_id as id, original_name, representative_name, instances + (Select sum(instances) FROM representative as r1 WHERE r1.parent_id = r.representative_id) as counter FROM representative as r WHERE r.parent_id = 0";
 
             const companies = await req.connection_db.query(parentCompanyQuery,{
                 type: connection.Sequelize.QueryTypes.SELECT,
@@ -49,9 +49,7 @@ route.get("/", [authJWT.verifyToken, clientDBConnection.connect], async(req, res
                         let children = [];
                         children.push({...companies[i]});
                         for(let j = 0; j< childCompanies.length; j++) {
-                            if(childCompanies[j].parent_id == companies[i].id) {
-                                children.push({...childCompanies[j]});
-                            }
+                            children.push({...childCompanies[j]});
                         }
                         companies[i]['children'] = children;
                     }
