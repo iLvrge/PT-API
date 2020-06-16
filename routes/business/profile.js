@@ -9,7 +9,7 @@ const authJWT = require("../../helpers/verifyJwtToken");
 const User = require("../../model/business/Users");
 
 
-route.post("/profile", [authJWT.verifyToken], (req, res, next) => {
+route.get("/profile", [authJWT.verifyToken], (req, res, next) => {
 
     User.findOne({
         where: {id: req.userId, status:0},
