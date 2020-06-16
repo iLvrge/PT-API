@@ -163,7 +163,7 @@ route.post("/customers/:id/users", [authJWT.verifyToken, authJWT.isAdmin, userEx
  * UPdate Users list
  */
 
-route.put("/customers/:id/users/:user_id", [authJWT.verifyToken, authJWT.isAdmin], function (req, res){
+route.put("/customers/:id/users/:user_id", [authJWT.verifyToken, authJWT.isAdmin], async (req, res)=>{
     (async () => {
         
         try{
