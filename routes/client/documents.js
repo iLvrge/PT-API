@@ -17,6 +17,7 @@ route.get("/", [authJWT.verifyToken, clientDBConnection.connect], async(req, res
             const Document = req.connection_db.define('Documents', Documents.mainStructure, Documents.options);
 
             Document.findAll({
+                attributes:[['title','name'],'document_id','file'],
                 order: [
                     ['title', 'ASC'],
                 ],
@@ -62,9 +63,9 @@ route.post("/", [authJWT.verifyToken, clientDBConnection.connect], async(req, re
                         description: req.body.description
                     }
                     const document = await Document.create(documentData);
-                    if(addRecord != null && addRecord.document_id > 0){
-                        console.log("Record Item added"+addRecord.document_id);
-                        res.status(200).json(addRecord);
+                    if(document != null && document.document_id > 0){
+                        console.log("Record Item added"+document.document_id);
+                        res.status(200).json(document);
                     } else {
                         console.log("Unable to create new document")
                         res.status(500).json("Error while adding new document");
@@ -133,6 +134,7 @@ route.put("/:document_id", [authJWT.verifyToken, clientDBConnection.connect], as
 
                 if(documentData != null && documentData.document_id > 0) {
                     let doc = documentData.toJSON();
+                    const fileLink = req.body.file_link; 
                     if(req.files != null && req.files.file != null && req.files.file != undefined) {
                         let mimeType = req.files.file.mimetype;
                         console.log(mimeType);
@@ -162,6 +164,11 @@ route.put("/:document_id", [authJWT.verifyToken, clientDBConnection.connect], as
                             console.log("Unable to update document.");
                             res.status(500).send("Unable to update document.");
                         }
+                    } else {
+                        doc.name = req.body.name;
+                        doc.description = req.body.description;
+                        await Document.update(doc,{where: {document_id: doc.document_id}});
+                        res.status(200).json(doc);
                     }
                 } else {
                     res.status(400).send("Not found");
