@@ -69,7 +69,7 @@ route.get("/assets/:patentNumber/:type/outsource",[authJWT.verifyToken], async (
                 let type = "patNum";
                 console.log('%j',p); 
                 let data = p.toJSON();
-                if(data.number == null || data.number == ''){
+                if(patentNumber == data.application){
                     patentNumber = data.application;
                     type = "applNum";
                 }      
