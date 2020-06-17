@@ -113,6 +113,29 @@ route.get("/:type", [authJWT.verifyToken, clientDBConnection.connect], async(req
                 }
             }
             res.status(200).json(securityData);
+        } else if ( type === 5 ) {
+            /**Security per assignee per month */
+            const Representative = req.connection_db.define('Representatives', Representatives.mainStructure, Representatives.options);
+            const getAllRepresentative = await  Representative.findAll({
+                                                    where: {parent_id: 0}
+                                                });
+            let securityData = []
+            if(getAllRepresentative.length > 0) {
+                const IDs = [];
+                getAllRepresentative.map( r => IDs.push(r.representative_id));
+
+                if(IDs.length > 0) {
+                    const querySecurity = "SELECT aa.name, r1.representative_name , sum((select count(d.appno_doc_num) FROM documentid as d where d.rf_id = ee.rf_id)) as assets, (select ass.exec_dt FROM assignor as ass where ass.rf_id = ee.rf_id GROUP BY rf_id ) as exec_dt, count(ee.rf_id) as value from assignee as `ee` INNER JOIN assignor_and_assignee as aa ON aa.assignor_and_assignee_id = ee.assignor_and_assignee_id INNER JOIN representative as r1 ON r1.representative_id = aa.representative_id INNER JOIN (SELECT or.rf_id FROM assignor as `or` INNER JOIN assignment_conveyance as ac ON ac.rf_id = or.rf_id INNER JOIN assignor_and_assignee as aaa ON aaa.assignor_and_assignee_id = or.assignor_and_assignee_id INNER JOIN representative as r ON r.representative_id = aaa.representative_id WHERE r.representative_id IN (:IDs) AND ac.employer_assign = :employerAssign AND ac.convey_ty = 'security') as temp ON temp.rf_id = ee.rf_id GROUP BY  r1.representative_name, exec_dt";
+
+                    securityData = await connection.application.query(querySecurity,{
+                        type: connection.Sequelize.QueryTypes.SELECT,
+                        raw: true,
+                        replacements: { IDs: IDs.join(','), employerAssign: 0},
+                        logging: console.log,
+                        }
+                    );
+                }
+            }
         }
     } catch (err) {
         console.log(err)
