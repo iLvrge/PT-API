@@ -47,7 +47,7 @@ route.post("/", [authJWT.verifyToken, clientDBConnection.connect], async(req, re
                 where: {user_id: req.userId, role_id: 1},
                 attributes: ['user_id'],
             });
-            if(user != null && user.id > 0) {
+            if(user != null && user.user_id > 0) {
                 const Document = req.connection_db.define('Documents', Documents.mainStructure, Documents.options);
 
                 console.log("FILESSSSSS");
@@ -124,7 +124,7 @@ route.put("/:document_id", [authJWT.verifyToken, clientDBConnection.connect], as
                 where: {user_id: req.userId, role_id: 1},
                 attributes: ['user_id'],
             });
-            if(user != null && user.id > 0) {
+            if(user != null && user.user_id > 0) {
                 const Document = req.connection_db.define('Documents', Documents.mainStructure, Documents.options);
 
                 const documentData = await Document.findOne({
@@ -189,7 +189,7 @@ route.delete("/:document_id", [authJWT.verifyToken, clientDBConnection.connect],
                 where: {user_id: req.userId, role_id: 1},
                 attributes: ['user_id'],
             });
-            if(user != null && user.id > 0) {
+            if(user != null && user.user_id > 0) {
                 const Document = req.connection_db.define('Documents', Documents.mainStructure, Documents.options);
 
                 const documentData = await Document.findOne({
