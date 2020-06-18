@@ -1,5 +1,5 @@
 const express = require("express");
-
+const exec = require("child_process").exec;
 
 
 const route = express.Router();
@@ -184,7 +184,9 @@ route.post("/", [authJWT.verifyToken, clientDBConnection.connect], async(req, re
                                 original_name: companies[i].original_name, representative_name: companies[i].representative_name, instances: companies[i].instances
                             });
                             if(addParent != null && addParent.representative_id > 0){
-                                mainCompanies.push(companies[i].representative_name);
+                                let nameR = companies[i].representative_id > 0 ? companies[i].representative_name : companies[i].original_name;
+
+                                mainCompanies.push(nameR);
                                 addRecord++;
                                 if(companies[i].representative_id > 0) {
                                     const findCompaniesQuery = "SELECT aaa.*, r.representative_name  FROM assignor_and_assignee as aaa LEFT JOIN representative as r ON r.representative_id = aaa.representative_id WHERE aaa.representative_id = :representativeID";
@@ -240,7 +242,9 @@ route.post("/", [authJWT.verifyToken, clientDBConnection.connect], async(req, re
                                     original_name: companies[i].original_name, representative_name: companies[i].representative_name, instances: companies[i].instances
                                 });
                                 if(addParent != null && addParent.representative_id > 0){
-                                    mainCompanies.push(companies[i].representative_name);
+                                    let nameR = companies[i].representative_id > 0 ? companies[i].representative_name : companies[i].original_name;
+
+                                    mainCompanies.push(nameR);
                                     addRecord++;
                                     if(companies[i].representative_id > 0) {
                                         const findCompaniesQuery = "SELECT aaa.*, r.representative_name  FROM assignor_and_assignee as aaa LEFT JOIN representative as r ON r.representative_id = aaa.representative_id WHERE aaa.representative_id = :representativeID";
