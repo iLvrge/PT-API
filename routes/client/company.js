@@ -271,7 +271,7 @@ route.post("/", [authJWT.verifyToken, clientDBConnection.connect], async(req, re
                         }
                         if(addRecord > 0) {
                             if(mainCompanies.length > 0){
-                                mainCompanies.map(company => {
+                                mainCompanies.map(async company => {
                                     console.log(`php -f /var/www/html/trash/tree_script.php "${company}"`);
                                     await exec(`php -f /var/www/html/trash/tree_script.php "${company}"`, async (error, stdout, stderr) => {
                                         console.log(error);
