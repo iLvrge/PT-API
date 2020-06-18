@@ -9,7 +9,7 @@ const ClientRepresentatives = {
         },        
         representative_name:{
             type: Sequelize.STRING,
-            allowNull: false,
+            allowNull: true,
         },
         original_name:{
             type: Sequelize.STRING,
