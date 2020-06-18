@@ -23,7 +23,7 @@ const ClientRepresentatives = {
             type: Sequelize.INTEGER,
             allowNull: true,
         },
-    },
+    }, 
     options: {
         underscored: true,
         timestamps: false,

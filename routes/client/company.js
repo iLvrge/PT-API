@@ -124,7 +124,7 @@ route.post("/", [authJWT.verifyToken, clientDBConnection.connect], async(req, re
             
             if(parentCompany != undefined && parentCompany > 0) {                
                 const parentCompanyQuery = "SELECT representative_id, original_name, representative_name FROM representative as r WHERE representative_id = :parentCompany AND r.parent_id =  0";
-                console.log(parentCompanyQuery);
+                //console.log(parentCompanyQuery);
                 const findName = await req.connection_db.query(parentCompanyQuery,{
                     type: connection.Sequelize.QueryTypes.SELECT,
                     replacements: { parentCompany: parentCompany },
@@ -133,7 +133,7 @@ route.post("/", [authJWT.verifyToken, clientDBConnection.connect], async(req, re
                     logging: console.log,
                     }
                 ); 
-                console.log(findName);
+                //console.log(findName);
                 if(findName != null && findName.representative_id > 0) {                    
                     const Representative = req.connection_db.define('Representatives', Representatives.mainStructure, Representatives.options);
                     let companies = [];
@@ -147,6 +147,7 @@ route.post("/", [authJWT.verifyToken, clientDBConnection.connect], async(req, re
                     console.log(companies);
                     if(companies.length > 0) {
                         const addCompanies = await Representative.bulkCreate(companies);
+                        console.log.log(addCompanies);
                         if(addCompanies) {
                             companies.map(async company => {
                                 let name = company.representative_name;
