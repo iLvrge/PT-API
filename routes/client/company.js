@@ -162,7 +162,7 @@ route.post("/", [authJWT.verifyToken, clientDBConnection.connect], async(req, re
                 if(getList.length > 0) {                
                     getList.forEach( company => {
                         companies.push({
-                            instances: company.instances, representative_id: company.representative_id, original_name: company.name, representative_name: representative_name
+                            instances: company.instances, representative_id: company.representative_id, original_name: company.name, representative_name: company.representative_name
                         });
                     });
                 }
@@ -189,7 +189,7 @@ route.post("/", [authJWT.verifyToken, clientDBConnection.connect], async(req, re
                                 if(companies[i].representative_id > 0) {
                                     const findCompaniesQuery = "SELECT aaa.*, r.representative_name  FROM assignor_and_assignee as aaa LEFT JOIN representative as r ON r.representative_id = aaa.representative_id WHERE aaa.representative_id = :representativeID";
 
-                                    const list  = await req.connection_db.query(findCompaniesQuery,{
+                                    const list  = await connection.resources.query(findCompaniesQuery,{
                                         type: connection.Sequelize.QueryTypes.SELECT,
                                         replacements: { representativeID: companies[i].representative_id },
                                         raw: true,
@@ -245,7 +245,7 @@ route.post("/", [authJWT.verifyToken, clientDBConnection.connect], async(req, re
                                     if(companies[i].representative_id > 0) {
                                         const findCompaniesQuery = "SELECT aaa.*, r.representative_name  FROM assignor_and_assignee as aaa LEFT JOIN representative as r ON r.representative_id = aaa.representative_id WHERE aaa.representative_id = :representativeID";
     
-                                        const list  = await req.connection_db.query(findCompaniesQuery,{
+                                        const list  = await connection.resources.query(findCompaniesQuery,{
                                             type: connection.Sequelize.QueryTypes.SELECT,
                                             replacements: { representativeID: companies[i].representative_id },
                                             raw: true,
