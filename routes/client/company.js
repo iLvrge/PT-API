@@ -124,41 +124,42 @@ route.post("/", [authJWT.verifyToken, clientDBConnection.connect], async(req, re
             
             if(parentCompany != undefined && parentCompany > 0) {                
                 const parentCompanyQuery = "SELECT representative_id, original_name, representative_name FROM representative as r WHERE representative_id = :parentCompany AND r.parent_id =  0";
-
+                console.log(parentCompanyQuery);
                 const findName = await req.connection_db.query(parentCompanyQuery,{
                     type: connection.Sequelize.QueryTypes.SELECT,
                     replacements: { parentCompany: parentCompany },
                     raw: true,
+                    plain: true,
                     logging: console.log,
                     }
                 ); 
-                if(findName != null && findName.length > 0) {                    
+                console.log(findName);
+                if(findName != null && findName.representative_id > 0) {                    
                     const Representative = req.connection_db.define('Representatives', Representatives.mainStructure, Representatives.options);
                     let companies = [];
                     if(getList.length > 0) {                
                         getList.forEach( company => {
                             companies.push({
-                                original_name: company.name , representative_name: company.representative_name, instances: company.instances, parent: findName[0].representative_id
+                                original_name: company.name , representative_name: company.representative_name, instances: company.instances, parent: findName.representative_id
                             });
                         });
                     }
+                    console.log(companies);
                     if(companies.length > 0) {
                         const addCompanies = await Representative.bulkCreate(companies);
                         if(addCompanies) {
-                            if(mainCompanies.length > 0){
-                                mainCompanies.map(async company => {
-                                    let name = company.representative_name;
-                                    if(name == "" || name == null) {
-                                        name = company.original_name;
-                                    }
-                                    console.log(`php -f /var/www/html/trash/tree_script.php "${name}"`);
-                                    await exec(`php -f /var/www/html/trash/tree_script.php "${name}"`, async (error, stdout, stderr) => {
-                                        console.log(error);
-                                        console.log(stdout);
-                                        console.log(stderr);
-                                    })
-                                });
-                            }
+                            companies.map(async company => {
+                                let name = company.representative_name;
+                                if(name == "" || name == null) {
+                                    name = company.original_name;
+                                }
+                                console.log(`php -f /var/www/html/trash/tree_script.php "${name}"`);
+                                await exec(`php -f /var/www/html/trash/tree_script.php "${name}"`, async (error, stdout, stderr) => {
+                                    console.log(error);
+                                    console.log(stdout);
+                                    console.log(stderr);
+                                })
+                            });
                             res.status(200).json(companies);
                         } else {
                             res.status(500).send("Internal server error");
