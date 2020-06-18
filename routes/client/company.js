@@ -7,6 +7,8 @@ const route = express.Router();
 
 const Representatives = require("../../model/client/Representatives");
 
+const ApplicationRepresentative = require("../../model/application/Representatives");
+
 const helpers = require("../../helpers/helper");
 
 const authJWT = require("../../helpers/verifyJwtToken");
@@ -112,7 +114,7 @@ route.post("/", [authJWT.verifyToken, clientDBConnection.connect], async(req, re
             let companyList = JSON.parse(subsidaryName);
             const querySubsidaryCompany = "SELECT aaa.assignor_and_assignee_id, aaa.name, r.representative_name, aaa.instances, r.representative_id FROM assignor_and_assignee as aaa LEFT JOIN representative as r ON r.representative_id = aaa.representative_id WHERE aaa.assignor_and_assignee_id IN (:IDs)";
                     
-            const getList = await req.connection_db.query(querySubsidaryCompany,{
+            const getList = await connection.resources.query(querySubsidaryCompany,{
                 type: connection.Sequelize.QueryTypes.SELECT,
                 replacements: { IDs: companyList.join(',') },
                 raw: true,
@@ -174,12 +176,15 @@ route.post("/", [authJWT.verifyToken, clientDBConnection.connect], async(req, re
                         where: {[connection.Op.or]:[{original_name: originalNames}, {representative_name: representativeNames}]}
                     });
                     if(findParentCompanies.length == 0) {
-                        let addRecord = 0;                        
+                        let addRecord = 0,  mainCompanies = [];                   
                         for(let i = 0; i < companies.length; i++) {
+
+                            /** Add in Client Representative */
                             const addParent = await Representative.create({
                                 original_name: companies[i].original_name, representative_name: companies[i].representative_name, instances: companies[i].instances
                             });
                             if(addParent != null && addParent.representative_id > 0){
+                                mainCompanies.push(companies[i].representative_name);
                                 addRecord++;
                                 if(companies[i].representative_id > 0) {
                                     const findCompaniesQuery = "SELECT aaa.*, r.representative_name  FROM assignor_and_assignee as aaa LEFT JOIN representative as r ON r.representative_id = aaa.representative_id WHERE aaa.representative_id = :representativeID";
@@ -208,12 +213,22 @@ route.post("/", [authJWT.verifyToken, clientDBConnection.connect], async(req, re
                             }
                         }
                         if(addRecord > 0) {
+                            if(mainCompanies.length > 0){
+                                mainCompanies.map(company => {
+                                    console.log(`php -f /var/www/html/trash/tree_script.php "${company}"`);
+                                    await exec(`php -f /var/www/html/trash/tree_script.php "${company}"`, async (error, stdout, stderr) => {
+                                        console.log(error);
+                                        console.log(stdout);
+                                        console.log(stderr);
+                                    })
+                                });
+                            }
                             res.status(200).send("Companies added");
                         } else {
                             res.status(500).json("Internal server error");
                         }
                     } else {
-                        const addedCompanies = [];
+                        const addedCompanies = [],  mainCompanies = [];       
                         let addRecord = 0;    
                         findParentCompanies.map(c => {
                             addedCompanies.push(c.original_name);
@@ -225,6 +240,7 @@ route.post("/", [authJWT.verifyToken, clientDBConnection.connect], async(req, re
                                     original_name: companies[i].original_name, representative_name: companies[i].representative_name, instances: companies[i].instances
                                 });
                                 if(addParent != null && addParent.representative_id > 0){
+                                    mainCompanies.push(companies[i].representative_name);
                                     addRecord++;
                                     if(companies[i].representative_id > 0) {
                                         const findCompaniesQuery = "SELECT aaa.*, r.representative_name  FROM assignor_and_assignee as aaa LEFT JOIN representative as r ON r.representative_id = aaa.representative_id WHERE aaa.representative_id = :representativeID";
@@ -254,6 +270,16 @@ route.post("/", [authJWT.verifyToken, clientDBConnection.connect], async(req, re
                             }
                         }
                         if(addRecord > 0) {
+                            if(mainCompanies.length > 0){
+                                mainCompanies.map(company => {
+                                    console.log(`php -f /var/www/html/trash/tree_script.php "${company}"`);
+                                    await exec(`php -f /var/www/html/trash/tree_script.php "${company}"`, async (error, stdout, stderr) => {
+                                        console.log(error);
+                                        console.log(stdout);
+                                        console.log(stderr);
+                                    })
+                                });
+                            }
                             res.status(200).send("Companies added");
                         } else {
                             res.status(500).json("Internal server error");
