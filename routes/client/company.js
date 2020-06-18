@@ -157,23 +157,30 @@ route.post("/", [authJWT.verifyToken, clientDBConnection.connect], async(req, re
                 }
             } else {
                 /**Add parent companies */
-                let companies = [];
+                let companies = [], originalNames = [], representativeNames = [];
                 const Representative = req.connection_db.define('Representatives', Representatives.mainStructure, Representatives.options);
                 if(getList.length > 0) {                
                     getList.forEach( company => {
+                        if(company.name != null) {
+                            originalNames.push(company.name);
+                        } 
+                        if(company.representative_name != null) {
+                            representativeNames.push(company.representative_name);
+                        } 
                         companies.push({
                             instances: company.instances, representative_id: company.representative_id, original_name: company.name, representative_name: company.representative_name
                         });
                     });
                 }
-                if(companies.length > 0) {
-                    let originalNames = [], representativeNames = [];
-                    companies.map( c => {
-                        originalNames.push(c.original_name);
-                        representativeNames.push(c.representative_name);
-                    });
+                if(companies.length > 0) {                    
+                    let whereC = "";
+                    if(originalNames.length > 0 && representativeNames.length > 0) {
+                        whereC = {[connection.Op.or]:[{original_name: originalNames}, {representative_name: representativeNames}]};
+                    } else if(originalNames.length > 0) {
+                        whereC = {original_name: originalNames};
+                    }
                     const findParentCompanies = await Representative.findAll({
-                        where: {[connection.Op.or]:[{original_name: originalNames}, {representative_name: representativeNames}]}
+                        where: whereC
                     });
                     if(findParentCompanies.length == 0) {
                         let addRecord = 0,  mainCompanies = [];                   
