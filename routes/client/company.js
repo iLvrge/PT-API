@@ -55,6 +55,7 @@ route.get("/", [authJWT.verifyToken, clientDBConnection.connect], async(req, res
                         newC.counter = newC.instances;
                         children.push(newC);
                         for(let j = 0; j< childCompanies.length; j++) {
+                            console.log(parseInt(companies[i].id),parseInt(childCompanies[j].parent_id));
                             if(parseInt(companies[i].id) === parseInt(childCompanies[j].parent_id)) {
                                 children.push({...childCompanies[j]});
                             }                            
