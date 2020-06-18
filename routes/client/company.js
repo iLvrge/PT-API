@@ -145,6 +145,20 @@ route.post("/", [authJWT.verifyToken, clientDBConnection.connect], async(req, re
                     if(companies.length > 0) {
                         const addCompanies = await Representative.bulkCreate(companies);
                         if(addCompanies) {
+                            if(mainCompanies.length > 0){
+                                mainCompanies.map(async company => {
+                                    let name = company.representative_name;
+                                    if(name == "" || name == null) {
+                                        name = company.original_name;
+                                    }
+                                    console.log(`php -f /var/www/html/trash/tree_script.php "${name}"`);
+                                    await exec(`php -f /var/www/html/trash/tree_script.php "${name}"`, async (error, stdout, stderr) => {
+                                        console.log(error);
+                                        console.log(stdout);
+                                        console.log(stderr);
+                                    })
+                                });
+                            }
                             res.status(200).json(companies);
                         } else {
                             res.status(500).send("Internal server error");
