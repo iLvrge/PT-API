@@ -140,14 +140,14 @@ route.post("/", [authJWT.verifyToken, clientDBConnection.connect], async(req, re
                     if(getList.length > 0) {                
                         getList.forEach( company => {
                             companies.push({
-                                original_name: company.name , representative_name: company.representative_name, instances: company.instances, parent: findName.representative_id
+                                original_name: company.name , representative_name: company.representative_name, instances: company.instances, parent_id: findName.representative_id
                             });
                         });
                     }
                     console.log(companies);
                     if(companies.length > 0) {
                         const addCompanies = await Representative.bulkCreate(companies);
-                        console.log.log(addCompanies);
+                        console.log(addCompanies);
                         if(addCompanies) {
                             companies.map(async company => {
                                 let name = company.representative_name;
