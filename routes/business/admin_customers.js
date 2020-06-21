@@ -412,6 +412,7 @@ route.get("/customers/:organisation_id/publish", [authJWT.verifyToken, authJWT.i
                     col: 'user_id'
                 });
                 if(findUsers > 0) {
+                    let companyName = org.name;
                     console.log(`php -f /var/www/html/trash/tree_script.php "${companyName}"`);
                     await exec(`php -f /var/www/html/trash/tree_script.php "${companyName}"`, async (error, stdout, stderr) => {
                         console.log("tree_script");
