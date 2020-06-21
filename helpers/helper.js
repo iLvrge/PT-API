@@ -268,7 +268,7 @@ let findCompanyCustomersByName = async(companyName) => {
     let customer_list = [], assignees = [], assignors = [];
 
     if(companyName != undefined  && companyName.length > 0) {
-        let queryAssignor = "SELECT a.or_name as name, count(a.or_name) as counter, r.representative_name as normalize_name FROM db_uspto.assignor as a LEFT JOIN assignor_and_assignee as aaa ON aaa.assignor_and_assignee_id = a.assignor_and_assignee_id LEFT JOIN representative as r ON r.representative_id = aaa.representative_id INNER JOIN (SELECT rf_id FROM db_uspto.assignee as ac WHERE ee_name IN ( SELECT aa.name FROM assignor_and_assignee as aa INNER JOIN representative as r1 ON r1.representative_id = aa.representative_id where r1.representative_name=:name)) as b ON  b.rf_id = a.rf_id GROUP BY a.or_name";
+        let queryAssignor = "SELECT a.or_name as name, count(a.or_name) as counter, r.representative_name as normalize_name FROM db_uspto.assignor as a LEFT JOIN assignor_and_assignee as aaa ON aaa.assignor_and_assignee_id = a.assignor_and_assignee_id LEFT JOIN representative as r ON r.representative_id = aaa.representative_id INNER JOIN (SELECT rf_id FROM db_uspto.assignee as ac WHERE ac.assignor_and_assignee_id IN ( SELECT aa.assignor_and_assignee_id FROM assignor_and_assignee as aa LEFT JOIN representative as r1 ON r1.representative_id = aa.representative_id where (r1.representative_name=:name OR aa.name = :name))) as b ON  b.rf_id = a.rf_id GROUP BY a.or_name";
 
         assignors = await connection.resources.query(queryAssignor,{
             type: connection.Sequelize.QueryTypes.SELECT,
@@ -278,7 +278,7 @@ let findCompanyCustomersByName = async(companyName) => {
             }
         );	
 
-        let queryAssignee = "SELECT a.ee_name as name, count(a.ee_name) as counter, r.representative_name as normalize_name FROM db_uspto.assignee as a LEFT JOIN assignor_and_assignee as aaa ON aaa.assignor_and_assignee_id = a.assignor_and_assignee_id LEFT JOIN representative as r ON r.representative_id = aaa.representative_id INNER JOIN (SELECT rf_id FROM db_uspto.assignor as ac WHERE or_name IN ( SELECT aa.name FROM assignor_and_assignee as aa INNER JOIN representative as r1 ON r1.representative_id = aa.representative_id where r1.representative_name=:name)) as b ON  b.rf_id = a.rf_id GROUP BY a.ee_name";
+        let queryAssignee = "SELECT a.ee_name as name, count(a.ee_name) as counter, r.representative_name as normalize_name FROM db_uspto.assignee as a LEFT JOIN assignor_and_assignee as aaa ON aaa.assignor_and_assignee_id = a.assignor_and_assignee_id LEFT JOIN representative as r ON r.representative_id = aaa.representative_id INNER JOIN (SELECT rf_id FROM db_uspto.assignor as ac WHERE ac.assignor_and_assignee_id IN ( SELECT aa.assignor_and_assignee_id FROM assignor_and_assignee as aa LEFT JOIN representative as r1 ON r1.representative_id = aa.representative_id where (r1.representative_name=:name OR aa.name = :name))) as b ON  b.rf_id = a.rf_id GROUP BY a.ee_name";
 
         assignees = await connection.resources.query(queryAssignee,{
             type: connection.Sequelize.QueryTypes.SELECT,
