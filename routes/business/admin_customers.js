@@ -420,13 +420,13 @@ route.get("/customers/:organisation_id/publish", [authJWT.verifyToken, authJWT.i
                         console.log(stderr);
                         /*res.status(200).send(stdout);*/
                         if(stdout == "Tree created") {
-                            //console.log(`php -f /var/www/html/trash/script_create_customer_db.php "${organisationID}"`);
-                            await exec(`php -f /var/www/html/trash/script_create_customer_db.php "${organisationID}"`, async (error, stdout, stderr) => {
+                            console.log(`php -f /var/www/html/trash/script_create_customer_db.php "${organisationID}"`);
+                            await exec(`php -f /var/www/html/trash/script_create_customer_db.php "${organisationID}"`, async (error, std, stderr) => {
                                 console.log("script_create_customer_db");
                                 console.log(error);
                                 console.log(stderr);
-                                
-                                await exec(`php -f /var/www/html/trash/find_missing_inventor.php "${companyName}"`, (error, stdout, stderr)=> {
+                                console.log(`php -f /var/www/html/trash/find_missing_inventor.php "${companyName}"`);
+                                await exec(`php -f /var/www/html/trash/find_missing_inventor.php "${companyName}"`, (error, stdd, stderr)=> {
                                     console.log("find_missing_inventor....")
                                     console.log(error);
                                     console.log(stderr);
