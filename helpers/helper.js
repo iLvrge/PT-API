@@ -298,7 +298,7 @@ let findCompanyCustomersByName = async(companyName) => {
         ]
     })*/
 
-    let findRepresentative = Representatives.findOne({
+    let findRepresentative = await Representatives.findOne({
         where:{representative_name: companyName},
     });
 
