@@ -299,7 +299,7 @@ let findCompanyCustomersByName = async(companyName) => {
     })*/
 
     let findRepresentative = Representatives.findOne({
-        where:{name: companyName},
+        where:{representative_name: companyName},
     });
 
     if(findRepresentative != null && findRepresentative.representative_id > 0) {
