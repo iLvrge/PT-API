@@ -349,7 +349,7 @@ let findCompanyCustomersByName = async(companyName) => {
 
                 let queryAssigneeRFIDs = "SELECT rf_id FROM db_uspto.assignee as ac WHERE ac.assignor_and_assignee_id IN (:IDs)";
 
-                assigneeRFIDs = await connection.resources.query(queryAssignor,{
+                assigneeRFIDs = await connection.resources.query(queryAssigneeRFIDs,{
                     type: connection.Sequelize.QueryTypes.SELECT,
                     replacements: { IDs: assgnorAssigneeIDS },
                     raw: true,
@@ -359,9 +359,9 @@ let findCompanyCustomersByName = async(companyName) => {
 
                 let queryAssignorRFIDs = "SELECT rf_id FROM db_uspto.assignor as ac WHERE ac.assignor_and_assignee_id IN (:IDs)";
 
-                assignorRFIDs = await connection.resources.query(queryAssignor,{
+                assignorRFIDs = await connection.resources.query(queryAssignorRFIDs,{
                     type: connection.Sequelize.QueryTypes.SELECT,
-                    replacements: { IDs: queryAssignorRFIDs },
+                    replacements: { IDs: assgnorAssigneeIDS },
                     raw: true,
                     logging: console.log,
                     }
