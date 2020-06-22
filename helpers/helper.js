@@ -320,10 +320,11 @@ let findCompanyCustomersByName = async(companyName) => {
 
     if(findRepresentative != null && findRepresentative.representative_id > 0) {
         if(findRepresentative.representative_name != null) {
+            console.log("UPDATE ORG...");
             /*if(companyName != findRepresentative.representative_name) {
                 Organisations.update({name: findRepresentative.representative_name},{where: {name: companyName}});
             }*/
-            Organisations.update({name: findRepresentative.representative_name},{where: {name: companyName}});
+            //Organisations.update({name: findRepresentative.representative_name},{where: {name: companyName}});
 
             /** Find Assignors */
 
