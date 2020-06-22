@@ -347,11 +347,51 @@ let findCompanyCustomersByName = async(companyName) => {
                 console.log(assgnorAssigneeIDS);
                 /** Find Assignors */
 
-                let queryAssignor = "SELECT a.or_name as name, count(a.or_name) as counter, r.representative_name as normalize_name FROM db_uspto.assignor as a LEFT JOIN assignor_and_assignee as aaa ON aaa.assignor_and_assignee_id = a.assignor_and_assignee_id LEFT JOIN representative as r ON r.representative_id = aaa.representative_id INNER JOIN (SELECT rf_id FROM db_uspto.assignee as ac WHERE ac.ee_name IN (:IDs)) as b ON  b.rf_id = a.rf_id GROUP BY a.or_name";
+                let queryAssigneeRFIDs = "SELECT rf_id FROM db_uspto.assignee as ac WHERE ac.assignor_and_assignee_id IN (:IDs)";
+
+                assigneeRFIDs = await connection.resources.query(queryAssignor,{
+                    type: connection.Sequelize.QueryTypes.SELECT,
+                    replacements: { IDs: assgnorAssigneeIDS },
+                    raw: true,
+                    logging: console.log,
+                    }
+                );
+
+                let queryAssignorRFIDs = "SELECT rf_id FROM db_uspto.assignor as ac WHERE ac.assignor_and_assignee_id IN (:IDs)";
+
+                assignorRFIDs = await connection.resources.query(queryAssignor,{
+                    type: connection.Sequelize.QueryTypes.SELECT,
+                    replacements: { IDs: queryAssignorRFIDs },
+                    raw: true,
+                    logging: console.log,
+                    }
+                );
+
+                rfIDsList = [...assigneeRFIDs, ...assignorRFIDs];    
+
+
+                let rfIDs = [];
+                rfIDsList.map( r => rfIDs.push(r.rf_id));
+
+                let queryDocumentID = 'SELECT rf_id FROM db_uspto.documentid WHERE appno_doc_num IN (SELECT appno_doc_num FROM documentid WHERE appno_doc_num <> "" AND  rf_id IN (:rfIDs) GROUP BY rf_id';
+
+                documentRFIDs = await connection.resources.query(queryDocumentID,{
+                    type: connection.Sequelize.QueryTypes.SELECT,
+                    replacements: { rfIDs: rfIDs },
+                    raw: true,
+                    logging: console.log,
+                    }
+                );
+
+                rfIDs = [];
+
+                documentRFIDs.map( r => rfIDs.push(r.rf_id));
+
+                let queryAssignor = "SELECT a.or_name as name, count(a.or_name) as counter, r.representative_name as normalize_name FROM db_uspto.assignor as a LEFT JOIN assignor_and_assignee as aaa ON aaa.assignor_and_assignee_id = a.assignor_and_assignee_id LEFT JOIN representative as r ON r.representative_id = aaa.representative_id WHERE a.rf_id IN (:IDs) GROUP BY a.or_name";
                 console.log(queryAssignor);
                 assignors = await connection.resources.query(queryAssignor,{
                     type: connection.Sequelize.QueryTypes.SELECT,
-                    replacements: { IDs: names },
+                    replacements: { IDs: rfIDs },
                     raw: true,
                     logging: console.log,
                     }
@@ -364,13 +404,13 @@ let findCompanyCustomersByName = async(companyName) => {
 
                 /*let queryAssignee = "SELECT ee.ee_name as name, count(ee.ee_name) as counter, r.representative_name as normalize_name from assignee as ee INNER JOIN (SELECT rf_id FROM db_uspto.assignor as ac INNER JOIN ( SELECT aa.assignor_and_assignee_id FROM assignor_and_assignee as aa LEFT JOIN representative as r1 ON r1.representative_id = aa.representative_id WHERE (r1.representative_name=:name OR aa.name = :name)) as np ON np.assignor_and_assignee_id = ac.assignor_and_assignee_id GROUP BY ac.rf_id) as temp ON temp.rf_id = ee.rf_id LEFT JOIN assignor_and_assignee as aaa ON aaa.assignor_and_assignee_id = ee.assignor_and_assignee_id LEFT JOIN representative as r ON r.representative_id = aaa.representative_id GROUP BY ee.ee_name";*/
                 console.log(assgnorAssigneeIDS);
-                let queryAssignee = "SELECT a.ee_name as name, count(a.ee_name) as counter, r.representative_name as normalize_name FROM db_uspto.assignee as a LEFT JOIN assignor_and_assignee as aaa ON aaa.assignor_and_assignee_id = a.assignor_and_assignee_id LEFT JOIN representative as r ON r.representative_id = aaa.representative_id INNER JOIN (SELECT rf_id FROM db_uspto.assignor as ac WHERE ac.or_name IN (:IDs)) as b ON  b.rf_id = a.rf_id GROUP BY a.ee_name";
+                let queryAssignee = "SELECT a.ee_name as name, count(a.ee_name) as counter, r.representative_name as normalize_name FROM db_uspto.assignee as a LEFT JOIN assignor_and_assignee as aaa ON aaa.assignor_and_assignee_id = a.assignor_and_assignee_id LEFT JOIN representative as r ON r.representative_id = aaa.representative_id WHERE a.rf_id IN (:IDs) GROUP BY a.ee_name";
 
 
                 console.log(queryAssignee);   
                 assignees = await connection.resources.query(queryAssignee,{
                     type: connection.Sequelize.QueryTypes.SELECT,
-                    replacements: { IDs: names },
+                    replacements: { IDs: rfIDs },
                     raw: true,
                     logging: console.log,
                     }
