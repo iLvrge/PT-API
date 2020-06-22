@@ -373,7 +373,7 @@ let findCompanyCustomersByName = async(companyName) => {
                 let rfIDs = [];
                 rfIDsList.map( r => rfIDs.push(r.rf_id));
 
-                let queryDocumentID = 'SELECT rf_id FROM db_uspto.documentid WHERE appno_doc_num IN (SELECT appno_doc_num FROM documentid WHERE appno_doc_num <> "" AND  rf_id IN (:rfIDs) GROUP BY rf_id';
+                let queryDocumentID = 'SELECT rf_id FROM db_uspto.documentid WHERE appno_doc_num IN (SELECT appno_doc_num FROM documentid WHERE appno_doc_num <> "" AND  rf_id IN (:rfIDs)) GROUP BY rf_id';
 
                 documentRFIDs = await connection.resources.query(queryDocumentID,{
                     type: connection.Sequelize.QueryTypes.SELECT,
