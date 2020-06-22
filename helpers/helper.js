@@ -285,13 +285,11 @@ let findCompanyCustomersByName = async(companyName) => {
     if(findRepresentative != null && findRepresentative.representative_id > 0) {
         if(findRepresentative.representative.representative_name != null) {
             Organisations.update({name: findRepresentative.representative.representative_name},{where: {name: companyName}});
-        }        
-        if(companyName != undefined  && companyName.length > 0) {
             let queryAssignor = "SELECT a.or_name as name, count(a.or_name) as counter, r.representative_name as normalize_name FROM db_uspto.assignor as a LEFT JOIN assignor_and_assignee as aaa ON aaa.assignor_and_assignee_id = a.assignor_and_assignee_id LEFT JOIN representative as r ON r.representative_id = aaa.representative_id INNER JOIN (SELECT rf_id FROM db_uspto.assignee as ac WHERE ac.assignor_and_assignee_id IN ( SELECT aa.assignor_and_assignee_id FROM assignor_and_assignee as aa LEFT JOIN representative as r1 ON r1.representative_id = aa.representative_id where (r1.representative_name=:name OR aa.name = :name))) as b ON  b.rf_id = a.rf_id GROUP BY a.or_name";
-    
+        
             assignors = await connection.resources.query(queryAssignor,{
                 type: connection.Sequelize.QueryTypes.SELECT,
-                replacements: { name: companyName },
+                replacements: { name: findRepresentative.representative.representative_name },
                 raw: true,
                 logging: console.log,
                 }
@@ -303,7 +301,7 @@ let findCompanyCustomersByName = async(companyName) => {
     
             assignees = await connection.resources.query(queryAssignee,{
                 type: connection.Sequelize.QueryTypes.SELECT,
-                replacements: { name: companyName },
+                replacements: { name: findRepresentative.representative.representative_name },
                 raw: true,
                 logging: console.log,
                 }
@@ -311,7 +309,10 @@ let findCompanyCustomersByName = async(companyName) => {
             console.log(assignees.length);
             console.log(assignors.length);
             customer_list = [...assignees, ...assignors];
-        }
+        }        
+        
+    } else {
+        console.log("No representative company....");
     }
 
     
