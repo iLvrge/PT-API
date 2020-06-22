@@ -350,7 +350,7 @@ let findCompanyCustomersByName = async(companyName) => {
                 console.log(queryAssignor);
                 assignors = await connection.resources.query(queryAssignor,{
                     type: connection.Sequelize.QueryTypes.SELECT,
-                    replacements: { IDs: assgnorAssigneeIDS.join(',') },
+                    replacements: { IDs: assgnorAssigneeIDS },
                     raw: true,
                     logging: console.log,
                     }
@@ -369,7 +369,7 @@ let findCompanyCustomersByName = async(companyName) => {
                 console.log(queryAssignee);   
                 assignees = await connection.resources.query(queryAssignee,{
                     type: connection.Sequelize.QueryTypes.SELECT,
-                    replacements: { IDs: assgnorAssigneeIDS.join(',') },
+                    replacements: { IDs: assgnorAssigneeIDS },
                     raw: true,
                     logging: console.log,
                     }
