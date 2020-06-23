@@ -349,16 +349,17 @@ route.delete("/:ids", [authJWT.verifyToken, clientDBConnection.connect], async(r
     try{
         let IDs = req.params.ids;
         if(IDs.length > 0) {
+            IDs = IDs.toString().split(',');
             const Representative = req.connection_db.define('Representatives', Representatives.mainStructure, Representatives.options);
             const findParentCompanies = await Representative.findAll({
                 attributes:['representative_id'],
-                where:{representative_id: IDs, parent_id:{[req.connection_db.Op.eq]: 0}}
+                where:{representative_id: IDs, parent_id:{[connection.Op.eq]: 0}}
             });
             const deleteParentCompanies = []
             if(findParentCompanies.length > 0) {
                 findParentCompanies.map(c => deleteParentCompanies.push(c.representative_id));
                 Representative.destroy({
-                    where: {[req.connection_dbOp.or]: [{representative_id: deleteParentCompanies},{parent_id: deleteParentCompanies}]},
+                    where: {[connection.Op.or]: [{representative_id: deleteParentCompanies},{parent_id: deleteParentCompanies}]},
                 })
                 .then( u => {
                     console.log("DELETE COMPANIES: " + u);
@@ -374,7 +375,7 @@ route.delete("/:ids", [authJWT.verifyToken, clientDBConnection.connect], async(r
         }
     } catch( err ) {
         console.log(err);
-        res.status(500).json({message: "Error while adding company"})
+        res.status(500).json({message: "Error while deleting company"})
     }    
 });
 
@@ -386,10 +387,11 @@ route.delete("/subcompanies/:ids", [authJWT.verifyToken, clientDBConnection.conn
     try{
         let IDs = req.params.ids;
         if(IDs.length > 0) {
+            IDs = IDs.toString().split(',');
             const Representative = req.connection_db.define('Representatives', Representatives.mainStructure, Representatives.options);
             const findParentCompanies = await Representative.findAll({
                 attributes:['parent_id'],
-                where:{representative_id: IDs, parent_id:{[req.connection_db.Op.gt]: 0}}
+                where:{representative_id: IDs, parent_id:{[connection.Op.gt]: 0}}
             });
             if(findParentCompanies.length > 0) {
                 findParentCompanies.map(c => IDs.push(c.parent_id));
@@ -407,7 +409,7 @@ route.delete("/subcompanies/:ids", [authJWT.verifyToken, clientDBConnection.conn
         }
     } catch( err ) {
         console.log(err);
-        res.status(500).json({message: "Error while adding company"})
+        res.status(500).json({message: "Error while deleting company"})
     }    
 });
 
