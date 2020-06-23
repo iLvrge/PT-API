@@ -380,14 +380,63 @@ route.get("/customers/:id/patents", [authJWT.verifyToken, authJWT.isAdmin], asyn
                 if(findRepresentative != null) {
                     let representativeID = [];
                     representativeID.push(findRepresentative.representative_id);
-                    const queryAllPatentList = "SELECT d1.grant_doc_num as number, d1.appno_doc_num as application FROM documentid as d1 WHERE d1.rf_id IN (Select d.rf_id from documentid as d LEFT JOIN (SELECT `or`.rf_id FROM assignor as `or` INNER JOIN assignor_and_assignee as aaa ON aaa.assignor_and_assignee_id = `or`.assignor_and_assignee_id LEFT JOIN representative as r ON r.representative_id = aaa.representative_id WHERE r.representative_id IN (:representativeCompanies)) as temp ON temp.rf_id = d.rf_id LEFT JOIN (SELECT `ee`.rf_id FROM assignee as `ee` INNER JOIN assignor_and_assignee as aa ON aa.assignor_and_assignee_id = ee.assignor_and_assignee_id LEFT JOIN representative as r1 ON r1.representative_id = aa.representative_id WHERE r1.representative_id IN (:representativeCompanies)) as temp1 ON temp1.rf_id = d.rf_id GROUP BY d.rf_id)";
-                    patentList = await connection.application.query(queryAllPatentList,{
+
+                    let queryFindAssignorAndAssigneeIDs = "SELECT aa.assignor_and_assignee_id, aa.name FROM assignor_and_assignee as aa LEFT JOIN representative as r1 ON r1.representative_id = aa.representative_id where (r1.representative_id=:representativeCompanies)";
+
+                    let listIDs = await connection.resources.query(queryFindAssignorAndAssigneeIDs,{
                         type: connection.Sequelize.QueryTypes.SELECT,
                         replacements: { representativeCompanies: representativeID },
                         raw: true,
                         logging: console.log,
                         }
-                    ); 
+                    );
+
+                    if(listIDs != null && listIDs.length > 0) {
+                        let assgnorAssigneeIDS = [], names = [];
+            
+                        for(let i = 0; i< listIDs.length; i++){
+                            assgnorAssigneeIDS.push(listIDs[i].assignor_and_assignee_id);
+                            names.push(listIDs[i].name);
+                        }
+                        console.log(assgnorAssigneeIDS);
+                        /** Find Assignors */
+            
+                        let queryAssigneeRFIDs = "SELECT rf_id FROM db_uspto.assignee as ac WHERE ac.assignor_and_assignee_id IN (:IDs)";
+            
+                        assigneeRFIDs = await connection.resources.query(queryAssigneeRFIDs,{
+                            type: connection.Sequelize.QueryTypes.SELECT,
+                            replacements: { IDs: assgnorAssigneeIDS },
+                            raw: true,
+                            logging: console.log,
+                            }
+                        );
+            
+                        let queryAssignorRFIDs = "SELECT rf_id FROM db_uspto.assignor as ac WHERE ac.assignor_and_assignee_id IN (:IDs)";
+            
+                        assignorRFIDs = await connection.resources.query(queryAssignorRFIDs,{
+                            type: connection.Sequelize.QueryTypes.SELECT,
+                            replacements: { IDs: assgnorAssigneeIDS },
+                            raw: true,
+                            logging: console.log,
+                            }
+                        );
+            
+                        rfIDsList = [...assigneeRFIDs, ...assignorRFIDs];    
+            
+            
+                        let rfIDs = [];
+                        rfIDsList.map( r => rfIDs.push(r.rf_id));
+            
+                        let queryAllPatentList = 'SELECT grant_doc_num as number, appno_doc_num as application FROM documentid WHERE appno_doc_num IN (SELECT appno_doc_num FROM documentid WHERE appno_doc_num <> "" AND  rf_id IN (:rfIDs)) GROUP BY rf_id';
+            
+                        patentList = await connection.resources.query(queryAllPatentList,{
+                            type: connection.Sequelize.QueryTypes.SELECT,
+                            replacements: { rfIDs: rfIDs },
+                            raw: true,
+                            logging: console.log,
+                            }
+                        );
+                    }  
                 }                
             }
         }
