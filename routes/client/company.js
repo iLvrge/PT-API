@@ -136,12 +136,25 @@ route.post("/", [authJWT.verifyToken, clientDBConnection.connect], async(req, re
                 //console.log(findName);
                 if(findName != null && findName.representative_id > 0) {                    
                     const Representative = req.connection_db.define('Representatives', Representatives.mainStructure, Representatives.options);
+                    const findCompanies = Representative.findAll({
+                        where: {parent_id: findName.representative_id}
+                    });
+                    const listedCompanies = [];
+                    if(findCompanies.length > 0) {
+                        findCompanies.map( listed => listedCompanies.push(listed.original_name));
+                    }
+                    console.log(listedCompanies);
                     let companies = [];
+                    let tap = false;
                     if(getList.length > 0) {                
                         getList.forEach( company => {
-                            companies.push({
-                                original_name: company.name , representative_name: company.representative_name, instances: company.instances, parent_id: findName.representative_id
-                            });
+                            if(!listedCompanies.includes(company.name)){
+                                companies.push({
+                                    original_name: company.name , representative_name: company.representative_name, instances: company.instances, parent_id: findName.representative_id
+                                });
+                            } else {
+                                tap = true;
+                            }                            
                         });
                     }
                     console.log(companies);
@@ -166,7 +179,11 @@ route.post("/", [authJWT.verifyToken, clientDBConnection.connect], async(req, re
                             res.status(500).send("Internal server error");
                         }
                     } else {
-                        res.status(402).send("Invalid inputs");
+                        if(tap === true) {
+                            res.status(403).send("Company already added");
+                        } else {
+                            res.status(402).send("Invalid inputs");
+                        }                        
                     }                                        
                 } else {
                     res.status(403).send("Parent company not exist");
@@ -325,8 +342,47 @@ route.post("/", [authJWT.verifyToken, clientDBConnection.connect], async(req, re
     }
 });
 
-
+/**
+ * Delete Parent Companies
+ */
 route.delete("/:ids", [authJWT.verifyToken, clientDBConnection.connect], async(req, res, next) => {
+    try{
+        let IDs = req.params.ids;
+        if(IDs.length > 0) {
+            const Representative = req.connection_db.define('Representatives', Representatives.mainStructure, Representatives.options);
+            const findParentCompanies = await Representative.findAll({
+                attributes:['representative_id'],
+                where:{representative_id: IDs, parent_id:{[req.connection_db.Op.eq]: 0}}
+            });
+            const deleteParentCompanies = []
+            if(findParentCompanies.length > 0) {
+                findParentCompanies.map(c => deleteParentCompanies.push(c.representative_id));
+                Representative.destroy({
+                    where: {[req.connection_dbOp.or]: [{representative_id: deleteParentCompanies},{parent_id: deleteParentCompanies}]},
+                })
+                .then( u => {
+                    console.log("DELETE COMPANIES: " + u);
+                    res.status(200).send("Companies deleted.");
+                })
+                .catch(err => {
+                    console.log(err);
+                    res.status(500).send("Unable to delete companies");
+                })
+            } else {
+                res.status(402).send("No company found");
+            }
+        }
+    } catch( err ) {
+        console.log(err);
+        res.status(500).json({message: "Error while adding company"})
+    }    
+});
+
+/**
+ * Delete Child Companies
+ */
+     
+route.delete("/subcompanies/:ids", [authJWT.verifyToken, clientDBConnection.connect], async(req, res, next) => {
     try{
         let IDs = req.params.ids;
         if(IDs.length > 0) {
@@ -354,5 +410,5 @@ route.delete("/:ids", [authJWT.verifyToken, clientDBConnection.connect], async(r
         res.status(500).json({message: "Error while adding company"})
     }    
 });
- 		
+
 module.exports = route;
