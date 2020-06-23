@@ -566,4 +566,8 @@ route.get("/patents/:patentNumber",[authJWT.verifyToken, authJWT.isAdmin], async
     })
 });
 
+route.get("/patents/:patentNumber/comments",[authJWT.verifyToken, authJWT.isAdmin], async (req, res) =>{        
+    res.status(200).json({});
+});
+
 module.exports = route;
