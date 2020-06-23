@@ -390,22 +390,25 @@ route.delete("/subcompanies/:ids", [authJWT.verifyToken, clientDBConnection.conn
             IDs = IDs.toString().split(',');
             const Representative = req.connection_db.define('Representatives', Representatives.mainStructure, Representatives.options);
             const findParentCompanies = await Representative.findAll({
-                attributes:['parent_id'],
+                attributes:['representative_id'],
                 where:{representative_id: IDs, parent_id:{[connection.Op.gt]: 0}}
             });
+            const deleteParentCompanies = []
             if(findParentCompanies.length > 0) {
-                findParentCompanies.map(c => IDs.push(c.parent_id));
+                findParentCompanies.map(c => deleteParentCompanies.push(c.representative_id));
+                Representative.destroy({
+                    where: {representative_id: deleteParentCompanies},
+                })
+                .then( u => {
+                    res.status(200).send("Companies deleted.");
+                })
+                .catch(err => {
+                    console.log(err);
+                    res.status(500).send("Unable to delete professional");
+                })
+            } else {
+                res.status(402).send("No company found");
             }
-            Representative.destroy({
-                where: {representative_id: IDs},
-            })
-            .then( u => {
-                res.status(200).send("Companies deleted.");
-            })
-            .catch(err => {
-                console.log(err);
-                res.status(500).send("Unable to delete professional");
-            })
         }
     } catch( err ) {
         console.log(err);
