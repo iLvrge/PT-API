@@ -30,7 +30,7 @@ route.get("/errors/:type", [authJWT.verifyToken], async(req, res, next) => {
             logging: console.log,
           }
         );        
-        res.status(200).json({invent:getErrorList, assign: [], corr: [], address: []});
+        res.status(200).json({invent:getErrorList, assign: [], corr: [], address: [], security: []});
     }
     
 });
