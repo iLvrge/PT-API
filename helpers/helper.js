@@ -239,6 +239,7 @@ let getCompanyListByOther = async(companyName) => {
 }
 
 let checkRepresentativeCompany = async(companyName) => {
+    console.log("CHECKING REPRESENTATIVE COMPANY: "+companyName);
     return await Representatives.findOne({
         where: {representative_name: companyName}
     });
