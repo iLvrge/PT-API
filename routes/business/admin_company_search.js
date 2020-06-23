@@ -109,13 +109,16 @@ route.put("/company/search/all/", [authJWT.verifyToken, authJWT.isAdmin], (req, 
                     console.log("Updating items!");
                     const item = {representative_id: representativeCompany.representative_id};
                     /*await AssignorAndAssignee.update(item, {where: {name: name}, transaction: t});*/
-                    await AssignorAndAssignee.update(item, {where: {name: name}});
+                    const updateItem = await AssignorAndAssignee.update(item, {where: {name: name}});
+                    console.log(updateItem);
                     if(oldRepresentativeCompanyID > 0) {
                         /*await AssignorAndAssignee.update(item, {where: {representative_id: oldRepresentativeCompanyID}, transaction: t});*/
-                        await AssignorAndAssignee.update(item, {where: {representative_id: oldRepresentativeCompanyID}});
+                        const updateItem2 = await AssignorAndAssignee.update(item, {where: {representative_id: oldRepresentativeCompanyID}});
+                        console.log(updateItem2);
                         console.log("NAME:"+oldRepresentativeCompanyName);
                         /*await AssignorAndAssignee.update(item, {where: {name: oldRepresentativeCompanyName}, transaction: t});*/
-                        await AssignorAndAssignee.update(item, {where: {name: oldRepresentativeCompanyName}});
+                        const updateItem3 = await AssignorAndAssignee.update(item, {where: {name: oldRepresentativeCompanyName}});
+                        console.log(updateItem3);
                         await Representatives.destroy({
                             where:{representative_id: oldRepresentativeCompanyID}
                         })
@@ -131,8 +134,8 @@ route.put("/company/search/all/", [authJWT.verifyToken, authJWT.isAdmin], (req, 
 
                     const item = {representative_id: 0};                    
                     /*await AssignorAndAssignee.update(item, {where: {name: name}, transaction: t});*/
-                    await AssignorAndAssignee.update(item, {where: {name: name}});
-
+                    const updateItem4 = await AssignorAndAssignee.update(item, {where: {name: name}});
+                    console.log(updateItem4);
                     /*if (t) await t.commit();  */             
                     res.status(200).send("Updated successfully");		
                 } else {
