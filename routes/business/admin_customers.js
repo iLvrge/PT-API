@@ -385,7 +385,7 @@ route.get("/customers/:id/patents", [authJWT.verifyToken, authJWT.isAdmin], asyn
 
                     let queryFindAssignorAndAssigneeIDs = "SELECT aa.assignor_and_assignee_id, aa.name FROM assignor_and_assignee as aa LEFT JOIN representative as r1 ON r1.representative_id = aa.representative_id where (r1.representative_id=:representativeCompanies)";
 
-                    let listIDs = await connection.resources.query(queryFindAssignorAndAssigneeIDs,{
+                    let listIDs = await connection.application.query(queryFindAssignorAndAssigneeIDs,{
                         type: connection.Sequelize.QueryTypes.SELECT,
                         replacements: { representativeCompanies: representativeID },
                         raw: true,
@@ -405,7 +405,7 @@ route.get("/customers/:id/patents", [authJWT.verifyToken, authJWT.isAdmin], asyn
             
                         let queryAssigneeRFIDs = "SELECT rf_id FROM db_uspto.assignee as ac WHERE ac.assignor_and_assignee_id IN (:IDs)";
             
-                        assigneeRFIDs = await connection.resources.query(queryAssigneeRFIDs,{
+                        assigneeRFIDs = await connection.application.query(queryAssigneeRFIDs,{
                             type: connection.Sequelize.QueryTypes.SELECT,
                             replacements: { IDs: assgnorAssigneeIDS },
                             raw: true,
@@ -415,7 +415,7 @@ route.get("/customers/:id/patents", [authJWT.verifyToken, authJWT.isAdmin], asyn
             
                         let queryAssignorRFIDs = "SELECT rf_id FROM db_uspto.assignor as ac WHERE ac.assignor_and_assignee_id IN (:IDs)";
             
-                        assignorRFIDs = await connection.resources.query(queryAssignorRFIDs,{
+                        assignorRFIDs = await connection.application.query(queryAssignorRFIDs,{
                             type: connection.Sequelize.QueryTypes.SELECT,
                             replacements: { IDs: assgnorAssigneeIDS },
                             raw: true,
@@ -431,7 +431,7 @@ route.get("/customers/:id/patents", [authJWT.verifyToken, authJWT.isAdmin], asyn
             
                         let queryAllPatentList = 'SELECT grant_doc_num as number, appno_doc_num as application FROM documentid WHERE appno_doc_num IN (SELECT appno_doc_num FROM documentid WHERE appno_doc_num <> "" AND  rf_id IN (:rfIDs)) GROUP BY rf_id';
             
-                        patentList = await connection.resources.query(queryAllPatentList,{
+                        patentList = await connection.application.query(queryAllPatentList,{
                             type: connection.Sequelize.QueryTypes.SELECT,
                             replacements: { rfIDs: rfIDs },
                             raw: true,
