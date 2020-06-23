@@ -570,4 +570,29 @@ route.get("/patents/:patentNumber/comments",[authJWT.verifyToken, authJWT.isAdmi
     res.status(200).json({});
 });
 
+route.get("/patents/:patentNumber/outsource",[authJWT.verifyToken, authJWT.isAdmin], async (req, res) =>{ 
+    let patentNumber = req.params.patentNumber;       
+    Documentids.findOne({
+        where:{[connection.Op.or]:[{grant_doc_num: patentNumber},{appno_doc_num: patentNumber}]},
+        attributes:['rf_id',['grant_doc_num','number'], ['appno_doc_num','application']],
+    })
+    .then(p => {
+        if(p != null) {
+            let type = "patNum";
+            console.log('%j',p); 
+            let data = p.toJSON();
+            if(patentNumber == data.application){
+                patentNumber = data.application;
+                type = "applNum";
+            }      
+            res.status(200).json({url:`https://assignment.uspto.gov/patent/index.html#/patent/search/resultAbstract?id=${patentNumber}&type=${type}`});
+        } else {
+            res.status(200).send("");
+        }        
+    }).catch(err => {
+        console.log(err);
+        res.status(400).send("Invalid number");
+    })
+});
+
 module.exports = route;
