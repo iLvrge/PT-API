@@ -630,26 +630,28 @@ route.get("/patents/:patentNumber/assignments",[authJWT.verifyToken, authJWT.isA
             }
 
             queryAssignments +=" ORDER BY a.exec_dt ASC";
-
-            let getAssignmentList = await connection.resources.query(queryAssignments,{
-                type: connection.Sequelize.QueryTypes.SELECT,
-                replacements: { number: patentNumber },
-                raw: true,
-                logging: console.log,
-                }
-            );	
-
-            if(getAssignmentList.length > 0) {
-                const path = '/var/wwww/html/PatenTrack/resources/shared/data/';
-                getAssignmentList.map( (a, index) => {
-                    let fileName = `assignment-pat-${a.reel_no}-${a.frame_no}.pdf`;
-                    if (fs.existsSync(path+fileName)) {
-                        //file exists
-                        getAssignmentList[index].file = `https://patentrack.com/resources/shared/data/${fileName}`;
+            (async () => {
+                let getAssignmentList = await connection.resources.query(queryAssignments,{
+                    type: connection.Sequelize.QueryTypes.SELECT,
+                    replacements: { number: patentNumber },
+                    raw: true,
+                    logging: console.log,
                     }
-                });
-            }
-            res.status(200).json(getAssignmentList);
+                );	
+    
+                if(getAssignmentList.length > 0) {
+                    const path = '/var/wwww/html/PatenTrack/resources/shared/data/';
+                    getAssignmentList.map( (a, index) => {
+                        let fileName = `assignment-pat-${a.reel_no}-${a.frame_no}.pdf`;
+                        if (fs.existsSync(path+fileName)) {
+                            //file exists
+                            getAssignmentList[index].file = `https://patentrack.com/resources/shared/data/${fileName}`;
+                        }
+                    });
+                }
+                res.status(200).json(getAssignmentList);
+            }) ();
+            
         } else {
             res.status(200).send("");
         }        
