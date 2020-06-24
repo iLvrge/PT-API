@@ -405,7 +405,7 @@ route.get("/customers/:id/patents", [authJWT.verifyToken, authJWT.isAdmin], asyn
                         console.log(assgnorAssigneeIDS);
                         /** Find Assignors */
             
-                        let queryAssigneeRFIDs = "SELECT rf_id FROM db_uspto.assignee as ac WHERE ac.assignor_and_assignee_id IN (:IDs)";
+                        let queryAssigneeRFIDs = "SELECT rf_id FROM assignee as ac WHERE ac.assignor_and_assignee_id IN (:IDs)";
             
                         assigneeRFIDs = await connection.application.query(queryAssigneeRFIDs,{
                             type: connection.Sequelize.QueryTypes.SELECT,
@@ -415,7 +415,7 @@ route.get("/customers/:id/patents", [authJWT.verifyToken, authJWT.isAdmin], asyn
                             }
                         );
             
-                        let queryAssignorRFIDs = "SELECT rf_id FROM db_uspto.assignor as ac WHERE ac.assignor_and_assignee_id IN (:IDs)";
+                        let queryAssignorRFIDs = "SELECT rf_id FROM assignor as ac WHERE ac.assignor_and_assignee_id IN (:IDs)";
             
                         assignorRFIDs = await connection.application.query(queryAssignorRFIDs,{
                             type: connection.Sequelize.QueryTypes.SELECT,
@@ -426,20 +426,22 @@ route.get("/customers/:id/patents", [authJWT.verifyToken, authJWT.isAdmin], asyn
                         );
             
                         rfIDsList = [...assigneeRFIDs, ...assignorRFIDs];    
-            
+                            
             
                         let rfIDs = [];
                         rfIDsList.map( r => rfIDs.push(r.rf_id));
+
+                        if(rfIDsList.length > 0) {
+                            let queryAllPatentList = 'SELECT grant_doc_num as number, appno_doc_num as application FROM documentid WHERE appno_doc_num IN (SELECT appno_doc_num FROM documentid WHERE appno_doc_num <> "" AND  rf_id IN (:rfIDs)) GROUP BY rf_id';
             
-                        let queryAllPatentList = 'SELECT grant_doc_num as number, appno_doc_num as application FROM documentid WHERE appno_doc_num IN (SELECT appno_doc_num FROM documentid WHERE appno_doc_num <> "" AND  rf_id IN (:rfIDs)) GROUP BY rf_id';
-            
-                        patentList = await connection.application.query(queryAllPatentList,{
-                            type: connection.Sequelize.QueryTypes.SELECT,
-                            replacements: { rfIDs: rfIDs },
-                            raw: true,
-                            logging: console.log,
-                            }
-                        );
+                            patentList = await connection.application.query(queryAllPatentList,{
+                                type: connection.Sequelize.QueryTypes.SELECT,
+                                replacements: { rfIDs: rfIDs },
+                                raw: true,
+                                logging: console.log,
+                                }
+                            );
+                        }
                     }  
                 }                
             }
