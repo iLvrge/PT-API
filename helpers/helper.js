@@ -215,7 +215,7 @@ let getCompanyListByOther = async(companyName) => {
 
     let queryNameChange = "SELECT ac.or_name as name, c1.company_name as normalize_name, 'Name Change' as type FROM assignors_copy as ac INNER JOIN (SELECT a.rf_id FROM assignments_copy as a INNER JOIN assignment_conveyances_copy as ass ON ass.rf_id = a.rf_id INNER JOIN assignees_copy as acc ON acc.rf_id = a.rf_id LEFT JOIN representative as c ON c.representative_id = acc.representative_id WHERE ass.convey_ty = :convey_type AND (acc.ee_name = :name OR c.company_name = :name) GROUP BY a.rf_id) as temp ON temp.rf_id = ac.rf_id LEFT JOIN representative as c1 ON c1.representative_id = ac.representative_id GROUP BY name, normalize_name ORDER BY normalize_name ASC, name ASC ";
 									
-    let getNameChgData = await csv.query(queryNameChange,{
+    let getNameChgData = await connection.resources.query(queryNameChange,{
         type: connection.Sequelize.QueryTypes.SELECT,
         replacements: { name: companyName, convey_type: 'namechg' },
         raw: true,
@@ -225,7 +225,7 @@ let getCompanyListByOther = async(companyName) => {
 
     let queryGovernChange = "SELECT ac.or_name as name, c1.company_name as normalize_name, 'Govt.' as type FROM assignors_copy as ac INNER JOIN (SELECT a.rf_id FROM assignments_copy as a INNER JOIN assignment_conveyances_copy as ass ON ass.rf_id = a.rf_id INNER JOIN assignees_copy as acc ON acc.rf_id = a.rf_id LEFT JOIN representative as c ON c.representative_id = acc.representative_id WHERE ass.convey_ty = :convey_type AND (acc.ee_name = :name OR c.company_name = :name) GROUP BY a.rf_id) as temp ON temp.rf_id = ac.rf_id LEFT JOIN representative as c1 ON c1.representative_id = ac.representative_id GROUP BY name, normalize_name ORDER BY normalize_name ASC, name ASC ";
 
-    let getGovernData = await csv.query(queryGovernChange,{
+    let getGovernData = await connection.resources.query(queryGovernChange,{
         type: connection.Sequelize.QueryTypes.SELECT,
         replacements: { name: companyName, convey_type: 'govern' },
         raw: true,

@@ -2,6 +2,8 @@ const express = require("express");
 
 const bcrypt = require('bcrypt');
 
+const fs = require('fs')
+
 const { v4: uuidv4  } = require('uuid');
 
 const exec = require("child_process").exec;
@@ -594,6 +596,60 @@ route.get("/patents/:patentNumber/outsource",[authJWT.verifyToken, authJWT.isAdm
                 type = "applNum";
             }      
             res.status(200).json({url:`https://assignment.uspto.gov/patent/index.html#/patent/search/resultAbstract?id=${patentNumber}&type=${type}`});
+        } else {
+            res.status(200).send("");
+        }        
+    }).catch(err => {
+        console.log(err);
+        res.status(400).send("Invalid number");
+    })
+});
+
+route.get("/patents/:patentNumber/assignments",[authJWT.verifyToken, authJWT.isAdmin], async (req, res) =>{ 
+    let patentNumber = req.params.patentNumber; 
+    Documentids.findOne({
+        where:{[connection.Op.or]:[{grant_doc_num: patentNumber},{appno_doc_num: patentNumber}]},
+        attributes:['rf_id',['grant_doc_num','number'], ['appno_doc_num','application']],
+    })
+    .then(p => {
+        if(p != null) {
+            let type = "patNum";
+            console.log('%j',p); 
+            let data = p.toJSON();
+            if(patentNumber == data.application){
+                patentNumber = data.application;
+                type = "applNum";
+            }      
+
+            let queryAssignments = "SELECT a.rf_id, a.convey_text, ac.convey_ty, '' as file, r.representative_type FROM assignment as a INNER JOIN assignor as `or` ON `or`.rf_id = a.rf_id INNER JOIN assignment_conveyance as ac ON ac.rf_id = a.rf_id INNER JOIN documentid as d ON d.rf_id = a.rf_id LEFT JOIN representative_assignment_conveyance as r ON r.rf_id = a.rf_id WHERE ";
+
+            if(type == "patNum") {
+                queryAssignments += " d.grant_doc_num = :number";
+            } else if(type == "applNum") {
+                queryAssignments += " d.appno_doc_num = :number";
+            }
+
+            queryAssignments +=" ORDER BY a.exec_dt ASC";
+
+            let getAssignmentList = await connection.resources.query(queryAssignments,{
+                type: connection.Sequelize.QueryTypes.SELECT,
+                replacements: { number: patentNumber },
+                raw: true,
+                logging: console.log,
+                }
+            );	
+
+            if(getAssignmentList.length > 0) {
+                const path = '/var/wwww/html/PatenTrack/resources/shared/data/';
+                getAssignmentList.map( (a, index) => {
+                    let fileName = `assignment-pat-${a.reel_no}-${a.frame_no}.pdf`;
+                    if (fs.existsSync(path+fileName)) {
+                        //file exists
+                        getAssignmentList[index].file = `https://patentrack.com/resources/shared/data/${fileName}`;
+                    }
+                });
+            }
+            res.status(200).json(getAssignmentList);
         } else {
             res.status(200).send("");
         }        
