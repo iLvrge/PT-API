@@ -146,6 +146,7 @@ route.post("/", [authJWT.verifyToken, clientDBConnection.connect], async(req, re
                             where: {parent_id: findName.representative_id}
                         });
                         const listedCompanies = [];
+                        listedCompanies.push(findName.original_name);
                         if(findCompanies.length > 0) {
                             findCompanies.map( listed => listedCompanies.push(listed.original_name));
                         }
