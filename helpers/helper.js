@@ -319,6 +319,8 @@ let findCompanyCustomersByName = async(companyName) => {
         })
         if(findRepresentative != null && findRepresentative.representative.representative_name != null) {
             representativeName = findRepresentative.representative.representative_name;
+        } else {
+            representativeName = companyName;
         }
     } else {
         representativeName = findRepresentative.representative_name
@@ -331,14 +333,14 @@ let findCompanyCustomersByName = async(companyName) => {
         /*if(companyName != findRepresentative.representative_name) {
             Organisations.update({name: findRepresentative.representative_name},{where: {name: companyName}});
         }*/
-        Organisations.update({name: findRepresentative.representative_name},{where: {name: companyName}});
+        Organisations.update({name: representativeName},{where: {name: companyName}});
 
 
         let queryFindAssignorAndAssigneeIDs = "SELECT aa.assignor_and_assignee_id, aa.name FROM assignor_and_assignee as aa LEFT JOIN representative as r1 ON r1.representative_id = aa.representative_id where (r1.representative_name=:name OR aa.name = :name)";
 
         let listIDs = await connection.resources.query(queryFindAssignorAndAssigneeIDs,{
             type: connection.Sequelize.QueryTypes.SELECT,
-            replacements: { name: findRepresentative.representative_name },
+            replacements: { name: representativeName },
             raw: true,
             logging: console.log,
             }
