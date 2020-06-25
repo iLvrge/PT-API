@@ -153,7 +153,7 @@ route.post("/", [authJWT.verifyToken, clientDBConnection.connect], async(req, re
                         //console.log('listedCompanies',listedCompanies);
                         let companies = [];
                         let tap = false;
-                        console.log(getList);
+                        //console.log(getList);
                         if(getList.length > 0) {                
                             getList.forEach(async company => {
                                 if(!listedCompanies.includes(company.name)){
@@ -165,6 +165,8 @@ route.post("/", [authJWT.verifyToken, clientDBConnection.connect], async(req, re
                                 }                            
                             });
                         }
+                        console.log(listedCompanies)
+                        console.log(companies);
                         if(companies.length > 0) {
                             const addCompanies = await Representative.bulkCreate(companies);
                             console.log(addCompanies);
