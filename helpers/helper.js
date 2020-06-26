@@ -622,6 +622,21 @@ let getNewCode = async () => {
     return newCode;
 };
 
+let shareURL = async (params) => {
+    let insertRecord = await ShareLink.create({
+        code: params.code,
+        organisation_id: params.organisation_id,        
+        user_id: params.user_id,
+        subject_type: params.type,
+        subject: params.assets
+    });
+    if(insertRecord != null && insertRecord.share_id > 0) {
+        return "https://share.patentrack.com/"+params.code;
+    } else {
+        return '';
+    }
+}
+
 const helper = {};
 helper.findOrganisationbyID = findOrganisationbyID;
 helper.findRepresentative = findRepresentative;
@@ -638,4 +653,5 @@ helper.getCompaniesList = getCompaniesList;
 helper.getAssignmentDataByrfID = getAssignmentDataByrfID;
 helper.generateJSON = generateJSON;
 helper.getNewCode = getNewCode;
+helper.shareURL = shareURL;
 module.exports = helper;
