@@ -9,19 +9,20 @@ const app = express();
 
 const upload = require("express-fileupload");
 
+app.use(bodyParser.json());
+
 app.use(upload());
 
 app.use(cors());
 
 app.use(bodyParser.urlencoded({extended:false}));
 
-app.use(bodyParser.json());
-
 const port = process.env.PORT || 3600;
 /**
  * Route for Applications database
  */
 const transactions = require("./routes/application/transactions");
+const illustration = require("./routes/application/illustration");
 const assets = require("./routes/application/assets");
 const updates = require("./routes/application/updates");
 const errors = require("./routes/application/errors");
@@ -64,6 +65,8 @@ app.use("/", profile);
 app.use("/", validity);
 
 app.use("/", transactions);
+
+app.use("/", illustration);
 
 app.use("/", assets);
 
