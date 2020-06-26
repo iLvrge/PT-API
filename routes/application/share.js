@@ -27,4 +27,28 @@ route.post("/share", [authJWT.verifyToken], async (req, res) =>{
     }
 });
 
+route.get("/share/:code", async (req, res) =>{     
+    const shareCode = req.params.code;
+    try {
+        if( shareCode != "") {
+            const share = await helpers.getShareData(shareCode);
+            if( share != null ) {
+                req.orgId = share.organisation_id;
+                req.userId = share.user_id;
+                if(share.subject != "" && share.subject_type == 2) {
+                    req.params.patentNumber = share.subject;
+                    helpers.generateJSON(req, res);
+                }
+            } else {
+                res.status(500).send("Invalid url.");
+            }
+        } else {
+            res.status(500).send("Invalid url.");
+        }
+    }catch(e){
+        console.log(e);
+        res.status(500).send("Invalid url.");
+    }
+});
+
 module.exports = route;

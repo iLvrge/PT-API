@@ -635,6 +635,11 @@ let shareURL = async (params) => {
     } else {
         return '';
     }
+};
+let getShareData = async (code) => {
+	return await ShareLink.findOne({
+		where:{code:code}
+	});
 }
 
 const helper = {};
@@ -654,4 +659,5 @@ helper.getAssignmentDataByrfID = getAssignmentDataByrfID;
 helper.generateJSON = generateJSON;
 helper.getNewCode = getNewCode;
 helper.shareURL = shareURL;
+helper.getShareData = getShareData;
 module.exports = helper;
