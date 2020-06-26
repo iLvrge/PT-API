@@ -433,11 +433,22 @@ route.get("/customers/:id/patents", [authJWT.verifyToken, authJWT.isAdmin], asyn
                     let representativeID = [];
                     representativeID.push(findRepresentative.representative_id);
 
-                    let queryFindAssignorAndAssigneeIDs = "SELECT aa.assignor_and_assignee_id, aa.name FROM assignor_and_assignee as aa LEFT JOIN representative as r1 ON r1.representative_id = aa.representative_id where (r1.representative_id=:representativeCompanies)";
+                    /*let queryFindAssignorAndAssigneeIDs = "SELECT aa.assignor_and_assignee_id, aa.name FROM assignor_and_assignee as aa LEFT JOIN representative as r1 ON r1.representative_id = aa.representative_id where (r1.representative_id=:representativeCompanies)";
 
                     let listIDs = await connection.application.query(queryFindAssignorAndAssigneeIDs,{
                         type: connection.Sequelize.QueryTypes.SELECT,
                         replacements: { representativeCompanies: representativeID },
+                        raw: true,
+                        logging: console.log,
+                        }
+                    );*/
+
+
+                    let queryFindMainCompany = "SELECT aa.assignor_and_assignee_id, aa.name FROM assignor_and_assignee as aa LEFT JOIN representative as r1 ON r1.representative_id = aa.representative_id where (aa.name = :name OR r1.representative_name = :name )";
+
+                    let listIDs = await connection.application.query(queryFindMainCompany,{
+                        type: connection.Sequelize.QueryTypes.SELECT,
+                        replacements: { name: org.name },
                         raw: true,
                         logging: console.log,
                         }
