@@ -217,13 +217,14 @@ route.put("/customers/:id/users/:user_id", [authJWT.verifyToken, authJWT.isAdmin
 
 
 route.put("/customers/:id/logo", [authJWT.verifyToken, authJWT.isAdmin], async (req, res)=>{
-    (async () => {
-        
+    (async () => {        
         try{
             let organisationID = req.params.id;
             if(organisationID > 0){
                 let org = await helpers.findOrganisationbyID( organisationID );
                 if(org != null && org.organisation_id > 0) {
+                    console.log(organisationID);
+                    console.log(req.files);
                     if(req.files != null && req.files.file != null && req.files.file != undefined) {
                         let mimeType = req.files.file.mimetype;
                         console.log(mimeType);
@@ -249,10 +250,15 @@ route.put("/customers/:id/logo", [authJWT.verifyToken, authJWT.isAdmin], async (
                     } else {
                         return res.status(400).send("Please select file first.");	
                     }
+                } else {
+                    return res.status(400).send("Invalid customer");	
                 }
+            } else {
+                return res.status(400).send("Invalid customer");	
             }
         } catch(e) {
-
+            console.log(e);
+            return res.status(500).send("Error while uploading file.");	
         }
     })();
 });
