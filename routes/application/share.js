@@ -6,7 +6,7 @@ const authJWT = require("../../helpers/verifyJwtToken");
 
 const helpers = require("../../helpers/helper");
 
-route.get("/share", [authJWT.verifyToken], async (req, res) =>{     
+route.post("/share", [authJWT.verifyToken], async (req, res) =>{     
     const params = req.body;
             params.organisation_id = req.orgId;
             params.user_id = req.userId;
