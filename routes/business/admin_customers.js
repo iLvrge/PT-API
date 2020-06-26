@@ -491,7 +491,7 @@ route.get("/customers/:id/patents", [authJWT.verifyToken, authJWT.isAdmin], asyn
                         rfIDsList.map( r => rfIDs.push(r.rf_id));
 
                         if(rfIDsList.length > 0) {
-                            let queryAllPatentList = 'SELECT grant_doc_num as number, appno_doc_num as application FROM documentid WHERE appno_doc_num IN (SELECT appno_doc_num FROM documentid WHERE appno_doc_num <> "" AND  rf_id IN (:rfIDs)) GROUP BY rf_id';
+                            let queryAllPatentList = 'SELECT grant_doc_num as number, appno_doc_num as application FROM documentid WHERE appno_doc_num IN (SELECT appno_doc_num FROM documentid WHERE appno_doc_num <> "" AND  rf_id IN (:rfIDs)) GROUP BY number, application';
             
                             patentList = await connection.application.query(queryAllPatentList,{
                                 type: connection.Sequelize.QueryTypes.SELECT,
