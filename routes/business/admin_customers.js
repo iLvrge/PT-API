@@ -215,6 +215,48 @@ route.put("/customers/:id/users/:user_id", [authJWT.verifyToken, authJWT.isAdmin
     })();    
 });
 
+
+route.put("/customers/:id/logo", [authJWT.verifyToken, authJWT.isAdmin], async (req, res)=>{
+    (async () => {
+        
+        try{
+            let organisationID = req.params.id;
+            if(organisationID > 0){
+                let org = await helpers.findOrganisationbyID( organisationID );
+                if(org != null && org.organisation_id > 0) {
+                    if(req.files != null && req.files.file != null && req.files.file != undefined) {
+                        let mimeType = req.files.file.mimetype;
+                        console.log(mimeType);
+                        if(mimeType.toLowerCase().indexOf('.exe') < 0){
+                            let fileObject = req.files.file;
+                            await fileObject.mv('/var/www/html/PatenTrack/resources/shared/data/'+fileObject.name,function(err) {
+                                if (err){
+                                    return res.status(500).send("ERROR: "+err);	
+                                } else {
+                                    let uploadedFileName = fileObject.name;
+                                    (async () => {
+                                        org.logo =  "https://patentrack.com/resources/shared/data/"+uploadedFileName;
+                                        await org.update({
+                                            logo: "https://patentrack.com/resources/shared/data/"+uploadedFileName
+                                        })
+                                        res.status(200).json(org);
+                                    })();
+                                }
+                            })
+                        } else {
+                            return res.status(400).send("Invalid file format.");	
+                        }
+                    } else {
+                        return res.status(400).send("Please select file first.");	
+                    }
+                }
+            }
+        } catch(e) {
+
+        }
+    })();
+});
+
 /**
  * Get customer by ID
  */
