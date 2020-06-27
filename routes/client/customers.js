@@ -33,11 +33,11 @@ route.get("/:type", [authJWT.verifyToken, clientDBConnection.connect], async(req
                         let allCustomers = [];
                         if(customerType == "employee") {
                             /**Inventors */
-                            const queryEmployee = "SELECT aaa.assignor_and_assignee_id, aaa.name as name, r.representative_name as normalize_name, 'Invented' as type FROM assignor as `or` LEFT JOIN assignor_and_assignee as aaa ON aaa.assignor_and_assignee_id = or.assignor_and_assignee_id LEFT JOIN representative as r ON r.representative_id = aaa.representative_id INNER JOIN (SELECT ee.rf_id FROM db_uspto.assignee as ee INNER JOIN assignment_conveyance as ass ON ass.rf_id = ee.rf_id INNER JOIN  assignor_and_assignee as aa ON aa.assignor_and_assignee_id = ee.assignor_and_assignee_id LEFT JOIN representative as r1 ON r1.representative_id = aa.representative_id WHERE ass.convey_ty = :convey_type AND ass.employer_assign = 1 AND (aa.name = :name OR r1.representative_name=:name)) as temp ON temp.rf_id = or.rf_id GROUP BY or.or_name, normalize_name ORDER BY normalize_name ASC, name ASC";
+                            const queryEmployee = "SELECT aaa.assignor_and_assignee_id, aaa.name as name, r.representative_name as normalize_name, 'Invented' as type FROM assignor as `or` LEFT JOIN assignor_and_assignee as aaa ON aaa.assignor_and_assignee_id = or.assignor_and_assignee_id LEFT JOIN representative as r ON r.representative_id = aaa.representative_id INNER JOIN (SELECT ee.rf_id FROM db_uspto.assignee as ee INNER JOIN assignment_conveyance as ass ON ass.rf_id = ee.rf_id INNER JOIN  assignor_and_assignee as aa ON aa.assignor_and_assignee_id = ee.assignor_and_assignee_id LEFT JOIN representative as r1 ON r1.representative_id = aa.representative_id WHERE ass.convey_ty IN(:convey_type) AND ass.employer_assign = 1 AND (aa.name = :name OR r1.representative_name=:name)) as temp ON temp.rf_id = or.rf_id GROUP BY or.or_name, normalize_name ORDER BY normalize_name ASC, name ASC";
 
                             const getEmployeeData = await connection.application.query(queryEmployee,{
                                 type: connection.Sequelize.QueryTypes.SELECT,
-                                replacements: { name: getCompaniesList[i].original_name, convey_type: 'assignment' },
+                                replacements: { name: getCompaniesList[i].original_name, convey_type: ['assignment', 'employee'] },
                                 raw: true,
                                 logging: console.log,
                                 }
@@ -88,11 +88,15 @@ route.get("/:type", [authJWT.verifyToken, clientDBConnection.connect], async(req
                             allCustomers = [...getPurchaseData, ...getSaleData, ...getMergerInData, ...getMergerOutData];   
                         } else if(customerType == "security") {
                             /** Security, Release */								
-                            const querySecurity = "SELECT aaa.assignor_and_assignee_id, aaa.name as name, r.representative_name as normalize_name, 'Security' as type FROM assignee as ee LEFT JOIN assignor_and_assignee as aaa ON aaa.assignor_and_assignee_id = ee.assignor_and_assignee_id LEFT JOIN representative as r ON r.representative_id = aaa.representative_id INNER JOIN (SELECT or.rf_id FROM assignor as `or` INNER JOIN assignment_conveyance as ass ON ass.rf_id = or.rf_id INNER JOIN  assignor_and_assignee as aa ON aa.assignor_and_assignee_id = or.assignor_and_assignee_id LEFT JOIN representative as r1 ON r1.representative_id = aa.representative_id WHERE ass.convey_ty = :convey_type AND (aa.name = :name OR r1.representative_name = :name) GROUP BY or.rf_id) as temp ON temp.rf_id = ee.rf_id GROUP BY name, normalize_name ORDER BY normalize_name ASC, name ASC ";
-                                console.log(querySecurity);
-                            const queryRelease = "SELECT aaa.assignor_and_assignee_id, aaa.name as name, r.representative_name as normalize_name, 'Release' as type FROM assignor as `or` LEFT JOIN assignor_and_assignee as aaa ON aaa.assignor_and_assignee_id = or.assignor_and_assignee_id LEFT JOIN representative as r ON r.representative_id = aaa.representative_id INNER JOIN (SELECT ee.rf_id FROM assignee as ee INNER JOIN assignment_conveyance as ass ON ass.rf_id = ee.rf_id INNER JOIN  assignor_and_assignee as aa ON aa.assignor_and_assignee_id = ee.assignor_and_assignee_id LEFT JOIN representative as r1 ON r1.representative_id = aa.representative_id WHERE ass.convey_ty = :convey_type AND (aa.name = :name OR r1.representative_name = :name) GROUP BY ee.rf_id) as temp ON temp.rf_id = or.rf_id GROUP BY name, normalize_name ORDER BY normalize_name ASC, name ASC ";
-                            console.log(queryRelease);
-                            const getSecurityData = await connection.application.query(querySecurity,{
+                            const querySecurityOut = "SELECT aaa.assignor_and_assignee_id, aaa.name as name, r.representative_name as normalize_name, 'Security' as type FROM assignee as ee LEFT JOIN assignor_and_assignee as aaa ON aaa.assignor_and_assignee_id = ee.assignor_and_assignee_id LEFT JOIN representative as r ON r.representative_id = aaa.representative_id INNER JOIN (SELECT or.rf_id FROM assignor as `or` INNER JOIN assignment_conveyance as ass ON ass.rf_id = or.rf_id INNER JOIN  assignor_and_assignee as aa ON aa.assignor_and_assignee_id = or.assignor_and_assignee_id LEFT JOIN representative as r1 ON r1.representative_id = aa.representative_id WHERE ass.convey_ty = :convey_type AND (aa.name = :name OR r1.representative_name = :name) GROUP BY or.rf_id) as temp ON temp.rf_id = ee.rf_id GROUP BY name, normalize_name ORDER BY normalize_name ASC, name ASC ";
+
+                            const querySecurityIn = "SELECT aaa.assignor_and_assignee_id, aaa.name as name, r.representative_name as normalize_name, 'Security' as type FROM assignor as `or` LEFT JOIN assignor_and_assignee as aaa ON aaa.assignor_and_assignee_id = or.assignor_and_assignee_id LEFT JOIN representative as r ON r.representative_id = aaa.representative_id INNER JOIN (SELECT ee.rf_id FROM assignee as `ee` INNER JOIN assignment_conveyance as ass ON ass.rf_id = ee.rf_id INNER JOIN  assignor_and_assignee as aa ON aa.assignor_and_assignee_id = ee.assignor_and_assignee_id LEFT JOIN representative as r1 ON r1.representative_id = aa.representative_id WHERE ass.convey_ty = :convey_type AND (aa.name = :name OR r1.representative_name = :name) GROUP BY ee.rf_id) as temp ON temp.rf_id = or.rf_id GROUP BY name, normalize_name ORDER BY normalize_name ASC, name ASC ";
+                                
+                            const queryReleaseOut = "SELECT aaa.assignor_and_assignee_id, aaa.name as name, r.representative_name as normalize_name, 'Release' as type FROM assignor as `or` LEFT JOIN assignor_and_assignee as aaa ON aaa.assignor_and_assignee_id = or.assignor_and_assignee_id LEFT JOIN representative as r ON r.representative_id = aaa.representative_id INNER JOIN (SELECT ee.rf_id FROM assignee as ee INNER JOIN assignment_conveyance as ass ON ass.rf_id = ee.rf_id INNER JOIN  assignor_and_assignee as aa ON aa.assignor_and_assignee_id = ee.assignor_and_assignee_id LEFT JOIN representative as r1 ON r1.representative_id = aa.representative_id WHERE ass.convey_ty = :convey_type AND (aa.name = :name OR r1.representative_name = :name) GROUP BY ee.rf_id) as temp ON temp.rf_id = or.rf_id GROUP BY name, normalize_name ORDER BY normalize_name ASC, name ASC ";
+
+                            const queryReleaseIn = "SELECT aaa.assignor_and_assignee_id, aaa.name as name, r.representative_name as normalize_name, 'Release' as type FROM assignee as `ee` LEFT JOIN assignor_and_assignee as aaa ON aaa.assignor_and_assignee_id = ee.assignor_and_assignee_id LEFT JOIN representative as r ON r.representative_id = aaa.representative_id INNER JOIN (SELECT or.rf_id FROM assignor as `or` INNER JOIN assignment_conveyance as ass ON ass.rf_id = or.rf_id INNER JOIN  assignor_and_assignee as aa ON aa.assignor_and_assignee_id = or.assignor_and_assignee_id LEFT JOIN representative as r1 ON r1.representative_id = aa.representative_id WHERE ass.convey_ty = :convey_type AND (aa.name = :name OR r1.representative_name = :name) GROUP BY or.rf_id) as temp ON temp.rf_id = ee.rf_id GROUP BY name, normalize_name ORDER BY normalize_name ASC, name ASC ";
+                            
+                            const getSecurityDataOut = await connection.application.query(querySecurityOut,{
                                 type: connection.Sequelize.QueryTypes.SELECT,
                                 replacements: { name: getCompaniesList[i].original_name, convey_type: 'security' },
                                 raw: true,
@@ -100,7 +104,23 @@ route.get("/:type", [authJWT.verifyToken, clientDBConnection.connect], async(req
                               }
                             );
 
-                            const getReleaseData = await connection.application.query(queryRelease,{
+                            const getSecurityDataIn = await connection.application.query(querySecurityIn,{
+                                type: connection.Sequelize.QueryTypes.SELECT,
+                                replacements: { name: getCompaniesList[i].original_name, convey_type: 'security' },
+                                raw: true,
+                                logging: console.log,
+                              }
+                            );
+
+                            const getReleaseDataOut = await connection.application.query(queryReleaseOut,{
+                                type: connection.Sequelize.QueryTypes.SELECT,
+                                replacements: { name: getCompaniesList[i].original_name, convey_type: 'release' },
+                                raw: true,
+                                logging: console.log,
+                              }
+                            );
+
+                            const getReleaseDataIn = await connection.application.query(queryReleaseOut,{
                                 type: connection.Sequelize.QueryTypes.SELECT,
                                 replacements: { name: getCompaniesList[i].original_name, convey_type: 'release' },
                                 raw: true,
@@ -108,7 +128,7 @@ route.get("/:type", [authJWT.verifyToken, clientDBConnection.connect], async(req
                               }
                             );
                             
-                            allCustomers = [...getSecurityData, ...getReleaseData];
+                            allCustomers = [...getSecurityDataOut, ...getSecurityDataIn, ...getReleaseDataOut, ...getReleaseDataIn];
                         } else if(customerType == "other") {
                             /*other, namechg, missing, govern*/
                             const queryNameChange = "SELECT aaa.assignor_and_assignee_id, aaa.name as name, r.representative_name as normalize_name, 'Name Change' as type FROM assignor as `or` LEFT JOIN assignor_and_assignee as aaa ON aaa.assignor_and_assignee_id = or.assignor_and_assignee_id LEFT JOIN representative as r ON r.representative_id = aaa.representative_id INNER JOIN (SELECT ee.rf_id FROM assignee as ee INNER JOIN assignment_conveyance as ass ON ass.rf_id = ee.rf_id INNER JOIN  assignor_and_assignee as aa ON aa.assignor_and_assignee_id = ee.assignor_and_assignee_id LEFT JOIN representative as r1 ON r1.representative_id = aa.representative_id WHERE ass.convey_ty = :convey_type AND (aa.name = :name OR r1.representative_name = :name) GROUP BY ee.rf_id) as temp ON temp.rf_id = or.rf_id GROUP BY name, normalize_name ORDER BY normalize_name ASC, name ASC ";
