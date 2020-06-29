@@ -15,6 +15,22 @@ route.get("/collections/:rf_id/illustration", [authJWT.verifyToken], async (req,
     if(rfID > 0) {
         const itemDetails = await helpers.getAssignmentDataByrfID(rfID.toString().trim());
         let boxes = [], connections = [], execDate = '', execDate1 = '', fakeDate = '', title = "";
+        const box = [
+            {id:1,segment:0,border_color:'#363636',border_px:'1',background_color:'#222222',dimension:'100x30',type:'Inventor',shape:'rectangle'},
+            {id:2,segment:1,border_color:'#363636',border_px:'1',background_color:'#222222',dimension:'100x30',type:'Ownership',shape:'rectangle'},
+            {id:3,segment:2,border_color:'#363636',border_px:'1',background_color:'#222222',dimension:'100x30',type:'Security',shape:'rectangle'},
+            {id:4,segment:3,border_color:'#363636',border_px:'1',background_color:'#222222',dimension:'100x30',type:'Licenses',shape:'rectangle'},
+            {id:5,segment:3,border_color:'#363636',border_px:'1',background_color:'#222222',dimension:'100x30',type:'3rdParties',shape:'rectangle'}
+        ];
+
+        const line = [
+            {id:2,name:'Ownership',color:'#E60000',line_type:0,segment:1,order_no:1,explanation:''},
+            {id:3,name:'Name Change',color:'#2493f2',line_type:0,segment:1,order_no:2,explanation:''},
+            {id:4,name:'Security',color:'#ffaa00',line_type:0,segment:2,order_no:3,explanation:''},
+            {id:5,name:'License',color:'#E6E600',line_type:0,segment:2,order_no:4,explanation:''},
+            {id:7,name:'Release',color:'#70A800',line_type:0,segment:3,order_no:5,explanation:''},
+            {id:8,name:'License End',color:'#E38B4F',line_type:0,segment:1,order_no:6,explanation:''}
+        ];
         if(itemDetails !== undefined && itemDetails.assignor.length > 0) {
             title = itemDetails.assignment.convey_text;
             itemDetails.assignor.forEach( (assignor, index) => {
@@ -50,25 +66,6 @@ route.get("/collections/:rf_id/illustration", [authJWT.verifyToken], async (req,
                     type = "Ownership";
                     segment = 1;
                 }
-
-                const box = [
-                    {id:1,segment:0,border_color:'#363636',border_px:'1',background_color:'#222222',dimension:'100x30',type:'Inventor',shape:'rectangle'},
-                    {id:2,segment:1,border_color:'#363636',border_px:'1',background_color:'#222222',dimension:'100x30',type:'Ownership',shape:'rectangle'},
-                    {id:3,segment:2,border_color:'#363636',border_px:'1',background_color:'#222222',dimension:'100x30',type:'Security',shape:'rectangle'},
-                    {id:4,segment:3,border_color:'#363636',border_px:'1',background_color:'#222222',dimension:'100x30',type:'Licenses',shape:'rectangle'},
-                    {id:5,segment:3,border_color:'#363636',border_px:'1',background_color:'#222222',dimension:'100x30',type:'3rdParties',shape:'rectangle'}
-                ];
-
-                const line = [
-                    {id:2,name:'Ownership',color:'#E60000',line_type:0,segment:1,order_no:1,explanation:''},
-                    {id:3,name:'Name Change',color:'#2493f2',line_type:0,segment:1,order_no:2,explanation:''},
-                    {id:4,name:'Security',color:'#ffaa00',line_type:0,segment:2,order_no:3,explanation:''},
-                    {id:5,name:'License',color:'#E6E600',line_type:0,segment:2,order_no:4,explanation:''},
-                    {id:7,name:'Release',color:'#70A800',line_type:0,segment:3,order_no:5,explanation:''},
-                    {id:8,name:'License End',color:'#E38B4F',line_type:0,segment:1,order_no:6,explanation:''}
-                ];
-
-                
 
                 inventorDetails = box.filter( x => x.type === type ? x : '');
                 if(inventorDetails !== ''){
