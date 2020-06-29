@@ -226,6 +226,9 @@ route.get("/:parentCompany/:name/collections/:tabId",[authJWT.verifyToken], asyn
                 let allReelFrames = [...getAssignorData, ...getAssigneeData];
                 
                 if(allReelFrames.length > 0) {
+                    allReelFrames.sort(function (a, b) {
+                        return a.name - b.name;
+                    });
                     let allReel = [];
                     console.log(allReelFrames);
                     if(allReelFrames.length > 0) {
@@ -237,10 +240,6 @@ route.get("/:parentCompany/:name/collections/:tabId",[authJWT.verifyToken], asyn
                                 newReel.level = 2;
                                 await allFrames.push(newReel);
                             }
-                        });
-
-                        allReelFrames.sort(function (a, b) {
-                            return a.name - b.name;
                         });
                     }
                 }
