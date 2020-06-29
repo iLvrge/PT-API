@@ -120,7 +120,7 @@ route.get("/:type", [authJWT.verifyToken, clientDBConnection.connect], async(req
                               }
                             );
 
-                            const getReleaseDataIn = await connection.application.query(queryReleaseOut,{
+                            const getReleaseDataIn = await connection.application.query(queryReleaseIn,{
                                 type: connection.Sequelize.QueryTypes.SELECT,
                                 replacements: { name: getCompaniesList[i].original_name, convey_type: 'release' },
                                 raw: true,
@@ -167,8 +167,22 @@ route.get("/:type", [authJWT.verifyToken, clientDBConnection.connect], async(req
                                     await org.child.push({id:customer.assignor_and_assignee_id, name: name, type: customer.type, level: 1});
                                 }
                             });
+
+                            allCustomers.sort(function(a, b) {
+                                var nameA = a.name.toUpperCase(); // ignore upper and lowercase
+                                var nameB = b.name.toUpperCase(); // ignore upper and lowercase
+                                if (nameA < nameB) {
+                                  return -1;
+                                }
+                                if (nameA > nameB) {
+                                  return 1;
+                                }                              
+                                // names must be equal
+                                return 0;
+                            });
+
                         }
-                        console.log(org);
+                        /*console.log(org);*/
                         subsidariesAndCustomer.push(org);
                     }
                 }
@@ -225,6 +239,10 @@ route.get("/:parentCompany/:name/collections/:tabId",[authJWT.verifyToken], asyn
                                 newReel.level = 2;
                                 await allFrames.push(newReel);
                             }
+                        });
+
+                        items.sort(function (a, b) {
+                            return a.name - b.name;
                         });
                     }
                 }
