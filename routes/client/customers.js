@@ -34,7 +34,7 @@ route.get("/:type", [authJWT.verifyToken, clientDBConnection.connect], async(req
                         if(customerType == "employee") {
                             /**Inventors */
                             const queryEmployee = "SELECT aaa.assignor_and_assignee_id, aaa.name as name, r.representative_name as normalize_name, 'Invented' as type FROM assignor as `or` LEFT JOIN assignor_and_assignee as aaa ON aaa.assignor_and_assignee_id = or.assignor_and_assignee_id LEFT JOIN representative as r ON r.representative_id = aaa.representative_id INNER JOIN (SELECT ee.rf_id FROM db_uspto.assignee as ee INNER JOIN assignment_conveyance as ass ON ass.rf_id = ee.rf_id INNER JOIN  assignor_and_assignee as aa ON aa.assignor_and_assignee_id = ee.assignor_and_assignee_id LEFT JOIN representative as r1 ON r1.representative_id = aa.representative_id WHERE ass.convey_ty IN(:convey_type) AND ass.employer_assign = 1 AND (aa.name = :name OR r1.representative_name=:name)) as temp ON temp.rf_id = or.rf_id GROUP BY or.or_name, normalize_name ORDER BY normalize_name ASC, name ASC";
-
+                            console.log(queryEmployee);
                             const getEmployeeData = await connection.application.query(queryEmployee,{
                                 type: connection.Sequelize.QueryTypes.SELECT,
                                 replacements: { name: getCompaniesList[i].original_name, convey_type: ['assignment', 'employee'] },
