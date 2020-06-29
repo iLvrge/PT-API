@@ -24,12 +24,12 @@ route.get("/collections/:rf_id/illustration", [authJWT.verifyToken], async (req,
         ];
 
         const line = [
-            {id:2,name:'Ownership',color:'#E60000',line_type:0,segment:1,order_no:1,explanation:''},
-            {id:3,name:'Name Change',color:'#2493f2',line_type:0,segment:1,order_no:2,explanation:''},
-            {id:4,name:'Security',color:'#ffaa00',line_type:0,segment:2,order_no:3,explanation:''},
-            {id:5,name:'License',color:'#E6E600',line_type:0,segment:2,order_no:4,explanation:''},
-            {id:7,name:'Release',color:'#70A800',line_type:0,segment:3,order_no:5,explanation:''},
-            {id:8,name:'License End',color:'#E38B4F',line_type:0,segment:1,order_no:6,explanation:''}
+            {id:2,name:'Ownership',tooltip:"Ownership",color:'#E60000',line_type:0,segment:1,order_no:1,explanation:''},
+            {id:3,name:'Name Change',tooltip:'Name Change',color:'#2493f2',line_type:0,segment:1,order_no:2,explanation:''},
+            {id:4,name:'Security',tooltip:'Security',color:'#ffaa00',line_type:0,segment:2,order_no:3,explanation:''},
+            {id:5,name:'License',tooltip:'License',color:'#E6E600',line_type:0,segment:2,order_no:4,explanation:''},
+            {id:7,name:'Release',tooltip:'Release',color:'#70A800',line_type:0,segment:3,order_no:5,explanation:''},
+            {id:8,name:'License End',tooltip:'License End',color:'#E38B4F',line_type:0,segment:1,order_no:6,explanation:''}
         ];
         if(itemDetails !== undefined && itemDetails.assignor.length > 0) {
             title = itemDetails.assignment.convey_text;
