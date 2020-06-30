@@ -105,7 +105,7 @@ route.get("/errors/:type/:companyName", [authJWT.verifyToken, clientDBConnection
                             const getList = [];
                             getErrors.map(e => getList.push(e.appno_doc_num));
 
-                            const queryErrorList = `SELECT d.appno_doc_num, ass.record_dt, ass.cname as name FROM documentid as d INNER JOIN assignment as ass ON ass.rf_id = d.rf_id WHERE d.appno_doc_num IN(:appNo) ORDER BY ass.record_dt DESC`;
+                            const queryErrorList = `SELECT d.appno_doc_num, ass.record_dt, ass.cname as name FROM documentid as d INNER JOIN assignment as ass ON ass.rf_id = d.rf_id WHERE d.appno_doc_num IN(:appNo) GROUP BY d.appno_doc_num ORDER BY ass.record_dt DESC`;
 
                             getErrorList = await connection.application.query(queryErrorList,{
                                 type: connection.Sequelize.QueryTypes.SELECT,
