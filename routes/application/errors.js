@@ -67,17 +67,32 @@ route.get("/errors/:type/:companyName", [authJWT.verifyToken, clientDBConnection
                     logging: console.log,
                     }
                 ); 
-
+                let getErrorList = [];
                 if(findParent != null && findParent.representative_id > 0) {
                     const queryErrorList = "SELECT e.* , ass.record_dt, ass.cname as name FROM error as e INNER JOIN documentid as d ON d.appno_doc_num = e.appno_doc_num INNER JOIN assignment as ass ON ass.rf_id = d.rf_id WHERE e.organisation_id = :organisationID AND e.representative_id = :representative_id GROUP BY e.appno_doc_num ORDER BY ass.record_dt DESC";
 
-                    const getErrorList = await connection.application.query(queryErrorList,{
+                    const queryError = "SELECT appno_doc_num FROM error as e WHERE e.organisation_id = :organisationID AND e.representative_id = :representative_id GROUP BY e.appno_doc_num";
+                    const getErrors= await connection.application.query(queryError,{
                         type: connection.Sequelize.QueryTypes.SELECT,
                         raw: true,
                         replacements: { organisationID: req.orgId, representative_id: findParent.representative_id },
                         logging: console.log,
-                    }
-                    );        
+                    });  
+
+                    if(getErrors != null && getErrors.length > 0) {
+                        const getList = [];
+                        getErrors.map(e => getList.push(e.appno_doc_num));
+
+                        const queryErrorList = "SELECT d.appno_doc_num, ass.record_dt, ass.cname as name FROM documentid as d LEFT JOIN assignment as ass ON ass.rf_id = d.rf_id WHERE d.appno_doc_num IN(:appNo) ORDER BY ass.record_dt DESC";
+
+                        getErrorList = await connection.application.query(queryErrorList,{
+                            type: connection.Sequelize.QueryTypes.SELECT,
+                            raw: true,
+                            replacements: { appNo: getList },
+                            logging: console.log,
+                            }
+                        );
+                    }       
                     res.status(200).json({invent:getErrorList, assign: [], corr: [], address: [], security: []});
                 } else {
                     res.status(200).json({invent:[], assign: [], corr: [], address: [], security: []});
