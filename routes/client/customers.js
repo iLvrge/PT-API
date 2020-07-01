@@ -29,7 +29,7 @@ route.get("/:type", [authJWT.verifyToken, clientDBConnection.connect], async(req
                 const customerType = req.params.type;					
                 if(customerType != "") {                    
                     for(let i = 0; i < getCompaniesList.length; i++) {
-                        let org = {id:getCompaniesList[i].representative_id, name: getCompaniesList[i].original_name, child:[], level: 0};
+                        let org = {id:getCompaniesList[i].representative_id, name: getCompaniesList[i].original_name, children:[], level: 0};
                         let allCustomers = [];
                         if(customerType == "employee") {
                             /**Inventors */
@@ -176,7 +176,7 @@ route.get("/:type", [authJWT.verifyToken, clientDBConnection.connect], async(req
                                     }
                                 if( !customers.includes(name) ){
                                     customers.push( name );
-                                    await org.child.push({id:customer.assignor_and_assignee_id, name: name, type: customer.type, level: 1});
+                                    await org.children.push({id:customer.assignor_and_assignee_id, name: name, type: customer.type, level: 1, loadOnDemand: true});
                                 }
                             });
                         }
