@@ -81,7 +81,6 @@ route.get("/", [authJWT.verifyToken], async(req, res, next) => {
 
 route.get("/:organisation/:name/:depth", [authJWT.verifyToken], async(req, res, next) => {
     try{
-        //console.log(1);
         const organisationData = await helpers.findOrganisationbyID(req.orgId);
 
         if(organisationData != null && organisationData.organisation_id > 0){
