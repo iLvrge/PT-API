@@ -29,7 +29,7 @@ route.get("/:type", [authJWT.verifyToken, clientDBConnection.connect], async(req
                 const customerType = req.params.type;					
                 if(customerType != "") {                    
                     for(let i = 0; i < getCompaniesList.length; i++) {
-                        let org = {id:getCompaniesList[i].representative_id, name: getCompaniesList[i].original_name, children:[], level: 0, state: 'opened'};
+                        let org = {id:getCompaniesList[i].representative_id, name: getCompaniesList[i].original_name, children:[], level: 0};
                         let allCustomers = [];
                         if(customerType == "employee") {
                             /**Inventors */
