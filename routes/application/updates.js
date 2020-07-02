@@ -40,7 +40,7 @@ route.get("/updates/:companyName", [authJWT.verifyToken, clientDBConnection.conn
 
                 if(findParent != null && findParent.representative_id > 0) {
                     Updates.findOne({
-                        attributes:['weekly', 'monthly', 'quaterly'],
+                        attributes:['weekly_transactions', 'weekly_applications', 'monthly_transactions', 'montly_applications', 'quaterly_transactions', 'quaterly_applications'],
                         where: {organisation_id: req.orgId, representative_id: findParent.representative_id}
                     })
                     .then((list)=>{
