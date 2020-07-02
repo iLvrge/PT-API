@@ -13,11 +13,31 @@ const Transactions = connection.application.define('transaction',{
         type: Sequelize.INTEGER,
         allowNull: false,
     },
-    transaction_type:{
-        type: Sequelize.STRING,
-        allowNull: true,
+    representative_id:{
+        type: Sequelize.INTEGER,
+        allowNull: false,
     },
-    transaction_count:{
+    buy:{
+        type: Sequelize.INTEGER,
+        allowNull: false,
+    },
+    sale:{
+        type: Sequelize.INTEGER,
+        allowNull: false,
+    },
+    security:{
+        type: Sequelize.INTEGER,
+        allowNull: false,
+    },
+    release:{
+        type: Sequelize.INTEGER,
+        allowNull: false,
+    },
+    license_in:{
+        type: Sequelize.INTEGER,
+        allowNull: false,
+    },
+    license_out:{
         type: Sequelize.INTEGER,
         allowNull: false,
     },

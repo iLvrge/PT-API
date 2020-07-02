@@ -24,22 +24,39 @@ route.get("/updates/:companyName", [authJWT.verifyToken, clientDBConnection.conn
         }
     }
 
-    if(companyName != 'undefined') {
+    if(companyName != 'undefined' || companyName == 0) {
         if(typeof req.connection_db != "undefined" && req.connection_db != null ) {
-            const queryFindParent = "SELECT representative_id FROM representative WHERE (original_name = :name OR representative_name = :name) AND parent_id = 0";
-            
-            const findParent = await req.connection_db.query(queryFindParent,{
-                type: connection.Sequelize.QueryTypes.SELECT,
-                replacements: { name: companyName },
-                raw: true,
-                plain: true,
-                logging: console.log,
-                }
-            ); 
+            if(companyName != 'undefined' && companyName != 0) {
+                const queryFindParent = "SELECT representative_id FROM representative WHERE (original_name = :name OR representative_name = :name) AND parent_id = 0";
+                
+                const findParent = await req.connection_db.query(queryFindParent,{
+                    type: connection.Sequelize.QueryTypes.SELECT,
+                    replacements: { name: companyName },
+                    raw: true,
+                    plain: true,
+                    logging: console.log,
+                    }
+                ); 
 
-            if(findParent != null && findParent.representative_id > 0) {
-                Updates.findAll({
-                    where: {organisation_id: req.orgId, representative_id: findParent.representative_id}
+                if(findParent != null && findParent.representative_id > 0) {
+                    Updates.findOne({
+                        attributes:['weekly', 'monthly', 'quaterly'],
+                        where: {organisation_id: req.orgId, representative_id: findParent.representative_id}
+                    })
+                    .then((list)=>{
+                        res.status(200).json(list);
+                    }).catch((err)=>{
+                        console.log(err);
+                        res.status(500).json({message: "Unable to retrieve transactions"})
+                    });
+                } else {
+                    res.status(200).json({weekly: 0, monthly: 0, quaterly: 0});
+                }
+            } else {
+                Updates.findOne({
+                    attributes:[[connection.application.fn('sum', connection.application.col('weekly_transactions')), 'weekly_transactions'], [connection.application.fn('sum', connection.application.col('weekly_applications')), 'weekly_applications'], [connection.application.fn('sum', connection.application.col('monthly_transactions')), 'monthly_transactions'], [connection.application.fn('sum', connection.application.col('montly_applications')), 'montly_applications'], [connection.application.fn('sum', connection.application.col('quaterly_transactions')), 'quaterly_transactions'], [connection.application.fn('sum', connection.application.col('quaterly_applications')), 'quaterly_applications']],
+                    where: {organisation_id: req.orgId},
+                    group: ["organisation_id"]
                 })
                 .then((list)=>{
                     res.status(200).json(list);
@@ -47,14 +64,12 @@ route.get("/updates/:companyName", [authJWT.verifyToken, clientDBConnection.conn
                     console.log(err);
                     res.status(500).json({message: "Unable to retrieve transactions"})
                 });
-            } else {
-                res.status(200).json([]);
             }
         } else {
-            res.status(200).json([]);
+            res.status(200).json({weekly_transactions: 0, weekly_applications: 0, monthly_transactions: 0, montly_applications: 0, quaterly_transactions: 0, quaterly_applications: 0});
         }
     } else {
-        res.status(200).json([]);
+        res.status(200).json({weekly_transactions: 0, weekly_applications: 0, monthly_transactions: 0, montly_applications: 0, quaterly_transactions: 0, quaterly_applications: 0});
     }    
 });
 

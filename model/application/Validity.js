@@ -13,12 +13,24 @@ const Validity = connection.application.define('validity',{
         type: Sequelize.INTEGER,
         allowNull: false,
     },
-    validity_type:{
-        type: Sequelize.STRING,
-        allowNull: true,
-    },
-    validity_count:{
+    representative_id:{
         type: Sequelize.INTEGER,
+        allowNull: false,
+    },
+    application:{
+        type: Sequelize.INTEGER,
+        allowNull: false,
+    },
+    patent:{
+        type: Sequelize.INTEGER,
+        allowNull: false,
+    },
+    encumbered:{
+        type: Sequelize.INTEGER,
+        allowNull: false,
+    },
+    list:{
+        type: Sequelize.STRING,
         allowNull: false,
     }
 },

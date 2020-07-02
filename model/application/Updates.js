@@ -13,19 +13,39 @@ const Updates = connection.application.define('update',{
         type: Sequelize.INTEGER,
         allowNull: false,
     },
-    update_type:{
-        type: Sequelize.STRING,
+    representative_id:{
+        type: Sequelize.INTEGER,
+        allowNull: false,
+    },
+    weekly_transactions:{
+        type: Sequelize.INTEGER,
         allowNull: true,
     },
-    update_assignment_count:{
+    weekly_applications:{
         type: Sequelize.INTEGER,
+        allowNull: true,
+    },
+    monthly_transactions:{
+        type: Sequelize.INTEGER,
+        allowNull: true,
+    },
+    montly_applications:{
+        type: Sequelize.INTEGER,
+        allowNull: true,
+    },
+    quaterly_transactions:{
+        type: Sequelize.INTEGER,
+        allowNull: true,
+    },
+    quaterly_applications:{
+        type: Sequelize.INTEGER,
+        allowNull: true,
+    },
+    update_transaction_list:{
+        type: Sequelize.STRING,
         allowNull: false,
     },
-    update_asset_count:{
-        type: Sequelize.INTEGER,
-        allowNull: false,
-    },
-    update_list:{
+    update_liupdate_application_listst:{
         type: Sequelize.STRING,
         allowNull: false,
     }
