@@ -9,13 +9,17 @@ const app = express();
 
 const upload = require("express-fileupload");
 
-app.use(bodyParser.json());
+app.use(express.json({limit: '100mb', type:'application/json'}));
+app.use(express.urlencoded({limit: '100mb', extended:false, parameterLimit:100000, type:'application/x-www-form-urlencoded'}));
+
+app.use(bodyParser.json({limit: '100mb', type:'application/json'}));
+app.use(bodyParser.urlencoded({limit: '100mb', extended:false, parameterLimit:100000, type:'application/x-www-form-urlencoded'}));
 
 app.use(upload());
 
 app.use(cors());
 
-app.use(bodyParser.urlencoded({extended:false}));
+/**nginx client_max_body_size 100M; #100mb */
 
 const port = process.env.PORT || 3600;
 /**
