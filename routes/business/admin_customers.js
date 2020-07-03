@@ -540,8 +540,8 @@ route.get("/customers/:organisation_id/publish", [authJWT.verifyToken, authJWT.i
                                 console.log(error);
                                 console.log(stderr);
                                 console.log(stdout);
-                                console.log(`php -f /var/www/html/trash/find_missing_inventor.php "${companyName}"`);
-                                await exec(`php -f /var/www/html/trash/find_missing_inventor.php "${companyName}"`, (error, stdd, stderr)=> {
+                                console.log(`php -f /var/www/html/trash/find_missing_inventor.php "${organisationID}" ""`);
+                                await exec(`php -f /var/www/html/trash/find_missing_inventor.php "${organisationID}" ""`, (error, stdd, stderr)=> {
                                     console.log("find_missing_inventor....")
                                     console.log(error);
                                     console.log(stderr);

@@ -269,11 +269,7 @@ route.get("/:parentCompany/:name/collections/:tabId",[authJWT.verifyToken], asyn
 
 route.get("/:rf_id/assets",[authJWT.verifyToken], async(req, res, next) => {   
     try{
-        if(req.orgId == 46) {
-            req.orgId = 9
-        }else if(req.orgId == 52) {
-            req.orgId = 10;
-        }
+        
         const organisationData = await helpers.findOrganisationbyID(req.orgId);
         let allPatents = [];
         if(organisationData != null && organisationData.organisation_id > 0){

@@ -181,6 +181,22 @@ route.post("/", [authJWT.verifyToken, clientDBConnection.connect], async(req, re
                                         console.log(error);
                                         console.log(stdout);
                                         console.log(stderr);
+                                        console.log(`php -f /var/www/html/trash/find_missing_inventor.php "${req.orgId}" "${findName.representative_id}"`);
+                                        await exec(`php -f /var/www/html/trash/find_missing_inventor.php "${req.orgId}" "${findName.representative_id}"`, (error, stdd, stderr)=> {
+                                            console.log("find_missing_inventor....")
+                                            console.log(error);
+                                            console.log(stderr);
+                                            console.log(stdout);
+                                            console.log("DONE>>>>>>>>>>>");
+                                            console.log(`php -f /var/www/html/trash/download_all_pdf.php "${name}"`);
+                                            exec(`php -f /var/www/html/trash/download_all_pdf.php "${name}"`, (error, stdd, stderr)=> {
+                                                console.log("donwload_all_pdf....")
+                                                console.log(error); 
+                                                console.log(stderr);
+                                                console.log(stdout);
+                                                console.log("DONE");
+                                            });
+                                        });
                                     })
                                 });
                                 res.status(200).json(companies);
@@ -225,7 +241,7 @@ route.post("/", [authJWT.verifyToken, clientDBConnection.connect], async(req, re
                             where: whereC
                         });
                         if(findParentCompanies.length == 0) {
-                            let addRecord = 0,  mainCompanies = [];                   
+                            let addRecord = 0,  mainCompanies = [], parentCompaniesID = [];                   
                             for(let i = 0; i < companies.length; i++) {
     
                                 /** Add in Client Representative */
@@ -233,6 +249,7 @@ route.post("/", [authJWT.verifyToken, clientDBConnection.connect], async(req, re
                                     original_name: companies[i].original_name, representative_name: companies[i].representative_name, instances: companies[i].instances
                                 });
                                 if(addParent != null && addParent.representative_id > 0){
+                                    parentCompaniesID.push(addParent.representative_id);
                                     let nameR = companies[i].representative_id > 0 ? companies[i].representative_name : companies[i].original_name;
     
                                     mainCompanies.push(nameR);
@@ -265,12 +282,28 @@ route.post("/", [authJWT.verifyToken, clientDBConnection.connect], async(req, re
                             }
                             if(addRecord > 0) {
                                 if(mainCompanies.length > 0){
-                                    mainCompanies.map(async company => {
+                                    mainCompanies.map(async (company, index) => {
                                         console.log(`php -f /var/www/html/trash/tree_script.php "${company}"`);
                                         await exec(`php -f /var/www/html/trash/tree_script.php "${company}"`, async (error, stdout, stderr) => {
                                             console.log(error);
                                             console.log(stdout);
                                             console.log(stderr);
+                                            console.log(`php -f /var/www/html/trash/find_missing_inventor.php "${req.orgId}" "${parentCompaniesID[index]}"`);
+                                            await exec(`php -f /var/www/html/trash/find_missing_inventor.php "${req.orgId}" "${parentCompaniesID[index]}"`, (error, stdd, stderr)=> {
+                                                console.log("find_missing_inventor....")
+                                                console.log(error);
+                                                console.log(stderr);
+                                                console.log(stdout);
+                                                console.log("DONE>>>>>>>>>>>");
+                                                console.log(`php -f /var/www/html/trash/download_all_pdf.php "${company}"`);
+                                                exec(`php -f /var/www/html/trash/download_all_pdf.php "${company}"`, (error, stdd, stderr)=> {
+                                                    console.log("donwload_all_pdf....")
+                                                    console.log(error);
+                                                    console.log(stderr);
+                                                    console.log(stdout);
+                                                    console.log("DONE");
+                                                });
+                                            });
                                         })
                                     });
                                 }
