@@ -78,12 +78,11 @@ route.get("/customers/:id", [authJWT.verifyToken, authJWT.isAdmin], (req, res, n
 /**
  * Get Customer assignor and assignees
  */
-route.get("/customers/customers/:company_name", [authJWT.verifyToken, authJWT.isAdmin], (req, res, next) => {
+route.get("/customers/customers/:company_name/:type", [authJWT.verifyToken, authJWT.isAdmin], (req, res, next) => {
     (async () => {
-        try{
-            
-            let companyName = req.params.company_name;
-            let list = await helpers.findCompanyCustomersByName(companyName);
+        try{            
+            const companyName = req.params.company_name, type = req.params.type;
+            let list = await helpers.findCompanyCustomersByName(companyName, type);
             res.status(200).json(list);
         } catch (e){
             console.log(e);
