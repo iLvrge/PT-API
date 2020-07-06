@@ -176,7 +176,7 @@ route.get("/:type", [authJWT.verifyToken, clientDBConnection.connect], async(req
                                     }
                                 if( !customers.includes(name) ){
                                     customers.push( name );
-                                    await org.children.push({id:customer.assignor_and_assignee_id, name: name, type: customer.type, level: 1, loadOnDemand: true, state: 'closed'});
+                                    await org.children.push({id:customer.assignor_and_assignee_id, name: name, type: customer.type, level: 1, loadOnDemand: true, state: 'closed',parent_id: getCompaniesList[i].representative_id});
                                 }
                             });
                         }
