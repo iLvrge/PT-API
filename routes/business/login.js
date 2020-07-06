@@ -1,5 +1,9 @@
 const express = require("express");
 
+const crypto = require('crypto');
+
+const nodemailer = require("nodemailer");
+
 const   jwt = require('jsonwebtoken'),
         bcrypt = require('bcrypt');
 
@@ -39,6 +43,106 @@ route.post("/signin", (req, res, next) => {
     }).catch(err => {
         console.log(err);
         res.status(400).send('Bad request');
+    });
+});
+
+route.post("/forgot_password", (req, res) => {
+    console.log("reset");
+    User.findOne({
+        where: {
+            username: req.body.username,
+            status:0
+        }
+     }).then(user => {
+        if(user != null && user.id > 0) {
+            const token = crypto.randomBytes(20).toString('hex');
+             /*key = crypt.getRandomKey()*/
+            console.log("TOKEN"+ token);
+            user.update({
+                authentication_code: token,
+                auth_token_expire: Date.now() + 3600000
+            })
+            .then( u => {
+                console.log(u);
+                console.log("INMAIL");
+                const transporter = nodemailer.createTransport({
+                    service: 'gmail',
+                    auth:{
+                        user: 'webmaster@synpat.com',
+                        pass: 'M1c0s0ft@123'
+                    }
+                 });
+                const mailOptions = {
+                     from: 'webmaster@synpat.com',
+                     to: `${user.email_address}`,
+                     subject: 'Link to reset password for PatenTrack.com',
+                     text: `You are receiving this because you have requested to reset of the password for your account.\n\n Please click on the following link, or paste this into your browser to complete the process within one hour of receiving it. \n\n https://patentrack.com/?t=reset&e=${user.email_address}&auth=${token} \n\n If you did not request this, please ignore this email and your password will remain unchanged. \n Thanks \n Team PatenTrack`
+                }
+                 console.log('Sending mail');
+                 transporter.sendMail(mailOptions, (err, response) => {
+                    if(err) {
+                        console.log("Error while sending email "+ err);
+                        res.status(500).send('Email not sent.');
+                    } else {
+                        res.status(200).send('Email sent.');
+                    }
+                });					
+            });				
+        } else {
+            res.status(402).send('Invalid email request');
+        }            
+    }).catch(err => {
+        console.log("Error: "+err);
+        res.status(400).send('Bad request');
+    });
+});
+
+route.get("/reset/:code", (req, res) => {
+    User.findOne({
+        where: {authentication_code: req.params.code, auth_token_expire: {[config.Op.gte]: Date.now()}}
+    })
+    .then( user => {
+        if(user == null) {
+            res.status(402).send("Password reset link is invalid.");
+        } else {
+            res.status(200).json({
+                token: req.params.code
+            });
+        }
+    }).catch(err => {
+        console.log("Error: "+err);
+        res.status(400).send('Password reset link is invalid.');
+    });
+});
+
+route.post("/update_password_via_email", (req, res) => {
+    User.findOne({
+        where: {authentication_code: req.body.code, auth_token_expire: {[config.Op.gte]: Date.now()}}
+    })
+    .then( user => {
+        if(user == null) {
+            res.status(402).send("Password reset link is invalid.");
+        } else {
+            if(req.body.password == req.body.confirm_password) {
+                user.update({
+                    authentication_code: '',
+                    auth_token_expire: null,
+                    password: bcrypt.hashSync(req.body.password, 8), 
+                })
+                .then( u => {
+                    console.log("Password Updated");
+                    res.status(200).send('Password updated.');
+                }).catch(err => {
+                    console.log("Error: "+err);
+                    res.status(500).send('Internal server error');
+                });
+            } else {
+                res.status(400).send('Password and confirm password not matched.');
+            }				
+        }
+    }).catch(err => {
+        console.log("Error: "+err);
+        res.status(400).send('Password reset link is invalid.');
     });
 });
 
