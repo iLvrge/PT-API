@@ -54,7 +54,7 @@ route.post("/forgot_password", (req, res) => {
             status:0
         }
      }).then(user => {
-        if(user != null && user.id > 0) {
+        if(user != null && user.user_id > 0) {
             const token = crypto.randomBytes(20).toString('hex');
              /*key = crypt.getRandomKey()*/
             console.log("TOKEN"+ token);
