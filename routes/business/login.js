@@ -131,18 +131,18 @@ route.post("/update_password_via_email", (req, res) => {
                 })
                 .then( u => {
                     console.log("Password Updated");
-                    res.status(200).send('Password updated.');
+                    res.status(200).json({message: 'Password updated.'});
                 }).catch(err => {
                     console.log("Error: "+err);
-                    res.status(500).send('Internal server error');
+                    res.status(500).json({message: 'Internal server error'});
                 });
             } else {
-                res.status(400).send('Password and confirm password not matched.');
+                res.status(400).json({message: 'Password and confirm password not matched.'});
             }				
         }
     }).catch(err => {
         console.log("Error: "+err);
-        res.status(400).send('Password reset link is invalid.');
+        res.status(400).send({message: 'Password reset link is invalid.'});
     });
 });
 
