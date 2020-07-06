@@ -25,13 +25,13 @@ route.post("/signin", (req, res, next) => {
         }
     }).then(user => {
         if (!user) {
-            return res.status(401).send("Invalid Username and/or Password!");
+            return res.status(401).send("Incorrect credentials.");
         }
 
         const passwordIsValid = bcrypt.compareSync(req.body.password, user.password);
 
         if (!passwordIsValid) {
-            return res.status(401).send("Invalid Username and/or Password!");
+            return res.status(401).send("Incorrect credentials.");
         }
         
         let token = jwt.sign({ id: user.user_id,orgId:user.organisation_id }, config.config.secret, {
@@ -82,9 +82,9 @@ route.post("/forgot_password", (req, res) => {
                  transporter.sendMail(mailOptions, (err, response) => {
                     if(err) {
                         console.log("Error while sending email "+ err);
-                        res.status(500).send('Email not sent.');
+                        res.status(500).json({message:'Not able to send email to your addess.'});
                     } else {
-                        res.status(200).send('Email sent.');
+                        res.status(200).json({message:'We have sent you an email, please check your inbox.'});
                     }
                 });					
             });				
@@ -97,9 +97,9 @@ route.post("/forgot_password", (req, res) => {
     });
 });
 
-route.get("/reset/:code", (req, res) => {
+route.get("/reset/:code/:email", (req, res) => {
     User.findOne({
-        where: {authentication_code: req.params.code, auth_token_expire: {[config.Op.gte]: Date.now()}}
+        where: {authentication_code: req.params.code,email_address: req.params.email, auth_token_expire: {[config.Op.gte]: Date.now()}}
     })
     .then( user => {
         if(user == null) {
