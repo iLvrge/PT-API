@@ -277,6 +277,13 @@ let getCompaniesList = async (DBConnection) => {
     });
 }
 
+let checkCustomerCompany = async(DBConnection, companyName) => {
+    const Representative = DBConnection.define('ClientRepesentative', ClientRepesentative.mainStructure, ClientRepesentative.options);
+    return await Representative.findOne({
+        where: {parent_id: 0, [connection.Op.or] : [{representative_name: companyName}, {original_name: companyName}]}
+    });
+};
+
 /**
  * Find Customer Parties
  * Input Company name
@@ -674,6 +681,7 @@ helper.getCompanyListBySecurity = getCompanyListBySecurity;
 helper.getCompanyListByOther = getCompanyListByOther;
 helper.searchCompany = searchCompany;
 helper.checkRepresentativeCompany = checkRepresentativeCompany;
+helper.checkCustomerCompany = checkCustomerCompany;
 helper.getAllUsers = getAllUsers;
 helper.findCompanyCustomersByName = findCompanyCustomersByName;
 helper.findCompanyCustomersByID = findCompanyCustomersByID;
