@@ -33,7 +33,7 @@ route.get("/", [authJWT.verifyToken, clientDBConnection.connect], async(req, res
             if(companies.length > 0) {
                 let getAllIDs = [];
                 companies.map( c => getAllIDs.push(c.id));
-                let childCompaniesQuery = "SELECT representative_id as id, original_name, representative_name, instances as counter, parent_id FROM representative as r WHERE r.parent_id IN (:parentCompany) ORDER BY r.parent_id ASC";
+                let childCompaniesQuery = "SELECT representative_id as id, original_name, representative_name, instances as counter, parent_id FROM representative as r WHERE r.parent_id IN (:parentCompany) ORDER BY r.parent_id ASC, counter DESC";
 
                 let childCompanies = await req.connection_db.query(childCompaniesQuery,{
                         type: connection.Sequelize.QueryTypes.SELECT,
