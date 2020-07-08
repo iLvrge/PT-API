@@ -103,7 +103,7 @@ route.get("/errors/:type/:companyName", [authJWT.verifyToken, clientDBConnection
                     res.status(200).json({invent:[], assign: [], corr: [], address: [], security: []});
                 }
             } else {
-                const queryError = "SELECT appno_doc_num FROM error as e WHERE e.organisation_id = :organisationID AND e.representative_id = :representative_id GROUP BY e.appno_doc_num";
+                const queryError = "SELECT appno_doc_num FROM error as e WHERE e.organisation_id = :organisationID  GROUP BY e.appno_doc_num";
                 const getErrors= await connection.application.query(queryError,{
                     type: connection.Sequelize.QueryTypes.SELECT,
                     raw: true,
