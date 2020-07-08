@@ -41,7 +41,7 @@ route.get("/:type", [authJWT.verifyToken, clientDBConnection.connect], async(req
     }
 });
 
-route.get("/:parentCompany/:tabId", [authJWT.verifyToken, clientDBConnection.connect], async(req, res, next) => {
+route.get("/:parentCompany/parties/:tabId", [authJWT.verifyToken, clientDBConnection.connect], async(req, res, next) => {
     try{
         /**
          * Connect with client DB and find the list of the companies 
@@ -49,6 +49,7 @@ route.get("/:parentCompany/:tabId", [authJWT.verifyToken, clientDBConnection.con
          * of those companies
          * For the client connection use middleware function to get the DB connection
          */
+        console.log("PARTIES");
         let subsidariesAndCustomer = [];
         if(typeof req.connection_db != "undefined" && req.connection_db != null ) {
             const parentCompany = req.params.parentCompany, tabId = req.params.tabId;		
@@ -289,7 +290,7 @@ route.get("/:parentCompany/:name/collections/:tabId",[authJWT.verifyToken], asyn
 
 route.get("/:rf_id/assets",[authJWT.verifyToken], async(req, res, next) => {   
     try{
-        
+        console.log("ASSETS");
         const organisationData = await helpers.findOrganisationbyID(req.orgId);
         let allPatents = [];
         if(organisationData != null && organisationData.organisation_id > 0){
