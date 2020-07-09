@@ -265,7 +265,7 @@ let getAllUsers = async (organisationID) => {
 }
 
 /**
- * Find Customer companies list
+ * Find Customer parent companies list
  * @param {} DBConnection 
  */
 
@@ -275,6 +275,17 @@ let getCompaniesList = async (DBConnection) => {
     return await Representative.findAll({
         where: {parent_id: 0}
     });
+}
+
+/**
+ * Find Customer all companies list
+ * @param {} DBConnection 
+ */
+
+let getAllCompaniesList = async (DBConnection) => {
+    const Representative = DBConnection.define('ClientRepesentative', ClientRepesentative.mainStructure, ClientRepesentative.options);
+
+    return await Representative.findAll();
 }
 
 let checkCustomerCompany = async(DBConnection, companyName) => {
@@ -686,6 +697,7 @@ helper.getAllUsers = getAllUsers;
 helper.findCompanyCustomersByName = findCompanyCustomersByName;
 helper.findCompanyCustomersByID = findCompanyCustomersByID;
 helper.getCompaniesList = getCompaniesList;
+helper.getAllCompaniesList = getAllCompaniesList;
 helper.getAssignmentDataByrfID = getAssignmentDataByrfID;
 helper.generateJSON = generateJSON;
 helper.getNewCode = getNewCode;

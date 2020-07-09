@@ -10,30 +10,39 @@ const helpers = require("../../helpers/helper");
 
 const authJWT = require("../../helpers/verifyJwtToken");
 
+const clientDBConnection = require("../../helpers/clientDBConnection");
 
-route.get("/:groupId", [authJWT.verifyToken], async(req, res, next) => {
+route.get("/:groupId", [authJWT.verifyToken, clientDBConnection.connect], async(req, res, next) => {
     try{        
         const organisationData = await helpers.findOrganisationbyID(req.orgId);
         //console.log(0);
-        if(organisationData != null && organisationData.organisation_id > 0){
+        if(organisationData != null && organisationData.organisation_id > 0 && typeof req.connection_db != "undefined" && req.connection_db != null){
+            const allCompaniesList = await helpers.getAllCompaniesList(req.connection_db);
+
+            const getNames = [];
+            allCompaniesList.map( c => getNames.push(c.original_name));
+
+            console.log(getNames);
             /*Assignment organization as assignee i.e purchase, invented, name change, release*/
             let searchData = {};
             const groupID = req.params.groupId;	
             if(groupID == 0) {
-                searchData = {name: organisationData.name, convey_type: ['assignment', 'employee'], employer_assign: 1};
+                searchData = {name: getNames, convey_type: ['assignment', 'employee'], employer_assign: 1};
             } else if (groupID == 1) {
-                searchData = {name: organisationData.name, convey_type: ['assignment', 'merger' ], employer_assign: 0};
+                searchData = {name: getNames, convey_type: ['assignment', 'merger' ], employer_assign: 0};
             } else if (groupID == 2) {
-                searchData = {name: organisationData.name, convey_type: ['security', 'release' ], employer_assign: 0};
+                searchData = {name: getNames, convey_type: ['security', 'release' ], employer_assign: 0};
             } else if (groupID == 3) {
-                searchData = {name: organisationData.name, convey_type: ['namechg', 'govern', 'other', 'missing', 'correct' ], employer_assign: 0};
+                searchData = {name: getNames, convey_type: ['namechg', 'govern', 'other', 'missing', 'correct' ], employer_assign: 0};
             }
-            const todaysDate = new Date(), startDate = moment(todaysDate).subtract(3, 'years').format('YYYY'), endDate = moment(todaysDate).format('YYYY');
+            const todaysDate = new Date(), startDate = moment(todaysDate).subtract(1, 'year').format('YYYY'), endDate = moment(todaysDate).format('YYYY');
 
-            let customQuery = 'SELECT concat(aa.assignor_and_assignee_id,ac.rf_id) as id, ac.rf_id, aa.name as raw_name, r1.representative_name as normalize_name, acc.convey_ty, acc.employer_assign, ac.exec_dt FROM assignor as ac INNER JOIN assignment_conveyance as acc ON acc.rf_id = ac.rf_id INNER JOIN assignor_and_assignee as aa ON aa.assignor_and_assignee_id = ac.assignor_and_assignee_id LEFT JOIN representative as r1 ON r1.representative_id = aa.representative_id INNER JOIN (SELECT ee.rf_id FROM assignee as ee INNER JOIN documentid as d ON d.rf_id = ee.rf_id INNER JOIN assignor_and_assignee as aaa ON aaa.assignor_and_assignee_id = ee.assignor_and_assignee_id LEFT JOIN representative as r ON r.representative_id = aaa.representative_id WHERE (aaa.name = :name or r.representative_name = :name) AND date_format(d.appno_date,"%Y") > "1999" AND date_format(d.appno_date,"%Y") BETWEEN :start AND :end) as temp ON temp.rf_id = ac.rf_id WHERE acc.convey_ty IN (:convey_type) AND acc.employer_assign = :employer_assign GROUP BY ac.rf_id ORDER BY ac.exec_dt DESC';
-            
             searchData.start = startDate;
             searchData.end = endDate;
+
+            let customQuery = 'SELECT concat(aa.assignor_and_assignee_id,ac.rf_id) as id, ac.rf_id, aa.name as raw_name, r1.representative_name as normalize_name, acc.convey_ty, acc.employer_assign, ac.exec_dt FROM assignor as ac INNER JOIN assignment_conveyance as acc ON acc.rf_id = ac.rf_id INNER JOIN assignor_and_assignee as aa ON aa.assignor_and_assignee_id = ac.assignor_and_assignee_id LEFT JOIN representative as r1 ON r1.representative_id = aa.representative_id INNER JOIN (SELECT ee.rf_id FROM assignee as ee INNER JOIN documentid as d ON d.rf_id = ee.rf_id INNER JOIN assignor_and_assignee as aaa ON aaa.assignor_and_assignee_id = ee.assignor_and_assignee_id LEFT JOIN representative as r ON r.representative_id = aaa.representative_id WHERE (aaa.name IN (:name)  or r.representative_name IN (:name)) AND date_format(d.appno_date,"%Y") > "1999" AND date_format(d.appno_date,"%Y") BETWEEN :start AND :end) as temp ON temp.rf_id = ac.rf_id WHERE acc.convey_ty IN (:convey_type) AND acc.employer_assign = :employer_assign GROUP BY ac.rf_id ORDER BY ac.exec_dt DESC';
+            
+            
             
             let getAssignmentData = await connection.application.query(customQuery,{
                 type: connection.Sequelize.QueryTypes.SELECT,
@@ -43,7 +52,7 @@ route.get("/:groupId", [authJWT.verifyToken], async(req, res, next) => {
                 }
             );
 
-            customQuery = 'SELECT concat(aa.assignor_and_assignee_id,ac.rf_id) as id, ac.rf_id, aa.name as raw_name, r1.representative_name as normalize_name, acc.convey_ty, acc.employer_assign, (SELECT ap.exec_dt FROM assignor as ap WHERE ap.rf_id = ac.rf_id ORDER BY ap.exec_dt ASC LIMIT 1) as exec_dt FROM assignee as ac INNER JOIN assignment_conveyance as acc ON acc.rf_id = ac.rf_id  INNER JOIN assignor_and_assignee as aa ON aa.assignor_and_assignee_id = ac.assignor_and_assignee_id LEFT JOIN representative as r1 ON r1.representative_id = aa.representative_id INNER JOIN (SELECT or.rf_id FROM assignor as `or` INNER JOIN documentid as d ON d.rf_id = or.rf_id INNER JOIN assignor_and_assignee as aaa ON aaa.assignor_and_assignee_id = or.assignor_and_assignee_id LEFT JOIN representative as r ON r.representative_id = aaa.representative_id  WHERE (aaa.name = :name or r.representative_name = :name) AND date_format(d.appno_date,"%Y") > "1999"  AND date_format(d.appno_date,"%Y") BETWEEN :start AND :end) as temp ON temp.rf_id = ac.rf_id WHERE acc.convey_ty IN (:convey_type) AND acc.employer_assign = :employer_assign GROUP BY ac.rf_id ORDER BY exec_dt DESC';
+            customQuery = 'SELECT concat(aa.assignor_and_assignee_id,ac.rf_id) as id, ac.rf_id, aa.name as raw_name, r1.representative_name as normalize_name, acc.convey_ty, acc.employer_assign, (SELECT ap.exec_dt FROM assignor as ap WHERE ap.rf_id = ac.rf_id ORDER BY ap.exec_dt ASC LIMIT 1) as exec_dt FROM assignee as ac INNER JOIN assignment_conveyance as acc ON acc.rf_id = ac.rf_id  INNER JOIN assignor_and_assignee as aa ON aa.assignor_and_assignee_id = ac.assignor_and_assignee_id LEFT JOIN representative as r1 ON r1.representative_id = aa.representative_id INNER JOIN (SELECT or.rf_id FROM assignor as `or` INNER JOIN documentid as d ON d.rf_id = or.rf_id INNER JOIN assignor_and_assignee as aaa ON aaa.assignor_and_assignee_id = or.assignor_and_assignee_id LEFT JOIN representative as r ON r.representative_id = aaa.representative_id  WHERE (aaa.name IN ( :name ) or r.representative_name  IN (:name)) AND date_format(d.appno_date,"%Y") > "1999"  AND date_format(d.appno_date,"%Y") BETWEEN :start AND :end) as temp ON temp.rf_id = ac.rf_id WHERE acc.convey_ty IN (:convey_type) AND acc.employer_assign = :employer_assign GROUP BY ac.rf_id ORDER BY exec_dt DESC';
             /*Assignment organization as assignor i.e sale, security*/
             
             let getAssigneeData = await connection.application.query(customQuery,{
@@ -60,23 +69,23 @@ route.get("/:groupId", [authJWT.verifyToken], async(req, res, next) => {
             
             const uniqueRIDs = [...new Set(rfIDs)];
 
-            let customQueryUniqueRf = 'SELECT ass.rf_id, aa.name as raw_name, r1.representative_name as normalize_name FROM assignor as ass INNER JOIN assignor_and_assignee as aa ON aa.assignor_and_assignee_id = ass.assignor_and_assignee_id LEFT JOIN representative as r1 ON r1.representative_id = aa.representative_id INNER JOIN (SELECT ac.rf_id FROM assignee as a INNER JOIN assignor as ac ON ac.rf_id = a.rf_id INNER JOIN assignment_conveyance as acc ON acc.rf_id = ac.rf_id INNER JOIN assignor_and_assignee as aaa ON aaa.assignor_and_assignee_id = a.assignor_and_assignee_id LEFT JOIN representative as r ON r.representative_id = aaa.representative_id WHERE a.rf_id IN (:rfIDs) AND (aaa.name = :name or r.representative_name = :name) GROUP BY rf_id) as p ON p.rf_id = ass.rf_id ORDER BY ass.rf_id ASC ';
+            let customQueryUniqueRf = 'SELECT ass.rf_id, aa.name as raw_name, r1.representative_name as normalize_name FROM assignor as ass INNER JOIN assignor_and_assignee as aa ON aa.assignor_and_assignee_id = ass.assignor_and_assignee_id LEFT JOIN representative as r1 ON r1.representative_id = aa.representative_id INNER JOIN (SELECT ac.rf_id FROM assignee as a INNER JOIN assignor as ac ON ac.rf_id = a.rf_id INNER JOIN assignment_conveyance as acc ON acc.rf_id = ac.rf_id INNER JOIN assignor_and_assignee as aaa ON aaa.assignor_and_assignee_id = a.assignor_and_assignee_id LEFT JOIN representative as r ON r.representative_id = aaa.representative_id WHERE a.rf_id IN (:rfIDs) AND (aaa.name IN (:name) or r.representative_name IN (:name)) GROUP BY rf_id) as p ON p.rf_id = ass.rf_id ORDER BY ass.rf_id ASC ';
 						
             let getRFAssignorsData = await connection.application.query(customQueryUniqueRf,{
                 type: connection.Sequelize.QueryTypes.SELECT,
                 raw: true,
                 logging: console.log,
-                replacements: { name: organisationData.name, rfIDs: uniqueRIDs },
+                replacements: { name: getNames, rfIDs: uniqueRIDs },
                 }
             );
 
-            customQueryUniqueRf = 'SELECT ass.rf_id, aa.name as raw_name, r1.representative_name as normalize_name FROM assignee as ass INNER JOIN assignor_and_assignee as aa ON aa.assignor_and_assignee_id = ass.assignor_and_assignee_id LEFT JOIN representative as r1 ON r1.representative_id = aa.representative_id INNER JOIN (SELECT ac.rf_id FROM assignor as a INNER JOIN assignee as ac ON ac.rf_id = a.rf_id INNER JOIN assignment_conveyance as acc ON acc.rf_id = ac.rf_id INNER JOIN assignor_and_assignee as aaa ON aaa.assignor_and_assignee_id = a.assignor_and_assignee_id LEFT JOIN representative as r ON r.representative_id = aaa.representative_id WHERE a.rf_id IN (:rfIDs) AND (aaa.name = :name or r.representative_name = :name) GROUP BY rf_id) as p ON p.rf_id = ass.rf_id ORDER BY ass.rf_id ASC ';
+            customQueryUniqueRf = 'SELECT ass.rf_id, aa.name as raw_name, r1.representative_name as normalize_name FROM assignee as ass INNER JOIN assignor_and_assignee as aa ON aa.assignor_and_assignee_id = ass.assignor_and_assignee_id LEFT JOIN representative as r1 ON r1.representative_id = aa.representative_id INNER JOIN (SELECT ac.rf_id FROM assignor as a INNER JOIN assignee as ac ON ac.rf_id = a.rf_id INNER JOIN assignment_conveyance as acc ON acc.rf_id = ac.rf_id INNER JOIN assignor_and_assignee as aaa ON aaa.assignor_and_assignee_id = a.assignor_and_assignee_id LEFT JOIN representative as r ON r.representative_id = aaa.representative_id WHERE a.rf_id IN (:rfIDs) AND (aaa.name IN ( :name ) or r.representative_name IN ( :name )) GROUP BY rf_id) as p ON p.rf_id = ass.rf_id ORDER BY ass.rf_id ASC ';
 						
             let getRFAssigneeData = await connection.application.query(customQueryUniqueRf,{
                     type: connection.Sequelize.QueryTypes.SELECT,
                     raw: true,
                     logging: console.log,
-                    replacements: { name: organisationData.name, rfIDs: uniqueRIDs },
+                    replacements: { name: getNames, rfIDs: uniqueRIDs },
                     }
                 );
             res.status(200).json({
