@@ -68,7 +68,7 @@ route.get("/:groupId", [authJWT.verifyToken, clientDBConnection.connect], async(
             const rfIDs = [];
             let counter = 0;
             combineAssignorAssignee.map(c => {
-                if(counter < 10001) {
+                if(counter < (searchData.recordLimit + 1)) {
                     if(!rfIDs.includes(c.rf_id)){
                         rfIDs.push(c.rf_id);
                         counter++;
