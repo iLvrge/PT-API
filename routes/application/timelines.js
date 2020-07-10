@@ -115,7 +115,7 @@ route.get("/:groupId", [authJWT.verifyToken, clientDBConnection.connect], async(
                 }
             );      
             
-            let firstDate = "", secondDate = "", minDate = "";
+            let firstDate = "", secondDate = "", minDate = "", maxDate = "";
 
             if(getMinAssignmentData != null && getMinAssignmentData.id > 0) {
                 firstDate = new Date(getMinAssignmentData.exec_dt).getTime();
@@ -151,6 +151,59 @@ route.get("/:groupId", [authJWT.verifyToken, clientDBConnection.connect], async(
                 minDate = secondDate;
             }
 
+
+            /**
+             * Find Max Date
+             */
+            searchData.recordLimit = 1;        
+            let customMaxQuery = 'SELECT concat(aa.assignor_and_assignee_id,ac.rf_id) as id, ac.rf_id, aa.name as raw_name, r1.representative_name as normalize_name, acc.convey_ty, acc.employer_assign, ac.exec_dt FROM assignor as ac INNER JOIN assignment_conveyance as acc ON acc.rf_id = ac.rf_id INNER JOIN assignor_and_assignee as aa ON aa.assignor_and_assignee_id = ac.assignor_and_assignee_id LEFT JOIN representative as r1 ON r1.representative_id = aa.representative_id INNER JOIN (SELECT ee.rf_id FROM assignee as ee INNER JOIN documentid as d ON d.rf_id = ee.rf_id INNER JOIN assignor_and_assignee as aaa ON aaa.assignor_and_assignee_id = ee.assignor_and_assignee_id LEFT JOIN representative as r ON r.representative_id = aaa.representative_id WHERE (aaa.name IN (:name)  or r.representative_name IN (:name)) AND date_format(d.appno_date,"%Y") > "1999") as temp ON temp.rf_id = ac.rf_id WHERE acc.convey_ty IN (:convey_type) AND acc.employer_assign = :employer_assign GROUP BY ac.rf_id ORDER BY ac.exec_dt DESC LIMIT :recordLimit';
+
+
+            let getMaxAssignmentData = await connection.application.query(customMaxQuery,{
+                type: connection.Sequelize.QueryTypes.SELECT,
+                raw: true,
+                logging: console.log,
+                replacements: searchData,
+                plain:true
+                }
+            );      
+            
+           
+
+            if(getMaxAssignmentData != null && getMaxAssignmentData.id > 0) {
+                firstDate = new Date(getMaxAssignmentData.exec_dt).getTime();
+            }
+
+            customMaxQuery = 'SELECT concat(aa.assignor_and_assignee_id,ac.rf_id) as id, ac.rf_id, aa.name as raw_name, r1.representative_name as normalize_name, acc.convey_ty, acc.employer_assign, (SELECT ap.exec_dt FROM assignor as ap WHERE ap.rf_id = ac.rf_id ORDER BY ap.exec_dt ASC LIMIT 1) as exec_dt FROM assignee as ac INNER JOIN assignment_conveyance as acc ON acc.rf_id = ac.rf_id  INNER JOIN assignor_and_assignee as aa ON aa.assignor_and_assignee_id = ac.assignor_and_assignee_id LEFT JOIN representative as r1 ON r1.representative_id = aa.representative_id INNER JOIN (SELECT or.rf_id FROM assignor as `or` INNER JOIN documentid as d ON d.rf_id = or.rf_id INNER JOIN assignor_and_assignee as aaa ON aaa.assignor_and_assignee_id = or.assignor_and_assignee_id LEFT JOIN representative as r ON r.representative_id = aaa.representative_id  WHERE (aaa.name IN ( :name ) or r.representative_name  IN (:name)) AND date_format(d.appno_date,"%Y") > "1999" ) as temp ON temp.rf_id = ac.rf_id WHERE acc.convey_ty IN (:convey_type) AND acc.employer_assign = :employer_assign GROUP BY ac.rf_id ORDER BY exec_dt DESC LIMIT :recordLimit';
+                /*Assignment organization as assignor i.e sale, security*/
+                
+            let getMaxAssigneeData = await connection.application.query(customMaxQuery,{
+                type: connection.Sequelize.QueryTypes.SELECT,
+                raw: true,
+                logging: console.log,
+                replacements: searchData,
+                plain:true
+                }
+            );   
+
+            if(getMaxAssigneeData != null && getMaxAssigneeData.id > 0) {
+                secondDate = new Date(getMaxAssigneeData.exec_dt).getTime();
+            }
+
+            
+
+            if(firstDate != "" && secondDate != "") {
+                if(firstDate > secondDate) {
+                    maxDate = firstDate;
+                } else {
+                    maxDate = secondDate;
+                }
+            } else if(firstDate != "") {
+                maxDate = firstDate;
+            } else {
+                maxDate = secondDate;
+            }
+
             res.status(200).json({
                 type: 9,
                 assignment_assignors: getAssignmentData,
@@ -158,6 +211,7 @@ route.get("/:groupId", [authJWT.verifyToken, clientDBConnection.connect], async(
                 assignors: getRFAssignorsData,
                 assignees: getRFAssigneeData,
                 min_date: minDate,
+                max_date: maxDate,
                 className: 'red',
                 group: ["Employee", "Acquisition", "Security", "Other"]
             });    
@@ -378,33 +432,385 @@ route.get("/:organisation/:name/:depth/:groupId", [authJWT.verifyToken], async(r
     }
 });
 
-route.get("/filter/search/:startDate/:endDate", [authJWT.verifyToken], async(req, res, next) => {
+route.get("/filter/search/:startDate/:endDate/:scroll", [authJWT.verifyToken], async(req, res, next) => {
     try{
-        const startDate = req.params.startDate, endDate = req.params.endDate;
+        let startDate, endDate, mainStartDate = req.params.startDate, mainEndDate = req.params.endDate, scroll = req.params.scroll;
         const organisationData = await helpers.findOrganisationbyID(req.orgId);
         //console.log(2);
+        let limitRows = 10000;
         if(organisationData != null && organisationData.organisation_id > 0){
-            /*Assignment organization as assignee i.e purchase, invented, name change, release*/
-            let customQuery = 'SELECT concat(aa.assignor_and_assignee_id,ac.rf_id) as id, ac.rf_id, aa.name as raw_name, r1.representative_name as normalize_name, acc.convey_ty, acc.employer_assign, ac.exec_dt FROM assignor as ac INNER JOIN assignment_conveyance as acc ON acc.rf_id = ac.rf_id INNER JOIN assignor_and_assignee as aa ON aa.assignor_and_assignee_id = ac.assignor_and_assignee_id LEFT JOIN representative as r1 ON r1.representative_id = aa.representative_id INNER JOIN (SELECT ee.rf_id FROM assignee as ee INNER JOIN assignor_and_assignee as aaa ON aaa.assignor_and_assignee_id = ee.assignor_and_assignee_id LEFT JOIN representative as r ON r.representative_id = aaa.representative_id WHERE aaa.name = :name or r.representative_name = :name) as temp ON temp.rf_id = ac.rf_id WHERE ac.exec_dt BETWEEN :startDate AND :endDate GROUP BY ac.rf_id ORDER BY ac.exec_dt DESC LIMIT 100';
-            
-            let getAssignmentData = await connection.application.query(customQuery,{
-                type: connection.Sequelize.QueryTypes.SELECT,
-                raw: true,
-                logging: console.log,
-                replacements: { name: organisationData.name, startDate: startDate, endDate: endDate},
-                }
-            );
+            const allCompaniesList = await helpers.getAllCompaniesList(req.connection_db);
 
-            customQuery = 'SELECT concat(aa.assignor_and_assignee_id,ac.rf_id) as id, ac.rf_id, aa.name as raw_name, r1.representative_name as normalize_name, acc.convey_ty, acc.employer_assign, (SELECT ap.exec_dt FROM assignor as ap WHERE ap.rf_id = ac.rf_id ORDER BY ap.exec_dt ASC LIMIT 1) as exec_dt FROM assignee as ac INNER JOIN assignment_conveyance as acc ON acc.rf_id = ac.rf_id  INNER JOIN assignor_and_assignee as aa ON aa.assignor_and_assignee_id = ac.assignor_and_assignee_id LEFT JOIN representative as r1 ON r1.representative_id = aa.representative_id INNER JOIN (SELECT or.rf_id FROM assignor as `or` INNER JOIN assignor_and_assignee as aaa ON aaa.assignor_and_assignee_id = or.assignor_and_assignee_id LEFT JOIN representative as r ON r.representative_id = aaa.representative_id  WHERE (or.exec_dt BETWEEN :startDate AND :endDate ) AND aaa.name = :name or r.representative_name = :name) as temp ON temp.rf_id = ac.rf_id GROUP BY ac.rf_id ORDER BY exec_dt DESC LIMIT 100';
-            /*Assignment organization as assignor i.e sale, security*/
-            
-            let getAssigneeData = await connection.application.query(customQuery,{
+            const getNames = [];
+            allCompaniesList.map( c => getNames.push(c.original_name));
+
+            console.log(getNames);
+            const DATE_FORMAT = 'YYYY-MM-DD';
+            /** Add 12 months to end date and substract 12 months to end date */
+            startDate = moment(new Date(mainStartDate)).subtract(12, 'months').format(DATE_FORMAT);
+            endDate = moment(new Date(mainEndDate)).add(12, 'months').format(DATE_FORMAT);
+
+            /*Assignment organization as assignee i.e purchase, invented, name change, release*/
+            let customQuery = 'SELECT count(ac.rf_id) as counter FROM assignor as ac INNER JOIN assignment_conveyance as acc ON acc.rf_id = ac.rf_id INNER JOIN assignor_and_assignee as aa ON aa.assignor_and_assignee_id = ac.assignor_and_assignee_id LEFT JOIN representative as r1 ON r1.representative_id = aa.representative_id INNER JOIN (SELECT ee.rf_id FROM assignee as ee INNER JOIN assignor_and_assignee as aaa ON aaa.assignor_and_assignee_id = ee.assignor_and_assignee_id LEFT JOIN representative as r ON r.representative_id = aaa.representative_id WHERE (aaa.name IN (:name) or r.representative_name IN (:name))) as temp ON temp.rf_id = ac.rf_id WHERE ac.exec_dt BETWEEN :startDate AND :endDate GROUP BY ac.rf_id ORDER BY ac.exec_dt DESC';
+
+
+            let getAssignmentCountData = await connection.application.query(customQuery,{
                 type: connection.Sequelize.QueryTypes.SELECT,
                 raw: true,
                 logging: console.log,
-                replacements: { name: organisationData.name, startDate: startDate, endDate: endDate },
+                replacements: { name: getNames, startDate: startDate, endDate: endDate},
+                plain:true
                 }
             );
+            let getAssignmentData = [], getAssigneeData = [];
+
+            if(getAssignmentCountData != null && getAssignmentCountData.counter > 0) {
+                if(getAssignmentCountData.counter < limitRows) {
+                    customQuery = 'SELECT concat(aa.assignor_and_assignee_id,ac.rf_id) as id, ac.rf_id, aa.name as raw_name, r1.representative_name as normalize_name, acc.convey_ty, acc.employer_assign, ac.exec_dt FROM assignor as ac INNER JOIN assignment_conveyance as acc ON acc.rf_id = ac.rf_id INNER JOIN assignor_and_assignee as aa ON aa.assignor_and_assignee_id = ac.assignor_and_assignee_id LEFT JOIN representative as r1 ON r1.representative_id = aa.representative_id INNER JOIN (SELECT ee.rf_id FROM assignee as ee INNER JOIN assignor_and_assignee as aaa ON aaa.assignor_and_assignee_id = ee.assignor_and_assignee_id LEFT JOIN representative as r ON r.representative_id = aaa.representative_id WHERE (aaa.name IN (:name) or r.representative_name IN (:name))) as temp ON temp.rf_id = ac.rf_id WHERE ac.exec_dt BETWEEN :startDate AND :endDate GROUP BY ac.rf_id ORDER BY ac.exec_dt DESC';
+
+                    getAssignmentData = await connection.application.query(customQuery,{
+                        type: connection.Sequelize.QueryTypes.SELECT,
+                        raw: true,
+                        logging: console.log,
+                        replacements: { name: getNames, startDate: startDate, endDate: endDate},
+                        }
+                    );
+
+                    let remain = limitRows - getAssignmentData.length;
+
+                    if(remain > 0) {
+                        customQuery = 'SELECT concat(aa.assignor_and_assignee_id,ac.rf_id) as id, ac.rf_id, aa.name as raw_name, r1.representative_name as normalize_name, acc.convey_ty, acc.employer_assign, (SELECT ap.exec_dt FROM assignor as ap WHERE ap.rf_id = ac.rf_id ORDER BY ap.exec_dt ASC LIMIT 1) as exec_dt FROM assignee as ac INNER JOIN assignment_conveyance as acc ON acc.rf_id = ac.rf_id  INNER JOIN assignor_and_assignee as aa ON aa.assignor_and_assignee_id = ac.assignor_and_assignee_id LEFT JOIN representative as r1 ON r1.representative_id = aa.representative_id INNER JOIN (SELECT or.rf_id FROM assignor as `or` INNER JOIN assignor_and_assignee as aaa ON aaa.assignor_and_assignee_id = or.assignor_and_assignee_id LEFT JOIN representative as r ON r.representative_id = aaa.representative_id  WHERE (or.exec_dt BETWEEN :startDate AND :endDate ) AND ( aaa.name IN (:name) or r.representative_name IN (:name) )) as temp ON temp.rf_id = ac.rf_id GROUP BY ac.rf_id ORDER BY exec_dt DESC LIMIT :limitRecords';
+                        /*Assignment organization as assignor i.e sale, security*/
+                        
+                        getAssigneeData = await connection.application.query(customQuery,{
+                            type: connection.Sequelize.QueryTypes.SELECT,
+                            raw: true,
+                            logging: console.log,
+                            replacements: { name: getNames, startDate: startDate, endDate: endDate, limitRecords:remain },
+                            }
+                        );
+                    }
+                } else {
+                    startDate = moment(new Date(mainStartDate)).subtract(6, 'months').format(DATE_FORMAT);
+                    endDate = moment(new Date(mainEndDate)).add(6, 'months').format(DATE_FORMAT);
+
+                    customQuery = 'SELECT count(ac.rf_id) as counter FROM assignor as ac INNER JOIN assignment_conveyance as acc ON acc.rf_id = ac.rf_id INNER JOIN assignor_and_assignee as aa ON aa.assignor_and_assignee_id = ac.assignor_and_assignee_id LEFT JOIN representative as r1 ON r1.representative_id = aa.representative_id INNER JOIN (SELECT ee.rf_id FROM assignee as ee INNER JOIN assignor_and_assignee as aaa ON aaa.assignor_and_assignee_id = ee.assignor_and_assignee_id LEFT JOIN representative as r ON r.representative_id = aaa.representative_id WHERE (aaa.name IN (:name) or r.representative_name IN (:name) )) as temp ON temp.rf_id = ac.rf_id WHERE ac.exec_dt BETWEEN :startDate AND :endDate GROUP BY ac.rf_id ORDER BY ac.exec_dt DESC';
+
+
+                    getAssignmentCountData = await connection.application.query(customQuery,{
+                        type: connection.Sequelize.QueryTypes.SELECT,
+                        raw: true,
+                        logging: console.log,
+                        replacements: { name: getNames, startDate: startDate, endDate: endDate},
+                        plain:true
+                        }
+                    );
+
+                    if(getAssignmentCountData != null && getAssignmentCountData.counter > 0) {
+                        if(getAssignmentCountData.counter < limitRows) {
+                            customQuery = 'SELECT concat(aa.assignor_and_assignee_id,ac.rf_id) as id, ac.rf_id, aa.name as raw_name, r1.representative_name as normalize_name, acc.convey_ty, acc.employer_assign, ac.exec_dt FROM assignor as ac INNER JOIN assignment_conveyance as acc ON acc.rf_id = ac.rf_id INNER JOIN assignor_and_assignee as aa ON aa.assignor_and_assignee_id = ac.assignor_and_assignee_id LEFT JOIN representative as r1 ON r1.representative_id = aa.representative_id INNER JOIN (SELECT ee.rf_id FROM assignee as ee INNER JOIN assignor_and_assignee as aaa ON aaa.assignor_and_assignee_id = ee.assignor_and_assignee_id LEFT JOIN representative as r ON r.representative_id = aaa.representative_id WHERE (aaa.name IN (:name) or r.representative_name IN (:name) )) as temp ON temp.rf_id = ac.rf_id WHERE ac.exec_dt BETWEEN :startDate AND :endDate GROUP BY ac.rf_id ORDER BY ac.exec_dt DESC';
+
+                            getAssignmentData = await connection.application.query(customQuery,{
+                                type: connection.Sequelize.QueryTypes.SELECT,
+                                raw: true,
+                                logging: console.log,
+                                replacements: { name: getNames, startDate: startDate, endDate: endDate},
+                                }
+                            );
+
+                            remain = limitRows - getAssignmentData.length;
+                            if(remain > 0) {
+                                customQuery = 'SELECT concat(aa.assignor_and_assignee_id,ac.rf_id) as id, ac.rf_id, aa.name as raw_name, r1.representative_name as normalize_name, acc.convey_ty, acc.employer_assign, (SELECT ap.exec_dt FROM assignor as ap WHERE ap.rf_id = ac.rf_id ORDER BY ap.exec_dt ASC LIMIT 1) as exec_dt FROM assignee as ac INNER JOIN assignment_conveyance as acc ON acc.rf_id = ac.rf_id  INNER JOIN assignor_and_assignee as aa ON aa.assignor_and_assignee_id = ac.assignor_and_assignee_id LEFT JOIN representative as r1 ON r1.representative_id = aa.representative_id INNER JOIN (SELECT or.rf_id FROM assignor as `or` INNER JOIN assignor_and_assignee as aaa ON aaa.assignor_and_assignee_id = or.assignor_and_assignee_id LEFT JOIN representative as r ON r.representative_id = aaa.representative_id  WHERE (or.exec_dt BETWEEN :startDate AND :endDate ) AND (aaa.name IN (:name ) or r.representative_name IN (:name) )) as temp ON temp.rf_id = ac.rf_id GROUP BY ac.rf_id ORDER BY exec_dt DESC LIMIT :limitRecords';
+                                /*Assignment organization as assignor i.e sale, security*/
+                                
+                                getAssigneeData = await connection.application.query(customQuery,{
+                                    type: connection.Sequelize.QueryTypes.SELECT,
+                                    raw: true,
+                                    logging: console.log,
+                                    replacements: { name: getNames, startDate: startDate, endDate: endDate, limitRecords:remain },
+                                    }
+                                );
+                            }
+                        } else {
+                            /*Check Scroll left or right */
+                            if(scroll == 1) {
+                                /**Scroll Right i.e Start Date - 1month */
+                                endDate = moment(new Date(endDate)).add(12, 'months').format(DATE_FORMAT);
+                                for(i=1;i<24;i++){
+                                    startDate = moment(new Date(mainStartDate)).subtract(i, 'months').format(DATE_FORMAT);
+
+                                    customQuery = 'SELECT count(ac.rf_id) as counter FROM assignor as ac INNER JOIN assignment_conveyance as acc ON acc.rf_id = ac.rf_id INNER JOIN assignor_and_assignee as aa ON aa.assignor_and_assignee_id = ac.assignor_and_assignee_id LEFT JOIN representative as r1 ON r1.representative_id = aa.representative_id INNER JOIN (SELECT ee.rf_id FROM assignee as ee INNER JOIN assignor_and_assignee as aaa ON aaa.assignor_and_assignee_id = ee.assignor_and_assignee_id LEFT JOIN representative as r ON r.representative_id = aaa.representative_id WHERE ( aaa.name IN (:name) or r.representative_name IN (:name) )) as temp ON temp.rf_id = ac.rf_id WHERE ac.exec_dt BETWEEN :startDate AND :endDate GROUP BY ac.rf_id ORDER BY ac.exec_dt DESC';
+
+
+                                    getAssignmentCountData = await connection.application.query(customQuery,{
+                                        type: connection.Sequelize.QueryTypes.SELECT,
+                                        raw: true,
+                                        logging: console.log,
+                                        replacements: { name: getNames, startDate: startDate, endDate: endDate},
+                                        plain:true
+                                        }
+                                    );
+                                    if(getAssignmentCountData != null && getAssignmentCountData.counter > 0 && getAssignmentCountData.counter < limitRows) {
+                                        
+                                        remain = limitRows - getAssignmentData.length;
+                                        if(remain > 0) {
+                                            customQuery = 'SELECT concat(aa.assignor_and_assignee_id,ac.rf_id) as id, ac.rf_id, aa.name as raw_name, r1.representative_name as normalize_name, acc.convey_ty, acc.employer_assign, (SELECT ap.exec_dt FROM assignor as ap WHERE ap.rf_id = ac.rf_id ORDER BY ap.exec_dt ASC LIMIT 1) as exec_dt FROM assignee as ac INNER JOIN assignment_conveyance as acc ON acc.rf_id = ac.rf_id  INNER JOIN assignor_and_assignee as aa ON aa.assignor_and_assignee_id = ac.assignor_and_assignee_id LEFT JOIN representative as r1 ON r1.representative_id = aa.representative_id INNER JOIN (SELECT or.rf_id FROM assignor as `or` INNER JOIN assignor_and_assignee as aaa ON aaa.assignor_and_assignee_id = or.assignor_and_assignee_id LEFT JOIN representative as r ON r.representative_id = aaa.representative_id  WHERE (or.exec_dt BETWEEN :startDate AND :endDate ) AND ( aaa.name IN (:name) or r.representative_name IN (:name) )) as temp ON temp.rf_id = ac.rf_id GROUP BY ac.rf_id ORDER BY exec_dt DESC LIMIT :limitRecords';
+                                            /*Assignment organization as assignor i.e sale, security*/
+                                            
+                                            getAssigneeData = await connection.application.query(customQuery,{
+                                                type: connection.Sequelize.QueryTypes.SELECT,
+                                                raw: true,
+                                                logging: console.log,
+                                                replacements: { name: getNames, startDate: startDate, endDate: endDate, limitRecords:remain },
+                                                }
+                                            );
+                                        }
+                                        return false;
+                                    }
+                                }
+                            } else {
+                                /**Scroll Left i.e End Date - 1month */
+                                startDate = moment(new Date(startDate)).add(12, 'months').format(DATE_FORMAT);
+                                for(i=1;i<24;i++){
+                                    endDate = moment(new Date(mainEndDate)).subtract(1, 'months').format(DATE_FORMAT);
+                                    customQuery = 'SELECT count(ac.rf_id) as counter FROM assignor as ac INNER JOIN assignment_conveyance as acc ON acc.rf_id = ac.rf_id INNER JOIN assignor_and_assignee as aa ON aa.assignor_and_assignee_id = ac.assignor_and_assignee_id LEFT JOIN representative as r1 ON r1.representative_id = aa.representative_id INNER JOIN (SELECT ee.rf_id FROM assignee as ee INNER JOIN assignor_and_assignee as aaa ON aaa.assignor_and_assignee_id = ee.assignor_and_assignee_id LEFT JOIN representative as r ON r.representative_id = aaa.representative_id WHERE (aaa.name IN (:name) or r.representative_name IN (:name) )) as temp ON temp.rf_id = ac.rf_id WHERE ac.exec_dt BETWEEN :startDate AND :endDate GROUP BY ac.rf_id ORDER BY ac.exec_dt DESC';
+
+
+                                    getAssignmentCountData = await connection.application.query(customQuery,{
+                                        type: connection.Sequelize.QueryTypes.SELECT,
+                                        raw: true,
+                                        logging: console.log,
+                                        replacements: { name: getNames, startDate: startDate, endDate: endDate},
+                                        plain:true
+                                        }
+                                    );
+                                    if(getAssignmentCountData != null && getAssignmentCountData.counter > 0 && getAssignmentCountData.counter < limitRows) {
+                                        
+                                        remain = limitRows - getAssignmentData.length;
+                                        if(remain > 0) {
+                                            customQuery = 'SELECT concat(aa.assignor_and_assignee_id,ac.rf_id) as id, ac.rf_id, aa.name as raw_name, r1.representative_name as normalize_name, acc.convey_ty, acc.employer_assign, (SELECT ap.exec_dt FROM assignor as ap WHERE ap.rf_id = ac.rf_id ORDER BY ap.exec_dt ASC LIMIT 1) as exec_dt FROM assignee as ac INNER JOIN assignment_conveyance as acc ON acc.rf_id = ac.rf_id  INNER JOIN assignor_and_assignee as aa ON aa.assignor_and_assignee_id = ac.assignor_and_assignee_id LEFT JOIN representative as r1 ON r1.representative_id = aa.representative_id INNER JOIN (SELECT or.rf_id FROM assignor as `or` INNER JOIN assignor_and_assignee as aaa ON aaa.assignor_and_assignee_id = or.assignor_and_assignee_id LEFT JOIN representative as r ON r.representative_id = aaa.representative_id  WHERE (or.exec_dt BETWEEN :startDate AND :endDate ) AND ( aaa.name IN (:name) or r.representative_name IN (:name) )) as temp ON temp.rf_id = ac.rf_id GROUP BY ac.rf_id ORDER BY exec_dt DESC LIMIT :limitRecords';
+                                            /*Assignment organization as assignor i.e sale, security*/
+                                            
+                                            getAssigneeData = await connection.application.query(customQuery,{
+                                                type: connection.Sequelize.QueryTypes.SELECT,
+                                                raw: true,
+                                                logging: console.log,
+                                                replacements: { name: getNames, startDate: startDate, endDate: endDate, limitRecords:remain },
+                                                }
+                                            );
+                                        }
+                                        return false;
+                                    }
+                                }
+                            }
+                        }
+                    } else {
+                        customQuery = 'SELECT count(ac.rf_id) as counter FROM assignee as ac INNER JOIN assignment_conveyance as acc ON acc.rf_id = ac.rf_id  INNER JOIN assignor_and_assignee as aa ON aa.assignor_and_assignee_id = ac.assignor_and_assignee_id LEFT JOIN representative as r1 ON r1.representative_id = aa.representative_id INNER JOIN (SELECT or.rf_id FROM assignor as `or` INNER JOIN assignor_and_assignee as aaa ON aaa.assignor_and_assignee_id = or.assignor_and_assignee_id LEFT JOIN representative as r ON r.representative_id = aaa.representative_id  WHERE (or.exec_dt BETWEEN :startDate AND :endDate ) AND ( aaa.name IN (:name) or r.representative_name IN (:name) )) as temp ON temp.rf_id = ac.rf_id GROUP BY ac.rf_id ORDER BY exec_dt DESC';
+
+
+                        let getAssigneeCountData = await connection.application.query(customQuery,{
+                            type: connection.Sequelize.QueryTypes.SELECT,
+                            raw: true,
+                            logging: console.log,
+                            replacements: { name: getNames, startDate: startDate, endDate: endDate},
+                            plain:true
+                            }
+                        );
+                        if(getAssigneeCountData != null && getAssigneeCountData.counter > 0 && getAssigneeCountData.counter < limitRows) {
+                            customQuery = 'SELECT concat(aa.assignor_and_assignee_id,ac.rf_id) as id, ac.rf_id, aa.name as raw_name, r1.representative_name as normalize_name, acc.convey_ty, acc.employer_assign, (SELECT ap.exec_dt FROM assignor as ap WHERE ap.rf_id = ac.rf_id ORDER BY ap.exec_dt ASC LIMIT 1) as exec_dt FROM assignee as ac INNER JOIN assignment_conveyance as acc ON acc.rf_id = ac.rf_id  INNER JOIN assignor_and_assignee as aa ON aa.assignor_and_assignee_id = ac.assignor_and_assignee_id LEFT JOIN representative as r1 ON r1.representative_id = aa.representative_id INNER JOIN (SELECT or.rf_id FROM assignor as `or` INNER JOIN assignor_and_assignee as aaa ON aaa.assignor_and_assignee_id = or.assignor_and_assignee_id LEFT JOIN representative as r ON r.representative_id = aaa.representative_id  WHERE (or.exec_dt BETWEEN :startDate AND :endDate ) AND (aaa.name IN (:name) or r.representative_name IN (:name) )) as temp ON temp.rf_id = ac.rf_id GROUP BY ac.rf_id ORDER BY exec_dt DESC';
+                            /*Assignment organization as assignor i.e sale, security*/
+                            
+                            getAssigneeData = await connection.application.query(customQuery,{
+                                type: connection.Sequelize.QueryTypes.SELECT,
+                                raw: true,
+                                logging: console.log,
+                                replacements: { name: getNames, startDate: startDate, endDate: endDate},
+                                }
+                            );
+                        } else {
+                            /*Check Scroll left or right */
+                            if(scroll == 1) {
+                                /**Scroll Right i.e Start Date - 1month */
+                                endDate = moment(new Date(endDate)).add(12, 'months').format(DATE_FORMAT);
+                                for(i=1;i<24;i++){
+                                    startDate = moment(new Date(mainStartDate)).subtract(i, 'months').format(DATE_FORMAT);
+                                    customQuery = 'SELECT count(ac.rf_id) as counter FROM assignee as ac INNER JOIN assignment_conveyance as acc ON acc.rf_id = ac.rf_id  INNER JOIN assignor_and_assignee as aa ON aa.assignor_and_assignee_id = ac.assignor_and_assignee_id LEFT JOIN representative as r1 ON r1.representative_id = aa.representative_id INNER JOIN (SELECT or.rf_id FROM assignor as `or` INNER JOIN assignor_and_assignee as aaa ON aaa.assignor_and_assignee_id = or.assignor_and_assignee_id LEFT JOIN representative as r ON r.representative_id = aaa.representative_id  WHERE (or.exec_dt BETWEEN :startDate AND :endDate ) AND (aaa.name IN (:name) or r.representative_name IN (:name))) as temp ON temp.rf_id = ac.rf_id GROUP BY ac.rf_id ORDER BY exec_dt DESC';
+
+
+                                    getAssigneeCountData = await connection.application.query(customQuery,{
+                                        type: connection.Sequelize.QueryTypes.SELECT,
+                                        raw: true,
+                                        logging: console.log,
+                                        replacements: { name: getNames, startDate: startDate, endDate: endDate},
+                                        plain:true
+                                        }
+                                    );
+                                    if(getAssigneeCountData != null && getAssigneeCountData.counter > 0 && getAssigneeCountData.counter < limitRows) {
+                                        customQuery = 'SELECT concat(aa.assignor_and_assignee_id,ac.rf_id) as id, ac.rf_id, aa.name as raw_name, r1.representative_name as normalize_name, acc.convey_ty, acc.employer_assign, (SELECT ap.exec_dt FROM assignor as ap WHERE ap.rf_id = ac.rf_id ORDER BY ap.exec_dt ASC LIMIT 1) as exec_dt FROM assignee as ac INNER JOIN assignment_conveyance as acc ON acc.rf_id = ac.rf_id  INNER JOIN assignor_and_assignee as aa ON aa.assignor_and_assignee_id = ac.assignor_and_assignee_id LEFT JOIN representative as r1 ON r1.representative_id = aa.representative_id INNER JOIN (SELECT or.rf_id FROM assignor as `or` INNER JOIN assignor_and_assignee as aaa ON aaa.assignor_and_assignee_id = or.assignor_and_assignee_id LEFT JOIN representative as r ON r.representative_id = aaa.representative_id  WHERE (or.exec_dt BETWEEN :startDate AND :endDate ) AND (aaa.name IN (:name) or r.representative_name IN (:name) )) as temp ON temp.rf_id = ac.rf_id GROUP BY ac.rf_id ORDER BY exec_dt DESC';
+                                        /*Assignment organization as assignor i.e sale, security*/
+                                        
+                                        getAssigneeData = await connection.application.query(customQuery,{
+                                            type: connection.Sequelize.QueryTypes.SELECT,
+                                            raw: true,
+                                            logging: console.log,
+                                            replacements: { name: getNames, startDate: startDate, endDate: endDate},
+                                            }
+                                        );
+                                        return false;
+                                    }
+                                }
+                            } else {
+                                /**Scroll Left i.e End Date - 1month */
+                                startDate = moment(new Date(startDate)).add(12, 'months').format(DATE_FORMAT);
+                                for(i=1;i<24;i++){
+                                    endDate = moment(new Date(mainEndDate)).subtract(1, 'months').format(DATE_FORMAT);
+
+                                    getAssigneeCountData = await connection.application.query(customQuery,{
+                                        type: connection.Sequelize.QueryTypes.SELECT,
+                                        raw: true,
+                                        logging: console.log,
+                                        replacements: { name: getNames, startDate: startDate, endDate: endDate},
+                                        plain:true
+                                        }
+                                    );
+                                    if(getAssigneeCountData != null && getAssigneeCountData.counter > 0 && getAssigneeCountData.counter < limitRows) {
+                                        customQuery = 'SELECT concat(aa.assignor_and_assignee_id,ac.rf_id) as id, ac.rf_id, aa.name as raw_name, r1.representative_name as normalize_name, acc.convey_ty, acc.employer_assign, (SELECT ap.exec_dt FROM assignor as ap WHERE ap.rf_id = ac.rf_id ORDER BY ap.exec_dt ASC LIMIT 1) as exec_dt FROM assignee as ac INNER JOIN assignment_conveyance as acc ON acc.rf_id = ac.rf_id  INNER JOIN assignor_and_assignee as aa ON aa.assignor_and_assignee_id = ac.assignor_and_assignee_id LEFT JOIN representative as r1 ON r1.representative_id = aa.representative_id INNER JOIN (SELECT or.rf_id FROM assignor as `or` INNER JOIN assignor_and_assignee as aaa ON aaa.assignor_and_assignee_id = or.assignor_and_assignee_id LEFT JOIN representative as r ON r.representative_id = aaa.representative_id  WHERE (or.exec_dt BETWEEN :startDate AND :endDate ) AND (aaa.name IN (:name) or r.representative_name IN (:name))) as temp ON temp.rf_id = ac.rf_id GROUP BY ac.rf_id ORDER BY exec_dt DESC';
+                                        /*Assignment organization as assignor i.e sale, security*/
+                                        
+                                        getAssigneeData = await connection.application.query(customQuery,{
+                                            type: connection.Sequelize.QueryTypes.SELECT,
+                                            raw: true,
+                                            logging: console.log,
+                                            replacements: { name: getNames, startDate: startDate, endDate: endDate},
+                                            }
+                                        );
+                                        return false;
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            } else {
+                /**12months */
+                customQuery = 'SELECT count(ac.rf_id) as counter FROM assignee as ac INNER JOIN assignment_conveyance as acc ON acc.rf_id = ac.rf_id  INNER JOIN assignor_and_assignee as aa ON aa.assignor_and_assignee_id = ac.assignor_and_assignee_id LEFT JOIN representative as r1 ON r1.representative_id = aa.representative_id INNER JOIN (SELECT or.rf_id FROM assignor as `or` INNER JOIN assignor_and_assignee as aaa ON aaa.assignor_and_assignee_id = or.assignor_and_assignee_id LEFT JOIN representative as r ON r.representative_id = aaa.representative_id  WHERE (or.exec_dt BETWEEN :startDate AND :endDate ) AND (aaa.name IN (:name) or r.representative_name IN (:name) )) as temp ON temp.rf_id = ac.rf_id GROUP BY ac.rf_id ORDER BY exec_dt DESC';
+
+
+                let getAssigneeCountData = await connection.application.query(customQuery,{
+                    type: connection.Sequelize.QueryTypes.SELECT,
+                    raw: true,
+                    logging: console.log,
+                    replacements: { name: getNames, startDate: startDate, endDate: endDate},
+                    plain:true
+                    }
+                );
+
+                if(getAssigneeCountData != null && getAssigneeCountData.counter > 0) {
+                    if(getAssigneeCountData.counter < limitRows) {
+                        customQuery = 'SELECT concat(aa.assignor_and_assignee_id,ac.rf_id) as id, ac.rf_id, aa.name as raw_name, r1.representative_name as normalize_name, acc.convey_ty, acc.employer_assign, (SELECT ap.exec_dt FROM assignor as ap WHERE ap.rf_id = ac.rf_id ORDER BY ap.exec_dt ASC LIMIT 1) as exec_dt FROM assignee as ac INNER JOIN assignment_conveyance as acc ON acc.rf_id = ac.rf_id  INNER JOIN assignor_and_assignee as aa ON aa.assignor_and_assignee_id = ac.assignor_and_assignee_id LEFT JOIN representative as r1 ON r1.representative_id = aa.representative_id INNER JOIN (SELECT or.rf_id FROM assignor as `or` INNER JOIN assignor_and_assignee as aaa ON aaa.assignor_and_assignee_id = or.assignor_and_assignee_id LEFT JOIN representative as r ON r.representative_id = aaa.representative_id  WHERE (or.exec_dt BETWEEN :startDate AND :endDate ) AND (aaa.name IN (:name) or r.representative_name IN (:name) )) as temp ON temp.rf_id = ac.rf_id GROUP BY ac.rf_id ORDER BY exec_dt DESC';
+                        /*Assignment organization as assignor i.e sale, security*/
+                        
+                        getAssigneeData = await connection.application.query(customQuery,{
+                            type: connection.Sequelize.QueryTypes.SELECT,
+                            raw: true,
+                            logging: console.log,
+                            replacements: { name: getNames, startDate: startDate, endDate: endDate},
+                            }
+                        );
+                    } else {
+                        startDate = moment(new Date(mainStartDate)).subtract(6, 'months').format(DATE_FORMAT);
+                        endDate = moment(new Date(mainEndDate)).add(6, 'months').format(DATE_FORMAT);
+
+                        customQuery = 'SELECT count(ac.rf_id) as counter FROM assignee as ac INNER JOIN assignment_conveyance as acc ON acc.rf_id = ac.rf_id  INNER JOIN assignor_and_assignee as aa ON aa.assignor_and_assignee_id = ac.assignor_and_assignee_id LEFT JOIN representative as r1 ON r1.representative_id = aa.representative_id INNER JOIN (SELECT or.rf_id FROM assignor as `or` INNER JOIN assignor_and_assignee as aaa ON aaa.assignor_and_assignee_id = or.assignor_and_assignee_id LEFT JOIN representative as r ON r.representative_id = aaa.representative_id  WHERE (or.exec_dt BETWEEN :startDate AND :endDate ) AND ( aaa.name IN (:name) or r.representative_name IN (:name) )) as temp ON temp.rf_id = ac.rf_id GROUP BY ac.rf_id ORDER BY exec_dt DESC';
+
+
+                        getAssigneeCountData = await connection.application.query(customQuery,{
+                            type: connection.Sequelize.QueryTypes.SELECT,
+                            raw: true,
+                            logging: console.log,
+                            replacements: { name: getNames, startDate: startDate, endDate: endDate},
+                            plain:true
+                            }
+                        );
+
+                        if(getAssigneeCountData != null && getAssigneeCountData.counter > 0) {
+                            if(getAssigneeCountData.counter < limitRows) {
+                                customQuery = 'SELECT concat(aa.assignor_and_assignee_id,ac.rf_id) as id, ac.rf_id, aa.name as raw_name, r1.representative_name as normalize_name, acc.convey_ty, acc.employer_assign, (SELECT ap.exec_dt FROM assignor as ap WHERE ap.rf_id = ac.rf_id ORDER BY ap.exec_dt ASC LIMIT 1) as exec_dt FROM assignee as ac INNER JOIN assignment_conveyance as acc ON acc.rf_id = ac.rf_id  INNER JOIN assignor_and_assignee as aa ON aa.assignor_and_assignee_id = ac.assignor_and_assignee_id LEFT JOIN representative as r1 ON r1.representative_id = aa.representative_id INNER JOIN (SELECT or.rf_id FROM assignor as `or` INNER JOIN assignor_and_assignee as aaa ON aaa.assignor_and_assignee_id = or.assignor_and_assignee_id LEFT JOIN representative as r ON r.representative_id = aaa.representative_id  WHERE (or.exec_dt BETWEEN :startDate AND :endDate ) AND (aaa.name IN (:name) or r.representative_name IN (:name) )) as temp ON temp.rf_id = ac.rf_id GROUP BY ac.rf_id ORDER BY exec_dt DESC';
+                                /*Assignment organization as assignor i.e sale, security*/
+                                
+                                getAssigneeData = await connection.application.query(customQuery,{
+                                    type: connection.Sequelize.QueryTypes.SELECT,
+                                    raw: true,
+                                    logging: console.log,
+                                    replacements: { name: getNames, startDate: startDate, endDate: endDate},
+                                    }
+                                );
+                            } else {
+                                /*Check Scroll left or right */
+                                if(scroll == 1) {
+                                    /**Scroll Right i.e Start Date - 1month */
+                                    endDate = moment(new Date(endDate)).add(12, 'months').format(DATE_FORMAT);
+                                    for(i=1;i<24;i++){
+                                        startDate = moment(new Date(mainStartDate)).subtract(i, 'months').format(DATE_FORMAT);
+
+                                        customQuery = 'SELECT count(ac.rf_id) as counter FROM assignee as ac INNER JOIN assignment_conveyance as acc ON acc.rf_id = ac.rf_id  INNER JOIN assignor_and_assignee as aa ON aa.assignor_and_assignee_id = ac.assignor_and_assignee_id LEFT JOIN representative as r1 ON r1.representative_id = aa.representative_id INNER JOIN (SELECT or.rf_id FROM assignor as `or` INNER JOIN assignor_and_assignee as aaa ON aaa.assignor_and_assignee_id = or.assignor_and_assignee_id LEFT JOIN representative as r ON r.representative_id = aaa.representative_id  WHERE (or.exec_dt BETWEEN :startDate AND :endDate ) AND ( aaa.name IN (:name) or r.representative_name IN (:name) )) as temp ON temp.rf_id = ac.rf_id GROUP BY ac.rf_id ORDER BY exec_dt DESC';
+
+
+                                        getAssigneeCountData = await connection.application.query(customQuery,{
+                                            type: connection.Sequelize.QueryTypes.SELECT,
+                                            raw: true,
+                                            logging: console.log,
+                                            replacements: { name: getNames, startDate: startDate, endDate: endDate},
+                                            plain:true
+                                            }
+                                        );
+                                        if(getAssigneeCountData != null && getAssigneeCountData.counter > 0 && getAssigneeCountData.counter < limitRows) {
+                                            customQuery = 'SELECT concat(aa.assignor_and_assignee_id,ac.rf_id) as id, ac.rf_id, aa.name as raw_name, r1.representative_name as normalize_name, acc.convey_ty, acc.employer_assign, (SELECT ap.exec_dt FROM assignor as ap WHERE ap.rf_id = ac.rf_id ORDER BY ap.exec_dt ASC LIMIT 1) as exec_dt FROM assignee as ac INNER JOIN assignment_conveyance as acc ON acc.rf_id = ac.rf_id  INNER JOIN assignor_and_assignee as aa ON aa.assignor_and_assignee_id = ac.assignor_and_assignee_id LEFT JOIN representative as r1 ON r1.representative_id = aa.representative_id INNER JOIN (SELECT or.rf_id FROM assignor as `or` INNER JOIN assignor_and_assignee as aaa ON aaa.assignor_and_assignee_id = or.assignor_and_assignee_id LEFT JOIN representative as r ON r.representative_id = aaa.representative_id  WHERE (or.exec_dt BETWEEN :startDate AND :endDate ) AND (aaa.name IN (:name) or r.representative_name IN (:name) )) as temp ON temp.rf_id = ac.rf_id GROUP BY ac.rf_id ORDER BY exec_dt DESC';
+                                            /*Assignment organization as assignor i.e sale, security*/
+                                            
+                                            getAssigneeData = await connection.application.query(customQuery,{
+                                                type: connection.Sequelize.QueryTypes.SELECT,
+                                                raw: true,
+                                                logging: console.log,
+                                                replacements: { name: getNames, startDate: startDate, endDate: endDate},
+                                                }
+                                            );
+                                            return false;
+                                        }
+                                    }
+                                } else {
+                                    /**Scroll Left i.e End Date - 1month */
+                                    startDate = moment(new Date(startDate)).add(12, 'months').format(DATE_FORMAT);
+                                    for(i=1;i<24;i++){
+                                        endDate = moment(new Date(mainEndDate)).subtract(1, 'months').format(DATE_FORMAT);
+                                        getAssigneeCountData = await connection.application.query(customQuery,{
+                                            type: connection.Sequelize.QueryTypes.SELECT,
+                                            raw: true,
+                                            logging: console.log,
+                                            replacements: { name: getNames, startDate: startDate, endDate: endDate},
+                                            plain:true
+                                            }
+                                        );
+                                        if(getAssigneeCountData != null && getAssigneeCountData.counter > 0 && getAssigneeCountData.counter < limitRows) {
+                                            customQuery = 'SELECT concat(aa.assignor_and_assignee_id,ac.rf_id) as id, ac.rf_id, aa.name as raw_name, r1.representative_name as normalize_name, acc.convey_ty, acc.employer_assign, (SELECT ap.exec_dt FROM assignor as ap WHERE ap.rf_id = ac.rf_id ORDER BY ap.exec_dt ASC LIMIT 1) as exec_dt FROM assignee as ac INNER JOIN assignment_conveyance as acc ON acc.rf_id = ac.rf_id  INNER JOIN assignor_and_assignee as aa ON aa.assignor_and_assignee_id = ac.assignor_and_assignee_id LEFT JOIN representative as r1 ON r1.representative_id = aa.representative_id INNER JOIN (SELECT or.rf_id FROM assignor as `or` INNER JOIN assignor_and_assignee as aaa ON aaa.assignor_and_assignee_id = or.assignor_and_assignee_id LEFT JOIN representative as r ON r.representative_id = aaa.representative_id  WHERE (or.exec_dt BETWEEN :startDate AND :endDate ) AND ( aaa.name IN (:name) or r.representative_name IN (:name) )) as temp ON temp.rf_id = ac.rf_id GROUP BY ac.rf_id ORDER BY exec_dt DESC';
+                                            /*Assignment organization as assignor i.e sale, security*/
+                                            
+                                            getAssigneeData = await connection.application.query(customQuery,{
+                                                type: connection.Sequelize.QueryTypes.SELECT,
+                                                raw: true,
+                                                logging: console.log,
+                                                replacements: { name: getNames, startDate: startDate, endDate: endDate},
+                                                }
+                                            );
+                                            return false;
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
 
             const combineAssignorAssignee = [...getAssignmentData, ...getAssigneeData];
             const rfIDs = [];
