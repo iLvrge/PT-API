@@ -684,7 +684,7 @@ let getShareData = async (code) => {
 }
 
 
-let getCompaniesMinAndMaxDateTransaction = async(searchObj) => {
+let getCompaniesMinAndMaxDateTransaction = async(searchData) => {
 
     let firstDate = "", secondDate = "", minDate = "", maxDate = "";
 
