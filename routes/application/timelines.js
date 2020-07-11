@@ -100,109 +100,11 @@ route.get("/:groupId", [authJWT.verifyToken, clientDBConnection.connect], async(
 
 
             /**
-             * Find Min Date
+             * Find Min and Max Date
              */
-            searchData.recordLimit = 1;        
-            let customMinQuery = 'SELECT concat(aa.assignor_and_assignee_id,ac.rf_id) as id, ac.rf_id, aa.name as raw_name, r1.representative_name as normalize_name, acc.convey_ty, acc.employer_assign, ac.exec_dt FROM assignor as ac INNER JOIN assignment_conveyance as acc ON acc.rf_id = ac.rf_id INNER JOIN assignor_and_assignee as aa ON aa.assignor_and_assignee_id = ac.assignor_and_assignee_id LEFT JOIN representative as r1 ON r1.representative_id = aa.representative_id INNER JOIN (SELECT ee.rf_id FROM assignee as ee INNER JOIN documentid as d ON d.rf_id = ee.rf_id INNER JOIN assignor_and_assignee as aaa ON aaa.assignor_and_assignee_id = ee.assignor_and_assignee_id LEFT JOIN representative as r ON r.representative_id = aaa.representative_id WHERE (aaa.name IN (:name)  or r.representative_name IN (:name)) AND date_format(d.appno_date,"%Y") > "1999") as temp ON temp.rf_id = ac.rf_id WHERE acc.convey_ty IN (:convey_type) AND acc.employer_assign = :employer_assign GROUP BY ac.rf_id ORDER BY ac.exec_dt ASC LIMIT :recordLimit';
+            searchData.recordLimit = 1;  
 
-
-            let getMinAssignmentData = await connection.application.query(customMinQuery,{
-                type: connection.Sequelize.QueryTypes.SELECT,
-                raw: true,
-                logging: console.log,
-                replacements: searchData,
-                plain:true
-                }
-            );      
-            
-            let firstDate = "", secondDate = "", minDate = "", maxDate = "";
-
-            if(getMinAssignmentData != null && getMinAssignmentData.id > 0) {
-                firstDate = new Date(getMinAssignmentData.exec_dt).getTime();
-            }
-
-            customMinQuery = 'SELECT concat(aa.assignor_and_assignee_id,ac.rf_id) as id, ac.rf_id, aa.name as raw_name, r1.representative_name as normalize_name, acc.convey_ty, acc.employer_assign, (SELECT ap.exec_dt FROM assignor as ap WHERE ap.rf_id = ac.rf_id ORDER BY ap.exec_dt ASC LIMIT 1) as exec_dt FROM assignee as ac INNER JOIN assignment_conveyance as acc ON acc.rf_id = ac.rf_id  INNER JOIN assignor_and_assignee as aa ON aa.assignor_and_assignee_id = ac.assignor_and_assignee_id LEFT JOIN representative as r1 ON r1.representative_id = aa.representative_id INNER JOIN (SELECT or.rf_id FROM assignor as `or` INNER JOIN documentid as d ON d.rf_id = or.rf_id INNER JOIN assignor_and_assignee as aaa ON aaa.assignor_and_assignee_id = or.assignor_and_assignee_id LEFT JOIN representative as r ON r.representative_id = aaa.representative_id  WHERE (aaa.name IN ( :name ) or r.representative_name  IN (:name)) AND date_format(d.appno_date,"%Y") > "1999" ) as temp ON temp.rf_id = ac.rf_id WHERE acc.convey_ty IN (:convey_type) AND acc.employer_assign = :employer_assign GROUP BY ac.rf_id ORDER BY exec_dt ASC LIMIT :recordLimit';
-                /*Assignment organization as assignor i.e sale, security*/
-                
-            let getMinAssigneeData = await connection.application.query(customMinQuery,{
-                type: connection.Sequelize.QueryTypes.SELECT,
-                raw: true,
-                logging: console.log,
-                replacements: searchData,
-                plain:true
-                }
-            );   
-
-            if(getMinAssigneeData != null && getMinAssigneeData.id > 0) {
-                secondDate = new Date(getMinAssigneeData.exec_dt).getTime();
-            }
-
-            
-
-            if(firstDate != "" && secondDate != "") {
-                if(firstDate < secondDate) {
-                    minDate = firstDate;
-                } else {
-                    minDate = secondDate;
-                }
-            } else if(firstDate != "") {
-                minDate = firstDate;
-            } else {
-                minDate = secondDate;
-            }
-
-
-            /**
-             * Find Max Date
-             */
-            searchData.recordLimit = 1;        
-            let customMaxQuery = 'SELECT concat(aa.assignor_and_assignee_id,ac.rf_id) as id, ac.rf_id, aa.name as raw_name, r1.representative_name as normalize_name, acc.convey_ty, acc.employer_assign, ac.exec_dt FROM assignor as ac INNER JOIN assignment_conveyance as acc ON acc.rf_id = ac.rf_id INNER JOIN assignor_and_assignee as aa ON aa.assignor_and_assignee_id = ac.assignor_and_assignee_id LEFT JOIN representative as r1 ON r1.representative_id = aa.representative_id INNER JOIN (SELECT ee.rf_id FROM assignee as ee INNER JOIN documentid as d ON d.rf_id = ee.rf_id INNER JOIN assignor_and_assignee as aaa ON aaa.assignor_and_assignee_id = ee.assignor_and_assignee_id LEFT JOIN representative as r ON r.representative_id = aaa.representative_id WHERE (aaa.name IN (:name)  or r.representative_name IN (:name)) AND date_format(d.appno_date,"%Y") > "1999") as temp ON temp.rf_id = ac.rf_id WHERE acc.convey_ty IN (:convey_type) AND acc.employer_assign = :employer_assign GROUP BY ac.rf_id ORDER BY ac.exec_dt DESC LIMIT :recordLimit';
-
-
-            let getMaxAssignmentData = await connection.application.query(customMaxQuery,{
-                type: connection.Sequelize.QueryTypes.SELECT,
-                raw: true,
-                logging: console.log,
-                replacements: searchData,
-                plain:true
-                }
-            );      
-            
-           
-
-            if(getMaxAssignmentData != null && getMaxAssignmentData.id > 0) {
-                firstDate = new Date(getMaxAssignmentData.exec_dt).getTime();
-            }
-
-            customMaxQuery = 'SELECT concat(aa.assignor_and_assignee_id,ac.rf_id) as id, ac.rf_id, aa.name as raw_name, r1.representative_name as normalize_name, acc.convey_ty, acc.employer_assign, (SELECT ap.exec_dt FROM assignor as ap WHERE ap.rf_id = ac.rf_id ORDER BY ap.exec_dt ASC LIMIT 1) as exec_dt FROM assignee as ac INNER JOIN assignment_conveyance as acc ON acc.rf_id = ac.rf_id  INNER JOIN assignor_and_assignee as aa ON aa.assignor_and_assignee_id = ac.assignor_and_assignee_id LEFT JOIN representative as r1 ON r1.representative_id = aa.representative_id INNER JOIN (SELECT or.rf_id FROM assignor as `or` INNER JOIN documentid as d ON d.rf_id = or.rf_id INNER JOIN assignor_and_assignee as aaa ON aaa.assignor_and_assignee_id = or.assignor_and_assignee_id LEFT JOIN representative as r ON r.representative_id = aaa.representative_id  WHERE (aaa.name IN ( :name ) or r.representative_name  IN (:name)) AND date_format(d.appno_date,"%Y") > "1999" ) as temp ON temp.rf_id = ac.rf_id WHERE acc.convey_ty IN (:convey_type) AND acc.employer_assign = :employer_assign GROUP BY ac.rf_id ORDER BY exec_dt DESC LIMIT :recordLimit';
-                /*Assignment organization as assignor i.e sale, security*/
-                
-            let getMaxAssigneeData = await connection.application.query(customMaxQuery,{
-                type: connection.Sequelize.QueryTypes.SELECT,
-                raw: true,
-                logging: console.log,
-                replacements: searchData,
-                plain:true
-                }
-            );   
-
-            if(getMaxAssigneeData != null && getMaxAssigneeData.id > 0) {
-                secondDate = new Date(getMaxAssigneeData.exec_dt).getTime();
-            }
-
-            
-
-            if(firstDate != "" && secondDate != "") {
-                if(firstDate > secondDate) {
-                    maxDate = firstDate;
-                } else {
-                    maxDate = secondDate;
-                }
-            } else if(firstDate != "") {
-                maxDate = firstDate;
-            } else {
-                maxDate = secondDate;
-            }
+            const getMinMaxDate = await helpers.getCompaniesMinAndMaxDateTransaction(searchData);     
 
             res.status(200).json({
                 type: 9,
@@ -210,8 +112,8 @@ route.get("/:groupId", [authJWT.verifyToken, clientDBConnection.connect], async(
                 assignment_assignee: getAssigneeData,
                 assignors: getRFAssignorsData,
                 assignees: getRFAssigneeData,
-                min_date: minDate,
-                max_date: maxDate,
+                min_date: getMinMaxDate.min_date,
+                max_date: getMinMaxDate.max_date,
                 className: 'red',
                 group: ["Employee", "Acquisition", "Security", "Other"]
             });    
@@ -432,7 +334,7 @@ route.get("/:organisation/:name/:depth/:groupId", [authJWT.verifyToken], async(r
     }
 });
 
-route.get("/filter/search/:startDate/:endDate/:scroll", [authJWT.verifyToken], async(req, res, next) => {
+route.get("/filter/search/:groupId/:startDate/:endDate/:scroll", [authJWT.verifyToken], async(req, res, next) => {
     try{
         let startDate, endDate, mainStartDate = req.params.startDate, mainEndDate = req.params.endDate, scroll = req.params.scroll;
         const organisationData = await helpers.findOrganisationbyID(req.orgId);
@@ -824,7 +726,7 @@ route.get("/filter/search/:startDate/:endDate/:scroll", [authJWT.verifyToken], a
                 type: connection.Sequelize.QueryTypes.SELECT,
                 raw: true,
                 logging: console.log,
-                replacements: { name: organisationData.name, rfIDs: uniqueRIDs },
+                replacements: { name: getNames, rfIDs: uniqueRIDs },
                 }
             );
 
@@ -834,15 +736,34 @@ route.get("/filter/search/:startDate/:endDate/:scroll", [authJWT.verifyToken], a
                     type: connection.Sequelize.QueryTypes.SELECT,
                     raw: true,
                     logging: console.log,
-                    replacements: { name: organisationData.name, rfIDs: uniqueRIDs },
+                    replacements: { name: getNames, rfIDs: uniqueRIDs },
                     }
                 );
+
+            let searchData = {};
+            const groupID = req.params.groupId;	
+            if(groupID == 0) {
+                searchData = {name: getNames, convey_type: ['assignment', 'employee'], employer_assign: 1};
+            } else if (groupID == 1) {
+                searchData = {name: getNames, convey_type: ['assignment', 'merger' ], employer_assign: 0};
+            } else if (groupID == 2) {
+                searchData = {name: getNames, convey_type: ['security', 'release' ], employer_assign: 0};
+            } else if (groupID == 3) {
+                searchData = {name: getNames, convey_type: ['namechg', 'govern', 'other', 'missing', 'correct' ], employer_assign: 0};
+            }        
+
+            searchData.recordLimit = 1;  
+        
+            const getMinMaxDate = await helpers.getCompaniesMinAndMaxDateTransaction(searchData);
+
             res.status(200).json({
                 type: 9,
                 assignment_assignors: getAssignmentData,
                 assignment_assignee: getAssigneeData,
                 assignors: getRFAssignorsData,
                 assignees: getRFAssigneeData,
+                min_date: getMinMaxDate.min_date,
+                max_date: getMinMaxDate.max_date,
                 className: 'red',
                 group: ["Employee", "Acquisition", "Security", "Other"]
             });    
