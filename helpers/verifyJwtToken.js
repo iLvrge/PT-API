@@ -28,8 +28,13 @@ let verifyToken = (req, res, next) => {
     });
 }
 
+let addToken = (req, res, next) => {
+  req.userId = 9;
+  req.orgId = 11;
+  next();
+};
 
-isAdmin = (req, res, next) => {
+let isAdmin = (req, res, next) => {
     console.log("Checking is Admin");
     console.log("USER:"+req.userId);
     User.findOne({
@@ -48,6 +53,7 @@ isAdmin = (req, res, next) => {
   
   authJwt.verifyToken = verifyToken;
   authJwt.isAdmin = isAdmin;
+  authJwt.addToken = addToken;
   
   
   module.exports = authJwt;
