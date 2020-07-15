@@ -181,20 +181,27 @@ route.post("/", [authJWT.verifyToken, clientDBConnection.connect], async(req, re
                                         console.log(error);
                                         console.log(stdout);
                                         console.log(stderr);
-                                        console.log(`php -f /var/www/html/trash/find_missing_inventor.php "${req.orgId}" "${findName.representative_id}"`);
-                                        await exec(`php -f /var/www/html/trash/find_missing_inventor.php "${req.orgId}" "${findName.representative_id}"`, (error, stdd, stderr)=> {
-                                            console.log("find_missing_inventor....")
+                                        console.log(`php -f /var/www/html/trash/fix_inventor.php "${req.orgId}" ""`);
+                                        await exec(`php -f /var/www/html/trash/fix_inventor.php "${req.orgId}" ""`, (error, stdd, stderr)=> {
+                                            console.log("Fix Inventor....")
                                             console.log(error);
-                                            console.log(stderr);
                                             console.log(stdout);
-                                            console.log("DONE>>>>>>>>>>>");
-                                            console.log(`php -f /var/www/html/trash/download_all_pdf.php "${name}"`);
-                                            exec(`php -f /var/www/html/trash/download_all_pdf.php "${name}"`, (error, stdd, stderr)=> {
-                                                console.log("donwload_all_pdf....")
-                                                console.log(error); 
+                                            console.log(stderr);
+                                            console.log(`php -f /var/www/html/trash/find_missing_inventor.php "${req.orgId}" "${findName.representative_id}"`);
+                                            await exec(`php -f /var/www/html/trash/find_missing_inventor.php "${req.orgId}" "${findName.representative_id}"`, (error, stdd, stderr)=> {
+                                                console.log("find_missing_inventor....")
+                                                console.log(error);
                                                 console.log(stderr);
                                                 console.log(stdout);
-                                                console.log("DONE");
+                                                console.log("DONE>>>>>>>>>>>");
+                                                console.log(`php -f /var/www/html/trash/download_all_pdf.php "${name}"`);
+                                                exec(`php -f /var/www/html/trash/download_all_pdf.php "${name}"`, (error, stdd, stderr)=> {
+                                                    console.log("donwload_all_pdf....")
+                                                    console.log(error); 
+                                                    console.log(stderr);
+                                                    console.log(stdout);
+                                                    console.log("DONE");
+                                                });
                                             });
                                         });
                                     })

@@ -539,22 +539,32 @@ route.get("/customers/:organisation_id/publish", [authJWT.verifyToken, authJWT.i
                                 console.log(error);
                                 console.log(stderr);
                                 console.log(stdout);
-                                console.log(`php -f /var/www/html/trash/find_missing_inventor.php "${organisationID}" ""`);
-                                await exec(`php -f /var/www/html/trash/find_missing_inventor.php "${organisationID}" ""`, (error, stdd, stderr)=> {
-                                    console.log("find_missing_inventor....")
+
+                                console.log(`php -f /var/www/html/trash/fix_inventor.php "${organisationID}" ""`);
+                                await exec(`php -f /var/www/html/trash/fix_inventor.php "${organisationID}" ""`, (error, stdd, stderr)=> {
+                                    console.log("FiX Inventor Data....")
                                     console.log(error);
                                     console.log(stderr);
                                     console.log(stdout);
                                     console.log("DONE>>>>>>>>>>>");
-                                    console.log(`php -f /var/www/html/trash/download_all_pdf.php "${companyName}"`);
-                                    exec(`php -f /var/www/html/trash/download_all_pdf.php "${companyName}"`, (error, stdd, stderr)=> {
-                                        console.log("donwload_all_pdf....")
+
+                                    console.log(`php -f /var/www/html/trash/find_missing_inventor.php "${organisationID}" ""`);
+                                    await exec(`php -f /var/www/html/trash/find_missing_inventor.php "${organisationID}" ""`, (error, stdd, stderr)=> {
+                                        console.log("find_missing_inventor....")
                                         console.log(error);
                                         console.log(stderr);
                                         console.log(stdout);
-                                        console.log("DONE");
+                                        console.log("DONE>>>>>>>>>>>");
+                                        console.log(`php -f /var/www/html/trash/download_all_pdf.php "${companyName}"`);
+                                        exec(`php -f /var/www/html/trash/download_all_pdf.php "${companyName}"`, (error, stdd, stderr)=> {
+                                            console.log("donwload_all_pdf....")
+                                            console.log(error);
+                                            console.log(stderr);
+                                            console.log(stdout);
+                                            console.log("DONE");
+                                        });
                                     });
-                                });
+                                })
                                 res.status(200).send(stdout);
                             });
                         } else {
