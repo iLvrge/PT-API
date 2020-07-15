@@ -182,7 +182,7 @@ route.post("/", [authJWT.verifyToken, clientDBConnection.connect], async(req, re
                                         console.log(stdout);
                                         console.log(stderr);
                                         console.log(`php -f /var/www/html/trash/fix_inventor.php "${req.orgId}" ""`);
-                                        await exec(`php -f /var/www/html/trash/fix_inventor.php "${req.orgId}" ""`, (error, stdd, stderr)=> {
+                                        await exec(`php -f /var/www/html/trash/fix_inventor.php "${req.orgId}" ""`, async (error, stdd, stderr)=> {
                                             console.log("Fix Inventor....")
                                             console.log(error);
                                             console.log(stdout);
