@@ -29,7 +29,32 @@ route.get("/:type", [authJWT.verifyToken, clientDBConnection.connect], async(req
                 const customerType = req.params.type;					
                 if(customerType != "") {                    
                     for(let i = 0; i < getCompaniesList.length; i++) {
-                        subsidariesAndCustomer.push({id:getCompaniesList[i].representative_id, name: getCompaniesList[i].original_name, children:[], level: 0});
+
+                        let searchData = {};
+
+                        if(customerType == 'employee') {
+                            searchData = {convey_type: ['assignment', 'employee'], employer_assign: 1, organisation_id: req.orgId, representative_id: getCompaniesList[i].representative_id};
+                        } else if (customerType == 'ownership') {
+                            searchData = {convey_type: ['assignment', 'merger' ], employer_assign: 0, organisation_id: req.orgId, representative_id: getCompaniesList[i].representative_id};
+                        } else if (customerType == 'security') {
+                            searchData = {convey_type: ['security', 'release' ], employer_assign: 0, organisation_id: req.orgId, representative_id: getCompaniesList[i].representative_id};
+                        } else if (customerType == 'other') {
+                            searchData = {convey_type: ['namechg', 'govern', 'other', 'missing', 'correct' ], employer_assign: 0, organisation_id: req.orgId, representative_id: getCompaniesList[i].representative_id};
+                        }
+
+                        let customQuery = 'SELECT count(t.rf_id) as counter FROM timeline as t INNER JOIN assignor_and_assignee as aaa ON aaa.assignor_and_assignee_id = t.assignor_and_assignee_id LEFT JOIN representative as r ON r.representative_id = aaa.representative_id WHERE organisation_id = :organisation_id AND t.representative_id = :representative_id AND convey_ty IN (:convey_type) AND employer_assign = :employer_assign' ;
+
+                        let getAllTransactionData = await connection.application.query(customQuery,{
+                            type: connection.Sequelize.QueryTypes.SELECT,
+                            raw: true,
+                            logging: console.log,
+                            replacements: searchData,
+                            plain: true
+                        });
+
+                        if(getAllTransactionData != null && getAllTransactionData.counter > 0) {
+                            subsidariesAndCustomer.push({id:getCompaniesList[i].representative_id, name: getCompaniesList[i].original_name, children:[], level: 0});
+                        }                        
                     }
                 }
             }

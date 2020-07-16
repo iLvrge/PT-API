@@ -277,6 +277,15 @@ let getCompaniesList = async (DBConnection) => {
     });
 }
 
+
+let getSubCompaniesList = async (DBConnection, companyID) => {
+    const Representative = DBConnection.define('ClientRepesentative', ClientRepesentative.mainStructure, ClientRepesentative.options);
+
+    return await Representative.findAll({
+        where: {parent_id: companyID}
+    });
+}
+
 /**
  * Find Customer all companies list
  * @param {} DBConnection 
@@ -798,6 +807,7 @@ helper.getAllUsers = getAllUsers;
 helper.findCompanyCustomersByName = findCompanyCustomersByName;
 helper.findCompanyCustomersByID = findCompanyCustomersByID;
 helper.getCompaniesList = getCompaniesList;
+helper.getSubCompaniesList = getSubCompaniesList;
 helper.getAllCompaniesList = getAllCompaniesList;
 helper.getAssignmentDataByrfID = getAssignmentDataByrfID;
 helper.generateJSON = generateJSON;
