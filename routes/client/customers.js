@@ -176,7 +176,17 @@ route.get("/:parentCompany/parties/:tabId", [authJWT.verifyToken, clientDBConnec
                         }
                     );
 
-                    allCustomers = [...getNameChgData, ...getGovernData];
+                    let queryCorrectChange = "SELECT aaa.assignor_and_assignee_id, aaa.name as name, r.representative_name as normalize_name, 'Correct.' as type FROM assignor as `or` LEFT JOIN assignor_and_assignee as aaa ON aaa.assignor_and_assignee_id = or.assignor_and_assignee_id LEFT JOIN representative as r ON r.representative_id = aaa.representative_id INNER JOIN (SELECT ee.rf_id FROM assignee as ee INNER JOIN assignment_conveyance as ass ON ass.rf_id = ee.rf_id INNER JOIN documentid as d ON ass.rf_id = d.rf_id INNER JOIN  assignor_and_assignee as aa ON aa.assignor_and_assignee_id = ee.assignor_and_assignee_id LEFT JOIN representative as r1 ON r1.representative_id = aa.representative_id WHERE ass.convey_ty = :convey_type AND (aa.name = :name OR r1.representative_name = :name) GROUP BY ee.rf_id) as temp ON temp.rf_id = or.rf_id GROUP BY name, normalize_name ORDER BY normalize_name ASC, name ASC ";
+                            
+                    let getCorrectData = await connection.application.query(queryCorrectChange,{
+                        type: connection.Sequelize.QueryTypes.SELECT,
+                        replacements: { name: getCompaniesList.original_name, convey_type: 'correct' },
+                        raw: true,
+                        logging: console.log,
+                        }
+                    );
+
+                    allCustomers = [...getNameChgData, ...getGovernData, ...getCorrectData];
                 }
 
                 allCustomers.sort(function(a, b) {
