@@ -404,7 +404,60 @@ route.post("/customers", [authJWT.verifyToken, authJWT.isAdmin], (req, res, next
                     country_id:1,
                 }).then( org => {
                     if(org != null && org.organisation_id > 0){
-                        res.status(200).json(org);
+                        let companyName = org.name;
+                        console.log(`php -f /var/www/html/trash/tree_script.php "${companyName}"`);
+                        await exec(`php -f /var/www/html/trash/tree_script.php "${companyName}"`, async (error, stdout, stderr) => {
+                            console.log("tree_script");
+                            console.log(error);
+                            console.log(stderr);
+                            /*res.status(200).send(stdout);*/
+                            if(stdout == "Tree created") {
+                                console.log(`php -f /var/www/html/trash/timeline.php "${organisationID}" ""`);
+                                await exec(`php -f /var/www/html/trash/timeline.php "${organisationID}" ""`, async (error, std, stderr) => {
+                                    console.log("timeline create one table");
+                                    console.log(error);
+                                    console.log(stderr);
+                                    console.log(std);
+
+                                    console.log(`php -f /var/www/html/trash/script_create_customer_db.php "${organisationID}"`);
+                                    await exec(`php -f /var/www/html/trash/script_create_customer_db.php "${organisationID}"`, async (error, std, stderr) => {
+                                        console.log("script_create_customer_db");
+                                        console.log(error);
+                                        console.log(stderr);
+                                        console.log(std);
+
+                                        console.log(`php -f /var/www/html/trash/fix_inventor.php "${organisationID}" ""`);
+                                        await exec(`php -f /var/www/html/trash/fix_inventor.php "${organisationID}" ""`, async (error, stdd, stderr)=> {
+                                            console.log("FiX Inventor Data....")
+                                            console.log(error);
+                                            console.log(stderr);
+                                            console.log(stdd);
+                                            console.log("DONE>>>>>>>>>>>");
+
+                                            console.log(`php -f /var/www/html/trash/find_missing_inventor.php "${organisationID}" ""`);
+                                            await exec(`php -f /var/www/html/trash/find_missing_inventor.php "${organisationID}" ""`,async (error, stdd, stderr)=> {
+                                                console.log("find_missing_inventor....")
+                                                console.log(error);
+                                                console.log(stderr);
+                                                console.log(stdout);
+                                                console.log("DONE>>>>>>>>>>>");
+                                                console.log(`php -f /var/www/html/trash/download_all_pdf.php "${companyName}"`);
+                                                exec(`php -f /var/www/html/trash/download_all_pdf.php "${companyName}"`, (error, stdd, stderr)=> {
+                                                    console.log("donwload_all_pdf....")
+                                                    console.log(error);
+                                                    console.log(stderr);
+                                                    console.log(stdout);
+                                                    console.log("DONE");
+                                                });
+                                            });
+                                        })
+                                        res.status(200).json(org);
+                                    });
+                                });
+                            } else {
+                                res.status(200).send("Error while creating database for the customer.");
+                            }
+                        });                        
                     } else {
                         res.status(500).send("Internal server error");
                     }
@@ -533,39 +586,47 @@ route.get("/customers/:organisation_id/publish", [authJWT.verifyToken, authJWT.i
                         console.log(stderr);
                         /*res.status(200).send(stdout);*/
                         if(stdout == "Tree created") {
-                            console.log(`php -f /var/www/html/trash/script_create_customer_db.php "${organisationID}"`);
-                            await exec(`php -f /var/www/html/trash/script_create_customer_db.php "${organisationID}"`, async (error, std, stderr) => {
-                                console.log("script_create_customer_db");
+                            console.log(`php -f /var/www/html/trash/timeline.php "${organisationID}" ""`);
+                            await exec(`php -f /var/www/html/trash/timeline.php "${organisationID}" ""`, async (error, std, stderr) => {
+                                console.log("timeline create one table");
                                 console.log(error);
                                 console.log(stderr);
-                                console.log(stdout);
+                                console.log(std);
 
-                                console.log(`php -f /var/www/html/trash/fix_inventor.php "${organisationID}" ""`);
-                                await exec(`php -f /var/www/html/trash/fix_inventor.php "${organisationID}" ""`, async (error, stdd, stderr)=> {
-                                    console.log("FiX Inventor Data....")
+                                console.log(`php -f /var/www/html/trash/script_create_customer_db.php "${organisationID}"`);
+                                await exec(`php -f /var/www/html/trash/script_create_customer_db.php "${organisationID}"`, async (error, std, stderr) => {
+                                    console.log("script_create_customer_db");
                                     console.log(error);
                                     console.log(stderr);
-                                    console.log(stdout);
-                                    console.log("DONE>>>>>>>>>>>");
+                                    console.log(std);
 
-                                    console.log(`php -f /var/www/html/trash/find_missing_inventor.php "${organisationID}" ""`);
-                                    await exec(`php -f /var/www/html/trash/find_missing_inventor.php "${organisationID}" ""`,async (error, stdd, stderr)=> {
-                                        console.log("find_missing_inventor....")
+                                    console.log(`php -f /var/www/html/trash/fix_inventor.php "${organisationID}" ""`);
+                                    await exec(`php -f /var/www/html/trash/fix_inventor.php "${organisationID}" ""`, async (error, stdd, stderr)=> {
+                                        console.log("FiX Inventor Data....")
                                         console.log(error);
                                         console.log(stderr);
-                                        console.log(stdout);
+                                        console.log(stdd);
                                         console.log("DONE>>>>>>>>>>>");
-                                        console.log(`php -f /var/www/html/trash/download_all_pdf.php "${companyName}"`);
-                                        exec(`php -f /var/www/html/trash/download_all_pdf.php "${companyName}"`, (error, stdd, stderr)=> {
-                                            console.log("donwload_all_pdf....")
+
+                                        console.log(`php -f /var/www/html/trash/find_missing_inventor.php "${organisationID}" ""`);
+                                        await exec(`php -f /var/www/html/trash/find_missing_inventor.php "${organisationID}" ""`,async (error, stdd, stderr)=> {
+                                            console.log("find_missing_inventor....")
                                             console.log(error);
                                             console.log(stderr);
                                             console.log(stdout);
-                                            console.log("DONE");
+                                            console.log("DONE>>>>>>>>>>>");
+                                            console.log(`php -f /var/www/html/trash/download_all_pdf.php "${companyName}"`);
+                                            exec(`php -f /var/www/html/trash/download_all_pdf.php "${companyName}"`, (error, stdd, stderr)=> {
+                                                console.log("donwload_all_pdf....")
+                                                console.log(error);
+                                                console.log(stderr);
+                                                console.log(stdout);
+                                                console.log("DONE");
+                                            });
                                         });
-                                    });
-                                })
-                                res.status(200).send(stdout);
+                                    })
+                                    res.status(200).send(stdout);
+                                });
                             });
                         } else {
                             res.status(200).send("Error while creating database for the customer.");
