@@ -405,7 +405,7 @@ route.post("/customers", [authJWT.verifyToken, authJWT.isAdmin], (req, res, next
                 }).then( org => {
                     if(org != null && org.organisation_id > 0){
                         (async () => {
-                            let companyName = org.name;
+                            let companyName = org.name, organisationID = org.organisation_id;
                             console.log(`php -f /var/www/html/trash/tree_script.php "${companyName}"`);
                             await exec(`php -f /var/www/html/trash/tree_script.php "${companyName}"`, async (error, stdout, stderr) => {
                                 console.log("tree_script");
