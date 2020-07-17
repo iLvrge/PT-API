@@ -433,7 +433,7 @@ let findCompanyCustomersByName = async(companyName, type) => {
                 if(parseInt(type) == 1) {
                     queryAssignor +=" AND ac.employer_assign = 1";
                 } else {
-                    queryAssignor +=" AND ac.employer_assign = 0";
+                    queryAssignor +=" AND ac.employer_assign = 0 AND a.rf_id NOT IN (SELECT rf_id FROM db_uspto.representative_assignment_conveyance)";
                 }
             }
 
