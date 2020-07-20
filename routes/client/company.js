@@ -222,6 +222,7 @@ route.post("/", [authJWT.verifyToken, clientDBConnection.connect], async(req, re
                     }
                 } else {
                     /**Add parent companies */
+                    console.log("IN Parent");
                     let companies = [], originalNames = [], representativeNames = [];
                     const Representative = req.connection_db.define('Representatives', Representatives.mainStructure, Representatives.options);
                     if(getList.length > 0) {                
@@ -250,41 +251,48 @@ route.post("/", [authJWT.verifyToken, clientDBConnection.connect], async(req, re
                         if(findParentCompanies.length == 0) {
                             let addRecord = 0,  mainCompanies = [], parentCompaniesID = [];                   
                             for(let i = 0; i < companies.length; i++) {
-    
+                                
                                 /** Add in Client Representative */
                                 const addParent = await Representative.create({
                                     original_name: companies[i].original_name, representative_name: companies[i].representative_name, instances: companies[i].instances
                                 });
+                                console.log(addParent);
                                 if(addParent != null && addParent.representative_id > 0){
                                     parentCompaniesID.push(addParent.representative_id);
                                     let nameR = companies[i].representative_id > 0 ? companies[i].representative_name : companies[i].original_name;
     
                                     mainCompanies.push(nameR);
                                     addRecord++;
+                                    console.log(companies[i].representative_id);
+                                    let findCompaniesQuery = "";
+
                                     if(companies[i].representative_id > 0) {
-                                        const findCompaniesQuery = "SELECT aaa.*, r.representative_name  FROM assignor_and_assignee as aaa LEFT JOIN representative as r ON r.representative_id = aaa.representative_id WHERE aaa.representative_id = :representativeID";
-    
-                                        const list  = await connection.resources.query(findCompaniesQuery,{
-                                            type: connection.Sequelize.QueryTypes.SELECT,
-                                            replacements: { representativeID: companies[i].representative_id },
-                                            raw: true,
-                                            logging: console.log,
-                                            }
-                                        ); 
-    
-                                        if(list.length > 0) {
-                                            const childCompanies = [];
-                                            list.map( company => {
-                                                childCompanies.push({original_name: company.name, representative_name: company.representative_name, instances: companies[i].instances, parent_id: addParent.representative_id});
-                                            });
-                                            if(childCompanies.length > 0) {
-                                                const addChildCompanies = await Representative.bulkCreate(companies);
-                                                if(addChildCompanies) {
-                                                    addRecord++;
-                                                }
+                                        findCompaniesQuery = "SELECT aaa.*, r.representative_name  FROM assignor_and_assignee as aaa LEFT JOIN representative as r ON r.representative_id = aaa.representative_id WHERE aaa.representative_id = :representativeID";
+                                    } else {
+                                        findCompaniesQuery = "SELECT aaa.*, r.representative_name  FROM assignor_and_assignee as aaa LEFT JOIN representative as r ON r.representative_id = aaa.representative_id WHERE aaa.representative_id IN (SELECT representative_id FROM representative WHERE representative_name = :name)";
+                                    }
+                                    console.log(findCompaniesQuery);
+                                    const list  = await connection.resources.query(findCompaniesQuery,{
+                                        type: connection.Sequelize.QueryTypes.SELECT,
+                                        replacements: { representativeID: companies[i].representative_id, name: nameR },
+                                        raw: true,
+                                        logging: console.log,
+                                        }
+                                    ); 
+
+                                    if(list.length > 0) {
+                                        const childCompanies = [];
+                                        list.map( company => {
+                                            childCompanies.push({original_name: company.name, representative_name: company.representative_name, instances: companies[i].instances, parent_id: addParent.representative_id});
+                                        });
+                                        if(childCompanies.length > 0) {
+                                            const addChildCompanies = await Representative.bulkCreate(childCompanies);
+                                            if(addChildCompanies) {
+                                                addRecord++;
                                             }
                                         }
                                     }
+                                   
                                 }
                             }
                             if(addRecord > 0) {
