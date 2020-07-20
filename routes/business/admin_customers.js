@@ -658,7 +658,7 @@ route.put("/customers/:organisation_name/flag_update_manually", [authJWT.verifyT
     let inventors = req.body.inventors, organisationName = req.params.organisation_name;
 
     if(inventors != undefined && inventors.length > 0) {
-        let update = await helpers.updateAllCustomerInventor(organisationName, type);
+        let update = await helpers.updateAllCustomerInventor(organisationName, inventors);
         res.status(200).send("Testing 1");
     } else {
 

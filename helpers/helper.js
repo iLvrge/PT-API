@@ -849,6 +849,7 @@ helper.checkRepresentativeCompany = checkRepresentativeCompany;
 helper.checkCustomerCompany = checkCustomerCompany;
 helper.getAllUsers = getAllUsers;
 helper.findCompanyCustomersByName = findCompanyCustomersByName;
+helper.updateAllCustomerInventor = updateAllCustomerInventor;
 helper.findCompanyCustomersByID = findCompanyCustomersByID;
 helper.getCompaniesList = getCompaniesList;
 helper.getSubCompaniesList = getSubCompaniesList;
