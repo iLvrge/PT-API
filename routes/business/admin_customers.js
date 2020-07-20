@@ -659,7 +659,7 @@ route.put("/customers/:organisation_name/flag_update_manually", [authJWT.verifyT
 
     if(inventors != undefined && inventors.length > 0) {
         let update = await helpers.updateAllCustomerInventor(organisationName, inventors);
-        //res.status(200).json(update);
+        res.status(200).json(update);
     } else {
         res.status(400).send("No list found! ");
     }
