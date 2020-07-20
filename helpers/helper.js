@@ -13,6 +13,8 @@ const BusinessRoles = require("../model/business/Roles");
 
 const Representatives = require("../model/resources/Representatives");
 
+const RepresentativeAssignmentConveyance = require("../model/resources/RepresentativeAssignmentConveyance");
+
 const AssignorAndAssignee = require("../model/resources/AssignorAndAssignee");
 
 const RepresentativeApplication = require("../model/resources/Representatives");
@@ -332,10 +334,10 @@ let updateAllCustomerInventor = async(companyName, inventors) => {
         representativeName = findRepresentative.representative_name
     }
 
-    let listIDs = 0;
+    let added = 0;
 
     if(representativeName != '') {
-        let queryFindAssignorAndAssigneeIDs = "INSERT IGNORE db_uspto.representative_assignment_conveyance  SELECT ac.rf_id, ac.convey_ty, ac.employer_assign FROM db_uspto.assignee as a INNER JOIN assignment_conveyance as ac ON ac.rf_id = a.rf_id WHERE a.assignor_and_assignee_id IN (SELECT aa.assignor_and_assignee_id FROM assignor_and_assignee as aa LEFT JOIN representative as r1 ON r1.representative_id = aa.representative_id where (r1.representative_name=:name OR aa.name = :name) AND aa.name IN (:inventors))  ";
+        let queryFindAssignorAndAssigneeIDs = "SELECT ac.rf_id, ac.convey_ty FROM db_application.assignor as aaa INNER JOIN db_application.assignment_conveyance as ac ON ac.rf_id = aaa.rf_id WHERE aaa.rf_id IN(SELECT  a.rf_id FROM db_uspto.assignee as a WHERE a.assignor_and_assignee_id IN (SELECT aa.assignor_and_assignee_id FROM db_application.assignor_and_assignee as aa LEFT JOIN db_application.representative as r1 ON r1.representative_id = aa.representative_id where (r1.representative_name = :name OR aa.name = :name))) AND  aaa.or_name IN (:inventors)";
 
         listIDs = await connection.resources.query(queryFindAssignorAndAssigneeIDs,{
             type: connection.Sequelize.QueryTypes.SELECT,
@@ -344,8 +346,20 @@ let updateAllCustomerInventor = async(companyName, inventors) => {
             logging: console.log,
             }
         );
+
+        if(listIDs != null && listIDs.length > 0) {
+            let updateFlags = [];
+            listIDs.map(l => {
+                updateFlags.push({
+                    rf_id: l.rf_id,
+                    convey_ty: l.convey_ty,
+                    employer_assign: 1
+                });
+            });
+            listIDs = await RepresentativeAssignmentConveyance.bulkCreate(updateFlags);
+        }
     }
-    return listIDs;
+    return added;
 }
 
 /**
