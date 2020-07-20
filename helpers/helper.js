@@ -356,7 +356,7 @@ let updateAllCustomerInventor = async(companyName, inventors) => {
                     employer_assign: 1
                 });
             });
-            listIDs = await RepresentativeAssignmentConveyance.bulkCreate(updateFlags);
+            added = await RepresentativeAssignmentConveyance.bulkCreate(updateFlags);
         }
     }
     return added;
