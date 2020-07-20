@@ -337,7 +337,7 @@ let updateAllCustomerInventor = async(companyName, inventors) => {
     if(representativeName != '') {
         let queryFindAssignorAndAssigneeIDs = "INSERT IGNORE db_uspto.representative_assignment_conveyance  SELECT ac.rf_id, ac.convey_ty, ac.employer_assign FROM db_uspto.assignee as a INNER JOIN assignment_conveyance as ac ON ac.rf_id = a.rf_id WHERE a.assignor_and_assignee_id IN (SELECT aa.assignor_and_assignee_id FROM assignor_and_assignee as aa LEFT JOIN representative as r1 ON r1.representative_id = aa.representative_id where (r1.representative_name=:name OR aa.name = :name) AND aa.name IN (:inventors))  ";
 
-        let listIDs = await connection.resources.query(queryFindAssignorAndAssigneeIDs,{
+        listIDs = await connection.resources.query(queryFindAssignorAndAssigneeIDs,{
             type: connection.Sequelize.QueryTypes.SELECT,
             replacements: { name: representativeName, inventors: inventors },
             raw: true,
