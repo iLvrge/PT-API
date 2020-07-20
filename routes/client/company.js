@@ -283,7 +283,7 @@ route.post("/", [authJWT.verifyToken, clientDBConnection.connect], async(req, re
                                     if(list.length > 0) {
                                         const childCompanies = [];
                                         list.map( company => {
-                                            childCompanies.push({original_name: company.name, representative_name: company.representative_name, instances: companies[i].instances, parent_id: addParent.representative_id});
+                                            childCompanies.push({original_name: company.name, representative_name: company.representative_name, instances: company[i].instances, parent_id: addParent.representative_id});
                                         });
                                         if(childCompanies.length > 0) {
                                             const addChildCompanies = await Representative.bulkCreate(childCompanies);

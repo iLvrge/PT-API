@@ -36,7 +36,7 @@ const ClientRepesentative = require("../model/client/Representatives");
  
 let searchCompany = async(search) => {
 
-    let searchTerm, queryCompany;
+    let searchTerm, queryCompany, searchResult = [];
 
     const splitSearch = search.toString().split(' ');
 
@@ -99,7 +99,42 @@ let searchCompany = async(search) => {
         }
     }
 
-    return getCompanyData;
+    if(getCompanyData.length > 0) {
+        let allNames = [];
+        getCompanyData.map(company => {
+            let companyData = {...company};
+            companyData.children = [];
+            searchResult.push(companyData);
+            allNames.push(company.normalize_name != null ? company.normalize_name : company.name)
+        })
+
+        queryChildCompany = `SELECT a.assignor_and_assignee_id as id, a.name, sum(a.instances) as counter, c.representative_name as normalize_name, (select rr.representative_name FROM representative as rr WHERE rr.representative_name = a.name GROUP BY rr.representative_name) as representative_company FROM assignor_and_assignee as a INNER JOIN representative as c ON c.representative_id = a.representative_id where c.representative_name IN (:name)`;
+
+        getChildCompanyData = await connection.resources.query(queryChildCompany,{
+            type: connection.Sequelize.QueryTypes.SELECT,
+            raw: true,
+            replacements: { name: allNames },
+            logging: console.log,
+            }
+        );
+
+        if(getChildCompanyData.length > 0) {
+            getChildCompanyData.map(c => {
+                for(let i = 0; i < searchResult.length; i++) {
+                    let parentName = searchResult[i].normalize_name != null ? searchResult[i].normalize_name : searchResult[i].name;
+                    if(parentName == c.normalize_name){
+                        searchResult[i].children.push(c);
+                        return;
+                    }
+                }
+            });
+            return searchResult;
+        } else {
+            return searchResult;
+        }        
+    } else {
+        return searchResult;
+    }    
 }
 
 let findOrganisationbyID = async (organisationID) => {
