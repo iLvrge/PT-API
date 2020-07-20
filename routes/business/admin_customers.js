@@ -654,6 +654,18 @@ route.get("/customers/:organisation_id/publish", [authJWT.verifyToken, authJWT.i
     } 
 });
 
+route.put("/customers/:organisation_name/flag_update_manually", [authJWT.verifyToken, authJWT.isAdmin], async(req, res, next) => {
+    let inventors = req.body.inventors, organisationName = req.params.organisation_name;
+
+    if(inventors != undefined && inventors.length > 0) {
+        let update = await helpers.updateAllCustomerInventor(organisationName, type);
+        res.status(200).send("Testing 1");
+    } else {
+
+        res.status(200).send("Testing ");
+    }
+});
+
 route.delete("/customers/:organisation_id", [authJWT.verifyToken, authJWT.isAdmin], async(req, res, next) => {
     try{
         let organisationID = req.params.organisation_id;

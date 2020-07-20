@@ -304,6 +304,50 @@ let checkCustomerCompany = async(DBConnection, companyName) => {
     });
 };
 
+let updateAllCustomerInventor = async(companyName, inventors) => {
+    let representativeName = "";
+
+    let findRepresentative = await Representatives.findOne({
+        where:{representative_name: companyName},
+    });
+
+    if(findRepresentative == null ) {
+        findRepresentative = await AssignorAndAssignee.findOne({
+            where:{name: companyName, representative_id: {[connection.Op.gt]: 0}},
+            attributes:['representative_id'],
+            include:[
+                {
+                    model: Representatives,
+                    as: "representative",
+                    attributes: ['representative_name']
+                }
+            ]
+        })
+        if(findRepresentative != null && findRepresentative.representative.representative_name != null) {
+            representativeName = findRepresentative.representative.representative_name;
+        } else {
+            representativeName = companyName;
+        }
+    } else {
+        representativeName = findRepresentative.representative_name
+    }
+
+
+
+    if(representativeName != '') {
+        let queryFindAssignorAndAssigneeIDs = "SELECT ac.rf_id, ac.convey_ty, ac.employer_assign FROM db_uspto.assignee as a INNER JOIN assignment_conveyance as ac ON ac.rf_id = a.rf_id WHERE ac.assignor_and_assignee_id IN (SELECT aa.assignor_and_assignee_id FROM assignor_and_assignee as aa LEFT JOIN representative as r1 ON r1.representative_id = aa.representative_id where (r1.representative_name=:name OR aa.name = :name) AND aa.name IN (:inventors))  ";
+
+        let listIDs = await connection.resources.query(queryFindAssignorAndAssigneeIDs,{
+            type: connection.Sequelize.QueryTypes.SELECT,
+            replacements: { name: representativeName, inventors: inventors },
+            raw: true,
+            logging: console.log,
+            }
+        );
+        console.log(listIDs);
+    }
+}
+
 /**
  * Find Customer Parties
  * Input Company name

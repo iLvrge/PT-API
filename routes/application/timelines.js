@@ -41,9 +41,9 @@ route.get("/standalone/:groupId", [authJWT.addToken, clientDBConnection.connect]
 
             searchData.start = startDate;
             searchData.end = endDate;
-            searchData.recordLimit = 1000;
+            searchData.recordLimit = 5000;
 
-            let customQuery = 'SELECT type, CONCAT(t.assignor_and_assignee_id, t.rf_id) as id, t.rf_id, aaa.name as raw_name, r.representative_name as normalize_name, t.convey_ty, t.employer_assign, t.exec_dt FROM timeline as t INNER JOIN assignor_and_assignee as aaa ON aaa.assignor_and_assignee_id = t.assignor_and_assignee_id LEFT JOIN representative as r ON r.representative_id = aaa.representative_id WHERE organisation_id = :organisation_id AND convey_ty IN (:convey_type) AND employer_assign = :employer_assign  ORDER BY t.exec_dt DESC LIMIT :recordLimit' ;
+            let customQuery = 'SELECT t.rf_id as id, SUBSTRING_INDEX(CASE WHEN r.representative_name <> null THEN r.representative_name ELSE aaa.name END, " ", 1)  as content, t.convey_ty, t.exec_dt as start FROM timeline as t INNER JOIN assignor_and_assignee as aaa ON aaa.assignor_and_assignee_id = t.assignor_and_assignee_id LEFT JOIN representative as r ON r.representative_id = aaa.representative_id WHERE organisation_id = :organisation_id AND convey_ty IN (:convey_type) AND employer_assign = :employer_assign GROUP BY rf_id  ORDER BY t.exec_dt DESC LIMIT :recordLimit' ;
 
             
             let getAllTransactionData = await connection.application.query(customQuery,{
@@ -55,10 +55,23 @@ route.get("/standalone/:groupId", [authJWT.addToken, clientDBConnection.connect]
 
 
             
-            let uniqueRFIDS = [], items = [], getAssignmentData = [], getAssigneeData = [], getRFAssignorsData = [], getRFAssigneeData = [], getMinMaxDate = {min_date: "", max_date:""};
+            let uniqueRFIDS = [],  getAllData = [];
             
             if(getAllTransactionData.length > 0) {
-                getAllTransactionData.map( assignment => {
+                getAllTransactionData.map(t => uniqueRFIDS.push(t.id));
+
+                let queryFindAssignorAndAssignee = "SELECT t.rf_id as id, CASE WHEN r.representative_name <> null THEN r.representative_name ELSE aaa.name END as name, type FROM timeline as t INNER JOIN assignor_and_assignee as aaa ON aaa.assignor_and_assignee_id = t.assignor_and_assignee_id LEFT JOIN representative as r ON r.representative_id = aaa.representative_id WHERE rf_id IN (:rfIDs)";
+
+                getAllData = await connection.application.query(queryFindAssignorAndAssignee,{
+                    type: connection.Sequelize.QueryTypes.SELECT,
+                    raw: true,
+                    logging: console.log,
+                    replacements: {rfIDs: uniqueRFIDS},
+                });
+
+
+
+                /*getAllTransactionData.map( assignment => {
                     if(!uniqueRFIDS.includes(parseInt(assignment.rf_id))){
                         uniqueRFIDS.push(parseInt(assignment.rf_id));
                         assignment.type == 'Assignor' ? getAssignmentData.push(assignment) : getAssigneeData.push(assignment);
@@ -68,15 +81,12 @@ route.get("/standalone/:groupId", [authJWT.addToken, clientDBConnection.connect]
                         getMinMaxDate.min_date = getMinMaxDate.min_date == '' ? date : (date > 0 && date < getMinMaxDate.min_date) ? date : getMinMaxDate.min_date;
                     }
                     assignment.type == 'Assignor' ? getRFAssignorsData.push(assignment) : getRFAssigneeData.push(assignment);
-                });
+                });*/
             }
 
             res.status(200).json({
-                items: items,
-                assignors: getRFAssignorsData,
-                assignees: getRFAssigneeData,
-                min_date: getMinMaxDate.min_date,
-                max_date: getMinMaxDate.max_date,
+                items: getAllTransactionData,
+                item_details: getAllData,
                 className: className,
             });    
         } else {
@@ -276,7 +286,7 @@ route.get("/:groupId", [authJWT.verifyToken, clientDBConnection.connect], async(
             searchData.end = endDate;
             searchData.recordLimit = 1000;
 
-            let customQuery = 'SELECT type, CONCAT(t.assignor_and_assignee_id, t.rf_id) as id, t.rf_id, aaa.name as raw_name, r.representative_name as normalize_name, t.convey_ty, t.employer_assign, t.exec_dt FROM timeline as t INNER JOIN assignor_and_assignee as aaa ON aaa.assignor_and_assignee_id = t.assignor_and_assignee_id LEFT JOIN representative as r ON r.representative_id = aaa.representative_id WHERE organisation_id = :organisation_id AND convey_ty IN (:convey_type) AND employer_assign = :employer_assign  ORDER BY t.exec_dt DESC LIMIT :recordLimit' ;
+            let customQuery = 'SELECT type, CONCAT(t.assignor_and_assignee_id, t.rf_id) as id, t.rf_id, SUBSTRING_INDEX(aaa.name, " ", 1) as raw_name, r.representative_name as normalize_name, t.convey_ty, t.employer_assign, t.exec_dt FROM timeline as t INNER JOIN assignor_and_assignee as aaa ON aaa.assignor_and_assignee_id = t.assignor_and_assignee_id LEFT JOIN representative as r ON r.representative_id = aaa.representative_id WHERE organisation_id = :organisation_id AND convey_ty IN (:convey_type) AND employer_assign = :employer_assign GROUP BY  t.rf_id ORDER BY t.exec_dt DESC  LIMIT :recordLimit' ;
 
             
             let getAllTransactionData = await connection.application.query(customQuery,{
@@ -291,14 +301,26 @@ route.get("/:groupId", [authJWT.verifyToken, clientDBConnection.connect], async(
             let uniqueRFIDS = [], getAssignmentData = [], getAssigneeData = [], getRFAssignorsData = [], getRFAssigneeData = [], getMinMaxDate = {min_date: "", max_date:""};
             
             if(getAllTransactionData.length > 0) {
-                getAllTransactionData.map( assignment => {
-                    if(!uniqueRFIDS.includes(parseInt(assignment.rf_id))){
-                        uniqueRFIDS.push(parseInt(assignment.rf_id));
-                        assignment.type == 'Assignor' ? getAssignmentData.push(assignment) : getAssigneeData.push(assignment);
-                        let date = assignment.exec_dt != "" ? new Date(assignment.exec_dt).getTime() : '';
-                        getMinMaxDate.max_date = getMinMaxDate.max_date == '' ? date : (date > 0 && date > getMinMaxDate.max_date) ? date : getMinMaxDate.max_date;
-                        getMinMaxDate.min_date = getMinMaxDate.min_date == '' ? date : (date > 0 && date < getMinMaxDate.min_date) ? date : getMinMaxDate.min_date;
-                    }
+                getAllTransactionData.map(t => {
+                    uniqueRFIDS.push(t.rf_id);
+                    let date = assignment.exec_dt != "" ? new Date(assignment.exec_dt).getTime() : '';
+                    getMinMaxDate.max_date = getMinMaxDate.max_date == '' ? date : (date > 0 && date > getMinMaxDate.max_date) ? date : getMinMaxDate.max_date;
+                    getMinMaxDate.min_date = getMinMaxDate.min_date == '' ? date : (date > 0 && date < getMinMaxDate.min_date) ? date : getMinMaxDate.min_date;
+                    assignment.type == 'Assignor' ? getAssignmentData.push(assignment) : getAssigneeData.push(assignment);
+                });
+
+                let queryFindAssignorAndAssignee = "SELECT t.rf_id, aaa.name, r.representative_name as normalize_name, type FROM timeline as t INNER JOIN assignor_and_assignee as aaa ON aaa.assignor_and_assignee_id = t.assignor_and_assignee_id LEFT JOIN representative as r ON r.representative_id = aaa.representative_id WHERE rf_id IN (:rfIDs)";
+
+                let getAllData = await connection.application.query(queryFindAssignorAndAssignee,{
+                    type: connection.Sequelize.QueryTypes.SELECT,
+                    raw: true,
+                    logging: console.log,
+                    replacements: {rfIDs: uniqueRFIDS},
+                });
+
+
+
+                getAllData.map( assignment => {
                     assignment.type == 'Assignor' ? getRFAssignorsData.push(assignment) : getRFAssigneeData.push(assignment);
                 });
             }
