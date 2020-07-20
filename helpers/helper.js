@@ -337,7 +337,7 @@ let updateAllCustomerInventor = async(companyName, inventors) => {
     let added = 0;
 
     if(representativeName != '') {
-        let queryFindAssignorAndAssigneeIDs = "SELECT ac.rf_id, ac.convey_ty FROM db_application.assignor as aaa INNER JOIN db_application.assignment_conveyance as ac ON ac.rf_id = aaa.rf_id WHERE aaa.rf_id IN(SELECT  a.rf_id FROM db_uspto.assignee as a WHERE a.assignor_and_assignee_id IN (SELECT aa.assignor_and_assignee_id FROM db_application.assignor_and_assignee as aa LEFT JOIN db_application.representative as r1 ON r1.representative_id = aa.representative_id where (r1.representative_name = :name OR aa.name = :name))) AND  aaa.or_name IN (:inventors)";
+        let queryFindAssignorAndAssigneeIDs = "SELECT ac.rf_id, ac.convey_ty FROM db_application.assignor as aaa INNER JOIN db_application.assignment_conveyance as ac ON ac.rf_id = aaa.rf_id WHERE aaa.rf_id IN(SELECT  a.rf_id FROM db_uspto.assignee as a WHERE a.assignor_and_assignee_id IN (SELECT aa.assignor_and_assignee_id FROM db_application.assignor_and_assignee as aa LEFT JOIN db_application.representative as r1 ON r1.representative_id = aa.representative_id where (r1.representative_name = :name OR aa.name = :name))) AND  aaa.or_name IN (:inventors) GROUP BY ac.rf_id";
 
         listIDs = await connection.resources.query(queryFindAssignorAndAssigneeIDs,{
             type: connection.Sequelize.QueryTypes.SELECT,
