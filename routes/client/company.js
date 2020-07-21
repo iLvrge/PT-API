@@ -103,7 +103,7 @@ route.get("/", [authJWT.verifyToken, clientDBConnection.connect], async(req, res
 
 route.get("/search/:searchName", [authJWT.verifyToken], async(req, res, next) => {
     const search = req.params.searchName;
-    searchCompanies  = await helpers.searchCompany(search);
+    searchCompanies  = await helpers.searchCompany(search, 0);
     res.status(200).json(searchCompanies);
 });
 

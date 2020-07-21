@@ -36,9 +36,9 @@ const ClientRepesentative = require("../model/client/Representatives");
  */
 
  
-let searchCompany = async(search) => {
+let searchCompany = async(search, t) => {
 
-    let searchTerm, queryCompany, searchResult = [];
+    let searchTerm, queryCompany, searchResult = [], queryResult = [];
 
     const splitSearch = search.toString().split(' ');
 
@@ -69,7 +69,7 @@ let searchCompany = async(search) => {
     }
     console.log("SEARCH:",search);
 
-    queryCompany = "SELECT a.assignor_and_assignee_id as id, a.name, sum(a.instances) as counter, c.representative_name as normalize_name, (select rr.representative_name FROM representative as rr WHERE rr.representative_name = a.name GROUP BY rr.representative_name) as representative_company FROM assignor_and_assignee as a LEFT JOIN representative as c ON c.representative_id = a.representative_id WHERE MATCH(a.name) AGAINST (:search IN BOOLEAN MODE) GROUP BY a.name";
+    queryCompany = "SELECT a.assignor_and_assignee_id from assignor_and_assignee as a WHERE MATCH(a.name) AGAINST (:search IN BOOLEAN MODE) GROUP BY a.name";
 
     let getCompanyData = await connection.resources.query(queryCompany,{
         type: connection.Sequelize.QueryTypes.SELECT,
@@ -79,7 +79,8 @@ let searchCompany = async(search) => {
     });
 
     if(getCompanyData.length == 0){
-        queryCompany = `SELECT a.assignor_and_assignee_id as id, a.name, sum(a.instances) as counter, c.representative_name as normalize_name, (select rr.representative_name FROM representative as rr WHERE rr.representative_name = a.name GROUP BY rr.representative_name) as representative_company FROM assignor_and_assignee as a LEFT JOIN representative as c ON c.representative_id = a.representative_id where a.name LIKE ":search%" GROUP BY a.name`;
+
+        queryCompany = `SELECT a.assignor_and_assignee_id FROM assignor_and_assignee as a WHERE a.name LIKE ":search%" GROUP BY a.name`;
         
         getCompanyData = await connection.resources.query(queryCompany,{
             type: connection.Sequelize.QueryTypes.SELECT,
@@ -89,7 +90,7 @@ let searchCompany = async(search) => {
           }
         );
         if(getCompanyData.length == 0){
-            queryCompany = `SELECT a.assignor_and_assignee_id as id, a.name, sum(a.instances) as counter, c.representative_name as normalize_name, (select rr.representative_name FROM representative as rr WHERE rr.representative_name = a.name GROUP BY rr.representative_name) as representative_company FROM assignor_and_assignee as a LEFT JOIN representative as c ON c.representative_id = a.representative_id where a.name LIKE "%:search%" GROUP BY a.name`;
+            queryCompany = `SELECT a.assignor_and_assignee_id FROM assignor_and_assignee as a WHERE a.name LIKE "%:search%" GROUP BY a.name`;
             
             getCompanyData = await connection.resources.query(queryCompany,{
                 type: connection.Sequelize.QueryTypes.SELECT,
@@ -102,45 +103,75 @@ let searchCompany = async(search) => {
     }
 
     if(getCompanyData.length > 0) {
-        let allNames = [];
-        getCompanyData.map(company => {
-            let companyData = {...company};
-            companyData.children = [];
-            searchResult.push(companyData);
-            allNames.push(company.name)
-        })
+        let assignorIDs = [];
+        getCompanyData.map(a => assignorIDs.push(a.assignor_and_assignee_id));
 
-        queryChildCompany = `SELECT a.assignor_and_assignee_id as id, a.name, sum(a.instances) as counter, (SELECT representative_name FROM representative WHERE representative_id = a.representative_id) as normalize_name FROM assignor_and_assignee as a WHERE a.representative_id IN( SELECT representative_id FROM representative WHERE representative_name IN (:name)) GROUP BY a.name`;
+        let queryAssignor = "SELECT a.assignor_and_assignee_id, a.name, a.instances, c.representative_name as normalize_name, (select rr.representative_name FROM representative as rr WHERE rr.representative_name = a.name GROUP BY rr.representative_name) as representative_company  FROM assignor_and_assignee as a LEFT JOIN representative as c ON c.representative_id = a.representative_id WHERE a.assignor_and_assignee_id IN (SELECT a.assignor_and_assignee_id from assignor as a INNER JOIN documentid as d ON d.rf_id = a.rf_id INNER JOIN assignor_and_assignee as aaa ON a.assignor_and_assignee_id = aaa.assignor_and_assignee_id WHERE a.assignor_and_assignee_id IN (:assignorIDs))";
 
-        getChildCompanyData = await connection.resources.query(queryChildCompany,{
+        let assignorData = await connection.resources.query(queryAssignor,{
             type: connection.Sequelize.QueryTypes.SELECT,
             raw: true,
-            replacements: { name: allNames },
+            replacements: { assignorIDs: assignorIDs },
             logging: console.log,
-            }
+          }
         );
-        let parentAdded = [];
-        if(getChildCompanyData.length > 0) {
-            getChildCompanyData.map(c => {
-                for(let i = 0; i < searchResult.length; i++) {  
-                    if(searchResult[i].name == c.normalize_name){
-                        if(!parentAdded.includes(searchResult[i].name)) {
-                            parentAdded.push(searchResult[i].name);
-                            let parentC = {...searchResult[i]};
-                            delete parentC['children'];
-                            searchResult[i].children.push(parentC);
-                        }
-                        searchResult[i].children.push(c);
-                    }
+
+        let queryAssignee = "SELECT a.assignor_and_assignee_id, a.name, a.instances, c.representative_name as normalize_name, (select rr.representative_name FROM representative as rr WHERE rr.representative_name = a.name GROUP BY rr.representative_name) as representative_company  FROM assignor_and_assignee as a LEFT JOIN representative as c ON c.representative_id = a.representative_id WHERE a.assignor_and_assignee_id IN (SELECT a.assignor_and_assignee_id from assignee as a INNER JOIN documentid as d ON d.rf_id = a.rf_id INNER JOIN assignor_and_assignee as aaa ON a.assignor_and_assignee_id = aaa.assignor_and_assignee_id WHERE a.assignor_and_assignee_id IN (:assignorIDs))";
+
+        let assigneeData = await connection.resources.query(queryAssignee,{
+            type: connection.Sequelize.QueryTypes.SELECT,
+            raw: true,
+            replacements: { assignorIDs: assignorIDs },
+            logging: console.log,
+          }
+        );
+        queryResult = [...assignorData, ...assigneeData];
+    }
+
+    if(t == 0) {
+        if(queryResult.length > 0) {
+            let allNames = [];
+            queryResult.map(company => {
+                let companyData = {...company};
+                companyData.children = [];
+                searchResult.push(companyData);
+                allNames.push(company.name)
+            })
+    
+            queryChildCompany = `SELECT a.assignor_and_assignee_id as id, a.name, sum(a.instances) as counter, (SELECT representative_name FROM representative WHERE representative_id = a.representative_id) as normalize_name FROM assignor_and_assignee as a WHERE a.representative_id IN( SELECT representative_id FROM representative WHERE representative_name IN (:name)) GROUP BY a.name`;
+    
+            getChildCompanyData = await connection.resources.query(queryChildCompany,{
+                type: connection.Sequelize.QueryTypes.SELECT,
+                raw: true,
+                replacements: { name: allNames },
+                logging: console.log,
                 }
-            });
-            return searchResult;
+            );
+            let parentAdded = [];
+            if(getChildCompanyData.length > 0) {
+                getChildCompanyData.map(c => {
+                    for(let i = 0; i < searchResult.length; i++) {  
+                        if(searchResult[i].name == c.normalize_name){
+                            if(!parentAdded.includes(searchResult[i].name)) {
+                                parentAdded.push(searchResult[i].name);
+                                let parentC = {...searchResult[i]};
+                                delete parentC['children'];
+                                searchResult[i].children.push(parentC);
+                            }
+                            searchResult[i].children.push(c);
+                        }
+                    }
+                });
+                return searchResult;
+            } else {
+                return searchResult;
+            }        
         } else {
             return searchResult;
-        }        
+        }
     } else {
-        return searchResult;
-    }    
+        return queryResult;
+    }
 }
 
 let findOrganisationbyID = async (organisationID) => {

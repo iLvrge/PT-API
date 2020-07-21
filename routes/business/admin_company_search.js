@@ -49,7 +49,7 @@ route.get("/company/search/all/", [authJWT.verifyToken, authJWT.isAdmin], async 
 
         if(searchItem != null && searchItem != undefined && searchItem.length > 0) {
             
-            searchCompanies  = await helpers.searchCompany(searchItem);
+            searchCompanies  = await helpers.searchCompany(searchItem, 1);
         }
         res.status(200).json(searchCompanies);           
     } catch(e) {
