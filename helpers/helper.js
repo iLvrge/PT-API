@@ -13,6 +13,8 @@ const BusinessRoles = require("../model/business/Roles");
 
 const Representatives = require("../model/resources/Representatives");
 
+const AssignmentConveyance = require("../model/resources/AssignmentConveyance");
+
 const RepresentativeAssignmentConveyance = require("../model/resources/RepresentativeAssignmentConveyance");
 
 const AssignorAndAssignee = require("../model/resources/AssignorAndAssignee");
@@ -381,8 +383,9 @@ let updateAllCustomerInventor = async(companyName, inventors) => {
         );
 
         if(listIDs != null && listIDs.length > 0) {
-            let updateFlags = [];
+            let updateFlags = [], rfIDs;
             listIDs.map(l => {
+                rfIDs.push(l.rf_id);
                 updateFlags.push({
                     rf_id: l.rf_id,
                     convey_ty: l.convey_ty,
@@ -390,6 +393,7 @@ let updateAllCustomerInventor = async(companyName, inventors) => {
                 });
             });
             added = await RepresentativeAssignmentConveyance.bulkCreate(updateFlags);
+            await AssignmentConveyance.update({employer_assign: 1},{where: {rf_id: rfIDs}})
         }
     }
     return added;
