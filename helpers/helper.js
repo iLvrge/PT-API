@@ -80,22 +80,22 @@ let searchCompany = async(search, t) => {
 
     if(getCompanyData.length == 0){
 
-        queryCompany = `SELECT a.assignor_and_assignee_id FROM assignor_and_assignee as a WHERE a.name LIKE ":search%" GROUP BY a.name`;
+        queryCompany = `SELECT a.assignor_and_assignee_id FROM assignor_and_assignee as a WHERE a.name LIKE :search GROUP BY a.name`;
         
         getCompanyData = await connection.resources.query(queryCompany,{
             type: connection.Sequelize.QueryTypes.SELECT,
             raw: true,
-            replacements: { search: searchTerm },
+            replacements: { search: `${search}%` },
             logging: console.log,
           }
         );
         if(getCompanyData.length == 0){
-            queryCompany = `SELECT a.assignor_and_assignee_id FROM assignor_and_assignee as a WHERE a.name LIKE "%:search%" GROUP BY a.name`;
+            queryCompany = `SELECT a.assignor_and_assignee_id FROM assignor_and_assignee as a WHERE a.name LIKE :search GROUP BY a.name`;
             
             getCompanyData = await connection.resources.query(queryCompany,{
                 type: connection.Sequelize.QueryTypes.SELECT,
                 raw: true,
-                replacements: { search: searchTerm },
+                replacements: { search: `%${search}%` },
                 logging: console.log,
               }
             );
