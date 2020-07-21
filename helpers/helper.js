@@ -13,7 +13,7 @@ const BusinessRoles = require("../model/business/Roles");
 
 const Representatives = require("../model/resources/Representatives");
 
-const AssignmentConveyance = require("../model/resources/AssignmentConveyance");
+const AssignmentConveyance = require("../model/application/AssignmentConveyance");
 
 const RepresentativeAssignmentConveyance = require("../model/resources/RepresentativeAssignmentConveyance");
 
