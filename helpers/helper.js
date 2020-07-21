@@ -634,7 +634,7 @@ let findCompanyCustomersByName = async(companyName, type) => {
 
                 let queryAssignee = "SELECT a.ee_name as name, count(a.ee_name) as counter, r.representative_name as normalize_name, (select rr.representative_name FROM representative as rr WHERE rr.representative_name = aaa.name GROUP BY rr.representative_name) as representativeCompany FROM db_uspto.assignee as a INNER JOIN assignment_conveyance as ac ON ac.rf_id = a.rf_id LEFT JOIN assignor_and_assignee as aaa ON aaa.assignor_and_assignee_id = a.assignor_and_assignee_id LEFT JOIN representative as r ON r.representative_id = aaa.representative_id WHERE a.rf_id IN (:IDs) ";
 
-                queryAssignor += " GROUP BY a.ee_name";
+                queryAssignee += " GROUP BY a.ee_name";
                 console.log(queryAssignee);   
                 assignees = await connection.resources.query(queryAssignee,{
                     type: connection.Sequelize.QueryTypes.SELECT,
