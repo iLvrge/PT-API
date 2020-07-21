@@ -119,14 +119,13 @@ let searchCompany = async(search) => {
             logging: console.log,
             }
         );
-
+        let parentAdded = [];
         if(getChildCompanyData.length > 0) {
             getChildCompanyData.map(c => {
-                let findParent = false;
                 for(let i = 0; i < searchResult.length; i++) {  
                     if(searchResult[i].name == c.normalize_name){
-                        if(findParent === false) {
-                            findParent = true;
+                        if(!parentAdded.includes(searchResult[i].name)) {
+                            parentAdded.push(searchResult[i].name);
                             let parentC = {...searchResult[i]};
                             delete parentC['children'];
                             searchResult[i].children.push(parentC);
