@@ -383,7 +383,7 @@ let updateAllCustomerInventor = async(companyName, inventors) => {
         );
 
         if(listIDs != null && listIDs.length > 0) {
-            let updateFlags = [], rfIDs;
+            let updateFlags = [], rfIDs = [];
             listIDs.map(l => {
                 rfIDs.push(l.rf_id);
                 updateFlags.push({
