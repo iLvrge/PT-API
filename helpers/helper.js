@@ -522,11 +522,11 @@ let findCompanyCustomersByName = async(companyName, type) => {
 
             
 
-            let queryAssignor = "SELECT a.or_name as name, count(a.or_name) as counter, r.representative_name as normalize_name, (select rr.representative_name FROM representative as rr WHERE rr.representative_name = aaa.name GROUP BY rr.representative_name) as representativeCompany FROM db_uspto.assignor as a INNER JOIN assignment_conveyance as ac ON ac.rf_id = a.rf_id LEFT JOIN assignor_and_assignee as aaa ON aaa.assignor_and_assignee_id = a.assignor_and_assignee_id LEFT JOIN representative as r ON r.representative_id = aaa.representative_id WHERE a.rf_id IN (:IDs) ";
+            let queryAssignor = "SELECT a.or_name as name, count(a.or_name) as counter, r.representative_name as normalize_name, (select rr.representative_name FROM representative as rr WHERE rr.representative_name = aaa.name GROUP BY rr.representative_name) as representativeCompany FROM db_uspto.assignor as a INNER JOIN assignment_conveyance as ac ON ac.rf_id = a.rf_id LEFT JOIN assignor_and_assignee as aaa ON aaa.assignor_and_assignee_id = a.assignor_and_assignee_id LEFT JOIN db_uspto.representative_assignment_conveyance as rac ON rac.rf_id = ac.rf_id LEFT JOIN representative as r ON r.representative_id = aaa.representative_id WHERE a.rf_id IN (:IDs) ";
 
             if(typeof type != 'undefined' && parseInt(type) > 0) {
                 if(parseInt(type) == 1) {
-                    queryAssignor +=" AND ac.employer_assign = 1";
+                    queryAssignor +=" AND ac.employer_assign = 1 OR rac.employer_assign = 1";
                 } else {
                     queryAssignor +=" AND ac.employer_assign = 0 AND a.rf_id NOT IN (SELECT rf_id FROM db_uspto.representative_assignment_conveyance)";
                 }
