@@ -125,7 +125,15 @@ let searchCompany = async(search, t) => {
             logging: console.log,
           }
         );
-        queryResult = [...assignorData, ...assigneeData];
+        let finalResult = [...assignorData, ...assigneeData], uniqueRFIDs = [];
+        if(finalResult.length > 0) {
+            finalResult.map(c => {
+                if(!uniqueRFIDs.includes(c.assignor_and_assignee_id)){
+                    uniqueRFIDs.push(c.assignor_and_assignee_id);
+                    queryResult.push(c);
+                }
+            })
+        }   
     }
 
     if(t == 0) {
