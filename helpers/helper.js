@@ -108,7 +108,7 @@ let searchCompany = async(search) => {
             allNames.push(company.name)
         })
 
-        queryChildCompany = `SELECT a.assignor_and_assignee_id as id, a.name, sum(a.instances) as counter, c.representative_name as normalize_name, (select rr.representative_name FROM representative as rr WHERE rr.representative_name = a.name GROUP BY rr.representative_name) as representative_company FROM assignor_and_assignee as a INNER JOIN representative as c ON c.representative_id = a.representative_id where c.representative_name IN (:name)`;
+        queryChildCompany = `SELECT a.assignor_and_assignee_id as id, a.name, sum(a.instances) as counter, (SELECT representative_name FROM representative WHERE representative_id = a.representative_id) as normalize_name FROM assignor_and_assignee as a WHERE a.representative_id IN( SELECT representative_id FROM representative WHERE representative_name IN (:name)) GROUP BY a.name`;
 
         getChildCompanyData = await connection.resources.query(queryChildCompany,{
             type: connection.Sequelize.QueryTypes.SELECT,
@@ -123,7 +123,6 @@ let searchCompany = async(search) => {
                 for(let i = 0; i < searchResult.length; i++) {                    
                     if(searchResult[i].name == c.normalize_name){
                         searchResult[i].children.push(c);
-                        return;
                     }
                 }
             });
