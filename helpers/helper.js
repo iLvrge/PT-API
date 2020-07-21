@@ -526,14 +526,13 @@ let findCompanyCustomersByName = async(companyName, type) => {
 
             if(typeof type != 'undefined' && parseInt(type) > 0) {
                 if(parseInt(type) == 1) {
-                    queryAssignor +=" AND ac.employer_assign = 1 OR rac.employer_assign = 1";
+                    queryAssignor +=" AND (ac.employer_assign = 1 OR rac.employer_assign = 1)";
                 } else {
                     queryAssignor +=" AND ac.employer_assign = 0 AND a.rf_id NOT IN (SELECT rf_id FROM db_uspto.representative_assignment_conveyance)";
                 }
             }
 
             queryAssignor += " GROUP BY a.or_name";
-            console.log(queryAssignor);
             assignors = await connection.resources.query(queryAssignor,{
                 type: connection.Sequelize.QueryTypes.SELECT,
                 replacements: { IDs: rfIDs },
