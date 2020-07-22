@@ -96,12 +96,23 @@ route.put("/company/search/all/", [authJWT.verifyToken, authJWT.isAdmin], (req, 
 
                 if(representativeCompany == null) {
                     /**
-                     * Insert representative company
+                     * If Old representative found
                      */
                     console.log("New Company");
-                    representativeCompany = await Representatives.create({
-                        representative_name: normalize_name
-                    });
+                    if(oldRepresentativeCompanyID > 0) {
+                        console.log("UPDATE REPRESENTATIVE COMPANY")
+                        representativeCompany = await Representatives.update({
+                            representative_name: normalize_name
+                        }, {where: {representative_id: oldRepresentativeCompanyID} });
+                    } else {
+                        /**
+                         * Insert representative company
+                         */
+                        console.log("New Company");
+                        representativeCompany = await Representatives.create({
+                            representative_name: normalize_name
+                        });
+                    }                    
                 }
 
                 if(representativeCompany != null && representativeCompany.representative_id > 0) {
@@ -110,20 +121,22 @@ route.put("/company/search/all/", [authJWT.verifyToken, authJWT.isAdmin], (req, 
                     const item = {representative_id: representativeCompany.representative_id};
                     console.log(item);
                     /*await AssignorAndAssignee.update(item, {where: {name: name}, transaction: t});*/
-                    const updateItem = await AssignorAndAssignee.update(item, {where: {name: name}});
-                    console.log(updateItem);
+                    if(oldRepresentativeCompanyID == 0) {
+                        const updateItem = await AssignorAndAssignee.update(item, {where: {name: name}});
+                        console.log(updateItem);
+                    }
                     if(oldRepresentativeCompanyID > 0) {
                         console.log("FOUND OLD");
                         /*await AssignorAndAssignee.update(item, {where: {representative_id: oldRepresentativeCompanyID}, transaction: t});*/
-                        const updateItem2 = await AssignorAndAssignee.update(item, {where: {representative_id: oldRepresentativeCompanyID}});
+                        /*const updateItem2 = await AssignorAndAssignee.update(item, {where: {representative_id: oldRepresentativeCompanyID}});
                         console.log(updateItem2);
-                        console.log("NAME:"+oldRepresentativeCompanyName);
+                        console.log("NAME:"+oldRepresentativeCompanyName);*/
                         /*await AssignorAndAssignee.update(item, {where: {name: oldRepresentativeCompanyName}, transaction: t});*/
                         const updateItem3 = await AssignorAndAssignee.update(item, {where: {name: oldRepresentativeCompanyName}});
                         console.log(updateItem3);
-                        await Representatives.destroy({
+                        /*await Representatives.destroy({
                             where:{representative_id: oldRepresentativeCompanyID}
-                        })
+                        })*/
                     }
                    // if (t) await t.commit();    
                     res.status(200).send("Updated successfully");	
