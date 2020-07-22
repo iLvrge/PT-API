@@ -101,9 +101,10 @@ route.put("/company/search/all/", [authJWT.verifyToken, authJWT.isAdmin], (req, 
                     console.log("New Company");
                     if(oldRepresentativeCompanyID > 0) {
                         console.log("UPDATE REPRESENTATIVE COMPANY")
-                        representativeCompany = await Representatives.update({
+                        await Representatives.update({
                             representative_name: normalize_name
                         }, {where: {representative_id: oldRepresentativeCompanyID} });
+                        representativeCompany = await helpers.checkRepresentativeCompany(normalize_name);
                     } else {
                         /**
                          * Insert representative company
@@ -132,6 +133,7 @@ route.put("/company/search/all/", [authJWT.verifyToken, authJWT.isAdmin], (req, 
                         console.log(updateItem2);
                         console.log("NAME:"+oldRepresentativeCompanyName);*/
                         /*await AssignorAndAssignee.update(item, {where: {name: oldRepresentativeCompanyName}, transaction: t});*/
+                        console.log("NAME:"+oldRepresentativeCompanyName);
                         const updateItem3 = await AssignorAndAssignee.update(item, {where: {name: oldRepresentativeCompanyName}});
                         console.log(updateItem3);
                         /*await Representatives.destroy({
