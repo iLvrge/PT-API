@@ -420,7 +420,16 @@ route.get("/:organisation/:name/:depth/:groupId", [authJWT.verifyToken], async(r
             );					
         
         
-        let items = [...getAssignmentData, ...getAssigneeData];
+        let allItems = [...getAssignmentData, ...getAssigneeData];
+        let items = [], uniqueRFIDS = [];
+        if(allItems.length > 0) {
+            allItems.map(i => {
+                if(!uniqueRFIDS.includes(i.id)){
+                    uniqueRFIDS.push(i.id);
+                    items.push(i);
+                }
+            })
+        } 
             
         res.status(200).json({
             className: className,
