@@ -267,7 +267,7 @@ route.get("/:groupId", [authJWT.verifyToken, clientDBConnection.connect], async(
 
             searchData.start = startDate;
             searchData.end = endDate;*/
-            searchData.recordLimit = 1000;
+            searchData.recordLimit = 5000;
 
             let customQuery = 'SELECT t.rf_id as id, SUBSTRING_INDEX(CASE WHEN r.representative_name <> null THEN r.representative_name ELSE aaa.name END, " ", 1)  as content, t.convey_ty, t.exec_dt as start, "Point" as type FROM timeline as t INNER JOIN assignor_and_assignee as aaa ON aaa.assignor_and_assignee_id = t.assignor_and_assignee_id LEFT JOIN representative as r ON r.representative_id = aaa.representative_id WHERE organisation_id = :organisation_id AND convey_ty IN (:convey_type) AND employer_assign = :employer_assign GROUP BY rf_id  ORDER BY t.exec_dt DESC LIMIT :recordLimit' ;
 
@@ -280,8 +280,8 @@ route.get("/:groupId", [authJWT.verifyToken, clientDBConnection.connect], async(
             }); 
 
             res.status(200).json({
-                items: getAllTransactionData,
                 className: className,
+                items: getAllTransactionData,                
             });    
         } else {
             res.status(400).send("Bad Inputs");
@@ -331,7 +331,7 @@ route.get("/:organisation/:name/:depth/:groupId", [authJWT.verifyToken], async(r
 
 
 
-                customQueryAssignorST = 'SELECT concat(aa.assignor_and_assignee_id, or.rf_id) as id, or.rf_id, aa.name as raw_name, r1.representative_name as normalize_name, acc.convey_ty, acc.employer_assign, or.exec_dt FROM assignor as `or` INNER JOIN (SELECT ee.rf_id from assignee as `ee` INNER JOIN (SELECT d.rf_id from documentid as d WHERE ';
+                customQueryAssignorST = 'SELECT or.rf_id as id, SUBSTRING_INDEX(CASE WHEN r1.representative_name <> null THEN r1.representative_name ELSE aa.name END, " ", 1)  as content, acc.convey_ty, or.exec_dt as start FROM assignor as `or` INNER JOIN (SELECT ee.rf_id from assignee as `ee` INNER JOIN (SELECT d.rf_id from documentid as d WHERE ';
 
                 if(patentNumber != null && patentNumber.rf_id > 0) {
                     customQueryAssignorST += ' ( d.grant_doc_num = :name ) ';
@@ -345,7 +345,7 @@ route.get("/:organisation/:name/:depth/:groupId", [authJWT.verifyToken], async(r
                 customQueryAssignorST += ' GROUP BY or.rf_id ORDER BY or.exec_dt ASC ';                
                 
                 
-                customQueryAssigneeST = 'SELECT concat(aa.assignor_and_assignee_id,ee.rf_id) as id, ee.rf_id, aa.name as raw_name, r1.representative_name as normalize_name, acc.convey_ty, acc.employer_assign, (SELECT ap.exec_dt FROM assignor as ap WHERE ap.rf_id = ee.rf_id ORDER BY ap.exec_dt ASC LIMIT 1) as exec_dt from assignee as `ee`  INNER JOIN (SELECT or.rf_id from assignor as `or` INNER JOIN (SELECT d.rf_id from documentid as d WHERE ';
+                customQueryAssigneeST = 'SELECT ee.rf_id as id, SUBSTRING_INDEX(CASE WHEN r1.representative_name <> null THEN r1.representative_name ELSE aa.name END, " ", 1)  as content, acc.convey_ty, (SELECT ap.exec_dt FROM assignor as ap WHERE ap.rf_id = ee.rf_id ORDER BY ap.exec_dt ASC LIMIT 1) as start from assignee as `ee`  INNER JOIN (SELECT or.rf_id from assignor as `or` INNER JOIN (SELECT d.rf_id from documentid as d WHERE ';
                 
                 if(patentNumber != null && patentNumber.rf_id > 0) {
                     customQueryAssigneeST += ' ( d.grant_doc_num = :name ) ';
@@ -359,91 +359,45 @@ route.get("/:organisation/:name/:depth/:groupId", [authJWT.verifyToken], async(r
                 
                 customQueryAssigneeST += ' GROUP BY ee.rf_id ORDER BY exec_dt ASC ';   
                 
-                customQueryAssignorList = "SELECT or.rf_id, aa.name as raw_name, r1.representative_name as normalize_name FROM assignor as `or` INNER JOIN (SELECT ee.rf_id from assignee as `ee` INNER JOIN (SELECT d.rf_id from documentid as d WHERE ";
                 
-                if(patentNumber != null && patentNumber.rf_id > 0) {
-                    customQueryAssignorList += ' ( d.grant_doc_num = :name ) ';
-                } else {
-                    customQueryAssignorList += ' ( d.appno_doc_num = :name ) ';
-                }
-
-                customQueryAssignorList += ' ) as temp on temp.rf_id = ee.rf_id INNER JOIN assignor_and_assignee as aaa ON aaa.assignor_and_assignee_id = `ee`.assignor_and_assignee_id LEFT JOIN representative as r ON r.representative_id = aaa.representative_id WHERE ( aaa.name = :organisation_name OR r.representative_name = :organisation_name )) as t ON t.rf_id = or.rf_id INNER JOIN assignor_and_assignee as aa ON aa.assignor_and_assignee_id = `or`.assignor_and_assignee_id LEFT JOIN representative as r1 ON r1.representative_id = aa.representative_id INNER JOIN assignment_conveyance as acc ON acc.rf_id = or.rf_id WHERE ';
-                
-                customQueryAssignorList += extendString;
-                
-                customQueryAssignorList += '  ORDER BY or.exec_dt ASC ';
-                
-                customQueryAssigneeList = "SELECT ee.rf_id, aa.name as raw_name, r1.representative_name as normalize_name from assignee as `ee`  INNER JOIN (SELECT or.rf_id from assignor as `or` INNER JOIN (SELECT d.rf_id from documentid as d WHERE ";
-                
-                if(patentNumber != null && patentNumber.rf_id > 0) {
-                    customQueryAssigneeList += " ( d.grant_doc_num = :name ) ";
-                } else {
-                    customQueryAssigneeList += " ( d.appno_doc_num = :name ) ";
-                }
-                
-                customQueryAssigneeList += '  ) as temp on temp.rf_id = or.rf_id INNER JOIN assignor_and_assignee as aaa ON aaa.assignor_and_assignee_id = `or`.assignor_and_assignee_id LEFT JOIN representative as r ON r.representative_id = aaa.representative_id WHERE ( aaa.name = :organisation_name  OR r.representative_name = :organisation_name )) as t ON t.rf_id = ee.rf_id INNER JOIN assignment_conveyance as acc ON acc.rf_id = ee.rf_id INNER JOIN assignor_and_assignee as aa ON aa.assignor_and_assignee_id = `ee`.assignor_and_assignee_id LEFT JOIN representative as r1 ON r1.representative_id = aa.representative_id WHERE ';
-                
-                customQueryAssigneeList += extendString;
                                 
                 className = 'green';                
             } else if( depth === 2 ){ 
                 /*RF ID*/
                 console.log('Transactions...')
-                customQueryAssignorST = 'SELECT concat(aaa.assignor_and_assignee_id,or.rf_id) as id, or.rf_id, aaa.name as raw_name, r.representative_name as normalize_name, acc.convey_ty, acc.employer_assign, or.exec_dt from assignor as `or` INNER JOIN assignment_conveyance as acc ON acc.rf_id = or.rf_id INNER JOIN documentid as d ON d.rf_id = acc.rf_id INNER JOIN assignor_and_assignee as aaa ON aaa.assignor_and_assignee_id = `or`.assignor_and_assignee_id LEFT JOIN representative as r ON r.representative_id = aaa.representative_id WHERE date_format(d.appno_date,"%Y") > 1999 AND or.rf_id = :name AND ( aaa.name <> :organisation_name OR r.representative_name <> :organisation_name ) AND ';
+                customQueryAssignorST = 'SELECT or.rf_id as id, SUBSTRING_INDEX(CASE WHEN r.representative_name <> null THEN r.representative_name ELSE aaa.name END, " ", 1)  as content, acc.convey_ty,  or.exec_dt as start from assignor as `or` INNER JOIN assignment_conveyance as acc ON acc.rf_id = or.rf_id INNER JOIN documentid as d ON d.rf_id = acc.rf_id INNER JOIN assignor_and_assignee as aaa ON aaa.assignor_and_assignee_id = `or`.assignor_and_assignee_id LEFT JOIN representative as r ON r.representative_id = aaa.representative_id WHERE date_format(d.appno_date,"%Y") > 1999 AND or.rf_id = :name AND ( aaa.name <> :organisation_name OR r.representative_name <> :organisation_name ) AND ';
                 
                 customQueryAssignorST += extendString +' GROUP BY or.rf_id';
 							
-                customQueryAssigneeST = 'SELECT concat(aaa.assignor_and_assignee_id,ee.rf_id) as id, ee.rf_id, aaa.name as raw_name, r.representative_name as normalize_name, acc.convey_ty, acc.employer_assign, (SELECT ap.exec_dt FROM assignor as ap WHERE ap.rf_id = ee.rf_id ORDER BY ap.exec_dt ASC LIMIT 1) as exec_dt FROM assignee as ee INNER JOIN assignment_conveyance as acc ON acc.rf_id = ee.rf_id INNER JOIN documentid as d ON d.rf_id = acc.rf_id INNER JOIN assignor_and_assignee as aaa ON aaa.assignor_and_assignee_id = `ee`.assignor_and_assignee_id LEFT JOIN representative as r ON r.representative_id = aaa.representative_id WHERE date_format(d.appno_date,"%Y") > 1999 AND ee.rf_id = :name AND ( aaa.name <> :organisation_name OR r.representative_name <> :organisation_name ) AND ';
+                customQueryAssigneeST = 'SELECT ee.rf_id as id, SUBSTRING_INDEX(CASE WHEN r.representative_name <> null THEN r.representative_name ELSE aaa.name END, " ", 1)  as content, acc.convey_ty,  (SELECT ap.exec_dt FROM assignor as ap WHERE ap.rf_id = ee.rf_id ORDER BY ap.exec_dt ASC LIMIT 1) as start FROM assignee as ee INNER JOIN assignment_conveyance as acc ON acc.rf_id = ee.rf_id INNER JOIN documentid as d ON d.rf_id = acc.rf_id INNER JOIN assignor_and_assignee as aaa ON aaa.assignor_and_assignee_id = `ee`.assignor_and_assignee_id LEFT JOIN representative as r ON r.representative_id = aaa.representative_id WHERE date_format(d.appno_date,"%Y") > 1999 AND ee.rf_id = :name AND ( aaa.name <> :organisation_name OR r.representative_name <> :organisation_name ) AND ';
                 
                 customQueryAssigneeST += extendString +' GROUP BY ee.rf_id';
-                
-                customQueryAssignorList = 'SELECT or.rf_id, aaa.name as raw_name, r.representative_name as normalize_name from assignor as `or` INNER JOIN assignment_conveyance as acc ON acc.rf_id = or.rf_id INNER JOIN documentid as d ON d.rf_id = acc.rf_id INNER JOIN assignor_and_assignee as aaa ON aaa.assignor_and_assignee_id = `or`.assignor_and_assignee_id LEFT JOIN representative as r ON r.representative_id = aaa.representative_id WHERE date_format(d.appno_date,"%Y") > 1999 AND or.rf_id = :name AND ( aaa.name <> :organisation_name OR r.representative_name <> :organisation_name ) AND ';
-
-                customQueryAssignorList += extendString +' ORDER BY or.exec_dt ASC';
-                
-                customQueryAssigneeList = 'SELECT concat(aaa.assignor_and_assignee_id,ee.rf_id) as id, ee.rf_id, aaa.name as raw_name, r.representative_name as normalize_name, acc.convey_ty, acc.employer_assign, (SELECT ap.exec_dt FROM assignor as ap WHERE ap.rf_id = ee.rf_id ORDER BY ap.exec_dt ASC LIMIT 1) as exec_dt FROM assignee as ee INNER JOIN assignment_conveyance as acc ON acc.rf_id = ee.rf_id INNER JOIN documentid as d ON d.rf_id = acc.rf_id INNER JOIN assignor_and_assignee as aaa ON aaa.assignor_and_assignee_id = `ee`.assignor_and_assignee_id LEFT JOIN representative as r ON r.representative_id = aaa.representative_id WHERE date_format(d.appno_date,"%Y") > 1999 AND ee.rf_id = :name AND ( aaa.name <> :organisation_name OR r.representative_name <> :organisation_name ) AND ';
-
-                customQueryAssigneeList += extendString +' ORDER BY exec_dt ASC';
                 
                 className = 'orange';
             } else if ( depth === 1 ) {
                 /*Customer*/
                 console.log("Parties......");
-                customQueryAssignorST = 'SELECT concat(aaa.assignor_and_assignee_id,ac.rf_id) as id, ac.rf_id, aaa.name as raw_name, r.representative_name as normalize_name, ass.convey_ty, ass.employer_assign, ac.exec_dt FROM assignor as ac INNER JOIN assignment_conveyance as ass ON ass.rf_id = ac.rf_id INNER JOIN assignor_and_assignee as aaa ON aaa.assignor_and_assignee_id = ac.assignor_and_assignee_id LEFT JOIN representative as r ON r.representative_id = aaa.representative_id INNER JOIN (SELECT a.rf_id FROM assignment as a INNER JOIN documentid as d ON d.rf_id = a.rf_id INNER JOIN assignee as acc ON acc.rf_id = a.rf_id INNER JOIN assignor_and_assignee as aa ON aa.assignor_and_assignee_id = acc.assignor_and_assignee_id LEFT JOIN representative as r1 ON r1.representative_id = aa.representative_id  WHERE date_format(d.appno_date,"%Y") > 1999 AND (acc.ee_name = :organisation_name OR r1.representative_name = :organisation_name) GROUP BY a.rf_id) as temp ON temp.rf_id = ac.rf_id WHERE (ac.or_name = :name OR r.representative_name = :name) AND ';
+                customQueryAssignorST = 'SELECT ac.rf_id as id, SUBSTRING_INDEX(CASE WHEN r.representative_name <> null THEN r.representative_name ELSE aaa.name END, " ", 1)  as content, ass.convey_ty, ac.exec_dt as start FROM assignor as ac INNER JOIN assignment_conveyance as ass ON ass.rf_id = ac.rf_id INNER JOIN assignor_and_assignee as aaa ON aaa.assignor_and_assignee_id = ac.assignor_and_assignee_id LEFT JOIN representative as r ON r.representative_id = aaa.representative_id INNER JOIN (SELECT a.rf_id FROM assignment as a INNER JOIN documentid as d ON d.rf_id = a.rf_id INNER JOIN assignee as acc ON acc.rf_id = a.rf_id INNER JOIN assignor_and_assignee as aa ON aa.assignor_and_assignee_id = acc.assignor_and_assignee_id LEFT JOIN representative as r1 ON r1.representative_id = aa.representative_id  WHERE date_format(d.appno_date,"%Y") > 1999 AND (acc.ee_name = :organisation_name OR r1.representative_name = :organisation_name) GROUP BY a.rf_id) as temp ON temp.rf_id = ac.rf_id WHERE (ac.or_name = :name OR r.representative_name = :name) AND ';
 
                 customQueryAssignorST += extendString +' GROUP BY ac.rf_id ORDER BY ac.exec_dt ASC';
                 
-                customQueryAssigneeST = 'SELECT concat(aaa.assignor_and_assignee_id,ac.rf_id) as id, ac.rf_id, aaa.name as raw_name, r.representative_name as normalize_name, ass.convey_ty, ass.employer_assign, (SELECT date_format(ap.exec_dt, "%m-%d-%Y") FROM assignor as ap WHERE ap.rf_id = ac.rf_id ORDER BY ap.exec_dt ASC LIMIT 1) as exec_dt FROM assignee as ac INNER JOIN assignment_conveyance as ass ON ass.rf_id = ac.rf_id INNER JOIN assignor_and_assignee as aaa ON aaa.assignor_and_assignee_id = ac.assignor_and_assignee_id LEFT JOIN representative as r ON r.representative_id = aaa.representative_id INNER JOIN (SELECT a.rf_id FROM assignment as a INNER JOIN documentid as d ON d.rf_id = a.rf_id INNER JOIN assignment_conveyance as ass ON ass.rf_id = a.rf_id  INNER JOIN assignor as acc ON acc.rf_id = a.rf_id INNER JOIN assignor_and_assignee as aa ON aa.assignor_and_assignee_id = acc.assignor_and_assignee_id LEFT JOIN representative as r1 ON r1.representative_id = aa.representative_id WHERE date_format(d.appno_date,"%Y") > 1999 AND (acc.or_name = :organisation_name OR r1.representative_name = :organisation_name) AND  ';
+                customQueryAssigneeST = 'SELECT ac.rf_id as id , SUBSTRING_INDEX(CASE WHEN r.representative_name <> null THEN r.representative_name ELSE aaa.name END, " ", 1)  as content, ass.convey_ty, (SELECT date_format(ap.exec_dt, "%m-%d-%Y") FROM assignor as ap WHERE ap.rf_id = ac.rf_id ORDER BY ap.exec_dt ASC LIMIT 1) as start FROM assignee as ac INNER JOIN assignment_conveyance as ass ON ass.rf_id = ac.rf_id INNER JOIN assignor_and_assignee as aaa ON aaa.assignor_and_assignee_id = ac.assignor_and_assignee_id LEFT JOIN representative as r ON r.representative_id = aaa.representative_id INNER JOIN (SELECT a.rf_id FROM assignment as a INNER JOIN documentid as d ON d.rf_id = a.rf_id INNER JOIN assignment_conveyance as ass ON ass.rf_id = a.rf_id  INNER JOIN assignor as acc ON acc.rf_id = a.rf_id INNER JOIN assignor_and_assignee as aa ON aa.assignor_and_assignee_id = acc.assignor_and_assignee_id LEFT JOIN representative as r1 ON r1.representative_id = aa.representative_id WHERE date_format(d.appno_date,"%Y") > 1999 AND (acc.or_name = :organisation_name OR r1.representative_name = :organisation_name) AND  ';
 
                 customQueryAssigneeST += extendString +' GROUP BY a.rf_id) as temp ON temp.rf_id = ac.rf_id WHERE (ac.ee_name = :name OR r.representative_name = :name) GROUP BY ac.rf_id ORDER BY exec_dt ASC';
                 
-                customQueryAssignorList = 'SELECT ass.rf_id, a_a.name as raw_name, r2.representative_name as normalize_name FROM assignor as ass INNER JOIN assignor_and_assignee as a_a ON a_a.assignor_and_assignee_id = ass.assignor_and_assignee_id LEFT JOIN representative as r2 ON r2.representative_id = a_a.representative_id INNER JOIN (SELECT ac.rf_id FROM assignor as ac INNER JOIN assignment_conveyance as ass ON ass.rf_id = ac.rf_id INNER JOIN assignor_and_assignee as aaa ON aaa.assignor_and_assignee_id = ac.assignor_and_assignee_id LEFT JOIN representative as r ON r.representative_id = aaa.representative_id INNER JOIN (SELECT a.rf_id FROM assignment as a INNER JOIN documentid as d ON d.rf_id = a.rf_id INNER JOIN assignment_conveyance as ass ON ass.rf_id = a.rf_id INNER JOIN assignee as acc ON acc.rf_id = a.rf_id INNER JOIN assignor_and_assignee as aa ON aa.assignor_and_assignee_id = acc.assignor_and_assignee_id LEFT JOIN representative as r1 ON r1.representative_id = aa.representative_id WHERE date_format(d.appno_date,"%Y") > 1999 AND (aa.name = :organisation_name OR r1.representative_name = :organisation_name) AND ';
-
-                customQueryAssignorList += extendString +'  GROUP BY a.rf_id) as temp ON temp.rf_id = ac.rf_id WHERE (aaa.name = :name OR r.representative_name = :name) GROUP BY ac.rf_id ) as p ON p.rf_id = ass.rf_id ORDER BY ass.rf_id ASC';
-                
-                customQueryAssigneeList = 'SELECT ass.rf_id, a_a.name as raw_name, r2.representative_name as normalize_name FROM assignee as ass INNER JOIN assignor_and_assignee as a_a ON a_a.assignor_and_assignee_id = ass.assignor_and_assignee_id LEFT JOIN representative as r2 ON r2.representative_id = a_a.representative_id INNER JOIN (SELECT ac.rf_id FROM assignee as ac INNER JOIN assignment_conveyance as ass ON ass.rf_id = ac.rf_id INNER JOIN (SELECT a.rf_id FROM assignment as a INNER JOIN documentid as d ON d.rf_id = a.rf_id INNER JOIN assignment_conveyance as ass ON ass.rf_id = a.rf_id INNER JOIN assignor as acc ON acc.rf_id = a.rf_id INNER JOIN assignor_and_assignee as aaa ON aaa.assignor_and_assignee_id = acc.assignor_and_assignee_id LEFT JOIN representative as r ON r.representative_id = aaa.representative_id WHERE date_format(d.appno_date,"%Y") > 1999 AND (aaa.name = :organisation_name OR r.representative_name = :organisation_name) AND  ';	
-
-                customQueryAssigneeList += extendString +'  GROUP BY a.rf_id) as temp ON temp.rf_id = ac.rf_id INNER JOIN assignor_and_assignee as aa ON aa.assignor_and_assignee_id = ac.assignor_and_assignee_id LEFT JOIN representative as r1 ON r1.representative_id = aa.representative_id WHERE (aa.name = :name OR r1.representative_name = :name) GROUP BY ac.rf_id)  as p ON p.rf_id = ass.rf_id ORDER BY ass.rf_id ASC';
-
                 className = 'blue';                
             } else {
                 console.log("Organisation......");
                 /*Organisation*/
-                customQueryAssignorST = 'SELECT concat(aa.assignor_and_assignee_id,ac.rf_id) as id, ac.rf_id, aa.name as raw_name, r1.representative_name as normalize_name, acc.convey_ty, acc.employer_assign, ac.exec_dt FROM assignor as ac INNER JOIN assignment_conveyance as acc ON acc.rf_id = ac.rf_id INNER JOIN assignor_and_assignee as aa ON aa.assignor_and_assignee_id = ac.assignor_and_assignee_id LEFT JOIN representative as r1 ON r1.representative_id = aa.representative_id INNER JOIN (SELECT ee.rf_id FROM assignee as ee INNER JOIN assignor_and_assignee as aaa ON aaa.assignor_and_assignee_id = ee.assignor_and_assignee_id LEFT JOIN representative as r ON r.representative_id = aaa.representative_id WHERE aaa.name = :name or r.representative_name = :name) as temp ON temp.rf_id = ac.rf_id INNER JOIN documentid as d ON d.rf_id = ac.rf_id WHERE date_format(d.appno_date,"%Y") > 1999 AND ';
+                customQueryAssignorST = 'SELECT ac.rf_id as id, SUBSTRING_INDEX(CASE WHEN r.representative_name <> null THEN r1.representative_name ELSE aa.name END, " ", 1)  as content acc.convey_ty,  ac.exec_dt as start FROM assignor as ac INNER JOIN assignment_conveyance as acc ON acc.rf_id = ac.rf_id INNER JOIN assignor_and_assignee as aa ON aa.assignor_and_assignee_id = ac.assignor_and_assignee_id LEFT JOIN representative as r1 ON r1.representative_id = aa.representative_id INNER JOIN (SELECT ee.rf_id FROM assignee as ee INNER JOIN assignor_and_assignee as aaa ON aaa.assignor_and_assignee_id = ee.assignor_and_assignee_id LEFT JOIN representative as r ON r.representative_id = aaa.representative_id WHERE aaa.name = :name or r.representative_name = :name) as temp ON temp.rf_id = ac.rf_id INNER JOIN documentid as d ON d.rf_id = ac.rf_id WHERE date_format(d.appno_date,"%Y") > 1999 AND ';
 
                 customQueryAssignorST += extendString +'   GROUP BY ac.rf_id';
                 
-                customQueryAssigneeST = 'SELECT concat(aa.assignor_and_assignee_id,ac.rf_id) as id, ac.rf_id, aa.name as raw_name, r1.representative_name as normalize_name, acc.convey_ty, acc.employer_assign, (SELECT ap.exec_dt FROM assignor as ap WHERE ap.rf_id = ac.rf_id ORDER BY ap.exec_dt ASC LIMIT 1) as exec_dt FROM assignee as ac INNER JOIN assignment_conveyance as acc ON acc.rf_id = ac.rf_id  INNER JOIN assignor_and_assignee as aa ON aa.assignor_and_assignee_id = ac.assignor_and_assignee_id LEFT JOIN representative as r1 ON r1.representative_id = aa.representative_id INNER JOIN (SELECT or.rf_id FROM assignor as `or` INNER JOIN assignor_and_assignee as aaa ON aaa.assignor_and_assignee_id = or.assignor_and_assignee_id LEFT JOIN representative as r ON r.representative_id = aaa.representative_id  WHERE aaa.name = :name or r.representative_name = :name) as temp ON temp.rf_id = ac.rf_id  INNER JOIN documentid as d ON d.rf_id = ac.rf_id WHERE date_format(d.appno_date,"%Y") > 1999 AND ';  
+                customQueryAssigneeST = 'SELECT ac.rf_id as id, SUBSTRING_INDEX(CASE WHEN r.representative_name <> null THEN r1.representative_name ELSE aa.name END, " ", 1)  as content acc.convey_ty,  (SELECT ap.exec_dt FROM assignor as ap WHERE ap.rf_id = ac.rf_id ORDER BY ap.exec_dt ASC LIMIT 1) as start FROM assignee as ac INNER JOIN assignment_conveyance as acc ON acc.rf_id = ac.rf_id  INNER JOIN assignor_and_assignee as aa ON aa.assignor_and_assignee_id = ac.assignor_and_assignee_id LEFT JOIN representative as r1 ON r1.representative_id = aa.representative_id INNER JOIN (SELECT or.rf_id FROM assignor as `or` INNER JOIN assignor_and_assignee as aaa ON aaa.assignor_and_assignee_id = or.assignor_and_assignee_id LEFT JOIN representative as r ON r.representative_id = aaa.representative_id  WHERE aaa.name = :name or r.representative_name = :name) as temp ON temp.rf_id = ac.rf_id  INNER JOIN documentid as d ON d.rf_id = ac.rf_id WHERE date_format(d.appno_date,"%Y") > 1999 AND ';  
                 
                 customQueryAssigneeST += extendString +'   GROUP BY ac.rf_id';
                 
-                customQueryAssignorList = 'SELECT ass.rf_id, aa.name as raw_name, r1.representative_name as normalize_name FROM assignor as ass INNER JOIN assignor_and_assignee as aa ON aa.assignor_and_assignee_id = ass.assignor_and_assignee_id LEFT JOIN representative as r1 ON r1.representative_id = aa.representative_id INNER JOIN (SELECT ac.rf_id FROM assignee as a INNER JOIN assignor as ac ON ac.rf_id = a.rf_id INNER JOIN assignment_conveyance as acc ON acc.rf_id = ac.rf_id INNER JOIN assignor_and_assignee as aaa ON aaa.assignor_and_assignee_id = a.assignor_and_assignee_id LEFT JOIN representative as r ON r.representative_id = aaa.representative_id INNER JOIN documentid as d ON d.rf_id = ac.rf_id WHERE date_format(d.appno_date,"%Y") > 1999 AND (aaa.name = :name or r.representative_name = :name) AND ';  
-
-                customQueryAssignorList += extendString +'   GROUP BY rf_id) as p ON p.rf_id = ass.rf_id ORDER BY ass.rf_id ASC';
                 
-                customQueryAssigneeList = `SELECT ass.rf_id, aa.name as raw_name, r1.representative_name as normalize_name FROM assignee as ass INNER JOIN assignor_and_assignee as aa ON aa.assignor_and_assignee_id = ass.assignor_and_assignee_id LEFT JOIN representative as r1 ON r1.representative_id = aa.representative_id INNER JOIN (SELECT ac.rf_id FROM assignor as a INNER JOIN assignee as ac ON ac.rf_id = a.rf_id INNER JOIN assignment_conveyance as acc ON acc.rf_id = ac.rf_id INNER JOIN assignor_and_assignee as aaa ON aaa.assignor_and_assignee_id = a.assignor_and_assignee_id LEFT JOIN representative as r ON r.representative_id = aaa.representative_id INNER JOIN documentid as d ON d.rf_id = ac.rf_id WHERE date_format(d.appno_date,"%Y") > 1999 AND (aaa.name = :name or r.representative_name = :name) AND `;
-
-                customQueryAssigneeList += extendString +'   GROUP BY rf_id) as p ON p.rf_id = ass.rf_id ORDER BY ass.rf_id ASC';
             }
             /*Assignment organization as assignee i.e purchase, invented, name change, release*/
 						
@@ -466,30 +420,11 @@ route.get("/:organisation/:name/:depth/:groupId", [authJWT.verifyToken], async(r
             );					
         
         
-        let getRFAssignorsData = await connection.application.query(customQueryAssignorList,{
-                type: connection.Sequelize.QueryTypes.SELECT,
-                raw: true,
-                logging: console.log,
-                replacements: { name: name, organisation_name: organisation },
-                }
-            );
-        
-        
-        let getRFAssigneeData = await connection.application.query(customQueryAssigneeList,{
-                type: connection.Sequelize.QueryTypes.SELECT,
-                raw: true,
-                logging: console.log,
-                replacements: { name: name, organisation_name: organisation },
-                }
-            );
+        let items = [...getAssignmentData, ...getAssigneeData];
             
         res.status(200).json({
-            type: 9,
-            assignment_assignors: getAssignmentData,
-            assignment_assignee: getAssigneeData,
-            assignors: getRFAssignorsData,
-            assignees: getRFAssigneeData,
-            className: className
+            className: className,
+            items: items            
         });
         } else {
             res.status(400).send("Bad Inputs");
