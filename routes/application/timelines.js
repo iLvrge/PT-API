@@ -357,7 +357,7 @@ route.get("/:organisation/:name/:depth/:groupId", [authJWT.verifyToken], async(r
 
                 customQueryAssigneeST += extendString;
                 
-                customQueryAssigneeST += ' GROUP BY ee.rf_id ORDER BY exec_dt ASC ';   
+                customQueryAssigneeST += ' GROUP BY ee.rf_id ORDER BY start ASC ';   
                 
                 
                                 
@@ -383,7 +383,7 @@ route.get("/:organisation/:name/:depth/:groupId", [authJWT.verifyToken], async(r
                 
                 customQueryAssigneeST = 'SELECT ac.rf_id as id , SUBSTRING_INDEX(CASE WHEN r.representative_name <> null THEN r.representative_name ELSE aaa.name END, " ", 1)  as content, ass.convey_ty, (SELECT date_format(ap.exec_dt, "%m-%d-%Y") FROM assignor as ap WHERE ap.rf_id = ac.rf_id ORDER BY ap.exec_dt ASC LIMIT 1) as start FROM assignee as ac INNER JOIN assignment_conveyance as ass ON ass.rf_id = ac.rf_id INNER JOIN assignor_and_assignee as aaa ON aaa.assignor_and_assignee_id = ac.assignor_and_assignee_id LEFT JOIN representative as r ON r.representative_id = aaa.representative_id INNER JOIN (SELECT a.rf_id FROM assignment as a INNER JOIN documentid as d ON d.rf_id = a.rf_id INNER JOIN assignment_conveyance as ass ON ass.rf_id = a.rf_id  INNER JOIN assignor as acc ON acc.rf_id = a.rf_id INNER JOIN assignor_and_assignee as aa ON aa.assignor_and_assignee_id = acc.assignor_and_assignee_id LEFT JOIN representative as r1 ON r1.representative_id = aa.representative_id WHERE date_format(d.appno_date,"%Y") > 1999 AND (acc.or_name = :organisation_name OR r1.representative_name = :organisation_name) AND  ';
 
-                customQueryAssigneeST += extendString +' GROUP BY a.rf_id) as temp ON temp.rf_id = ac.rf_id WHERE (ac.ee_name = :name OR r.representative_name = :name) GROUP BY ac.rf_id ORDER BY exec_dt ASC';
+                customQueryAssigneeST += extendString +' GROUP BY a.rf_id) as temp ON temp.rf_id = ac.rf_id WHERE (ac.ee_name = :name OR r.representative_name = :name) GROUP BY ac.rf_id ORDER BY start ASC';
                 
                 className = 'blue';                
             } else {
