@@ -108,10 +108,12 @@ route.put("/company/search/all/", [authJWT.verifyToken, authJWT.isAdmin], (req, 
                     //let t = await connection.resources.transaction();	
                     console.log("Updating items!");
                     const item = {representative_id: representativeCompany.representative_id};
+                    console.log(item);
                     /*await AssignorAndAssignee.update(item, {where: {name: name}, transaction: t});*/
                     const updateItem = await AssignorAndAssignee.update(item, {where: {name: name}});
                     console.log(updateItem);
                     if(oldRepresentativeCompanyID > 0) {
+                        console.log("FOUND OLD");
                         /*await AssignorAndAssignee.update(item, {where: {representative_id: oldRepresentativeCompanyID}, transaction: t});*/
                         const updateItem2 = await AssignorAndAssignee.update(item, {where: {representative_id: oldRepresentativeCompanyID}});
                         console.log(updateItem2);
