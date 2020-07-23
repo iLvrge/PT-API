@@ -166,5 +166,17 @@ route.put("/company/search/all/", [authJWT.verifyToken, authJWT.isAdmin], (req, 
     })();
 });
 
+/**
+ * Get all Assignment Text for the Fixing
+ */
+route.put("/company/search/all/", [authJWT.verifyToken, authJWT.isAdmin], async (req, res, next) => {
+    try {
+        let findAllAssignments  = await helpers.allAssignments();
+        res.status(200).json(findAllAssignments);
+    } catch(e) {
+        console.log(e);
+        res.status(402).send("Unable to retrieve data.");
+    }
+});
 
 module.exports = route;

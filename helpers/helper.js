@@ -194,6 +194,19 @@ let findRepresentative = async (OrganisationName) => {
     });
 }
 
+let allAssignments = async () => {
+    const queryAllAssignments = "Select a.convey_text, count(a.convey_text) as counter, ac.convey_ty from assignment as a INNER JOIN assignment_conveyance as ac ON ac.rf_id = a.rf_id WHERE a.convey_text <> '' AND a.convey_text <> null GROUP BY a.convey_text";
+
+    const assignmentsList =  await connection.resources.query(queryAllAssignments,{
+        type: connection.Sequelize.QueryTypes.SELECT,
+        raw: true,
+        logging: console.log,
+      }
+    );
+
+    return assignmentsList;
+}
+
 let getCompanyListByEmployee = async(companyName) => {
 
     let queryEmployee = "SELECT ac.or_name as name, c1.company_name as normalize_name, 'Invented' as type FROM assignor as ac INNER JOIN (SELECT a.rf_id FROM assignment as a INNER JOIN assignment_conveyance as ass ON ass.rf_id = a.rf_id INNER JOIN assignee as acc ON acc.rf_id = a.rf_id LEFT JOIN representative as c ON c.representative_id = acc.representative_id WHERE ass.convey_ty = :convey_type AND ass.employer_assign = 1 AND (acc.ee_name = :name OR c.company_name = :name) GROUP BY a.rf_id) as temp ON temp.rf_id = ac.rf_id LEFT JOIN representative as c1 ON c1.representative_id = ac.representative_id GROUP BY name, normalize_name ORDER BY normalize_name ASC, name ASC ";
@@ -969,6 +982,7 @@ let getCompaniesMinAndMaxDateTransaction = async(searchData) => {
 }
 
 const helper = {};
+helper.allAssignments = allAssignments;
 helper.findOrganisationbyID = findOrganisationbyID;
 helper.findRepresentative = findRepresentative;
 helper.getCompanyListByEmployee = getCompanyListByEmployee;

@@ -33,16 +33,16 @@ route.get("/:type", [authJWT.verifyToken, clientDBConnection.connect], async(req
                         let searchData = {};
 
                         if(customerType == 'employee') {
-                            searchData = {convey_type: ['assignment', 'employee'], employer_assign: 1, organisation_id: req.orgId, representative_id: getCompaniesList[i].representative_id};
+                            searchData = {tabId: 0, parentId: 0, organisation_id: req.orgId, representative_id: getCompaniesList[i].representative_id};
                         } else if (customerType == 'ownership') {
-                            searchData = {convey_type: ['assignment', 'merger' ], employer_assign: 0, organisation_id: req.orgId, representative_id: getCompaniesList[i].representative_id};
+                            searchData = {tabId: 1, parentId: 0, organisation_id: req.orgId, representative_id: getCompaniesList[i].representative_id};
                         } else if (customerType == 'security') {
-                            searchData = {convey_type: ['security', 'release' ], employer_assign: 0, organisation_id: req.orgId, representative_id: getCompaniesList[i].representative_id};
+                            searchData = {tabId: 2, parentId: 0, organisation_id: req.orgId, representative_id: getCompaniesList[i].representative_id};
                         } else if (customerType == 'other') {
-                            searchData = {convey_type: ['namechg', 'govern', 'other', 'missing', 'correct' ], employer_assign: 0, organisation_id: req.orgId, representative_id: getCompaniesList[i].representative_id};
+                            searchData = {tabId: 3, parentId: 0, organisation_id: req.orgId, representative_id: getCompaniesList[i].representative_id};
                         }
 
-                        let customQuery = 'SELECT count(t.rf_id) as counter FROM timeline as t INNER JOIN assignor_and_assignee as aaa ON aaa.assignor_and_assignee_id = t.assignor_and_assignee_id LEFT JOIN representative as r ON r.representative_id = aaa.representative_id WHERE organisation_id = :organisation_id AND t.representative_id = :representative_id AND convey_ty IN (:convey_type) AND employer_assign = :employer_assign' ;
+                        let customQuery = 'SELECT count(assignor_and_assignee_id) as counter FROM tree WHERE tab = :tabId AND parent = :parentId AND organisation = :organisationID AND representative_id = : representativeID GROUP BY name ORDER BY name ASC' ;
 
                         let getAllTransactionData = await connection.application.query(customQuery,{
                             type: connection.Sequelize.QueryTypes.SELECT,
@@ -80,166 +80,15 @@ route.get("/:parentCompany/parties/:tabId", [authJWT.verifyToken, clientDBConnec
             const parentCompany = req.params.parentCompany, tabId = req.params.tabId;		
             const getCompaniesList = await helpers.checkCustomerCompany(req.connection_db, parentCompany);
             if(getCompaniesList != null) {
-                let allCustomers = [];
-                if(tabId == 0) {
-                    /**Inventors */
-                    const queryEmployee = "SELECT aaa.assignor_and_assignee_id, aaa.name as name, r.representative_name as normalize_name, 'Invented' as type FROM assignor as `or` LEFT JOIN assignor_and_assignee as aaa ON aaa.assignor_and_assignee_id = or.assignor_and_assignee_id LEFT JOIN representative as r ON r.representative_id = aaa.representative_id INNER JOIN (SELECT ee.rf_id FROM db_uspto.assignee as ee INNER JOIN assignment_conveyance as ass ON ass.rf_id = ee.rf_id INNER JOIN documentid as d ON ass.rf_id = d.rf_id INNER JOIN  assignor_and_assignee as aa ON aa.assignor_and_assignee_id = ee.assignor_and_assignee_id LEFT JOIN representative as r1 ON r1.representative_id = aa.representative_id WHERE ass.convey_ty IN(:convey_type) AND ass.employer_assign = 1 AND (aa.name = :name OR r1.representative_name=:name)) as temp ON temp.rf_id = or.rf_id GROUP BY or.or_name, normalize_name ORDER BY normalize_name ASC, name ASC";
-                    console.log(queryEmployee);
-                    const getEmployeeData = await connection.application.query(queryEmployee,{
-                        type: connection.Sequelize.QueryTypes.SELECT,
-                        replacements: { name: getCompaniesList.original_name, convey_type: ['assignment', 'employee'] },
-                        raw: true,
-                        logging: console.log,
-                        }
-                    );
-                    allCustomers = getEmployeeData;
-                } else if(tabId == 1) {
-                    /*Merger, Employee, Assignment, Sale*/
-                    const queryPurchase = "SELECT aaa.assignor_and_assignee_id, aaa.name as name, r.representative_name as normalize_name, 'Purchased' as type FROM assignor as `or` LEFT JOIN assignor_and_assignee as aaa ON aaa.assignor_and_assignee_id = or.assignor_and_assignee_id LEFT JOIN representative as r ON r.representative_id = aaa.representative_id INNER JOIN (SELECT ee.rf_id FROM assignee as ee INNER JOIN assignment_conveyance as ass ON ass.rf_id = ee.rf_id INNER JOIN documentid as d ON ass.rf_id = d.rf_id INNER JOIN  assignor_and_assignee as aa ON aa.assignor_and_assignee_id = ee.assignor_and_assignee_id LEFT JOIN representative as r1 ON r1.representative_id = aa.representative_id WHERE ass.convey_ty = :convey_type AND ass.employer_assign = 0 AND (aa.name = :name OR r1.representative_name=:name)) as temp ON temp.rf_id = or.rf_id GROUP BY name, normalize_name ORDER BY normalize_name ASC, name ASC";
-                            
-                    const getPurchaseData = await connection.application.query(queryPurchase,{
-                        type: connection.Sequelize.QueryTypes.SELECT,
-                        replacements: { name: getCompaniesList.original_name, convey_type: 'assignment' },
-                        raw: true,
-                        logging: console.log,
-                        }
-                    );
+                const querytree =  "SELECT assignor_and_assignee_id as id, name,'Invented' as type, 1 as level, 'closed' as state, "+getCompaniesList.representative_id+" as parent_id FROM tree WHERE tab = :tabId AND parent = :parentId AND organisation = :organisationID AND representative_id = : representativeID GROUP BY name ORDER BY name ASC";
 
-                    const querySale = "SELECT aaa.assignor_and_assignee_id, aaa.name as name, r.representative_name as normalize_name, 'Sale' as type FROM assignee as ee LEFT JOIN assignor_and_assignee as aaa ON aaa.assignor_and_assignee_id = ee.assignor_and_assignee_id LEFT JOIN representative as r ON r.representative_id = aaa.representative_id INNER JOIN (SELECT or.rf_id FROM assignor as `or` INNER JOIN assignment_conveyance as ac ON ac.rf_id = or.rf_id INNER JOIN documentid as d ON ac.rf_id = d.rf_id INNER JOIN  assignor_and_assignee as aa ON aa.assignor_and_assignee_id = or.assignor_and_assignee_id LEFT JOIN representative as r1 ON r1.representative_id = aa.representative_id WHERE ac.convey_ty = :convey_type AND ac.employer_assign = 0  AND (aa.name = :name OR r1.representative_name = :name) GROUP BY or.rf_id) as temp ON temp.rf_id = ee.rf_id GROUP BY name, normalize_name ORDER BY normalize_name ASC, name ASC  ";
-                            
-                    const getSaleData = await connection.application.query(querySale,{
-                        type: connection.Sequelize.QueryTypes.SELECT,
-                        replacements: { name: getCompaniesList.original_name, convey_type: 'assignment' },
-                        raw: true,
-                        logging: console.log,
-                        }
-                    );
-
-                    const queryMergerIn = "SELECT aaa.assignor_and_assignee_id, aaa.name as name, r.representative_name as normalize_name, 'MergerIn' as type FROM assignor as `or` LEFT JOIN assignor_and_assignee as aaa ON aaa.assignor_and_assignee_id = or.assignor_and_assignee_id LEFT JOIN representative as r ON r.representative_id = aaa.representative_id INNER JOIN (SELECT ee.rf_id FROM assignee as ee INNER JOIN assignment_conveyance as ass ON ass.rf_id = ee.rf_id INNER JOIN documentid as d ON ass.rf_id = d.rf_id INNER JOIN  assignor_and_assignee as aa ON aa.assignor_and_assignee_id = ee.assignor_and_assignee_id LEFT JOIN representative as r1 ON r1.representative_id = aa.representative_id WHERE ass.convey_ty = :convey_type AND ass.employer_assign = 0 AND (aa.name = :name OR r1.representative_name = :name) GROUP BY ee.rf_id) as temp ON temp.rf_id = or.rf_id GROUP BY name, normalize_name ORDER BY normalize_name ASC, name ASC ";
-                            
-                    const getMergerInData = await connection.application.query(queryMergerIn,{
-                        type: connection.Sequelize.QueryTypes.SELECT,
-                        replacements: { name: getCompaniesList.original_name, convey_type: 'merger' },
-                        raw: true,
-                        logging: console.log,
-                        }
-                    );
-
-                    const queryMergerOut = "SELECT aaa.assignor_and_assignee_id, aaa.name as name, r.representative_name as normalize_name, 'MergerOut' as type FROM assignee as ee LEFT JOIN assignor_and_assignee as aaa ON aaa.assignor_and_assignee_id = ee.assignor_and_assignee_id LEFT JOIN representative as r ON r.representative_id = aaa.representative_id INNER JOIN (SELECT or.rf_id FROM assignor as `or` INNER JOIN assignment_conveyance as ass ON ass.rf_id = or.rf_id INNER JOIN documentid as d ON ass.rf_id = d.rf_id INNER JOIN  assignor_and_assignee as aa ON aa.assignor_and_assignee_id = or.assignor_and_assignee_id LEFT JOIN representative as r1 ON r1.representative_id = aa.representative_id WHERE ass.convey_ty = :convey_type AND ass.employer_assign = 0 AND (aa.name = :name OR r1.representative_name = :name) GROUP BY or.rf_id) as temp ON temp.rf_id = ee.rf_id GROUP BY name, normalize_name ORDER BY normalize_name ASC, name ASC ";
-                            
-                    const getMergerOutData = await connection.application.query(queryMergerOut,{
-                        type: connection.Sequelize.QueryTypes.SELECT,
-                        replacements: { name: getCompaniesList.original_name, convey_type: 'merger' },
-                        raw: true,
-                        logging: console.log,
-                        }
-                    );
-                    
-                    allCustomers = [...getPurchaseData, ...getSaleData, ...getMergerInData, ...getMergerOutData];   
-                } else if(tabId == 2) {
-                    /** Security, Release */								
-                    const querySecurityOut = "SELECT aaa.assignor_and_assignee_id, aaa.name as name, r.representative_name as normalize_name, 'Security' as type FROM assignee as ee LEFT JOIN assignor_and_assignee as aaa ON aaa.assignor_and_assignee_id = ee.assignor_and_assignee_id LEFT JOIN representative as r ON r.representative_id = aaa.representative_id INNER JOIN (SELECT or.rf_id FROM assignor as `or` INNER JOIN assignment_conveyance as ass ON ass.rf_id = or.rf_id INNER JOIN documentid as d ON ass.rf_id = d.rf_id INNER JOIN  assignor_and_assignee as aa ON aa.assignor_and_assignee_id = or.assignor_and_assignee_id LEFT JOIN representative as r1 ON r1.representative_id = aa.representative_id WHERE ass.convey_ty = :convey_type AND (aa.name = :name OR r1.representative_name = :name) GROUP BY or.rf_id) as temp ON temp.rf_id = ee.rf_id GROUP BY name, normalize_name ORDER BY normalize_name ASC, name ASC ";
-
-                    const querySecurityIn = "SELECT aaa.assignor_and_assignee_id, aaa.name as name, r.representative_name as normalize_name, 'Security' as type FROM assignor as `or` LEFT JOIN assignor_and_assignee as aaa ON aaa.assignor_and_assignee_id = or.assignor_and_assignee_id LEFT JOIN representative as r ON r.representative_id = aaa.representative_id INNER JOIN (SELECT ee.rf_id FROM assignee as `ee` INNER JOIN assignment_conveyance as ass ON ass.rf_id = ee.rf_id INNER JOIN documentid as d ON ass.rf_id = d.rf_id INNER JOIN  assignor_and_assignee as aa ON aa.assignor_and_assignee_id = ee.assignor_and_assignee_id LEFT JOIN representative as r1 ON r1.representative_id = aa.representative_id WHERE ass.convey_ty = :convey_type AND (aa.name = :name OR r1.representative_name = :name) GROUP BY ee.rf_id) as temp ON temp.rf_id = or.rf_id GROUP BY name, normalize_name ORDER BY normalize_name ASC, name ASC ";
-                        
-                    const queryReleaseOut = "SELECT aaa.assignor_and_assignee_id, aaa.name as name, r.representative_name as normalize_name, 'Release' as type FROM assignor as `or` LEFT JOIN assignor_and_assignee as aaa ON aaa.assignor_and_assignee_id = or.assignor_and_assignee_id LEFT JOIN representative as r ON r.representative_id = aaa.representative_id INNER JOIN (SELECT ee.rf_id FROM assignee as ee INNER JOIN assignment_conveyance as ass ON ass.rf_id = ee.rf_id INNER JOIN documentid as d ON ass.rf_id = d.rf_id INNER JOIN  assignor_and_assignee as aa ON aa.assignor_and_assignee_id = ee.assignor_and_assignee_id LEFT JOIN representative as r1 ON r1.representative_id = aa.representative_id WHERE ass.convey_ty = :convey_type AND (aa.name = :name OR r1.representative_name = :name) GROUP BY ee.rf_id) as temp ON temp.rf_id = or.rf_id GROUP BY name, normalize_name ORDER BY normalize_name ASC, name ASC ";
-
-                    const queryReleaseIn = "SELECT aaa.assignor_and_assignee_id, aaa.name as name, r.representative_name as normalize_name, 'Release' as type FROM assignee as `ee` LEFT JOIN assignor_and_assignee as aaa ON aaa.assignor_and_assignee_id = ee.assignor_and_assignee_id LEFT JOIN representative as r ON r.representative_id = aaa.representative_id INNER JOIN (SELECT or.rf_id FROM assignor as `or` INNER JOIN assignment_conveyance as ass ON ass.rf_id = or.rf_id INNER JOIN documentid as d ON ass.rf_id = d.rf_id INNER JOIN  assignor_and_assignee as aa ON aa.assignor_and_assignee_id = or.assignor_and_assignee_id LEFT JOIN representative as r1 ON r1.representative_id = aa.representative_id WHERE ass.convey_ty = :convey_type AND (aa.name = :name OR r1.representative_name = :name) GROUP BY or.rf_id) as temp ON temp.rf_id = ee.rf_id GROUP BY name, normalize_name ORDER BY normalize_name ASC, name ASC ";
-                    
-                    const getSecurityDataOut = await connection.application.query(querySecurityOut,{
-                        type: connection.Sequelize.QueryTypes.SELECT,
-                        replacements: { name: getCompaniesList.original_name, convey_type: 'security' },
-                        raw: true,
-                        logging: console.log,
-                        }
-                    );
-
-                    const getSecurityDataIn = await connection.application.query(querySecurityIn,{
-                        type: connection.Sequelize.QueryTypes.SELECT,
-                        replacements: { name: getCompaniesList.original_name, convey_type: 'security' },
-                        raw: true,
-                        logging: console.log,
-                        }
-                    );
-
-                    const getReleaseDataOut = await connection.application.query(queryReleaseOut,{
-                        type: connection.Sequelize.QueryTypes.SELECT,
-                        replacements: { name: getCompaniesList.original_name, convey_type: 'release' },
-                        raw: true,
-                        logging: console.log,
-                        }
-                    );
-
-                    const getReleaseDataIn = await connection.application.query(queryReleaseIn,{
-                        type: connection.Sequelize.QueryTypes.SELECT,
-                        replacements: { name: getCompaniesList.original_name, convey_type: 'release' },
-                        raw: true,
-                        logging: console.log,
-                        }
-                    );
-                    
-                    allCustomers = [...getSecurityDataOut, ...getSecurityDataIn, ...getReleaseDataOut, ...getReleaseDataIn];
-                } else if(tabId == 3) {
-                    /*other, namechg, missing, govern, correct*/
-                    const queryNameChange = "SELECT aaa.assignor_and_assignee_id, aaa.name as name, r.representative_name as normalize_name, 'Name Change' as type FROM assignor as `or` LEFT JOIN assignor_and_assignee as aaa ON aaa.assignor_and_assignee_id = or.assignor_and_assignee_id LEFT JOIN representative as r ON r.representative_id = aaa.representative_id INNER JOIN (SELECT ee.rf_id FROM assignee as ee INNER JOIN assignment_conveyance as ass ON ass.rf_id = ee.rf_id INNER JOIN documentid as d ON ass.rf_id = d.rf_id INNER JOIN  assignor_and_assignee as aa ON aa.assignor_and_assignee_id = ee.assignor_and_assignee_id LEFT JOIN representative as r1 ON r1.representative_id = aa.representative_id WHERE ass.convey_ty = :convey_type AND (aa.name = :name OR r1.representative_name = :name) GROUP BY ee.rf_id) as temp ON temp.rf_id = or.rf_id GROUP BY name, normalize_name ORDER BY normalize_name ASC, name ASC ";
-                            
-                    const getNameChgData = await connection.application.query(queryNameChange,{
-                        type: connection.Sequelize.QueryTypes.SELECT,
-                        replacements: { name: getCompaniesList.original_name, convey_type: 'namechg' },
-                        raw: true,
-                        logging: console.log,
-                        }
-                    );
-
-                    let queryGovernChange = "SELECT aaa.assignor_and_assignee_id, aaa.name as name, r.representative_name as normalize_name, 'Govt.' as type FROM assignor as `or` LEFT JOIN assignor_and_assignee as aaa ON aaa.assignor_and_assignee_id = or.assignor_and_assignee_id LEFT JOIN representative as r ON r.representative_id = aaa.representative_id INNER JOIN (SELECT ee.rf_id FROM assignee as ee INNER JOIN assignment_conveyance as ass ON ass.rf_id = ee.rf_id INNER JOIN documentid as d ON ass.rf_id = d.rf_id INNER JOIN  assignor_and_assignee as aa ON aa.assignor_and_assignee_id = ee.assignor_and_assignee_id LEFT JOIN representative as r1 ON r1.representative_id = aa.representative_id WHERE ass.convey_ty = :convey_type AND (aa.name = :name OR r1.representative_name = :name) GROUP BY ee.rf_id) as temp ON temp.rf_id = or.rf_id GROUP BY name, normalize_name ORDER BY normalize_name ASC, name ASC ";
-                            
-                    let getGovernData = await connection.application.query(queryGovernChange,{
-                        type: connection.Sequelize.QueryTypes.SELECT,
-                        replacements: { name: getCompaniesList.original_name, convey_type: 'govern' },
-                        raw: true,
-                        logging: console.log,
-                        }
-                    );
-
-                    let queryCorrectChange = "SELECT aaa.assignor_and_assignee_id, aaa.name as name, r.representative_name as normalize_name, 'Correct.' as type FROM assignor as `or` LEFT JOIN assignor_and_assignee as aaa ON aaa.assignor_and_assignee_id = or.assignor_and_assignee_id LEFT JOIN representative as r ON r.representative_id = aaa.representative_id INNER JOIN (SELECT ee.rf_id FROM assignee as ee INNER JOIN assignment_conveyance as ass ON ass.rf_id = ee.rf_id INNER JOIN documentid as d ON ass.rf_id = d.rf_id INNER JOIN  assignor_and_assignee as aa ON aa.assignor_and_assignee_id = ee.assignor_and_assignee_id LEFT JOIN representative as r1 ON r1.representative_id = aa.representative_id WHERE ass.convey_ty = :convey_type AND (aa.name = :name OR r1.representative_name = :name) GROUP BY ee.rf_id) as temp ON temp.rf_id = or.rf_id GROUP BY name, normalize_name ORDER BY normalize_name ASC, name ASC ";
-                            
-                    let getCorrectData = await connection.application.query(queryCorrectChange,{
-                        type: connection.Sequelize.QueryTypes.SELECT,
-                        replacements: { name: getCompaniesList.original_name, convey_type: 'correct' },
-                        raw: true,
-                        logging: console.log,
-                        }
-                    );
-
-                    allCustomers = [...getNameChgData, ...getGovernData, ...getCorrectData];
-                }
-
-                allCustomers.sort(function(a, b) {
-                    var nameA = a.name.toUpperCase(); // ignore upper and lowercase
-                    var nameB = b.name.toUpperCase(); // ignore upper and lowercase
-                    if (nameA < nameB) {
-                        return -1;
+                subsidariesAndCustomer = await connection.application.query(querytree,{
+                    type: connection.Sequelize.QueryTypes.SELECT,
+                    replacements: { organisationID: req.orgId, representativeID: getCompaniesList.representative_id, tabId: tabId, parent: 0 },
+                    raw: true,
+                    logging: console.log,
                     }
-                    if (nameA > nameB) {
-                        return 1;
-                    }                              
-                    // names must be equal
-                    return 0;
-                });
-                
-                if(allCustomers.length > 0) {
-                    let customers = [];
-                    allCustomers.forEach( async customer => {
-                        let name = customer.normalize_name;
-                            if(name == "" || name == null){
-                                name = customer.name;
-                            }
-                        if( !customers.includes(name) ){
-                            customers.push( name );
-                            await subsidariesAndCustomer.push({id:customer.assignor_and_assignee_id, name: name, type: customer.type, level: 1, loadOnDemand: true, state: 'closed',parent_id: getCompaniesList.representative_id});
-                        }
-                    });
-                }
+                );
             }
         }
         res.status(200).json(subsidariesAndCustomer);
