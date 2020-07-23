@@ -18,14 +18,10 @@ const AssignmentConveyance = require('../../model/application/AssignmentConveyan
 
 const Assignments = require('../../model/resources/Assignments');
 
-const Assignors = require('../../model/resources/Assignors');
-
-const Assignees = require('../../model/resources/Assignees');
-
 const AssignorAndAssignee = require('../../model/resources/AssignorAndAssignee');
 
 /**
- * List all customers
+ * Search entity by name
  */
 
 route.get("/company/search/all/", [authJWT.verifyToken, authJWT.isAdmin], async (req, res, next) => {
@@ -64,7 +60,9 @@ route.get("/company/search/all/", [authJWT.verifyToken, authJWT.isAdmin], async 
     }
 });
 
-
+/**
+ * Update normalize name of the Entity
+ */
 route.put("/company/search/all/", [authJWT.verifyToken, authJWT.isAdmin], (req, res, next) => {
     (async () => {
         try {
@@ -173,7 +171,7 @@ route.put("/company/search/all/", [authJWT.verifyToken, authJWT.isAdmin], (req, 
 });
 
 /**
- * Get all Assignment Text for the Fixing
+ * Get all Assignment Text from USPTO database
  */
 route.get("/company/assignments", [authJWT.verifyToken, authJWT.isAdmin], async (req, res, next) => {
     try {
@@ -204,6 +202,10 @@ route.put("/company/assignments", [authJWT.verifyToken, authJWT.isAdmin], async 
             if(uniqueRFIDs.length > 0) {
                 update = await RepresentativeAssignmentConveyance.update({convey_ty: updateConveyType},{where: {rf_id: uniqueRFIDs}});
                 await AssignmentConveyance.update({convey_ty: updateConveyType},{where: {rf_id: uniqueRFIDs}});
+
+                /**INSERT Faster than using bulkCreate because first have to reteive data from assignment_conveyance table 
+                 * Create array and then use bulkCreate option to insert multiple records
+                 */
 
                 const queryINSERT = `INSERT IGNORE representative_assignment_conveyance(rf_id, convey_ty, employer_assign) SELECT rf_id, '${updateConveyType}' as convey_ty, employer_assign FROM assignment_conveyance WHERE rf_id = :rfIDs`;
 
