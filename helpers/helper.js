@@ -195,7 +195,7 @@ let findRepresentative = async (OrganisationName) => {
 }
 
 let allAssignments = async () => {
-    const queryAllAssignments = "Select a.convey_text, count(a.convey_text) as counter, ac.convey_ty from assignment as a INNER JOIN assignment_conveyance as ac ON ac.rf_id = a.rf_id WHERE a.convey_text <> '' AND a.convey_text <> null GROUP BY a.convey_text";
+    const queryAllAssignments = "Select a.rf_id as id, a.convey_text as text, count(a.convey_text) as counter, ac.convey_ty, rac.convey_ty as updated_convey_ty from assignment as a INNER JOIN assignment_conveyance as ac ON ac.rf_id = a.rf_id LEFT JOIN representative_assignment_conveyance as rac ON rac.rf_id = a.rf_id WHERE a.convey_text <> '' AND a.convey_text <> null GROUP BY a.convey_text";
 
     const assignmentsList =  await connection.resources.query(queryAllAssignments,{
         type: connection.Sequelize.QueryTypes.SELECT,
@@ -430,7 +430,7 @@ let updateAllCustomerInventor = async(companyName, inventors) => {
     let added = 0;
 
     if(representativeName != '') {
-        let queryFindAssignorAndAssigneeIDs = "SELECT ac.rf_id, ac.convey_ty FROM db_application.assignor as aaa INNER JOIN db_application.assignment_conveyance as ac ON ac.rf_id = aaa.rf_id WHERE aaa.rf_id IN(SELECT  a.rf_id FROM db_uspto.assignee as a WHERE a.assignor_and_assignee_id IN (SELECT aa.assignor_and_assignee_id FROM db_application.assignor_and_assignee as aa LEFT JOIN db_application.representative as r1 ON r1.representative_id = aa.representative_id where (r1.representative_name = :name OR aa.name = :name))) AND  aaa.or_name IN (:inventors) GROUP BY ac.rf_id";
+        let queryFindAssignorAndAssigneeIDs = "SELECT ac.rf_id, ac.convey_ty, ac.employer_assign FROM db_application.assignor as aaa INNER JOIN db_application.assignment_conveyance as ac ON ac.rf_id = aaa.rf_id WHERE aaa.rf_id IN(SELECT  a.rf_id FROM db_uspto.assignee as a WHERE a.assignor_and_assignee_id IN (SELECT aa.assignor_and_assignee_id FROM db_application.assignor_and_assignee as aa LEFT JOIN db_application.representative as r1 ON r1.representative_id = aa.representative_id where (r1.representative_name = :name OR aa.name = :name))) AND  aaa.or_name IN (:inventors) GROUP BY ac.rf_id";
 
         listIDs = await connection.resources.query(queryFindAssignorAndAssigneeIDs,{
             type: connection.Sequelize.QueryTypes.SELECT,
@@ -447,7 +447,7 @@ let updateAllCustomerInventor = async(companyName, inventors) => {
                 updateFlags.push({
                     rf_id: l.rf_id,
                     convey_ty: l.convey_ty,
-                    employer_assign: 1
+                    employer_assign: l.employer_assign == 1 ? 0 : 1
                 });
             });
             added = await RepresentativeAssignmentConveyance.bulkCreate(updateFlags);

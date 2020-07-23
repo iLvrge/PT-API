@@ -169,10 +169,10 @@ route.put("/company/search/all/", [authJWT.verifyToken, authJWT.isAdmin], (req, 
 /**
  * Get all Assignment Text for the Fixing
  */
-route.put("/company/search/all/", [authJWT.verifyToken, authJWT.isAdmin], async (req, res, next) => {
+route.get("/company/assignments", [authJWT.verifyToken, authJWT.isAdmin], async (req, res, next) => {
     try {
         let findAllAssignments  = await helpers.allAssignments();
-        res.status(200).json(findAllAssignments);
+        res.status(200).json({list:findAllAssignments});
     } catch(e) {
         console.log(e);
         res.status(402).send("Unable to retrieve data.");
