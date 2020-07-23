@@ -203,12 +203,12 @@ route.put("/company/assignments", [authJWT.verifyToken, authJWT.isAdmin], async 
             });
             if(uniqueRFIDs.length > 0) {
                 update = await RepresentativeAssignmentConveyance.update({convey_ty: updateConveyType},{where: {rf_id: uniqueRFIDs}});
-                await AssignmentConveyance.update({convey_ty: updateConveyType},{where: {rf_id: rfIDs}});
+                await AssignmentConveyance.update({convey_ty: updateConveyType},{where: {rf_id: uniqueRFIDs}});
 
-                const queryINSERT = `INSERT IGNORE representative_assignment_conveyance(rf_id, convey_ty, employer_assign) SELECT rf_id, ${updateConveyType} as convey_ty, employer_assign FROM assignment_conveyance WHERE rf_id = :rfIDs`;
+                const queryINSERT = `INSERT IGNORE representative_assignment_conveyance(rf_id, convey_ty, employer_assign) SELECT rf_id, '${updateConveyType}' as convey_ty, employer_assign FROM assignment_conveyance WHERE rf_id = :rfIDs`;
 
                 await connection.resources.query(queryINSERT,{
-                    type: connection.Sequelize.QueryTypes.SELECT,
+                    type: connection.Sequelize.QueryTypes.INSERT,
                     replacements: { rfIDs: uniqueRFIDs },
                     raw: true,
                     logging: console.log,
