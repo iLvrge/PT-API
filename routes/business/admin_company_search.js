@@ -172,7 +172,7 @@ route.put("/company/search/all/", [authJWT.verifyToken, authJWT.isAdmin], (req, 
 route.get("/company/assignments", [authJWT.verifyToken, authJWT.isAdmin], async (req, res, next) => {
     try {
         let findAllAssignments  = await helpers.allAssignments();
-        res.status(200).json({list:findAllAssignments});
+        res.status(200).json({list:findAllAssignments, type: [{name: 'assignment', id: 'assignment'},{name: 'correct', id: 'correct'},{name: 'employee', id: 'employee'},{name: 'govern', id: 'govern'},{name: 'missing', id: 'missing'},{name: 'merger', id: 'merger'},{name: 'namechg', id: 'namechg'},{name: 'other', id: 'other'},{name: 'release', id: 'release'},{name: 'security', id: 'security'}]});
     } catch(e) {
         console.log(e);
         res.status(402).send("Unable to retrieve data.");
