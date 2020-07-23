@@ -450,6 +450,7 @@ let updateAllCustomerInventor = async(companyName, inventors) => {
                     employer_assign: l.employer_assign == 1 ? 0 : 1
                 });
             });
+            await RepresentativeAssignmentConveyance.destroy({where: {rf_id: rfIDs}});
             added = await RepresentativeAssignmentConveyance.bulkCreate(updateFlags);
             await AssignmentConveyance.update({employer_assign: 1},{where: {rf_id: rfIDs}})
         }
