@@ -33,16 +33,16 @@ route.get("/:type", [authJWT.verifyToken, clientDBConnection.connect], async(req
                         let searchData = {};
 
                         if(customerType == 'employee') {
-                            searchData = {tabId: 0, parentId: 0, organisation_id: req.orgId, representative_id: getCompaniesList[i].representative_id};
+                            searchData = {tabId: 0, parent: 0, organisation_id: req.orgId, representative_id: getCompaniesList[i].representative_id};
                         } else if (customerType == 'ownership') {
-                            searchData = {tabId: 1, parentId: 0, organisation_id: req.orgId, representative_id: getCompaniesList[i].representative_id};
+                            searchData = {tabId: 1, parent: 0, organisation_id: req.orgId, representative_id: getCompaniesList[i].representative_id};
                         } else if (customerType == 'security') {
-                            searchData = {tabId: 2, parentId: 0, organisation_id: req.orgId, representative_id: getCompaniesList[i].representative_id};
+                            searchData = {tabId: 2, parent: 0, organisation_id: req.orgId, representative_id: getCompaniesList[i].representative_id};
                         } else if (customerType == 'other') {
-                            searchData = {tabId: 3, parentId: 0, organisation_id: req.orgId, representative_id: getCompaniesList[i].representative_id};
+                            searchData = {tabId: 3, parent: 0, organisation_id: req.orgId, representative_id: getCompaniesList[i].representative_id};
                         }
 
-                        let customQuery = 'SELECT count(assignor_and_assignee_id) as counter FROM tree WHERE tab = :tabId AND parent = :parentId AND organisation_id = :organisation_id AND representative_id = :representative_id GROUP BY name ORDER BY name ASC' ;
+                        let customQuery = 'SELECT count(assignor_and_assignee_id) as counter FROM tree WHERE tab = :tabId AND parent = :parent AND organisation_id = :organisation_id AND representative_id = :representative_id GROUP BY name ORDER BY name ASC' ;
 
                         let getAllTransactionData = await connection.application.query(customQuery,{
                             type: connection.Sequelize.QueryTypes.SELECT,
@@ -80,7 +80,7 @@ route.get("/:parentCompany/parties/:tabId", [authJWT.verifyToken, clientDBConnec
             const parentCompany = req.params.parentCompany, tabId = req.params.tabId;		
             const getCompaniesList = await helpers.checkCustomerCompany(req.connection_db, parentCompany);
             if(getCompaniesList != null) {
-                const querytree =  "SELECT assignor_and_assignee_id as id, name,'Invented' as type, 1 as level, 'closed' as state, "+getCompaniesList.representative_id+" as parent_id FROM tree WHERE tab = :tabId AND parent = :parentId AND organisation_id = :organisationID AND representative_id = :representativeID GROUP BY name ORDER BY name ASC";
+                const querytree =  "SELECT assignor_and_assignee_id as id, name,'Invented' as type, 1 as level, 'closed' as state, "+getCompaniesList.representative_id+" as parent_id FROM tree WHERE tab = :tabId AND parent = :parent AND organisation_id = :organisationID AND representative_id = :representativeID GROUP BY name ORDER BY name ASC";
 
                 subsidariesAndCustomer = await connection.application.query(querytree,{
                     type: connection.Sequelize.QueryTypes.SELECT,
