@@ -12,6 +12,10 @@ const helpers = require("../../helpers/helper");
 
 const Representatives = require('../../model/resources/Representatives');
 
+const RepresentativeAssignmentConveyance = require('../../model/resources/RepresentativeAssignmentConveyance');
+
+const Assignments = require('../../model/resources/Assignments');
+
 const Assignors = require('../../model/resources/Assignors');
 
 const Assignees = require('../../model/resources/Assignees');
@@ -173,6 +177,43 @@ route.get("/company/assignments", [authJWT.verifyToken, authJWT.isAdmin], async 
     try {
         let findAllAssignments  = await helpers.allAssignments();
         res.status(200).json({list:findAllAssignments, type: [{name: 'assignment', id: 'assignment'},{name: 'correct', id: 'correct'},{name: 'employee', id: 'employee'},{name: 'govern', id: 'govern'},{name: 'missing', id: 'missing'},{name: 'merger', id: 'merger'},{name: 'namechg', id: 'namechg'},{name: 'other', id: 'other'},{name: 'release', id: 'release'},{name: 'security', id: 'security'}]});
+    } catch(e) {
+        console.log(e);
+        res.status(402).send("Unable to retrieve data.");
+    }
+});
+
+route.put("/company/assignments", [authJWT.verifyToken, authJWT.isAdmin], async (req, res, next) => {
+    try {
+        let text = req.body.text, updateConveyType = req.body.updated_convey_ty, update = 0;
+
+        const findAllRfIDs = await Assignments.findAll({
+            attributes: ['rf_id'],
+            where: {convey_text: text}
+        });
+
+        if(findAllRfIDs.length > 0) {
+            let uniqueRFIDs = [];
+            findAllRfIDs.map( r => {
+                if(!uniqueRFIDs.includes(r.rf_id)){
+                    uniqueRFIDs.push(r.rf_id);
+                }
+            });
+            if(uniqueRFIDs.length > 0) {
+                update = await RepresentativeAssignmentConveyance.update({convey_ty: updateConveyType},{where: {rf_id: uniqueRFIDs}});
+                await AssignmentConveyance.update({convey_ty: updateConveyType},{where: {rf_id: rfIDs}});
+
+                const queryINSERT = `INSERT IGNORE representative_assignment_conveyance(rf_id, convey_ty, employer_assign) SELECT rf_id, ${updateConveyType} as convey_ty, employer_assign FROM assignment_conveyance WHERE rf_id = :rfIDs`;
+
+                await connection.resources.query(queryINSERT,{
+                    type: connection.Sequelize.QueryTypes.SELECT,
+                    replacements: { rfIDs: uniqueRFIDs },
+                    raw: true,
+                    logging: console.log,
+                });
+            }
+        }
+        res.status(200).send(update);
     } catch(e) {
         console.log(e);
         res.status(402).send("Unable to retrieve data.");
