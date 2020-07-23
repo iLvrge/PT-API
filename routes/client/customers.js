@@ -42,7 +42,7 @@ route.get("/:type", [authJWT.verifyToken, clientDBConnection.connect], async(req
                             searchData = {tabId: 3, parentId: 0, organisation_id: req.orgId, representative_id: getCompaniesList[i].representative_id};
                         }
 
-                        let customQuery = 'SELECT count(assignor_and_assignee_id) as counter FROM tree WHERE tab = :tabId AND parent = :parentId AND organisation = :organisationID AND representative_id = : representativeID GROUP BY name ORDER BY name ASC' ;
+                        let customQuery = 'SELECT count(assignor_and_assignee_id) as counter FROM tree WHERE tab = :tabId AND parent = :parentId AND organisation = :organisation_id AND representative_id = : representativeID GROUP BY name ORDER BY name ASC' ;
 
                         let getAllTransactionData = await connection.application.query(customQuery,{
                             type: connection.Sequelize.QueryTypes.SELECT,
