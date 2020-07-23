@@ -14,6 +14,8 @@ const Representatives = require('../../model/resources/Representatives');
 
 const RepresentativeAssignmentConveyance = require('../../model/resources/RepresentativeAssignmentConveyance');
 
+const AssignmentConveyance = require('../../model/application/AssignmentConveyance');
+
 const Assignments = require('../../model/resources/Assignments');
 
 const Assignors = require('../../model/resources/Assignors');
