@@ -194,11 +194,7 @@ route.put("/company/assignments", [authJWT.verifyToken, authJWT.isAdmin], async 
 
         if(findAllRfIDs.length > 0) {
             let uniqueRFIDs = [];
-            findAllRfIDs.map( r => {
-                if(!uniqueRFIDs.includes(r.rf_id)){
-                    uniqueRFIDs.push(r.rf_id);
-                }
-            });
+            findAllRfIDs.map( r => uniqueRFIDs.push(r.rf_id));
             if(uniqueRFIDs.length > 0) {
                 update = await RepresentativeAssignmentConveyance.update({convey_ty: updateConveyType},{where: {rf_id: uniqueRFIDs}});
                 await AssignmentConveyance.update({convey_ty: updateConveyType},{where: {rf_id: uniqueRFIDs}});
