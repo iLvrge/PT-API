@@ -203,7 +203,7 @@ route.put("/company/assignments", [authJWT.verifyToken, authJWT.isAdmin], async 
                  * Create array and then use bulkCreate option to insert multiple records
                  */
 
-                const queryINSERT = `INSERT IGNORE representative_assignment_conveyance(rf_id, convey_ty, employer_assign) SELECT rf_id, '${updateConveyType}' as convey_ty, employer_assign FROM assignment_conveyance WHERE rf_id = :rfIDs`;
+                const queryINSERT = `INSERT IGNORE representative_assignment_conveyance(rf_id, convey_ty, employer_assign) SELECT rf_id, '${updateConveyType}' as convey_ty, employer_assign FROM assignment_conveyance WHERE rf_id IN (:rfIDs)`;
 
                 await connection.resources.query(queryINSERT,{
                     type: connection.Sequelize.QueryTypes.INSERT,
