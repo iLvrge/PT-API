@@ -419,15 +419,15 @@ route.post("/customers", [authJWT.verifyToken, authJWT.isAdmin], (req, res, next
                                         console.log(error);
                                         console.log(stderr);
                                         console.log(std);
-                                        console.log(`php -f /var/www/html/trash/fix_inventor.php "${organisationID}"`);
-                                        await exec(`php -f /var/www/html/trash/fix_inventor.php "${organisationID}"`, async (error, std, stderr) => {
+                                        console.log(`php -f /var/www/html/trash/fix_inventor.php "${organisationID}" ""`);
+                                        await exec(`php -f /var/www/html/trash/fix_inventor.php "${organisationID}" ""`, async (error, std, stderr) => {
                                             console.log("FiX Inventor Data....");
                                             console.log(error);
                                             console.log(stderr);
                                             console.log(std);
     
-                                            console.log(`php -f /var/www/html/trash/timeline.php "${organisationID}"`);
-                                            await exec(`php -f /var/www/html/trash/timeline.php "${organisationID}"`, async (error, std, stderr) => {
+                                            console.log(`php -f /var/www/html/trash/timeline.php "${organisationID}" ""`);
+                                            await exec(`php -f /var/www/html/trash/timeline.php "${organisationID}" ""`, async (error, std, stderr) => {
                                                 console.log("timeline create one table");
                                                 console.log(error);
                                                 console.log(stderr);
@@ -602,14 +602,14 @@ route.get("/customers/:organisation_id/publish", [authJWT.verifyToken, authJWT.i
                                 console.log(error);
                                 console.log(stderr);
                                 console.log(std);
-                                console.log(`php -f /var/www/html/trash/fix_inventor.php "${organisationID}"`);
-                                await exec(`php -f /var/www/html/trash/fix_inventor.php "${organisationID}"`, async (error, std, stderr) => {
+                                console.log(`php -f /var/www/html/trash/fix_inventor.php "${organisationID}" ""`);
+                                await exec(`php -f /var/www/html/trash/fix_inventor.php "${organisationID}" ""`, async (error, std, stderr) => {
                                     console.log("FiX Inventor Data....");
                                     console.log(error);
                                     console.log(stderr);
                                     console.log(std);
-                                    console.log(`php -f /var/www/html/trash/timeline.php "${organisationID}"`);
-                                    await exec(`php -f /var/www/html/trash/timeline.php "${organisationID}"`, async (error, std, stderr) => {
+                                    console.log(`php -f /var/www/html/trash/timeline.php "${organisationID}" ""`);
+                                    await exec(`php -f /var/www/html/trash/timeline.php "${organisationID}" ""`, async (error, std, stderr) => {
                                         console.log("timeline create one table");
                                         console.log(error);
                                         console.log(stderr);
