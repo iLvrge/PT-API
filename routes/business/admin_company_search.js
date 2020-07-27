@@ -173,9 +173,10 @@ route.put("/company/search/all/", [authJWT.verifyToken, authJWT.isAdmin], (req, 
 /**
  * Get all Assignment Text from USPTO database
  */
-route.get("/company/assignments", [authJWT.verifyToken, authJWT.isAdmin], async (req, res, next) => {
+route.get("/company/assignments/:customerID", [authJWT.verifyToken, authJWT.isAdmin], async (req, res, next) => {
     try {
-        let findAllAssignments  = await helpers.allAssignments();
+        const customerID = req.params.customerID;
+        let findAllAssignments  = await helpers.allAssignments(customerID);
         res.status(200).json({list:findAllAssignments, type: [{name: 'assignment', id: 'assignment'},{name: 'addresschg', id: 'addresschg'},{name: 'correct', id: 'correct'},{name: 'courtappointment', id: 'courtappointment'},{name: 'courtorder', id: 'courtorder'},{name: 'employee', id: 'employee'},{name: 'govern', id: 'govern'},{name: 'license', id: 'license'},{name: 'licenseend', id: 'licenseend'},{name: 'missing', id: 'missing'},{name: 'merger', id: 'merger'},{name: 'namechg', id: 'namechg'},{name: 'other', id: 'other'},{name: 'partialassignment', id: 'partialassignment'},{name: 'release', id: 'release'},{name: 'restatedsecurity', id: 'restatedsecurity'},{name: 'security', id: 'security'}]});
     } catch(e) {
         console.log(e);
@@ -183,7 +184,7 @@ route.get("/company/assignments", [authJWT.verifyToken, authJWT.isAdmin], async 
     }
 });
 
-route.put("/company/assignments", [authJWT.verifyToken, authJWT.isAdmin], async (req, res, next) => {
+route.put("/company/assignments/:customerID", [authJWT.verifyToken, authJWT.isAdmin], async (req, res, next) => {
     try {
         let text = req.body.text, updateConveyType = req.body.updated_convey_ty, update = 0;
 

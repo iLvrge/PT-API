@@ -194,16 +194,77 @@ let findRepresentative = async (OrganisationName) => {
     });
 }
 
-let allAssignments = async () => {
-    const queryAllAssignments = "Select a.rf_id as id, a.convey_text as text, count(a.convey_text) as counter, ac.convey_ty, rac.convey_ty as updated_convey_ty from assignment as a INNER JOIN assignment_conveyance as ac ON ac.rf_id = a.rf_id LEFT JOIN representative_assignment_conveyance as rac ON rac.rf_id = a.rf_id WHERE a.convey_text <> '' AND a.convey_text IS NOT NULL GROUP BY a.convey_text";
+let allAssignments = async (customerID) => {
+    let queryAllAssignments = "", assignmentsList = [];
+    if(parseInt(customerID) > 0) {
+        let org = findOrganisationbyID( customerID );
+        if(org != null && org.organisation_id > 0) {
+            const queryFindMainCompany = "SELECT aa.assignor_and_assignee_id, aa.name FROM assignor_and_assignee as aa LEFT JOIN representative as r1 ON r1.representative_id = aa.representative_id where (aa.name = :name OR r1.representative_name = :name )";
+            const listIDs = await connection.application.query(queryFindMainCompany,{
+                type: connection.Sequelize.QueryTypes.SELECT,
+                replacements: { name: org.name },
+                raw: true,
+                logging: console.log,
+                }
+            );
+            if(listIDs != null && listIDs.length > 0) {
+                let assgnorAssigneeIDS = [], names = [];
+    
+                for(let i = 0; i< listIDs.length; i++){
+                    assgnorAssigneeIDS.push(listIDs[i].assignor_and_assignee_id);
+                    names.push(listIDs[i].name);
+                }
+                console.log(assgnorAssigneeIDS);
+                /** Find Assignors */
+    
+                let queryAssigneeRFIDs = "SELECT rf_id FROM assignee as ac WHERE ac.assignor_and_assignee_id IN (:IDs)";
+    
+                assigneeRFIDs = await connection.application.query(queryAssigneeRFIDs,{
+                    type: connection.Sequelize.QueryTypes.SELECT,
+                    replacements: { IDs: assgnorAssigneeIDS },
+                    raw: true,
+                    logging: console.log,
+                    }
+                );
+    
+                let queryAssignorRFIDs = "SELECT rf_id FROM assignor as ac WHERE ac.assignor_and_assignee_id IN (:IDs)";
+    
+                assignorRFIDs = await connection.application.query(queryAssignorRFIDs,{
+                    type: connection.Sequelize.QueryTypes.SELECT,
+                    replacements: { IDs: assgnorAssigneeIDS },
+                    raw: true,
+                    logging: console.log,
+                    }
+                );
+    
+                rfIDsList = [...assigneeRFIDs, ...assignorRFIDs];    
+    
+                let rfIDs = [];
+                rfIDsList.map( r => rfIDs.push(r.rf_id));
 
-    const assignmentsList =  await connection.resources.query(queryAllAssignments,{
-        type: connection.Sequelize.QueryTypes.SELECT,
-        raw: true,
-        logging: console.log,
-      }
-    );
+                if(rfIDsList.length > 0) {
+                    queryAllAssignments = "Select a.rf_id as id, a.convey_text as text, CONCAT(ac.reel_no, '/', ac.frame_no) , ac.convey_ty, rac.convey_ty as updated_convey_ty from assignment as a INNER JOIN assignment_conveyance as ac ON ac.rf_id = a.rf_id LEFT JOIN representative_assignment_conveyance as rac ON rac.rf_id = a.rf_id WHERE a.convey_text <> '' AND a.convey_text IS NOT NULL AND a.rf_id IN (SELECT d.rf_id FROM documentid as d WHERE appno_doc_num <> '' AND  d.rf_id IN (:rfIDs) GROUP BY d.rf_id) ";
 
+                    assignmentsList =  await connection.resources.query(queryAllAssignments,{
+                        type: connection.Sequelize.QueryTypes.SELECT,
+                        replacements: { rfIDs: rfIDs },
+                        raw: true,
+                        logging: console.log,
+                      }
+                    );
+                }
+            }
+        }
+    } else {
+        queryAllAssignments = "Select a.rf_id as id, a.convey_text as text, count(a.convey_text) as counter, ac.convey_ty, rac.convey_ty as updated_convey_ty from assignment as a INNER JOIN assignment_conveyance as ac ON ac.rf_id = a.rf_id LEFT JOIN representative_assignment_conveyance as rac ON rac.rf_id = a.rf_id WHERE a.convey_text <> '' AND a.convey_text IS NOT NULL GROUP BY a.convey_text";
+
+        assignmentsList =  await connection.resources.query(queryAllAssignments,{
+            type: connection.Sequelize.QueryTypes.SELECT,
+            raw: true,
+            logging: console.log,
+          }
+        );
+    } 
     return assignmentsList;
 }
 
