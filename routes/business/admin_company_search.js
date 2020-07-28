@@ -280,7 +280,7 @@ route.put("/company/assignments/:customerID", [authJWT.verifyToken, authJWT.isAd
                     if(findAllCustomer.length > 0) {
                         const findCustomers = await AssignorAndAssigneeApplication.findAll({
                             attributes:['name', 'representative_id'],
-                            where:{assignor_and_assignee_id: allAssignorAndAssignees},
+                            where:{assignor_and_assignee_id: allIDs},
                             include:[
                                 {
                                     model: RepresentativesApplication,
