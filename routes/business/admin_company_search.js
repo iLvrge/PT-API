@@ -2,6 +2,8 @@ const express = require("express");
 
 const route = express.Router();
 
+const exec = require("child_process").exec;
+
 const connection = require("../../config/db.config");
 
 //require the Model
@@ -241,7 +243,7 @@ route.put("/company/assignments/:customerID", [authJWT.verifyToken, authJWT.isAd
                  */
 
                 const findAllAssignors = await Assignors.findAll({
-                    attributes: [],
+                    attributes: ['assignor_and_assignee_id'],
                     include: [
                         {
                             model: AssignorAndAssigneeApplication,
@@ -253,7 +255,7 @@ route.put("/company/assignments/:customerID", [authJWT.verifyToken, authJWT.isAd
                 });
 
                 const findAllAssignees = await Assignees.findAll({
-                    attributes: [],
+                    attributes: ['assignor_and_assignee_id'],
                     include: [
                         {
                             model: AssignorAndAssigneeApplication,
@@ -264,7 +266,14 @@ route.put("/company/assignments/:customerID", [authJWT.verifyToken, authJWT.isAd
                     where: {rf_id: uniqueRFIDs}
                 });
 
-                const allAssignorAndAssignees = [...findAllAssignors, findAllAssignees];
+                let allAssignorAndAssignees = [];
+                if(findAllAssignors.length > 0 && findAllAssignees.length > 0){
+                    allAssignorAndAssignees = [...findAllAssignors, ...findAllAssignees];
+                } else if(findAllAssignees.length > 0){
+                    allAssignorAndAssignees = [...findAllAssignees];
+                } else if(findAllAssignors.length > 0) {
+                    allAssignorAndAssignees = [...findAllAssignors];
+                }
 
                 if(allAssignorAndAssignees.length > 0) {
 
@@ -272,7 +281,7 @@ route.put("/company/assignments/:customerID", [authJWT.verifyToken, authJWT.isAd
                         attributes:['name'],
                         where:{type: 0, org_key: {[connection.Op.ne]: ''}, org_key: {[connection.Op.ne]: null}}
                     });
-
+                    console.log(allAssignorAndAssignees);
                     const allIDs = [], allCustomersName = [];
                     allAssignorAndAssignees.map( a => allIDs.push(a.assignor_and_assignee_id));
                     findAllCustomer.map( c => allCustomersName.push(c.name));
@@ -290,10 +299,10 @@ route.put("/company/assignments/:customerID", [authJWT.verifyToken, authJWT.isAd
                             ]
                         });
 
-                        if(findCustomers.length < 0) {
+                        if(findCustomers.length > 0) {
                             const customerName = [];
                             findCustomers.map(c => {
-                                if(c.representative.id > 0 && c.representative.representative_name != '' &&  c.representative.representative_name != null) {
+                                if(c.representative_id > 0 && c.representative.representative_name != '' &&  c.representative.representative_name != null) {
                                     customerName.push(c.representative.representative_name);
                                 } else {
                                     customerName.push(c.name);
