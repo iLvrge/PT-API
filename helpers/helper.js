@@ -827,6 +827,51 @@ let findCompanyCustomersByID = async(ID) => {
     return list;
 }
 
+let findProfessionalFromUserID = async(userID, connectionDB) => {
+    const queryFindProfessional = "SELECT professional_id FROM professional WHERE type = 0 AND email_address IN ( SELECT email_address FROM user WHERE user_id = :userID )";
+    return  await connectionDB.query(queryFindProfessional,{
+		type: connection.Sequelize.QueryTypes.SELECT,
+		raw: true,
+        logging: console.log,
+        plain: true,
+		replacements: { userID: userID },
+	});
+}
+
+
+let findFakeDocument = async (connectionDB) => {
+    const documentQuery = "SELECT document_id FROM document WHERE status = :status";
+    let findDocument = await connectionDB.query(documentQuery,{
+		type: connection.Sequelize.QueryTypes.SELECT,
+		raw: true,
+        logging: console.log,
+        plain: true,
+		replacements: { status: 4 },
+    });
+    
+    if(findDocument == null) {
+        const queryInsertDocument = "INSERT INTO document (title, status) VALUES (:title, :status)";
+
+        const insertDocument = await connectionDB.query(queryInsertDocument,{
+            type: connection.Sequelize.QueryTypes.INSERT,
+            raw: true,
+            logging: console.log,
+            plain: true,
+            replacements: { status: 4, title: ' ' },
+        });
+
+        findDocument = await connectionDB.query(documentQuery,{
+            type: connection.Sequelize.QueryTypes.SELECT,
+            raw: true,
+            logging: console.log,
+            plain: true,
+            replacements: { status: 4 },
+        });
+
+    }
+    return findDocument;
+}
+
 let getAssignmentDataByrfID = async (rfID) => {
 	const assignorQuery = 'SELECT aaa.name as or_name, r.representative_name as normalize_name, date_format(a.exec_dt,"%Y-%m-%d %h:%i:%s") as exec_dt FROM assignor as a INNER JOIN assignor_and_assignee as aaa ON aaa.assignor_and_assignee_id = a.assignor_and_assignee_id LEFT JOIN representative as r ON r.representative_id = aaa.representative_id WHERE a.rf_id = :rfID  GROUP BY aaa.name, normalize_name ORDER BY a.exec_dt ASC';
 	const assigneeQuery = 'SELECT a.*, aaa.name as ee_name, r.representative_name as normalize_name FROM assignee as a INNER JOIN assignor_and_assignee as aaa ON aaa.assignor_and_assignee_id = a.assignor_and_assignee_id LEFT JOIN representative as r ON r.representative_id = aaa.representative_id WHERE a.rf_id = :rfID  GROUP BY aaa.name, normalize_name';
@@ -1069,4 +1114,6 @@ helper.getNewCode = getNewCode;
 helper.shareURL = shareURL;
 helper.getShareData = getShareData;
 helper.getCompaniesMinAndMaxDateTransaction = getCompaniesMinAndMaxDateTransaction;
+helper.findProfessionalFromUserID = findProfessionalFromUserID;
+helper.findFakeDocument = findFakeDocument;
 module.exports = helper;

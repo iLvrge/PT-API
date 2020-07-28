@@ -187,11 +187,19 @@ route.get("/company/assignments/:customerID", [authJWT.verifyToken, authJWT.isAd
 route.put("/company/assignments/:customerID", [authJWT.verifyToken, authJWT.isAdmin], async (req, res, next) => {
     try {
         let text = req.body.text, updateConveyType = req.body.updated_convey_ty, update = 0;
-
-        const findAllRfIDs = await Assignments.findAll({
-            attributes: ['rf_id'],
-            where: {convey_text: text}
-        });
+        const customerID = req.params.customerID;
+        let findAllRfIDs = [];
+        if(customerID > 0 && req.body.rf_id > 0) {
+            findAllRfIDs = await Assignments.findAll({
+                attributes: ['rf_id'],
+                where: {rf_id: req.body.rf_id}
+            });
+        } else {
+            findAllRfIDs = await Assignments.findAll({
+                attributes: ['rf_id'],
+                where: {convey_text: text}
+            });
+        }
 
         if(findAllRfIDs.length > 0) {
             let uniqueRFIDs = [];

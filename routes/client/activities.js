@@ -185,6 +185,7 @@ route.post("/activities/:type", [authJWT.verifyToken, clientDBConnection.connect
     try{
         if(typeof req.connection_db != "undefined" && req.connection_db != null ) {
             const type = req.params.type;
+            
             let postData = {		
                 user_id: req.userId,
                 professional_id: req.body.professional_id,	
@@ -211,7 +212,7 @@ route.post("/activities/:type", [authJWT.verifyToken, clientDBConnection.connect
                 }  
             } else if( type  == 3) {    
                 console.log("Asdsadada");            
-                const User = req.connection_db.define('Users', Users.mainStructure, Users.options);
+                /*const User = req.connection_db.define('Users', Users.mainStructure, Users.options);
                 const findUser = await User.findOne({
                     where: {user_id: req.userId}
                 });
@@ -227,6 +228,20 @@ route.post("/activities/:type", [authJWT.verifyToken, clientDBConnection.connect
                         postData.professional_id = professional.professional_id;
                     }
                 }
+                let professionID = req.body.professional_id;*/
+                const findUserDetails = await helpers.findProfessionalFromUserID(req.userId, req.connection_db);
+                if(findUserDetails != null) {
+                    postData.professional_id =  findUserDetails.professional_id;
+                } else {
+                    postData.professional_id = 1;
+                }
+                
+                const findDocument = await helpers.findFakeDocument(req.connection_db);
+
+                if(findDocument != null) {
+                    postData.document_id = findDocument.document_id;
+                }
+
             } else {
                 insertData = false;
             }
