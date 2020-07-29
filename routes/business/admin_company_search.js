@@ -80,7 +80,7 @@ route.put("/company/search/all/", [authJWT.verifyToken, authJWT.isAdmin], (req, 
             if(name != "" && normalize_name != ""){
 
                 /**Is this company already normalised with other representative if yes then find all other companies that point to representative and add new representative company
-                 * and point all other companies to the newly added representative Company
+                 * and point list of companies to the newly added representative Company
                  */
                 let oldRepresentativeCompanyID = 0, oldRepresentativeCompanyName = "";
                 let findIsNormalized  = await AssignorAndAssignee.findOne({
@@ -134,26 +134,66 @@ route.put("/company/search/all/", [authJWT.verifyToken, authJWT.isAdmin], (req, 
                     console.log("Updating items!");
                     const item = {representative_id: representativeCompany.representative_id};
                     console.log(item);
+
+                    
+
                     /*await AssignorAndAssignee.update(item, {where: {name: name}, transaction: t});*/
                     if(oldRepresentativeCompanyID == 0) {
                         const updateItem = await AssignorAndAssignee.update(item, {where: {name: name}});
                         console.log(updateItem);
-                    }
-                    if(oldRepresentativeCompanyID > 0) {
-                        console.log("FOUND OLD");
-                        /*await AssignorAndAssignee.update(item, {where: {representative_id: oldRepresentativeCompanyID}, transaction: t});*/
-                        /*const updateItem2 = await AssignorAndAssignee.update(item, {where: {representative_id: oldRepresentativeCompanyID}});
-                        console.log(updateItem2);
-                        console.log("NAME:"+oldRepresentativeCompanyName);*/
-                        /*await AssignorAndAssignee.update(item, {where: {name: oldRepresentativeCompanyName}, transaction: t});*/
+
+                        
+                    } else {
+                        console.log("FOUND OLD");                        
                         console.log("NAME:"+oldRepresentativeCompanyName);
                         const updateItem3 = await AssignorAndAssignee.update(item, {where: {name: oldRepresentativeCompanyName}});
                         console.log(updateItem3);
-                        /*await Representatives.destroy({
-                            where:{representative_id: oldRepresentativeCompanyID}
-                        })*/
+
+                        const findCustomerWithOldName = await Organisations.findOne({
+                            attributes:['name'],
+                            where:{type: 0, name: oldRepresentativeCompanyName}
+                        });
+
+                        if(findCustomerWithOldName != null) {
+                            await findCustomerWithOldName.update({name: representativeCompany.representative_name});
+                        }
                     }
-                   // if (t) await t.commit();    
+
+
+                    /**
+                     * Check Representative company is the Customer
+                     */
+                    const findCustomer = await Organisations.findOne({
+                        attributes:['name'],
+                        where:{type: 0, name: representativeCompany.representative_name}
+                    });
+
+                    if(findCustomer != null) {
+                        /**
+                         * Transfer all RFIDs of the ne
+                         */
+
+                        const queryInsertAssignors  = `INSERT IGNORE INTO db_uspto.representative_transactions(representative_id, rf_id) SELECT ${representativeCompany.representative_id} as representative_id, rf_id FROM db_uspto.assignor WHERE assignor_and_assignee_id IN (SELECT assignor_and_assignee_id FROM db_uspto.assignor_and_assignee WHERE name = :name)`;
+
+                        await connection.resources.query(queryInsertAssignors,{
+                            type: connection.Sequelize.QueryTypes.INSERT,
+                            replacements: { name:  name},
+                            raw: true,
+                            logging: console.log,
+                            }
+                        );	
+
+                        const queryInsertAssignees  = `INSERT IGNORE INTO db_uspto.representative_transactions(representative_id, rf_id) SELECT ${representativeCompany.representative_id} as representative_id, rf_id FROM db_uspto.assignee WHERE assignor_and_assignee_id IN (SELECT assignor_and_assignee_id FROM db_uspto.assignor_and_assignee WHERE name = :name)`;
+
+                        await connection.resources.query(queryInsertAssignees,{
+                            type: connection.Sequelize.QueryTypes.INSERT,
+                            replacements: { name:  name},
+                            raw: true,
+                            logging: console.log,
+                            }
+                        );
+                    }
+                    // if (t) await t.commit();    
                     res.status(200).send("Updated successfully");	
                 } else {
                     res.status(200).send("Company not created");	
@@ -162,8 +202,7 @@ route.put("/company/search/all/", [authJWT.verifyToken, authJWT.isAdmin], (req, 
                 if(name != "" && normalize_name == ""){
                     //let t = await connection.resources.transaction();
 
-                    const item = {representative_id: 0};                    
-                    /*await AssignorAndAssignee.update(item, {where: {name: name}, transaction: t});*/
+                    const item = {representative_id: 0};        
                     const updateItem4 = await AssignorAndAssignee.update(item, {where: {name: name}});
                     console.log(updateItem4);
                     /*if (t) await t.commit();  */             
