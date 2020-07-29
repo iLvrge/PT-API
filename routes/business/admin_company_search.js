@@ -271,6 +271,17 @@ route.put("/company/assignments/:customerID", [authJWT.verifyToken, authJWT.isAd
                     logging: console.log,
                 });
 
+                const queryINSERTRecent = `INSERT IGNORE recent_transaction_update(conveyance_text) VALUES (:text)`;
+
+                await connection.resources.query(queryINSERTRecent,{
+                    type: connection.Sequelize.QueryTypes.INSERT,
+                    replacements: { text: text },
+                    raw: true,
+                    logging: console.log,
+                });
+
+                
+
                 /**
                  * Update in Application database
                  */
@@ -280,7 +291,7 @@ route.put("/company/assignments/:customerID", [authJWT.verifyToken, authJWT.isAd
                 /**
                  * Find Customers based on the RFIDs
                  */
-
+                /*
                 const findAllAssignors = await Assignors.findAll({
                     attributes: ['assignor_and_assignee_id'],
                     include: [
@@ -376,7 +387,7 @@ route.put("/company/assignments/:customerID", [authJWT.verifyToken, authJWT.isAd
                             }                            
                         }
                     }
-                }  
+                } */ 
             }
         }
         res.status(200).send(update);
