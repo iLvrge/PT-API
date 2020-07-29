@@ -684,7 +684,7 @@ let findCompanyCustomersByName = async(companyName, type) => {
                     if(parseInt(type) == 1) {
                         queryAssignor +=" AND (ac.employer_assign = 1 OR rac.employer_assign = 1) AND a.rf_id NOT IN (SELECT rf_id FROM db_uspto.representative_assignment_conveyance WHERE employer_assign = 0)";
                     } else {
-                        queryAssignor +=" AND ac.employer_assign = 0 AND a.rf_id NOT IN (SELECT rf_id FROM db_uspto.representative_assignment_conveyance WHERE employer_assign = 1)";
+                        queryAssignor +=" AND (ac.employer_assign = 0 OR rac.employer_assign = 0) AND a.rf_id NOT IN (SELECT rf_id FROM db_uspto.representative_assignment_conveyance WHERE employer_assign = 1)";
                     }
                 }
 
