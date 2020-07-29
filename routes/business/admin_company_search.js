@@ -364,9 +364,7 @@ route.put("/company/assignments/:customerID", [authJWT.verifyToken, authJWT.isAd
                                     attributes:['name','organisation_id'],
                                     where:{type: 0, org_key: {[connection.Op.ne]: ''}, org_key: {[connection.Op.ne]: null}, name: customerName}
                                 });
-                                /**
-                                 * Run script to update customer Timeline and Tree table
-                                 */
+                               
                                 customers.map( async c => {
                                     console.log(`php -f /var/www/html/trash/timeline.php "${c.organisation_id}" ""`);
                                     await exec(`php -f /var/www/html/trash/timeline.php "${c.organisation_id}" ""`, async (error, std, stderr) => {
