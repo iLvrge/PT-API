@@ -127,6 +127,7 @@ let searchCompany = async(search, t) => {
         );
         let finalResult = [...assignorData, ...assigneeData], uniqueRFIDs = [];
         if(finalResult.length > 0) {
+            console.log(finalResult.length);
             finalResult.map(c => {
                 if(!uniqueRFIDs.includes(c.assignor_and_assignee_id)){
                     uniqueRFIDs.push(c.assignor_and_assignee_id);
@@ -138,6 +139,7 @@ let searchCompany = async(search, t) => {
 
     if(t == 0) {
         if(queryResult.length > 0) {
+            console.log(queryResult.length);
             let allNames = [];
             queryResult.map(company => {
                 let companyData = {...company};
@@ -462,7 +464,7 @@ let checkCustomerCompany = async(DBConnection, companyName) => {
     });
 };
 
-let updateAllCustomerInventor = async(companyName, inventors) => {
+let updateAllCustomerInventor = async(companyName, inventors, flag ) => {
     let representativeName = "";
 
     let findRepresentative = await Representatives.findOne({
@@ -480,7 +482,7 @@ let updateAllCustomerInventor = async(companyName, inventors) => {
                     attributes: ['representative_name']
                 }
             ]
-        })
+        });
         if(findRepresentative != null && findRepresentative.representative.representative_name != null) {
             representativeName = findRepresentative.representative.representative_name;
         } else {
@@ -493,29 +495,61 @@ let updateAllCustomerInventor = async(companyName, inventors) => {
     let added = 0;
 
     if(representativeName != '') {
-        let queryFindAssignorAndAssigneeIDs = "SELECT ac.rf_id, ac.convey_ty, ac.employer_assign FROM db_application.assignor as aaa INNER JOIN db_application.assignment_conveyance as ac ON ac.rf_id = aaa.rf_id WHERE aaa.rf_id IN(SELECT  a.rf_id FROM db_uspto.assignee as a WHERE a.assignor_and_assignee_id IN (SELECT aa.assignor_and_assignee_id FROM db_application.assignor_and_assignee as aa LEFT JOIN db_application.representative as r1 ON r1.representative_id = aa.representative_id where (r1.representative_name = :name OR aa.name = :name))) AND  aaa.or_name IN (:inventors) GROUP BY ac.rf_id";
-
-        listIDs = await connection.resources.query(queryFindAssignorAndAssigneeIDs,{
-            type: connection.Sequelize.QueryTypes.SELECT,
-            replacements: { name: representativeName, inventors: inventors },
-            raw: true,
-            logging: console.log,
+        const rfIDs = [];
+        if(flag == 0 ) {
+            const queryFindAssignorAndAssigneeIDs = "SELECT ac.rf_id FROM db_application.assignor as aaa INNER JOIN db_application.assignment_conveyance as ac ON ac.rf_id = aaa.rf_id WHERE aaa.rf_id IN(SELECT  a.rf_id FROM db_uspto.assignee as a WHERE a.assignor_and_assignee_id IN (SELECT aa.assignor_and_assignee_id FROM db_application.assignor_and_assignee as aa LEFT JOIN db_application.representative as r1 ON r1.representative_id = aa.representative_id where (r1.representative_name = :name OR aa.name = :name))) AND  aaa.or_name IN (:inventors) GROUP BY ac.rf_id";
+            let listIDs = await connection.resources.query(queryFindAssignorAndAssigneeIDs,{
+                type: connection.Sequelize.QueryTypes.SELECT,
+                replacements: { name: representativeName, inventors: inventors },
+                raw: true,
+                logging: console.log,
+                }
+            );
+            if(listIDs != null && listIDs.length > 0) {
+                listIDs.map(l => rfIDs.push(l.rf_id));
             }
-        );
+        } else if(flag == 1 ){
+            const queryFindAssignorRFIDs = "SELECT ac.rf_id FROM db_application.assignor as aaa INNER JOIN db_application.assignment_conveyance as ac ON ac.rf_id = aaa.rf_id WHERE aaa.rf_id IN(SELECT  a.rf_id FROM db_uspto.assignee as a WHERE a.assignor_and_assignee_id IN (SELECT aa.assignor_and_assignee_id FROM db_application.assignor_and_assignee as aa LEFT JOIN db_application.representative as r1 ON r1.representative_id = aa.representative_id where (r1.representative_name = :name OR aa.name = :name))) AND ac.employer_assign = 0 AND aaa.or_name IN (:inventors) GROUP BY ac.rf_id";
+            const findAssignors = await connection.resources.query(queryFindAssignorRFIDs,{
+                type: connection.Sequelize.QueryTypes.SELECT,
+                replacements: { name: representativeName, inventors: inventors },
+                raw: true,
+                logging: console.log,
+                }
+            );
 
-        if(listIDs != null && listIDs.length > 0) {
-            let updateFlags = [], rfIDs = [];
-            listIDs.map(l => {
-                rfIDs.push(l.rf_id);
-                updateFlags.push({
-                    rf_id: l.rf_id,
-                    convey_ty: l.convey_ty,
-                    employer_assign: l.employer_assign == 1 ? 0 : 1
-                });
-            });
-            await RepresentativeAssignmentConveyance.destroy({where: {rf_id: rfIDs}});
-            added = await RepresentativeAssignmentConveyance.bulkCreate(updateFlags);
-            await AssignmentConveyance.update({employer_assign: 1},{where: {rf_id: rfIDs}})
+            const queryAssigneeRFIDs = "SELECT ac.rf_id FROM db_application.assignee as aaa INNER JOIN db_application.assignment_conveyance as ac ON ac.rf_id = aaa.rf_id WHERE aaa.rf_id IN(SELECT  a.rf_id FROM db_uspto.assignee as a WHERE a.assignor_and_assignee_id IN (SELECT aa.assignor_and_assignee_id FROM db_application.assignor_and_assignee as aa LEFT JOIN db_application.representative as r1 ON r1.representative_id = aa.representative_id where (r1.representative_name = :name OR aa.name = :name))) AND ac.employer_assign = 0 AND aaa.ee_name IN (:inventors) GROUP BY ac.rf_id";
+            const findAssignees = await connection.resources.query(queryAssigneeRFIDs,{
+                type: connection.Sequelize.QueryTypes.SELECT,
+                replacements: { name: representativeName, inventors: inventors },
+                raw: true,
+                logging: console.log,
+                }
+            );
+
+            const allIDs = [...findAssignors, ...findAssignees];
+
+            if(allIDs.length > 0) {
+                allIDs.map( a =>{
+                    if(!rfIDs.includes(a.rf_id)){
+                        rfIDs.push(a.rf_id);
+                    }
+                })
+            }
+        }
+        console.log(rfIDs.length);
+        if(rfIDs.length > 0) {
+            
+            added = await AssignmentConveyance.update({employer_assign: flag},{where: {rf_id: rfIDs}});
+            added = await RepresentativeAssignmentConveyance.update({employer_assign: flag},{where: {rf_id: rfIDs}});
+            const queryInsertConveyance = `INSERT IGNORE INTO representative_assignment_conveyance (rf_id, convey_ty, employer_assign) SELECT rf_id, convey_ty, ${flag} as employer_assign FROM assignment_conveyance WHERE rf_id IN (:rfIDs)`;
+            added = await connection.resources.query(queryInsertConveyance,{
+                type: connection.Sequelize.QueryTypes.INSERT,
+                replacements: { rfIDs:  rfIDs},
+                raw: true,
+                logging: console.log,
+                }
+            );
         }
     }
     return added;
@@ -648,9 +682,9 @@ let findCompanyCustomersByName = async(companyName, type) => {
 
                 if(typeof type != 'undefined' && parseInt(type) > 0) {
                     if(parseInt(type) == 1) {
-                        queryAssignor +=" AND (ac.employer_assign = 1 OR rac.employer_assign = 1)";
+                        queryAssignor +=" AND (ac.employer_assign = 1 OR rac.employer_assign = 1) AND a.rf_id NOT IN (SELECT rf_id FROM db_uspto.representative_assignment_conveyance WHERE employer_assign = 0)";
                     } else {
-                        queryAssignor +=" AND ac.employer_assign = 0 AND a.rf_id NOT IN (SELECT rf_id FROM db_uspto.representative_assignment_conveyance)";
+                        queryAssignor +=" AND ac.employer_assign = 0 AND a.rf_id NOT IN (SELECT rf_id FROM db_uspto.representative_assignment_conveyance WHERE employer_assign = 1)";
                     }
                 }
 
