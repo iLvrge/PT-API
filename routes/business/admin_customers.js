@@ -237,7 +237,7 @@ let downloadImageToUrl = async (org, res, url, filename, callback) => {
         response.on('end', async () => {                                             
             fs.writeFileSync(filename, data.read());  
             await org.update({
-                logo: filename.replace('/var/www/html/PatenTrack/', 'https://patentrack.com/')
+                logo: filename.replace('/var/www/html/beta/', 'https://patentrack.com/')
             })
             res.status(200).json(org);                             
         });                                                                         
@@ -257,13 +257,13 @@ route.put("/customers/:id/logo", [authJWT.verifyToken, authJWT.isAdmin], async (
                     if(logoURL != "" && logoURL != "undefined") {
                         /**Download file from URL */
                         const extension = logoURL.toString().split('.').pop();
-                        await downloadImageToUrl(org, res, logoURL, '/var/www/html/PatenTrack/resources/shared/data/'+org.name+'.'+extension);
+                        await downloadImageToUrl(org, res, logoURL, '/var/www/html/beta/resources/shared/data/'+org.name+'.'+extension);
                     } else if(req.files != null && req.files.file != null && req.files.file != undefined) {
                         let mimeType = req.files.file.mimetype;
                         console.log(mimeType);
                         if(mimeType.toLowerCase().indexOf('.exe') < 0){
                             let fileObject = req.files.file;
-                            await fileObject.mv('/var/www/html/PatenTrack/resources/shared/data/'+fileObject.name,function(err) {
+                            await fileObject.mv('/var/www/html/beta/resources/shared/data/'+fileObject.name,function(err) {
                                 if (err){
                                     return res.status(500).send("ERROR: "+err);	
                                 } else {
