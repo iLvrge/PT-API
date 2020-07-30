@@ -12,6 +12,18 @@ const Users = connection.business.define('user',{
         primaryKey: true,
         autoIncrement: true
     },
+    first_name:{
+        type: Sequelize.STRING,
+        allowNull: false,
+    },
+    last_name:{
+        type: Sequelize.STRING,
+        allowNull: false,
+    }, 
+    job_title:{
+        type: Sequelize.STRING,
+        allowNull: false,
+    },
     username:{
         type: Sequelize.STRING,
         allowNull: false,

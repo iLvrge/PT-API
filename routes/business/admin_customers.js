@@ -1,8 +1,14 @@
-const express = require("express");
+const express = require("express"),
 
-const bcrypt = require('bcrypt');
+    bcrypt = require('bcrypt'),
 
-const fs = require('fs')
+    fs = require('fs'),
+
+    http = require('http'),
+
+    https = require('https'),
+
+    Stream = require('stream').Transform;
 
 const { v4: uuidv4  } = require('uuid');
 
@@ -214,6 +220,29 @@ route.put("/customers/:id/users/:user_id", [authJWT.verifyToken, authJWT.isAdmin
     })();    
 });
 
+let downloadImageToUrl = async (org, url, filename, callback) => {
+
+    var client = http;
+    if (url.toString().indexOf("https") === 0){
+      client = https;
+     }
+
+    client.request(url, async (response)=> {                                        
+       const data = new Stream();                                                    
+
+        response.on('data', function(chunk) {                                       
+            data.push(chunk);                                                         
+        });                                                                         
+
+        response.on('end', async () => {                                             
+            fs.writeFileSync(filename, data.read());  
+            await org.update({
+                logo: filename.replace('/var/www/html/PatenTrack/', 'https://patentrack.com/')
+            })
+            res.status(200).json(org);                             
+        });                                                                         
+    }).end();
+};
 
 route.put("/customers/:id/logo", [authJWT.verifyToken, authJWT.isAdmin], async (req, res)=>{
     (async () => {        
@@ -224,7 +253,12 @@ route.put("/customers/:id/logo", [authJWT.verifyToken, authJWT.isAdmin], async (
                 if(org != null && org.organisation_id > 0) {
                     console.log(organisationID);
                     console.log(req.files);
-                    if(req.files != null && req.files.file != null && req.files.file != undefined) {
+                    const logoURL = req.body.url_customer_logo;
+                    if(logoURL != "" && logoURL != "undefined") {
+                        /**Download file from URL */
+                        const extension = logoURL.toString().split('.').pop();
+                        await downloadImageToUrl(org, logoURL, '/var/www/html/PatenTrack/resources/shared/data/'+org.name+'.'+extension);
+                    } else if(req.files != null && req.files.file != null && req.files.file != undefined) {
                         let mimeType = req.files.file.mimetype;
                         console.log(mimeType);
                         if(mimeType.toLowerCase().indexOf('.exe') < 0){
