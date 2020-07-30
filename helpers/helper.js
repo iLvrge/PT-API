@@ -172,6 +172,17 @@ let searchCompany = async(search, t) => {
                         }
                     }
                 });
+                searchResult.map( (s, index) => {
+                    if(s.children.length > 0) {
+                        let total = 0;
+                        s.children.map( c => {
+                            total += parseInt(c.counter);
+                        });
+                        if(total > 0) {
+                            searchResult[index].counter = total;
+                        }
+                    }
+                });
                 return searchResult;
             } else {
                 return searchResult;
