@@ -220,7 +220,7 @@ route.put("/customers/:id/users/:user_id", [authJWT.verifyToken, authJWT.isAdmin
     })();    
 });
 
-let downloadImageToUrl = async (org, url, filename, callback) => {
+let downloadImageToUrl = async (org, res, url, filename, callback) => {
 
     var client = http;
     if (url.toString().indexOf("https") === 0){
@@ -257,7 +257,7 @@ route.put("/customers/:id/logo", [authJWT.verifyToken, authJWT.isAdmin], async (
                     if(logoURL != "" && logoURL != "undefined") {
                         /**Download file from URL */
                         const extension = logoURL.toString().split('.').pop();
-                        await downloadImageToUrl(org, logoURL, '/var/www/html/PatenTrack/resources/shared/data/'+org.name+'.'+extension);
+                        await downloadImageToUrl(org, res, logoURL, '/var/www/html/PatenTrack/resources/shared/data/'+org.name+'.'+extension);
                     } else if(req.files != null && req.files.file != null && req.files.file != undefined) {
                         let mimeType = req.files.file.mimetype;
                         console.log(mimeType);
