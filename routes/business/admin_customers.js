@@ -254,7 +254,7 @@ route.put("/customers/:id/logo", [authJWT.verifyToken, authJWT.isAdmin], async (
                     console.log(organisationID);
                     console.log(req.files);
                     const logoURL = req.body.url_customer_logo;
-                    if(logoURL != "" && logoURL != null && logoURL != "undefined") {
+                    if(logoURL != "" && logoURL != 'null' && logoURL != "undefined") {
                         /**Download file from URL */
                         const extension = logoURL.toString().split('.').pop();
                         await downloadImageToUrl(org, res, logoURL, '/var/www/html/beta/resources/shared/data/'+org.name+'.'+extension);
