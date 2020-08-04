@@ -4,7 +4,7 @@ const connection = require("../../config/db.config");
 
 const TreeParties = require("./TreeParties");
 
-const Documentids = require("./Documentids");
+const Documentids = require("./DocumentIds");
 
 const TreePartiesCollections = connection.application.define('tree_parties_collection',{
     rf_id: {
