@@ -2,7 +2,7 @@ const Sequelize = require("sequelize");
 
 const connection = require("../../config/db.config");
 
-const Documentids = require("./Documentids");
+const Documentids = require("./DocumentIds");
 
 const Errors = connection.application.define('error',{
     appno_doc_num:{
