@@ -2,8 +2,6 @@ const express = require("express");
 
 const route = express.Router();
 
-const exec = require("child_process").exec;
-
 const connection = require("../../config/db.config");
 
 //require the Model
@@ -24,10 +22,7 @@ const Assignments = require('../../model/resources/Assignments');
 
 const AssignorAndAssignee = require('../../model/resources/AssignorAndAssignee');
 
-const RepresentativesApplication = require('../../model/application/Representatives');
-const AssignorAndAssigneeApplication = require('../../model/application/AssignorAndAssignee');
-const Assignors = require('../../model/application/Assignors');
-const Assignees = require('../../model/application/Assignees');
+const RecentTransaction = require('../../model/resources/RecentTransaction');
 
 /**
  * Search entity by name
@@ -54,7 +49,7 @@ route.get("/company/search/all/", [authJWT.verifyToken, authJWT.isAdmin], async 
                     }						
                 }
             } catch(e){
-                
+                console.log(e);
             }
         }
 
@@ -87,18 +82,20 @@ route.put("/company/search/all/", [authJWT.verifyToken, authJWT.isAdmin], (req, 
                                             where:{name: name}
                                         });
                 if(findIsNormalized != null && findIsNormalized.representative_id > 0) {
-                    console.log('FIND ASSINGOR AND ASSIGNEE');
                     findIsNormalized  = await Representatives.findOne({
                         where:{representative_id: findIsNormalized.representative_id}
                     });
                 } else {
-                    console.log('NOT FIND ASSINGOR AND ASSIGNEE');
                     findIsNormalized  = await Representatives.findOne({
                         where:{representative_name: name}
                     });
                 }
+
                 if(findIsNormalized != null && findIsNormalized.representative_id > 0) {
-                    console.log("Representative Company Found!");
+                    /** 
+                     * Find old representative company
+                    */
+
                     oldRepresentativeCompanyID = findIsNormalized.representative_id;
                     oldRepresentativeCompanyName = findIsNormalized.representative_name;
                 }
@@ -111,9 +108,11 @@ route.put("/company/search/all/", [authJWT.verifyToken, authJWT.isAdmin], (req, 
                     /**
                      * If Old representative found
                      */
-                    console.log("New Company");
+                    
                     if(oldRepresentativeCompanyID > 0) {
-                        console.log("UPDATE REPRESENTATIVE COMPANY")
+                        /**
+                         * Update old representative company with new representative name
+                         */
                         await Representatives.update({
                             representative_name: normalize_name
                         }, {where: {representative_id: oldRepresentativeCompanyID} });
@@ -121,8 +120,9 @@ route.put("/company/search/all/", [authJWT.verifyToken, authJWT.isAdmin], (req, 
                     } else {
                         /**
                          * Insert representative company
+                         * New record in the representative table
                          */
-                        console.log("New Company");
+                        
                         representativeCompany = await Representatives.create({
                             representative_name: normalize_name
                         });
@@ -131,23 +131,16 @@ route.put("/company/search/all/", [authJWT.verifyToken, authJWT.isAdmin], (req, 
 
                 if(representativeCompany != null && representativeCompany.representative_id > 0) {
                     //let t = await connection.resources.transaction();	
-                    console.log("Updating items!");
+                   /**
+                    * Update representative ID in the AssignorAndAssignee table
+                    */
                     const item = {representative_id: representativeCompany.representative_id};
-                    console.log(item);
-
                     
-
-                    /*await AssignorAndAssignee.update(item, {where: {name: name}, transaction: t});*/
                     if(oldRepresentativeCompanyID == 0) {
-                        const updateItem = await AssignorAndAssignee.update(item, {where: {name: name}});
-                        console.log(updateItem);
-
-                        
-                    } else {
-                        console.log("FOUND OLD");                        
-                        console.log("NAME:"+oldRepresentativeCompanyName);
-                        const updateItem3 = await AssignorAndAssignee.update(item, {where: {name: oldRepresentativeCompanyName}});
-                        console.log(updateItem3);
+                        await AssignorAndAssignee.update(item, {where: {name: name}});
+                                             
+                    } else {                        
+                        await AssignorAndAssignee.update(item, {where: {name: oldRepresentativeCompanyName}});
 
                         const findCustomerWithOldName = await Organisations.findOne({
                             attributes:['name'],
@@ -170,7 +163,7 @@ route.put("/company/search/all/", [authJWT.verifyToken, authJWT.isAdmin], (req, 
 
                     if(findCustomer != null) {
                         /**
-                         * Transfer all RFIDs of the ne
+                         * Transfer all RFIDs for the new client
                          */
 
                         const queryInsertAssignors  = `INSERT IGNORE INTO db_uspto.representative_transactions(representative_id, rf_id) SELECT ${representativeCompany.representative_id} as representative_id, rf_id FROM db_uspto.assignor WHERE assignor_and_assignee_id IN (SELECT assignor_and_assignee_id FROM db_uspto.assignor_and_assignee WHERE name = :name)`;
@@ -193,19 +186,14 @@ route.put("/company/search/all/", [authJWT.verifyToken, authJWT.isAdmin], (req, 
                             }
                         );
                     }
-                    // if (t) await t.commit();    
+                     
                     res.status(200).send("Updated successfully");	
                 } else {
                     res.status(200).send("Company not created");	
                 }	
             }  else {
-                if(name != "" && normalize_name == ""){
-                    //let t = await connection.resources.transaction();
-
-                    const item = {representative_id: 0};        
-                    const updateItem4 = await AssignorAndAssignee.update(item, {where: {name: name}});
-                    console.log(updateItem4);
-                    /*if (t) await t.commit();  */             
+                if(name != "" && normalize_name == ""){                           
+                    await AssignorAndAssignee.update({representative_id: 0}, {where: {name: name}});
                     res.status(200).send("Updated successfully");		
                 } else {
                     res.status(402).send("Bad inputs");
@@ -219,18 +207,27 @@ route.put("/company/search/all/", [authJWT.verifyToken, authJWT.isAdmin], (req, 
 });
 
 /**
- * Get all Assignment Text from USPTO database
+ * Get all Assignment Text from USPTO database 
+ * if customerID is 0 then this is for whole database other it will be for the particular client
  */
 route.get("/company/assignments/:customerID", [authJWT.verifyToken, authJWT.isAdmin], async (req, res, next) => {
     try {
-        const customerID = req.params.customerID;
+        const customerID = req.params.customerID, type = [{name: 'assignment', id: 'assignment'},{name: 'addresschg', id: 'addresschg'},{name: 'correct', id: 'correct'},{name: 'courtappointment', id: 'courtappointment'},{name: 'courtorder', id: 'courtorder'},{name: 'employee', id: 'employee'},{name: 'govern', id: 'govern'},{name: 'license', id: 'license'},{name: 'licenseend', id: 'licenseend'},{name: 'missing', id: 'missing'},{name: 'merger', id: 'merger'},{name: 'namechg', id: 'namechg'},{name: 'option', id: 'option'},{name: 'other', id: 'other'},{name: 'partialassignment', id: 'partialassignment'},{name: 'release', id: 'release'},{name: 'restatedsecurity', id: 'restatedsecurity'},{name: 'security', id: 'security'}];
+        /**
+         * Group of all assignment texts and number of occurences
+         */
         let findAllAssignments  = await helpers.allAssignments(customerID);
-        res.status(200).json({list:findAllAssignments, type: [{name: 'assignment', id: 'assignment'},{name: 'addresschg', id: 'addresschg'},{name: 'correct', id: 'correct'},{name: 'courtappointment', id: 'courtappointment'},{name: 'courtorder', id: 'courtorder'},{name: 'employee', id: 'employee'},{name: 'govern', id: 'govern'},{name: 'license', id: 'license'},{name: 'licenseend', id: 'licenseend'},{name: 'missing', id: 'missing'},{name: 'merger', id: 'merger'},{name: 'namechg', id: 'namechg'},{name: 'option', id: 'option'},{name: 'other', id: 'other'},{name: 'partialassignment', id: 'partialassignment'},{name: 'release', id: 'release'},{name: 'restatedsecurity', id: 'restatedsecurity'},{name: 'security', id: 'security'}]});
+
+        res.status(200).json({list:findAllAssignments, type: type});
     } catch(e) {
         console.log(e);
         res.status(402).send("Unable to retrieve data.");
     }
 });
+
+/**
+ * Update the assignment transaction for the client
+ */
 
 route.put("/company/assignments/:customerID", [authJWT.verifyToken, authJWT.isAdmin], async (req, res, next) => {
     try {
@@ -261,7 +258,6 @@ route.put("/company/assignments/:customerID", [authJWT.verifyToken, authJWT.isAd
                 /**INSERT Faster than using bulkCreate function of Sequelize because first have to reteive data from assignment_conveyance table 
                  * Create array and then use bulkCreate option to insert multiple records and also this query will ignore if the record already exists.
                  */
-
                 const queryINSERT = `INSERT IGNORE representative_assignment_conveyance(rf_id, convey_ty, employer_assign) SELECT rf_id, '${updateConveyType}' as convey_ty, employer_assign FROM assignment_conveyance WHERE rf_id IN (:rfIDs)`;
 
                 await connection.resources.query(queryINSERT,{
@@ -271,121 +267,16 @@ route.put("/company/assignments/:customerID", [authJWT.verifyToken, authJWT.isAd
                     logging: console.log,
                 });
 
-                const queryINSERTRecent = `INSERT IGNORE recent_transaction_update(conveyance_text) VALUES (:text)`;
+                /**
+                 * Insert in this table and we can use it later when admin click on update All
+                 */
 
-                await connection.resources.query(queryINSERTRecent,{
-                    type: connection.Sequelize.QueryTypes.INSERT,
-                    replacements: { text: text },
-                    raw: true,
-                    logging: console.log,
-                });
-
-                
-
+                await RecentTransaction.create({conveyance_text: text});
                 /**
                  * Update in Application database
                  */
 
                 await AssignmentConveyance.update({convey_ty: updateConveyType},{where: {rf_id: uniqueRFIDs}});
-
-                /**
-                 * Find Customers based on the RFIDs
-                 */
-                /*
-                const findAllAssignors = await Assignors.findAll({
-                    attributes: ['assignor_and_assignee_id'],
-                    include: [
-                        {
-                            model: AssignorAndAssigneeApplication,
-                            as: 'assignor_and_assignee',
-                            attributes: ['assignor_and_assignee_id']
-                        }
-                    ],
-                    where: {rf_id: uniqueRFIDs}
-                });
-
-                const findAllAssignees = await Assignees.findAll({
-                    attributes: ['assignor_and_assignee_id'],
-                    include: [
-                        {
-                            model: AssignorAndAssigneeApplication,
-                            as: 'assignor_and_assignee',
-                            attributes: ['assignor_and_assignee_id']
-                        }
-                    ],
-                    where: {rf_id: uniqueRFIDs}
-                });
-
-                let allAssignorAndAssignees = [];
-                if(findAllAssignors.length > 0 && findAllAssignees.length > 0){
-                    allAssignorAndAssignees = [...findAllAssignors, ...findAllAssignees];
-                } else if(findAllAssignees.length > 0){
-                    allAssignorAndAssignees = [...findAllAssignees];
-                } else if(findAllAssignors.length > 0) {
-                    allAssignorAndAssignees = [...findAllAssignors];
-                }
-
-                if(allAssignorAndAssignees.length > 0) {
-
-                    const findAllCustomer = await Organisations.findAll({
-                        attributes:['name'],
-                        where:{type: 0, org_key: {[connection.Op.ne]: ''}, org_key: {[connection.Op.ne]: null}}
-                    });
-                    console.log(allAssignorAndAssignees);
-                    const allIDs = [], allCustomersName = [];
-                    allAssignorAndAssignees.map( a => allIDs.push(a.assignor_and_assignee_id));
-                    findAllCustomer.map( c => allCustomersName.push(c.name));
-                    
-                    if(findAllCustomer.length > 0) {
-                        const findCustomers = await AssignorAndAssigneeApplication.findAll({
-                            attributes:['name', 'representative_id'],
-                            where:{assignor_and_assignee_id: allIDs},
-                            include:[
-                                {
-                                    model: RepresentativesApplication,
-                                    as: 'representative',
-                                    attributes: ['representative_name']
-                                }
-                            ]
-                        });
-
-                        if(findCustomers.length > 0) {
-                            const customerName = [];
-                            findCustomers.map(c => {
-                                if(c.representative_id > 0 && c.representative.representative_name != '' &&  c.representative.representative_name != null) {
-                                    customerName.push(c.representative.representative_name);
-                                } else {
-                                    customerName.push(c.name);
-                                }
-                            });
-
-                            if(customerName.length > 0) {
-                                const customers = await Organisations.findAll({
-                                    attributes:['name','organisation_id'],
-                                    where:{type: 0, org_key: {[connection.Op.ne]: ''}, org_key: {[connection.Op.ne]: null}, name: customerName}
-                                });
-                               
-                                customers.map( async c => {
-                                    console.log(`php -f /var/www/html/trash/timeline.php "${c.organisation_id}" ""`);
-                                    await exec(`php -f /var/www/html/trash/timeline.php "${c.organisation_id}" ""`, async (error, std, stderr) => {
-                                        console.log("timeline create one table");
-                                        console.log(error);
-                                        console.log(stderr);
-                                        console.log(std);
-                                        console.log(`php -f /var/www/html/trash/tree.php "${c.organisation_id}" ""`);
-                                        await exec(`php -f /var/www/html/trash/tree.php "${c.organisation_id}" ""`, async (error, stdd, stderr)=> {
-                                            console.log("Tree create one table");
-                                            console.log(error);
-                                            console.log(stderr);
-                                            console.log(stdd);
-                                            console.log("DONE>>>>>>>>>>>");
-                                        });
-                                    });
-                                })
-                            }                            
-                        }
-                    }
-                } */ 
             }
         }
         res.status(200).send(update);

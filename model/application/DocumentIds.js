@@ -22,6 +22,7 @@ const Documentids = connection.application.define('documentid',{
     appno_doc_num:{
         type: Sequelize.STRING,
         allowNull: false,
+        primaryKey: true,
     },
     appno_date:{
         type: Sequelize.DATE,

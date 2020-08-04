@@ -2,24 +2,24 @@ const Sequelize = require("sequelize");
 
 const connection = require("../../config/db.config");
 
+const Documentids = require("./Documentids");
+
 const Errors = connection.application.define('error',{
-    error_id: {
+    appno_doc_num:{
         type: Sequelize.INTEGER,
+        allowNull: false,
         primaryKey: true,
-        autoIncrement: true
-    },        
+    },
     organisation_id:{
         type: Sequelize.INTEGER,
         allowNull: false,
+        primaryKey: true,
     },
     type:{
         type: Sequelize.STRING,
         allowNull: true,
-    },
-    appno_doc_num:{
-        type: Sequelize.INTEGER,
-        allowNull: false,
     }
+    
 },
 {
     underscored: true,
@@ -28,5 +28,6 @@ const Errors = connection.application.define('error',{
     tableName: 'error'
 });
 
+Errors.hasMany(Documentids, { foreignKey: 'appno_doc_num', as: 'assets' });
 
 module.exports = Errors;

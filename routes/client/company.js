@@ -63,30 +63,6 @@ route.get("/", [authJWT.verifyToken, clientDBConnection.connect], async(req, res
                     }
                 }
                 res.status(200).json(companies);
-                /*for(let i = 0; i < companies.length; i++) {
-                    const firstChild = [companies[i]];
-                    console.log("firstChild");
-                    console.log(firstChild);
-                    let childCompanyQuery = "SELECT representative_id as id, original_name, representative_name, instances as counter FROM representative as r WHERE r.parent_id = :parentCompany";
-
-                    let childCompanies = await req.connection_db.query(childCompanyQuery,{
-                        type: connection.Sequelize.QueryTypes.SELECT,
-                        replacements: { parentCompany: companies[i].id },
-                        raw: true,
-                        logging: console.log,
-                        }
-                    ); 
-                    let allChild = [];
-                    if(childCompanies.length) {
-                        allChild = [...firstChild, ...childCompanies];
-                    } else {
-                        allChild = firstChild;
-                    }
-                    console.log("child");
-                    console.log(allChild);
-                    companies['children'] = allChild;
-                }*/
-                
             } else {
                 res.status(200).json([]);
             }
@@ -107,14 +83,16 @@ route.get("/search/:searchName", [authJWT.verifyToken], async(req, res, next) =>
     res.status(200).json(searchCompanies);
 });
 
+/**
+ * Add new company 
+ */
+
 route.post("/", [authJWT.verifyToken, clientDBConnection.connect], async(req, res, next) => {
     try{
-        //console.log(req.body);
+        
         const subsidaryName = req.body.name, parentCompany = req.body.parent_company;
         if(subsidaryName.length > 0) {
             let companyList = JSON.parse(subsidaryName);
-
-            //console.log("companyList", companyList);
 
             if(companyList.length > 0) {
                 const querySubsidaryCompany = "SELECT aaa.assignor_and_assignee_id, aaa.name, r.representative_name, aaa.instances, r.representative_id FROM assignor_and_assignee as aaa LEFT JOIN representative as r ON r.representative_id = aaa.representative_id WHERE aaa.assignor_and_assignee_id IN (:IDs)";
@@ -129,7 +107,7 @@ route.post("/", [authJWT.verifyToken, clientDBConnection.connect], async(req, re
 
                 if(parentCompany != undefined && parentCompany > 0) {   
                     const parentCompanyQuery = "SELECT representative_id, original_name, representative_name FROM representative as r WHERE representative_id = :parentCompany AND r.parent_id =  0";
-                    //console.log(parentCompanyQuery);
+                    
                     const findName = await req.connection_db.query(parentCompanyQuery,{
                         type: connection.Sequelize.QueryTypes.SELECT,
                         replacements: { parentCompany: parentCompany },
@@ -138,7 +116,7 @@ route.post("/", [authJWT.verifyToken, clientDBConnection.connect], async(req, re
                         logging: console.log,
                         }
                     ); 
-                   // console.log(findName);
+                   
 
                     if(findName != null && findName.representative_id > 0) { 
                         const Representative = req.connection_db.define('Representatives', Representatives.mainStructure, Representatives.options);
@@ -150,10 +128,10 @@ route.post("/", [authJWT.verifyToken, clientDBConnection.connect], async(req, re
                         if(findCompanies.length > 0) {
                             findCompanies.map( listed => listedCompanies.push(listed.original_name));
                         }
-                        //console.log('listedCompanies',listedCompanies);
+                        
                         let companies = [];
                         let tap = false;
-                        //console.log(getList);
+                        
                         if(getList.length > 0) {                
                             getList.forEach(async company => {
                                 if(!listedCompanies.includes(company.name)){
@@ -165,8 +143,7 @@ route.post("/", [authJWT.verifyToken, clientDBConnection.connect], async(req, re
                                 }                            
                             });
                         }
-                        console.log(listedCompanies)
-                        console.log(companies);
+                        
                         if(companies.length > 0) {
                             const addCompanies = await Representative.bulkCreate(companies);
                             console.log(addCompanies);
@@ -271,14 +248,14 @@ route.post("/", [authJWT.verifyToken, clientDBConnection.connect], async(req, re
                                 const addParent = await Representative.create({
                                     original_name: companies[i].original_name, representative_name: companies[i].representative_name, instances: companies[i].instances
                                 });
-                                console.log(addParent);
+                                
                                 if(addParent != null && addParent.representative_id > 0){
                                     parentCompaniesID.push(addParent.representative_id);
                                     let nameR = companies[i].representative_id > 0 ? companies[i].representative_name : companies[i].original_name;
     
                                     mainCompanies.push(nameR);
                                     addRecord++;
-                                    console.log(companies[i].representative_id);
+                                    
                                     let findCompaniesQuery = "";
 
                                     if(companies[i].representative_id > 0) {
@@ -286,7 +263,7 @@ route.post("/", [authJWT.verifyToken, clientDBConnection.connect], async(req, re
                                     } else {
                                         findCompaniesQuery = "SELECT aaa.*, r.representative_name  FROM assignor_and_assignee as aaa LEFT JOIN representative as r ON r.representative_id = aaa.representative_id WHERE aaa.representative_id IN (SELECT representative_id FROM representative WHERE representative_name = :name)";
                                     }
-                                    console.log(findCompaniesQuery);
+                                    
                                     const list  = await connection.resources.query(findCompaniesQuery,{
                                         type: connection.Sequelize.QueryTypes.SELECT,
                                         replacements: { representativeID: companies[i].representative_id, name: nameR },
