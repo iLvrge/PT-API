@@ -109,7 +109,7 @@ route.get("/portfolios/", [authJWT.verifyToken, clientDBConnection.connect], asy
             const getList = [];
             getErrors.map(e => getList.push(e.appno_doc_num));
 
-            const queryErrorList = "SELECT d.appno_doc_num as asset, date_format(ass.record_dt,'%m/%d/%Y') as created_at, ass.cname as name FROM documentid as d LEFT JOIN assignment as ass ON ass.rf_id = d.rf_id WHERE d.appno_doc_num IN(:appNo) GROUP BY d.appno_doc_num ORDER BY ass.record_dt DESC";
+            const queryErrorList = "SELECT d.appno_doc_num as asset, date_format(ass.record_dt,'%m/%d/%Y') as created_at, ass.cname as name, 0 as type FROM documentid as d LEFT JOIN assignment as ass ON ass.rf_id = d.rf_id WHERE d.appno_doc_num IN(:appNo) GROUP BY d.appno_doc_num ORDER BY ass.record_dt DESC";
 
             errors = await connection.application.query(queryErrorList,{
                 type: connection.Sequelize.QueryTypes.SELECT,
