@@ -94,21 +94,21 @@ route.get("/portfolios/", [authJWT.verifyToken, clientDBConnection.connect], asy
             ]
         })*/
 
-        let queryError = "SELECT appno_doc_num FROM error as e WHERE e.organisation_id = :organisation_id  GROUP BY e.appno_doc_num";
-        if(portfolioID != '' && portfolioID != null && portfolioID != 'undefined') {
-            queryError = "SELECT appno_doc_num FROM error as e WHERE e.organisation_id = :organisation_id AND e.representative_id = :representative_id  GROUP BY e.appno_doc_num";
-        }
-        const getErrors= await connection.application.query(queryError,{
-            type: connection.Sequelize.QueryTypes.SELECT,
-            raw: true,
-            replacements: conditions,
-            logging: console.log,
-        });  
+        /**
+         * 
+         * Inner Join taking more time so thats why used this
+         */
+        
+        const getErrors = await Errors.findAll({
+            attributes:['appno_doc_num'],
+            where: conditions
+        });
+        
 
         if(getErrors != null && getErrors.length > 0) {
             const getList = [];
             getErrors.map(e => getList.push(e.appno_doc_num));
-
+            
             const queryErrorList = "SELECT d.appno_doc_num as asset, date_format(ass.record_dt,'%m/%d/%Y') as created_at, ass.cname as name, 0 as type FROM documentid as d LEFT JOIN assignment as ass ON ass.rf_id = d.rf_id WHERE d.appno_doc_num IN(:appNo) GROUP BY d.appno_doc_num ORDER BY ass.record_dt DESC";
 
             errors = await connection.application.query(queryErrorList,{

@@ -110,7 +110,7 @@ route.get("/errors/:type/:companyName", [authJWT.verifyToken, clientDBConnection
                     replacements: { organisationID: req.orgId},
                     logging: console.log,
                 });  
-
+                let getErrorList = [];
                 if(getErrors != null && getErrors.length > 0) {
                     const getList = [];
                     getErrors.map(e => getList.push(e.appno_doc_num));
