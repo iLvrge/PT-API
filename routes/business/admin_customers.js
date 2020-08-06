@@ -438,7 +438,7 @@ route.post("/customers", [authJWT.verifyToken, authJWT.isAdmin], (req, res, next
                     where: {name: companyName}
                 })
 
-                if(org == null && org.organisation_id == 0) {
+                if(org == null) {
                     org =  await Organisations.create({
                         name: req.body.company_name,
                         country_id:1,
