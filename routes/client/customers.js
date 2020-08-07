@@ -108,7 +108,7 @@ route.get("/portfolios/", [authJWT.verifyToken, clientDBConnection.connect], asy
         if(getErrors != null && getErrors.length > 0) {
             const getList = [];
             getErrors.map(e => getList.push(e.appno_doc_num));
-            
+
             const queryErrorList = "SELECT d.appno_doc_num as asset, date_format(ass.record_dt,'%m/%d/%Y') as created_at, ass.cname as name, 0 as type FROM documentid as d LEFT JOIN assignment as ass ON ass.rf_id = d.rf_id WHERE d.appno_doc_num IN(:appNo) GROUP BY d.appno_doc_num ORDER BY ass.record_dt DESC";
 
             errors = await connection.application.query(queryErrorList,{
@@ -155,10 +155,12 @@ route.get("/:type", [authJWT.verifyToken, clientDBConnection.connect], async(req
                             searchData = {tabId: 0, parent: 0, organisation_id: req.orgId, representative_id: getCompaniesList[i].representative_id};
                         } else if (customerType == 'ownership') {
                             searchData = {tabId: 1, parent: 0, organisation_id: req.orgId, representative_id: getCompaniesList[i].representative_id};
-                        } else if (customerType == 'security') {
+                        } else if (customerType == 'merger') {
                             searchData = {tabId: 2, parent: 0, organisation_id: req.orgId, representative_id: getCompaniesList[i].representative_id};
-                        } else if (customerType == 'other') {
+                        } else if (customerType == 'security') {
                             searchData = {tabId: 3, parent: 0, organisation_id: req.orgId, representative_id: getCompaniesList[i].representative_id};
+                        } else if (customerType == 'other') {
+                            searchData = {tabId: 4, parent: 0, organisation_id: req.orgId, representative_id: getCompaniesList[i].representative_id};
                         }
 
                         let customQuery = 'SELECT count(assignor_and_assignee_id) as counter FROM tree WHERE tab = :tabId AND parent = :parent AND organisation_id = :organisation_id AND representative_id = :representative_id GROUP BY name ORDER BY name ASC' ;
