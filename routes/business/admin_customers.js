@@ -45,7 +45,7 @@ const helpers = require("../../helpers/helper");
 route.get("/customers", [authJWT.verifyToken, authJWT.isAdmin], (req, res, next) => {
 
     Organisations.findAll({
-        attributes: [['organisation_id', 'id'], 'name'],
+        attributes: [['organisation_id', 'id'], 'name','logo'],
         where: {type:{[connection.Op.ne]: 2}}
     })
     .then((list)=>{
