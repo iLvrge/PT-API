@@ -243,11 +243,13 @@ route.get("/:parentCompany/:name/collections/:tabId",[authJWT.verifyToken], asyn
                 if(tabId == 0) {
                     searchData = {name: parentCompany, customer_name: customerName, convey_type: ['assignment', 'employee'], employer_assign: 1};
                 } else if (tabId == 1) {
-                    searchData = {name: parentCompany, customer_name: customerName, convey_type: ['assignment', 'merger' ], employer_assign: 0};
+                    searchData = {name: parentCompany, customer_name: customerName, convey_type: ["assignment", "partialassignment", "courtorder" ], employer_assign: 0};
                 } else if (tabId == 2) {
-                    searchData = {name: parentCompany, customer_name: customerName, convey_type: ['security', 'release' ], employer_assign: 0};
+                    searchData = {name: parentCompany, customer_name: customerName, convey_type: ['merger'], employer_assign: 0};
                 } else if (tabId == 3) {
-                    searchData = {name: parentCompany, customer_name: customerName, convey_type: ['namechg', 'govern', 'other', 'missing', 'correct' ], employer_assign: 0};
+                    searchData = {name: parentCompany, customer_name: customerName, convey_type: ["security", "restatedsecurity", 'release' ], employer_assign: 0};
+                } else if (tabId == 4) {
+                    searchData = {name: parentCompany, customer_name: customerName, convey_type: ['other', 'missing' ], employer_assign: 0};
                 }
 
                 
