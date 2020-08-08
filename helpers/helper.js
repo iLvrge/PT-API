@@ -36,73 +36,79 @@ const ClientRepesentative = require("../model/client/Representatives");
  */
 
  
-let searchCompany = async(search, t) => {
+let searchCompany = async(query, t) => {
 
     let searchTerm, queryCompany, searchResult = [], queryResult = [];
 
-    const splitSearch = search.toString().split(' ');
+    const stringWithNewLineSplit = query.toString().split(/\r\n|\r|\n/); 
 
-    if(splitSearch.length > 1){				
-        if(splitSearch.length == 2) {
-            if(splitSearch[1] == '') {
-                searchTerm = `${search}*`;
+    if(stringWithNewLineSplit.length > 0) {
+        stringWithNewLineSplit.map(async search => {
+            const splitSearch = search.toString().split(' ');
+            if(splitSearch.length > 1){				
+                if(splitSearch.length == 2) {
+                    if(splitSearch[1] == '') {
+                        searchTerm = `${search}*`;
+                    } else {
+                        const ftsQuery = new FtsQuery(true);			
+                        searchTerm = ftsQuery.transform(search);
+                        searchTerm = `${searchTerm}*`;
+                        searchTerm = searchTerm.replace(" AND ", " ");
+                        searchTerm = searchTerm.replace(" OR ", " ");
+                        searchTerm = searchTerm.replace(" NEAR ", " ");
+                    }
+                } else {
+                    const ftsQuery = new FtsQuery(true);			
+                    searchTerm = ftsQuery.transform(search);
+                    if(!!searchTerm.indexOf('"')){
+                        searchTerm = `${searchTerm}*`;
+                    }
+                    searchTerm = searchTerm.replace(" AND ", " ");
+                    searchTerm = searchTerm.replace(" OR ", " ");
+                    searchTerm = searchTerm.replace(" NEAR ", " ");
+                }				
             } else {
-                const ftsQuery = new FtsQuery(true);			
-                searchTerm = ftsQuery.transform(search);
-                searchTerm = `${searchTerm}*`;
-                searchTerm = searchTerm.replace(" AND ", " ");
-                searchTerm = searchTerm.replace(" OR ", " ");
-                searchTerm = searchTerm.replace(" NEAR ", " ");
+                searchTerm = `${search}*`;
             }
-        } else {
-            const ftsQuery = new FtsQuery(true);			
-            searchTerm = ftsQuery.transform(search);
-            if(!!searchTerm.indexOf('"')){
-                searchTerm = `${searchTerm}*`;
-            }
-            searchTerm = searchTerm.replace(" AND ", " ");
-            searchTerm = searchTerm.replace(" OR ", " ");
-            searchTerm = searchTerm.replace(" NEAR ", " ");
-        }				
-    } else {
-        searchTerm = `${search}*`;
-    }
-    console.log("SEARCH:",search);
+            console.log("SEARCH:",search);
+            queryCompany = "SELECT a.assignor_and_assignee_id as id, a.assignor_and_assignee_id, a.name, a.instances as counter, c.representative_name as normalize_name, (select rr.representative_name FROM representative as rr WHERE rr.representative_name = a.name GROUP BY rr.representative_name) as representative_company  FROM assignor_and_assignee as a LEFT JOIN representative as c ON c.representative_id = a.representative_id WHERE MATCH(a.name) AGAINST (:search IN BOOLEAN MODE) GROUP BY a.name";
 
-    queryCompany = "SELECT a.assignor_and_assignee_id from assignor_and_assignee as a WHERE MATCH(a.name) AGAINST (:search IN BOOLEAN MODE) GROUP BY a.name";
-
-    let getCompanyData = await connection.resources.query(queryCompany,{
-        type: connection.Sequelize.QueryTypes.SELECT,
-        raw: true,
-        replacements: { search: searchTerm },
-        logging: console.log,
-    });
-
-    if(getCompanyData.length == 0){
-
-        queryCompany = `SELECT a.assignor_and_assignee_id FROM assignor_and_assignee as a WHERE a.name LIKE :search GROUP BY a.name`;
-        
-        getCompanyData = await connection.resources.query(queryCompany,{
-            type: connection.Sequelize.QueryTypes.SELECT,
-            raw: true,
-            replacements: { search: `${search}%` },
-            logging: console.log,
-          }
-        );
-        if(getCompanyData.length == 0){
-            queryCompany = `SELECT a.assignor_and_assignee_id FROM assignor_and_assignee as a WHERE a.name LIKE :search GROUP BY a.name`;
-            
-            getCompanyData = await connection.resources.query(queryCompany,{
+            let querySearchResult = await connection.resources.query(queryCompany,{
                 type: connection.Sequelize.QueryTypes.SELECT,
                 raw: true,
-                replacements: { search: `%${search}%` },
+                replacements: { search: searchTerm },
                 logging: console.log,
-              }
-            );
-        }
+            });
+            if(querySearchResult.length == 0){
+
+                queryCompany = `SELECT a.assignor_and_assignee_id as id, a.assignor_and_assignee_id, a.name, a.instances as counter, c.representative_name as normalize_name, (select rr.representative_name FROM representative as rr WHERE rr.representative_name = a.name GROUP BY rr.representative_name) as representative_company  FROM assignor_and_assignee as a LEFT JOIN representative as c ON c.representative_id = a.representative_id WHERE a.name LIKE :search GROUP BY a.name`;
+                
+                querySearchResult = await connection.resources.query(queryCompany,{
+                    type: connection.Sequelize.QueryTypes.SELECT,
+                    raw: true,
+                    replacements: { search: `${search}%` },
+                    logging: console.log,
+                  }
+                );
+                if(querySearchResult.length == 0){
+                    queryCompany = `SELECT a.assignor_and_assignee_id as id, a.assignor_and_assignee_id, a.name, a.instances as counter, c.representative_name as normalize_name, (select rr.representative_name FROM representative as rr WHERE rr.representative_name = a.name GROUP BY rr.representative_name) as representative_company  FROM assignor_and_assignee as a LEFT JOIN representative as c ON c.representative_id = a.representative_id WHERE a.name LIKE :search GROUP BY a.name`;
+                    
+                    querySearchResult = await connection.resources.query(queryCompany,{
+                        type: connection.Sequelize.QueryTypes.SELECT,
+                        raw: true,
+                        replacements: { search: `%${search}%` },
+                        logging: console.log,
+                      }
+                    );
+                }
+            }
+            if(querySearchResult.length > 0) {
+                queryResult = [...queryResult, ...querySearchResult];
+            }
+        });
     }
 
-    if(getCompanyData.length > 0) {
+    /*if(getCompanyData.length > 0) {
         let assignorIDs = [];
         getCompanyData.map(a => assignorIDs.push(a.assignor_and_assignee_id));
 
@@ -135,7 +141,11 @@ let searchCompany = async(search, t) => {
                 }
             })
         }   
-    }
+    }*/
+    
+
+
+
 
     if(t == 0) {
         if(queryResult.length > 0) {
