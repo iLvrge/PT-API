@@ -43,7 +43,7 @@ let searchCompany = async(query, t) => {
     const stringWithNewLineSplit = query.toString().split(/\r\n|\r|\n/); 
 
     if(stringWithNewLineSplit.length > 0) {
-        stringWithNewLineSplit.map(async search => {
+        const promises = stringWithNewLineSplit.map(async search => {
             const splitSearch = search.toString().split(' ');
             if(splitSearch.length > 1){				
                 if(splitSearch.length == 2) {
@@ -80,7 +80,6 @@ let searchCompany = async(query, t) => {
                 logging: console.log,
             });
             if(querySearchResult.length == 0){
-
                 queryCompany = `SELECT a.assignor_and_assignee_id as id, a.assignor_and_assignee_id, a.name, a.instances as counter, c.representative_name as normalize_name, (select rr.representative_name FROM representative as rr WHERE rr.representative_name = a.name GROUP BY rr.representative_name) as representative_company  FROM assignor_and_assignee as a LEFT JOIN representative as c ON c.representative_id = a.representative_id WHERE a.name LIKE :search GROUP BY a.name`;
                 
                 querySearchResult = await connection.resources.query(queryCompany,{
@@ -104,8 +103,12 @@ let searchCompany = async(query, t) => {
             }
             if(querySearchResult.length > 0) {
                 queryResult = [...queryResult, ...querySearchResult];
+                console.log(queryResult);
             }
+            return querySearchResult;
         });
+        const finalResultOfAllPromises = await Promise.all(promises);
+        console.log(finalResultOfAllPromises);
     }
 
     /*if(getCompanyData.length > 0) {
