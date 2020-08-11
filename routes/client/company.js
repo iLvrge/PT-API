@@ -153,47 +153,24 @@ route.post("/", [authJWT.verifyToken, clientDBConnection.connect], async(req, re
                                     if(name == "" || name == null) {
                                         name = company.original_name;
                                     }
-                                    console.log(`php -f /var/www/html/trash/tree_script.php "${name}"`);
-                                    await exec(`php -f /var/www/html/trash/tree_script.php "${name}"`, async (error, stdout, stderr) => {
+                                    console.log(`php -f /var/www/html/trash/tree_script_client.php "${name}"`);
+                                    await exec(`php -f /var/www/html/trash/tree_script_client.php "${name}"`, async (error, stdout, stderr) => {
                                         console.log(error);
                                         console.log(stdout);
                                         console.log(stderr);
-                                        console.log(`php -f /var/www/html/trash/fix_inventor.php "${req.orgId}" "${parentCompaniesID[index]}"`);
-                                        await exec(`php -f /var/www/html/trash/fix_inventor.php "${req.orgId}" "${parentCompaniesID[index]}"`, async (error, stdd, stderr)=> {
-                                            console.log("find_missing_inventor....");
+                                        console.log(`php -f /var/www/html/trash/fix_inventor_timeline_tree_transaction_assests_updates.php  "${req.orgId}" "${parentCompaniesID[index]}"`);
+                                        await exec(`php -f /var/www/html/trash/fix_inventor_timeline_tree_transaction_assests_updates.php  "${req.orgId}" "${parentCompaniesID[index]}"`, async (error, stdd, stderr)=> {    
                                             console.log(error);
-                                            console.log(stderr);
                                             console.log(stdd);
+                                            console.log(stderr);                                        
                                             console.log("DONE>>>>>>>>>>>");
-                                            console.log(`php -f /var/www/html/trash/timeline.php "${req.orgId}" "${parentCompaniesID[index]}"`);
-                                            await exec(`php -f /var/www/html/trash/timeline.php "${req.orgId}" "${parentCompaniesID[index]}"`, async (error, std, stderr) => {
-                                                console.log("timeline create one table");
-                                                console.log(error);
+                                            console.log(`php -f /var/www/html/trash/download_all_pdf.php "${name}"`);
+                                            exec(`php -f /var/www/html/trash/download_all_pdf.php "${name}"`, (error, stdd, stderr)=> {
+                                                console.log("donwload_all_pdf....")
+                                                console.log(error); 
                                                 console.log(stderr);
-                                                console.log(std);
-                                                console.log(`php -f /var/www/html/trash/tree.php "${req.orgId}" ""`);
-                                                await exec(`php -f /var/www/html/trash/tree.php "${req.orgId}" ""`, async (error, stdd, stderr)=> {
-                                                    console.log("Fix Inventor....")
-                                                    console.log(error);
-                                                    console.log(stdout);
-                                                    console.log(stderr);
-                                                    console.log(`php -f /var/www/html/trash/find_missing_inventor.php "${req.orgId}" "${findName.representative_id}"`);
-                                                    await exec(`php -f /var/www/html/trash/find_missing_inventor.php "${req.orgId}" "${findName.representative_id}"`, (error, stdd, stderr)=> {
-                                                        console.log("Tree create one table");
-                                                        console.log(error);
-                                                        console.log(stderr);
-                                                        console.log(stdout);
-                                                        console.log("DONE>>>>>>>>>>>");
-                                                        console.log(`php -f /var/www/html/trash/download_all_pdf.php "${name}"`);
-                                                        exec(`php -f /var/www/html/trash/download_all_pdf.php "${name}"`, (error, stdd, stderr)=> {
-                                                            console.log("donwload_all_pdf....")
-                                                            console.log(error); 
-                                                            console.log(stderr);
-                                                            console.log(stdout);
-                                                            console.log("DONE");
-                                                        });
-                                                    });
-                                                });
+                                                console.log(stdd);
+                                                console.log("DONE");
                                             });
                                         });
                                     })
