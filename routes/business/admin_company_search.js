@@ -74,8 +74,8 @@ route.put("/company/search/all/", [authJWT.verifyToken, authJWT.isAdmin], (req, 
             let name = req.body.name, normalize_name = req.body.normalize_name;
             if(name != "" && normalize_name != ""){
 
-                /**Is this company already normalised with other representative if yes then find all other companies that point to representative and add new representative company
-                 * and point list of companies to the newly added representative Company
+                /**
+                 * This check is to find company is already normalised with other representative company
                  */
                 let oldRepresentativeCompanyID = 0, oldRepresentativeCompanyName = "";
                 let findIsNormalized  = await AssignorAndAssignee.findOne({
@@ -95,7 +95,6 @@ route.put("/company/search/all/", [authJWT.verifyToken, authJWT.isAdmin], (req, 
                     /** 
                      * Find old representative company
                     */
-
                     oldRepresentativeCompanyID = findIsNormalized.representative_id;
                     oldRepresentativeCompanyName = findIsNormalized.representative_name;
                 }
@@ -103,15 +102,13 @@ route.put("/company/search/all/", [authJWT.verifyToken, authJWT.isAdmin], (req, 
                 let  representativeCompany = await helpers.checkRepresentativeCompany(normalize_name);
 
                 
-
                 if(representativeCompany == null) {
                     /**
                      * If Old representative found
-                     */
-                    
+                     */                    
                     if(oldRepresentativeCompanyID > 0) {
                         /**
-                         * Update old representative company with new representative name
+                         * Update old representative company name with new representative name i.e normalize name
                          */
                         await Representatives.update({
                             representative_name: normalize_name
@@ -119,29 +116,32 @@ route.put("/company/search/all/", [authJWT.verifyToken, authJWT.isAdmin], (req, 
                         representativeCompany = await helpers.checkRepresentativeCompany(normalize_name);
                     } else {
                         /**
-                         * Insert representative company
-                         * New record in the representative table
-                         */
-                        
+                         * Insert new representative company in the representative table
+                         */                        
                         representativeCompany = await Representatives.create({
                             representative_name: normalize_name
                         });
                     }                    
                 }
 
-                if(representativeCompany != null && representativeCompany.representative_id > 0) {
-                    //let t = await connection.resources.transaction();	
+                if(representativeCompany != null && representativeCompany.representative_id > 0) {                    
                    /**
                     * Update representative ID in the AssignorAndAssignee table
                     */
                     const item = {representative_id: representativeCompany.representative_id};
                     
                     if(oldRepresentativeCompanyID == 0) {
-                        await AssignorAndAssignee.update(item, {where: {name: name}});
-                                             
+                        /**
+                         * Update representative ID
+                         */
+                        await AssignorAndAssignee.update(item, {where: {name: name}});                                             
                     } else {                        
                         await AssignorAndAssignee.update(item, {where: {name: oldRepresentativeCompanyName}});
+                        await AssignorAndAssignee.update(item, {where: {representative_id: oldRepresentativeCompanyID}});
 
+                        /**
+                         * Checking Client name with same old Company name
+                         */
                         const findCustomerWithOldName = await Organisations.findOne({
                             attributes:['name'],
                             where:{type: 0, name: oldRepresentativeCompanyName}
@@ -151,6 +151,8 @@ route.put("/company/search/all/", [authJWT.verifyToken, authJWT.isAdmin], (req, 
                             await findCustomerWithOldName.update({name: representativeCompany.representative_name});
                         }
                     }
+
+                    
 
 
                     /**

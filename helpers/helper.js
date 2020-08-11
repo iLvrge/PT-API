@@ -40,11 +40,21 @@ let searchCompany = async(query, t) => {
 
     let searchTerm, queryCompany, searchResult = [], queryResult = [];
 
-    const stringWithNewLineSplit = query.toString().split(/\r\n|\r|\n/); 
+    const stringWithNewLineSplit = query.toString().split(/\r\n|\r|\n/), regex = /[.,]/g; 
 
     if(stringWithNewLineSplit.length > 0) {
         const promises = stringWithNewLineSplit.map(async search => {
             const splitSearch = search.toString().split(' ');
+
+            search = search.replace(regex, '').toLowerCase().trim();
+            if(search.slice(-4) == 'corp' || search.slice(-4) == 'gmbh') {
+                search = search.substr(0, search.length - 4);
+            } else if(search.slice(-3) == 'ltd' || search.slice(-3) == 'inc'  || search.slice(-3) == ' sl') {
+                search = search.substr(0, search.length - 3);
+            } else if(search.slice(-2) == 'co') {
+                search = search.substr(0, search.length - 2);
+            }
+
             if(splitSearch.length > 1){				
                 if(splitSearch.length == 2) {
                     if(splitSearch[1] == '') {
@@ -181,7 +191,9 @@ let searchCompany = async(query, t) => {
                                 delete parentC['children'];
                                 searchResult[i].children.push(parentC);
                             }
-                            searchResult[i].children.push(c);
+                            if(searchResult[i].name != c.name) {
+                                searchResult[i].children.push(c);
+                            }                            
                         }
                     }
                 });
