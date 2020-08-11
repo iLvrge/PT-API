@@ -251,8 +251,8 @@ route.post("/", [authJWT.verifyToken, clientDBConnection.connect], async(req, re
 
                                     if(list.length > 0) {
                                         const childCompanies = [];
-                                        list.map( company => {
-                                            childCompanies.push({original_name: company.name, representative_name: company.representative_name, instances: company[i].instances, parent_id: addParent.representative_id});
+                                        list.forEach( company => {
+                                            childCompanies.push({original_name: company.name, representative_name: company.representative_name, instances: company.instances, parent_id: addParent.representative_id});
                                         });
                                         if(childCompanies.length > 0) {
                                             const addChildCompanies = await Representative.bulkCreate(childCompanies);
@@ -267,40 +267,24 @@ route.post("/", [authJWT.verifyToken, clientDBConnection.connect], async(req, re
                             if(addRecord > 0) {
                                 if(mainCompanies.length > 0){
                                     mainCompanies.map(async (company, index) => {
-                                        console.log(`php -f /var/www/html/trash/tree_script.php "${company}"`);
-                                        await exec(`php -f /var/www/html/trash/tree_script.php "${company}"`, async (error, stdout, stderr) => {
+                                        console.log(`php -f /var/www/html/trash/tree_script_client.php "${company}"`);
+                                        await exec(`php -f /var/www/html/trash/tree_script_client.php "${company}"`, async (error, stdout, stderr) => {
                                             console.log(error);
                                             console.log(stdout);
                                             console.log(stderr);
-                                            console.log(`php -f /var/www/html/trash/timeline.php "${req.orgId}" "${parentCompaniesID[index]}"`);
-                                            await exec(`php -f /var/www/html/trash/timeline.php "${req.orgId}" "${parentCompaniesID[index]}"`, async (error, std, stderr) => {
-                                                console.log("timeline create one table");
+                                            console.log(`php -f /var/www/html/trash/fix_inventor_timeline_tree_transaction_assests_updates.php "${req.orgId}" "${parentCompaniesID[index]}"`);
+                                            await exec(`php -f /var/www/html/trash/fix_inventor_timeline_tree_transaction_assests_updates.php "${req.orgId}" "${parentCompaniesID[index]}"`, async (error, std, stderr) => {
                                                 console.log(error);
-                                                console.log(stderr);
                                                 console.log(std);
-                                                console.log(`php -f /var/www/html/trash/fix_inventor.php "${req.orgId}" "${parentCompaniesID[index]}"`);
-                                                await exec(`php -f /var/www/html/trash/fix_inventor.php "${req.orgId}" "${parentCompaniesID[index]}"`, async (error, stdd, stderr)=> {
-                                                    console.log("FiX Inventor Data....")
+                                                console.log(stderr);
+                                                console.log("DONE>>>>>>>>>>>");
+                                                console.log(`php -f /var/www/html/trash/download_all_pdf.php "${company}"`);
+                                                exec(`php -f /var/www/html/trash/download_all_pdf.php "${company}"`, (error, stdout, stderr)=> {
+                                                    console.log("donwload_all_pdf....")
                                                     console.log(error);
                                                     console.log(stderr);
-                                                    console.log(stdd);
-                                                    console.log("DONE>>>>>>>>>>>");
-                                                    console.log(`php -f /var/www/html/trash/find_missing_inventor.php "${req.orgId}" "${parentCompaniesID[index]}"`);
-                                                    await exec(`php -f /var/www/html/trash/find_missing_inventor.php "${req.orgId}" "${parentCompaniesID[index]}"`, (error, stdout, stderr)=> {
-                                                        console.log("find_missing_inventor....")
-                                                        console.log(error);
-                                                        console.log(stderr);
-                                                        console.log(stdout);
-                                                        console.log("DONE>>>>>>>>>>>");
-                                                        console.log(`php -f /var/www/html/trash/download_all_pdf.php "${company}"`);
-                                                        exec(`php -f /var/www/html/trash/download_all_pdf.php "${company}"`, (error, stdout, stderr)=> {
-                                                            console.log("donwload_all_pdf....")
-                                                            console.log(error);
-                                                            console.log(stderr);
-                                                            console.log(stdout);
-                                                            console.log("DONE");
-                                                        });
-                                                    });
+                                                    console.log(stdout);
+                                                    console.log("DONE");
                                                 });
                                             });
                                         })
