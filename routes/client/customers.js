@@ -241,7 +241,7 @@ route.get("/:parentCompany/:name/collections/:tabId",[authJWT.verifyToken], asyn
                 let searchData = {};
 
                 if(tabId == 0) {
-                    searchData = {name: parentCompany, customer_name: customerName, convey_type: ['assignment', 'employee'], employer_assign: 1};
+                    searchData = {name: parentCompany, customer_name: customerName, convey_type: ['assignment', 'employee', 'correct', 'missing', 'govern', 'partialassignment', 'courtorder'], employer_assign: 1};
                 } else if (tabId == 1) {
                     searchData = {name: parentCompany, customer_name: customerName, convey_type: ["assignment", "partialassignment", "courtorder" ], employer_assign: 0};
                 } else if (tabId == 2) {
