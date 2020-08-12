@@ -533,7 +533,7 @@ let updateAllCustomerInventor = async(companyName, inventors, flag ) => {
     if(representativeName != '') {
         const rfIDs = [];
         if(flag == 0 ) {
-            const queryFindAssignorAndAssigneeIDs = "SELECT ac.rf_id FROM db_application.assignor as aaa INNER JOIN db_application.assignment_conveyance as ac ON ac.rf_id = aaa.rf_id WHERE aaa.assignor_and_assignee_id IN (SELECT aa.assignor_and_assignee_id FROM db_application.assignor_and_assignee as aa LEFT JOIN db_application.representative as r1 ON r1.representative_id = aa.representative_id where (r1.representative_name = :name OR aa.name = :name)) AND ac.employer_assign = 1 AND  aaa.or_name IN (:inventors) GROUP BY ac.rf_id";
+            const queryFindAssignorAndAssigneeIDs = "SELECT ac.rf_id FROM assignor as aaa INNER JOIN assignment_conveyance as ac ON ac.rf_id = aaa.rf_id WHERE aaa.assignor_and_assignee_id IN (SELECT aa.assignor_and_assignee_id FROM assignor_and_assignee as aa LEFT JOIN representative as r1 ON r1.representative_id = aa.representative_id where (r1.representative_name = :name OR aa.name = :name)) AND ac.employer_assign = 1 AND  aaa.or_name IN (:inventors) GROUP BY ac.rf_id";
             let listIDs = await connection.resources.query(queryFindAssignorAndAssigneeIDs,{
                 type: connection.Sequelize.QueryTypes.SELECT,
                 replacements: { name: representativeName, inventors: inventors },
@@ -545,7 +545,7 @@ let updateAllCustomerInventor = async(companyName, inventors, flag ) => {
                 listIDs.map(l => rfIDs.push(l.rf_id));
             }
         } else if(flag == 1 ){
-            const queryFindAssignorRFIDs = "SELECT ac.rf_id FROM db_application.assignor as aaa INNER JOIN db_application.assignment_conveyance as ac ON ac.rf_id = aaa.rf_id WHERE aaa.rf_id IN(SELECT  a.rf_id FROM db_uspto.assignee as a WHERE a.assignor_and_assignee_id IN (SELECT aa.assignor_and_assignee_id FROM db_application.assignor_and_assignee as aa LEFT JOIN db_application.representative as r1 ON r1.representative_id = aa.representative_id where (r1.representative_name = :name OR aa.name = :name))) AND ac.employer_assign = 0 AND aaa.or_name IN (:inventors) GROUP BY ac.rf_id";
+            const queryFindAssignorRFIDs = "SELECT ac.rf_id FROM assignor as aaa INNER JOIN assignment_conveyance as ac ON ac.rf_id = aaa.rf_id WHERE aaa.rf_id IN(SELECT  a.rf_id FROM db_uspto.assignee as a WHERE a.assignor_and_assignee_id IN (SELECT aa.assignor_and_assignee_id FROM assignor_and_assignee as aa LEFT JOIN representative as r1 ON r1.representative_id = aa.representative_id where (r1.representative_name = :name OR aa.name = :name))) AND ac.employer_assign = 0 AND aaa.or_name IN (:inventors) GROUP BY ac.rf_id";
             const findAssignors = await connection.resources.query(queryFindAssignorRFIDs,{
                 type: connection.Sequelize.QueryTypes.SELECT,
                 replacements: { name: representativeName, inventors: inventors },
@@ -554,7 +554,7 @@ let updateAllCustomerInventor = async(companyName, inventors, flag ) => {
                 }
             );
 
-            const queryAssigneeRFIDs = "SELECT ac.rf_id FROM db_application.assignee as aaa INNER JOIN db_application.assignment_conveyance as ac ON ac.rf_id = aaa.rf_id WHERE aaa.rf_id IN(SELECT  a.rf_id FROM db_uspto.assignee as a WHERE a.assignor_and_assignee_id IN (SELECT aa.assignor_and_assignee_id FROM db_application.assignor_and_assignee as aa LEFT JOIN db_application.representative as r1 ON r1.representative_id = aa.representative_id where (r1.representative_name = :name OR aa.name = :name))) AND ac.employer_assign = 0 AND aaa.ee_name IN (:inventors) GROUP BY ac.rf_id";
+            const queryAssigneeRFIDs = "SELECT ac.rf_id FROM assignee as aaa INNER JOIN assignment_conveyance as ac ON ac.rf_id = aaa.rf_id WHERE aaa.rf_id IN(SELECT  a.rf_id FROM db_uspto.assignee as a WHERE a.assignor_and_assignee_id IN (SELECT aa.assignor_and_assignee_id FROM assignor_and_assignee as aa LEFT JOIN representative as r1 ON r1.representative_id = aa.representative_id where (r1.representative_name = :name OR aa.name = :name))) AND ac.employer_assign = 0 AND aaa.ee_name IN (:inventors) GROUP BY ac.rf_id";
             const findAssignees = await connection.resources.query(queryAssigneeRFIDs,{
                 type: connection.Sequelize.QueryTypes.SELECT,
                 replacements: { name: representativeName, inventors: inventors },
