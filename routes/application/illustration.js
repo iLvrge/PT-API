@@ -10,6 +10,16 @@ const moment = require("moment");
 
 const { v4: uuidv4  } = require('uuid');
 
+route.get("/collections/assignment_details/:rf_id", [authJWT.verifyToken], async (req, res) =>{    
+    const rfID = req.params.rf_id;
+    if(rfID > 0) {
+        const getData = await helpers.getAssignmentDataByrfID(rfID.toString().trim());
+        res.status(200).json( getData );		
+    } else {
+        res.status(400).send("Invalid number");
+    }
+});
+
 route.get("/collections/:rf_id/illustration", [authJWT.verifyToken], async (req, res) =>{     
     const rfID = req.params.rf_id;
     if(rfID > 0) {
