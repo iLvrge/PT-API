@@ -248,19 +248,20 @@ route.get("/:groupId", [authJWT.verifyToken, clientDBConnection.connect], async(
         //console.log(0);
         if(organisationData != null && organisationData.organisation_id > 0 && typeof req.connection_db != "undefined" && req.connection_db != null){
             
-            let searchData = {}, className="";
+            let searchData = {}, className="", nameQuery = "CASE WHEN r.representative_name <> null THEN r.representative_name ELSE aaa.name END  as content";
             const groupID = req.params.groupId;	
             if(groupID == 0) {
-                searchData = {convey_type: ['assignment', 'employee'], employer_assign: 1, organisation_id: req.orgId};
+                searchData = {convey_type: ['assignment', 'employee', 'missing', 'correct'], employer_assign: 1, organisation_id: req.orgId};
                 className = "red";
+                nameQuery = 'SUBSTRING_INDEX(CASE WHEN r.representative_name <> null THEN r.representative_name ELSE aaa.name END, " ", 1)  as content';
             } else if (groupID == 1) {
-                searchData = {convey_type: ['assignment', 'merger' ], employer_assign: 0, organisation_id: req.orgId};
+                searchData = {convey_type: ["assignment", "partialassignment", "courtorder"], employer_assign: 0, organisation_id: req.orgId};
                 className = "blue";
             } else if (groupID == 2) {
-                searchData = {convey_type: ['security', 'release' ], employer_assign: 0, organisation_id: req.orgId};
+                searchData = {convey_type: ["security", "restatedsecurity", 'release' ], employer_assign: 0, organisation_id: req.orgId};
                 className = "yellow";
             } else if (groupID == 3) {
-                searchData = {convey_type: ['namechg', 'govern', 'other', 'missing', 'correct' ], employer_assign: 0, organisation_id: req.orgId};
+                searchData = {convey_type: ['other', 'missing'], employer_assign: 0, organisation_id: req.orgId};
                 className = "green";
             }
             /*const todaysDate = new Date(), startDate = moment(todaysDate).subtract(1, 'year').format('YYYY'), endDate = moment(todaysDate).format('YYYY');
@@ -269,7 +270,8 @@ route.get("/:groupId", [authJWT.verifyToken, clientDBConnection.connect], async(
             searchData.end = endDate;*/
             searchData.recordLimit = 5000;
 
-            let customQuery = 'SELECT t.rf_id as id, SUBSTRING_INDEX(CASE WHEN r.representative_name <> null THEN r.representative_name ELSE aaa.name END, " ", 1)  as content, t.exec_dt as start, "point" as type FROM timeline as t INNER JOIN assignor_and_assignee as aaa ON aaa.assignor_and_assignee_id = t.assignor_and_assignee_id LEFT JOIN representative as r ON r.representative_id = aaa.representative_id WHERE organisation_id = :organisation_id AND convey_ty IN (:convey_type) AND employer_assign = :employer_assign GROUP BY rf_id  ORDER BY t.exec_dt DESC LIMIT :recordLimit' ;
+
+            let customQuery = `SELECT t.rf_id as id, ${nameQuery}, t.exec_dt as start, "point" as type FROM timeline as t INNER JOIN assignor_and_assignee as aaa ON aaa.assignor_and_assignee_id = t.assignor_and_assignee_id LEFT JOIN representative as r ON r.representative_id = aaa.representative_id WHERE organisation_id = :organisation_id AND convey_ty IN (:convey_type) AND employer_assign = :employer_assign GROUP BY rf_id  ORDER BY t.exec_dt DESC LIMIT :recordLimit` ;
 
             
             let getAllTransactionData = await connection.application.query(customQuery,{

@@ -12,7 +12,7 @@ const config = require("../../config/db.config");
 const User = require("../../model/business/Users");
 
 
-route.get("/signin", (req, res, next) => {
+route.post("/signin", (req, res, next) => {
 
     User.findOne({
         where: {
@@ -30,14 +30,17 @@ route.get("/signin", (req, res, next) => {
         if (!passwordIsValid) {
             return res.status(401).send("Invalid Username and/or Password!");
         }
+
+        console.log(config.config.secret);
         
-        let token = jwt.sign({ id: user.user_id,orgId:user.organisation_id }, config.secret, {
+        let token = jwt.sign({ id: user.user_id,orgId:user.organisation_id }, config.config.secret, {
             expiresIn: 86400 // expires in 24 hours
         });
 
         res.status(200).send({ auth: true, accessToken: token ,message: "Login successfully!"});
         
     }).catch(err => {
+        console.log(err);
         res.status(400).send('Bad request');
     });
 });
