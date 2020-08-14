@@ -20,54 +20,8 @@ const clientDBConnection = require("../../helpers/clientDBConnection");
 route.get("/", [authJWT.verifyToken, clientDBConnection.connect], async(req, res, next) => {
     try{
         if(typeof req.connection_db != "undefined" && req.connection_db != null ) {
-
-            const parentCompanyQuery = "SELECT representative_id as id, original_name, representative_name, instances, instances + (Select sum(instances) FROM representative as r1 WHERE r1.parent_id = r.representative_id) as counter FROM representative as r WHERE r.parent_id = 0";
-
-            const companies = await req.connection_db.query(parentCompanyQuery,{
-                type: connection.Sequelize.QueryTypes.SELECT,
-                raw: true,
-                logging: console.log,
-                }
-            ); 
-            
-            if(companies.length > 0) {
-                let getAllIDs = [];
-                companies.map( c => getAllIDs.push(c.id));
-                let childCompaniesQuery = "SELECT representative_id as id, original_name, representative_name, instances as counter, parent_id FROM representative as r WHERE r.parent_id IN (:parentCompany) ORDER BY r.parent_id ASC, counter DESC";
-
-                let childCompanies = await req.connection_db.query(childCompaniesQuery,{
-                        type: connection.Sequelize.QueryTypes.SELECT,
-                        replacements: { parentCompany: getAllIDs },
-                        raw: true,
-                        logging: console.log,
-                    }
-                ); 
-                if(childCompanies.length == 0) {
-                    for(let i = 0; i < companies.length; i++) {
-                        let newC = {...companies[i]};
-                        newC.counter = newC.instances;
-                        companies[i]['children'] = [newC];
-                    }
-                } else {
-                    for(let i = 0; i < companies.length; i++) {
-                        let children = [];
-                        let newC = {...companies[i]};
-                        newC.counter = newC.instances;
-                        children.push(newC);
-                        for(let j = 0; j< childCompanies.length; j++) {
-                            if(parseInt(companies[i].id) === parseInt(childCompanies[j].parent_id)) {
-                                children.push({...childCompanies[j]});
-                            }                            
-                        }
-                        companies[i]['children'] = children;
-                    }
-                }
-                res.status(200).json(companies);
-            } else {
-                res.status(200).json([]);
-            }
-            
-            //.finally(() => req.connection_db.close());
+            const getCompaniesList = await helpers.getCompaniesWithChildren(req.connection_db);
+            res.status(200).json(getCompaniesList);
         } else {
             res.status(401).send("Unable to retrieve companies");
         }

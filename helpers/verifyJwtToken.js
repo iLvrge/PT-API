@@ -48,12 +48,17 @@ let isAdmin = (req, res, next) => {
       }
     })
   }
+
+let addClientID = (req, res, next) => {
+  req.orgId = req.params.id;
+  next();
+};
   
   const authJwt = {};
   
   authJwt.verifyToken = verifyToken;
   authJwt.isAdmin = isAdmin;
   authJwt.addToken = addToken;
-  
+  authJwt.addClientID = addClientID;
   
   module.exports = authJwt;

@@ -30,8 +30,6 @@ route.post("/signin", (req, res, next) => {
         if (!passwordIsValid) {
             return res.status(401).send("Invalid Username and/or Password!");
         }
-
-        console.log(config.config.secret);
         
         let token = jwt.sign({ id: user.user_id,orgId:user.organisation_id }, config.config.secret, {
             expiresIn: 86400 // expires in 24 hours

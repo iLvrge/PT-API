@@ -36,7 +36,13 @@ const userExist = require("../../helpers/verifySignUp");
 
 const helpers = require("../../helpers/helper");
 
+const clientDBConnection = require("../../helpers/clientDBConnection");
 
+const ClientUsers = require("../../model/client/Users");
+
+const ProfessionalUsers = require("../../model/client/Professionals");
+
+const Firms = require("../../model/client/Firms");
 
 /**
  * List all customers
@@ -97,6 +103,34 @@ route.get("/customers/customers/:company_name/:type", [authJWT.verifyToken, auth
     })();
 });
 
+/**
+ * Client Portfolios list
+ */
+
+route.get("/customers/:id/companies", [authJWT.verifyToken, authJWT.isAdmin, authJWT.addClientID, clientDBConnection.connect], async (req, res, next) => {
+    try{
+        let organisationID = req.params.id;
+        if(organisationID > 0){
+            const organisation  = await helpers.findOrganisationbyID(organisationID);
+            if(organisation != null && organisation.organisation_id > 0){
+                if(typeof req.connection_db != "undefined" && req.connection_db != null ) {
+                    const getCompaniesList = await helpers.getCompaniesWithChildren(req.connection_db);
+                    res.status(200).json(getCompaniesList);
+                } else {
+                    res.status(200).json([]);
+                }
+            } else {
+                res.status(200).json([]);
+            }
+        } else {
+            res.status(400).send("Invalid inputs");
+        }       
+    } catch( err ) {
+        console.log(err);
+        res.status(400).send("Invalid inputs");
+    } 
+});
+
 route.get("/customers/:id/users", [authJWT.verifyToken, authJWT.isAdmin], (req, res, next) => {
     (async () => {
         try{
@@ -123,7 +157,7 @@ route.get("/customers/:id/users", [authJWT.verifyToken, authJWT.isAdmin], (req, 
  * Create new user in same organisation
  */
 
-route.post("/customers/:id/users", [authJWT.verifyToken, authJWT.isAdmin, userExist.checkDuplicateUsername], function (req, res){
+route.post("/customers/:id/users", [authJWT.verifyToken, authJWT.isAdmin, userExist.checkDuplicateUsername], function (req, res, next){
     (async () => {
         try{
             let organisationID = req.params.id;
@@ -145,7 +179,71 @@ route.post("/customers/:id/users", [authJWT.verifyToken, authJWT.isAdmin, userEx
                         organisation_id: organisationID
                     })
                     .then(function( user ){
-                        if(user != null) {                            
+                        if(user != null) {    
+                            if(organisation.org_db != null && organisation.org_db != ''){
+                                /** */
+                                (async () => {
+                                    const clientDB = await clientDBConnection.connect(req, res, next);
+                                    if(clientDB != null) {
+                                        const clientUser = {
+                                            user_id: user.user_id,
+                                            first_name: req.body.first_name,
+                                            last_name: req.body.last_name,
+                                            email_address: req.body.email_address,
+                                            username: req.body.email_address,		
+                                            job_title: req.body.job_title,
+                                            linkedin_url: req.body.person_linkedin_url,
+                                            telephone1: req.body.telephone1,
+                                            telephone: req.body.telephone,
+                                            role_id: roleID,
+                                            logo: logo
+                                        }
+
+                                        ClientUsers
+                                        .create(clientUser)
+                                        .then(function(addClientUser){
+                                            console.log("addClientUser", addClientUser);
+                                            (async () => {
+                                                const Firm = clientDB.define('Firms', Firms.mainStructure, Firms.options);
+
+                                                let firmID = 0;
+        
+                                                let findFirm = await Firm.findOne({
+                                                                where: {firm_name: organisationName.name}
+                                                            });
+                                                if(findFirm != null && findFirm.firm_id > 0) {
+                                                    firmID = findFirm.firm_id;
+                                                } else {
+                                                    findFirm = await Firm.create({firm_name: organisationName.name});
+                                                    if(findFirm != null && findFirm.firm_id > 0) {
+                                                        firmID = findFirm.firm_id;
+                                                    }
+                                                } 
+                                                if(firmID > 0) {
+                                                    const Professional = clientDB.define('Professionals', ProfessionalUsers.mainStructure, ProfessionalUsers.options);  
+                                                    const addUserToProfessional = {
+                                                        first_name: req.body.first_name,
+                                                        last_name: req.body.last_name,
+                                                        email_address: req.body.email_address,
+                                                        job_title: req.body.job_title,
+                                                        linkedin_url: req.body.person_linkedin_url,
+                                                        telephone1: req.body.telephone1,
+                                                        telephone: req.body.telephone,
+                                                        type: 0,
+                                                        profile_logo: logo,
+                                                        firm_id: firmID
+                                                    }
+                                                    const professionalUser = await Professional.create(addUserToProfessional);
+                                                    if(professionalUser != null) {
+                                                        console.log("User"+professionalUser.professional_id);
+                                                        console.log("User created successfully");
+                                                    }
+                                                }
+                                            })();
+                                        });    
+                                    }
+                                })();
+                            }
                             console.log("User"+user.user_id);
                             console.log("User created successfully");
                             const newUser = user.toJSON();
