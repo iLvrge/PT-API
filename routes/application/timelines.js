@@ -300,7 +300,7 @@ route.get("/:organisation/:name/:depth/:groupId", [authJWT.verifyToken, clientDB
             if(groupID == 8) {
                 subNameQuery = 'SUBSTRING_INDEX(CASE WHEN r.representative_name <> null THEN r.representative_name ELSE aa.name END, " ", 1)  as content';
             }
-
+            let patentN = 'grant_doc_num';
             if( depth === 3 ) {
                 /*Asset Number*/
                 let patentNumber = await connection.application.query("SELECT rf_id FROM documentid WHERE grant_doc_num = :name LIMIT 1",{
@@ -312,21 +312,11 @@ route.get("/:organisation/:name/:depth/:groupId", [authJWT.verifyToken, clientDB
                   }
                 );
 
-                if(patentNumber == null ) {
-                    patentNumber = await connection.application.query("SELECT rf_id FROM documentid WHERE appno_doc_num = :name LIMIT 1",{
-                        type: connection.Sequelize.QueryTypes.SELECT,
-                        raw: true,
-                        logging: console.log,
-                        replacements: { name: name },
-                        plain:true
-                      }
-                    );                    
-                }
-                if(patentNumber != null) {
-                    name = patentNumber.rf_id;
+                if(patentNumber == null ) {                       
+                    patentN = 'appno_doc_num'   ;    
                 }
 
-                customQuery = `SELECT t.rf_id as id, ${subNameQuery}, "point" as type, t.exec_dt as start FROM timeline as t INNER JOIN assignor_and_assignee as aa ON aa.assignor_and_assignee_id = t.assignor_and_assignee_id LEFT JOIN representative as r ON r.representative_id = aa.representative_id WHERE t.rf_id = :name AND t.tab = :tab AND t.organisation_id = :organisation_id AND t.representative_id = :representative_id  GROUP BY id ORDER BY start ASC `; 
+                customQuery = `SELECT t.rf_id as id, ${subNameQuery}, "point" as type, t.exec_dt as start FROM timeline as t INNER JOIN assignor_and_assignee as aa ON aa.assignor_and_assignee_id = t.assignor_and_assignee_id LEFT JOIN representative as r ON r.representative_id = aa.representative_id WHERE t.rf_id IN (SELECT rf_id FROM documentid WHERE ${patentN} IN (:name)) AND t.tab = :tab AND t.organisation_id = :organisation_id AND t.representative_id = :representative_id  GROUP BY id ORDER BY start ASC `; 
                                 
                 className = 'green';                
             } else if( depth === 2 ){ 
