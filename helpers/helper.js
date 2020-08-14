@@ -746,7 +746,7 @@ let findCompanyCustomersByName = async(companyName, type) => {
 
             let rfIDs = [];
             rfIDsList.map( r => rfIDs.push(r.rf_id));
-
+            /*
             let queryDocumentID = 'SELECT rf_id FROM documentid WHERE appno_doc_num <> "" AND  rf_id IN (:rfIDs) GROUP BY rf_id';
 
             documentRFIDs = await connection.resources.query(queryDocumentID,{
@@ -759,7 +759,7 @@ let findCompanyCustomersByName = async(companyName, type) => {
 
             rfIDs = [];
 
-            documentRFIDs.map( r => rfIDs.push(r.rf_id));
+            documentRFIDs.map( r => rfIDs.push(r.rf_id));*/
 
             if(typeof type != 'undefined' &&  parseInt(type) < 3) {
 
