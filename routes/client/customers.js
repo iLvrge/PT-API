@@ -149,18 +149,38 @@ route.get("/:type", [authJWT.verifyToken, clientDBConnection.connect], async(req
                 if(customerType != "") {                    
                     for(let i = 0; i < getCompaniesList.length; i++) {
 
-                        let searchData = {};
-
-                        if(customerType == 'employee') {
-                            searchData = {tabId: 0, parent: 0, organisation_id: req.orgId, representative_id: getCompaniesList[i].representative_id};
-                        } else if (customerType == 'ownership') {
-                            searchData = {tabId: 1, parent: 0, organisation_id: req.orgId, representative_id: getCompaniesList[i].representative_id};
-                        } else if (customerType == 'merger') {
-                            searchData = {tabId: 2, parent: 0, organisation_id: req.orgId, representative_id: getCompaniesList[i].representative_id};
-                        } else if (customerType == 'security') {
-                            searchData = {tabId: 3, parent: 0, organisation_id: req.orgId, representative_id: getCompaniesList[i].representative_id};
-                        } else if (customerType == 'other') {
-                            searchData = {tabId: 4, parent: 0, organisation_id: req.orgId, representative_id: getCompaniesList[i].representative_id};
+                        let searchData = {parent: 0, organisation_id: req.orgId, representative_id: getCompaniesList[i].representative_id};
+                        switch(customerType){
+                            case 'acquisitions':
+                              searchData.tabId = 0; 
+                                break;
+                            case 'sales':
+                                searchData.tabId = 1; 
+                                break;
+                            case 'license-in':
+                                searchData.tabId = 2; 
+                                break;
+                            case 'license-out':
+                                searchData.tabId = 3; 
+                                break;
+                            case 'securities':
+                                searchData.tabId = 4; 
+                                break;
+                            case 'mergers':
+                                searchData.tabId = 5; 
+                                break;
+                            case 'options':
+                                searchData.tabId = 6; 
+                                break;
+                            case 'court-orders':
+                                searchData.tabId = 7; 
+                                break;
+                            case 'employees':
+                                searchData.tabId = 8; 
+                                break;
+                            case 'other':
+                                searchData.tabId = 9; 
+                                break;
                         }
 
                         let customQuery = 'SELECT count(assignor_and_assignee_id) as counter FROM tree WHERE tab = :tabId AND parent = :parent AND organisation_id = :organisation_id AND representative_id = :representative_id GROUP BY name ORDER BY name ASC' ;
