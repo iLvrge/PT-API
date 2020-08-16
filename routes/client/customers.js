@@ -25,14 +25,15 @@ const clientDBConnection = require("../../helpers/clientDBConnection");
 route.get("/portfolios/", [authJWT.verifyToken, clientDBConnection.connect], async(req, res, next) => {
     try{
         const tabID = req.query.tab_id, portfolioID = req.query.portfolio;
-        let result = [], errors = [], inprocess = [], limit = req.query.limit, offset = req.query.offset;
+        let result = [],  limit = req.query.limit, offset = req.query.offset;
         if(portfolioID != '' && portfolioID != null && portfolioID != 'undefined') {
             if(parseInt(tabID) >= 0) {
                 limit = limit > 0 ? parseInt(limit) : 1000;
                 offset = offset > 0 ? parseInt(offset) : 0;
+                const portfolioList = JSON.parse(portfolioID);
                 result = await TreeParties.findAll({
                     attributes:[['assignor_and_assignee_id', 'id'], 'name'],
-                    where: {representative_id: portfolioID, organisation_id: req.orgId, tab_id: tabID},
+                    where: {representative_id: portfolioList, organisation_id: req.orgId, tab_id: tabID},
                     include:[
                         {
                             model: TreePartiesCollections,
@@ -66,6 +67,14 @@ route.get("/portfolios/", [authJWT.verifyToken, clientDBConnection.connect], asy
                         attributes:['representative_id', 'representative_name','tab_id'],
                         where: {representative_id: allPortfolioList, organisation_id: req.orgId},
                         group: ['organisation_id', 'representative_id', 'tab_id'],
+                        include: [
+                            {
+                                model: TreePartiesCollections,
+                                as: 'collections',
+                                attributes: [[connection.Sequelize.fn('COUNT', 'rf_id'), 'transaction_count']],
+                                group: ['assignor_and_assignee_id', 'tab_id'],
+                            }
+                        ],
                         order: [
                             ['tab_id', 'ASC'],
                             ['representative_name', 'ASC']
@@ -74,53 +83,7 @@ route.get("/portfolios/", [authJWT.verifyToken, clientDBConnection.connect], asy
                 }
             }
         }
-        let conditions = {organisation_id: req.orgId};
-        if(portfolioID != '' && portfolioID != null && portfolioID != 'undefined') {
-            conditions.representative_id = portfolioID;            
-        }
-        /**
-         * Query took more than 15 sec
-         */
-        /*errors = await Errors.findAll({
-            attributes:['appno_doc_num','type'],
-            where: conditions,
-            include: [
-                {
-                    model: DocumentIds,
-                    as: 'assets',
-                    attributes: [['appno_date','date']],
-                    group: ['appno_date']
-                }
-            ]
-        })*/
-
-        /**
-         * 
-         * Inner Join taking more time so thats why used this
-         */
-        
-        const getErrors = await Errors.findAll({
-            attributes:['appno_doc_num'],
-            where: conditions
-        });
-        
-
-        if(getErrors != null && getErrors.length > 0) {
-            const getList = [];
-            getErrors.map(e => getList.push(e.appno_doc_num));
-
-            const queryErrorList = "SELECT d.appno_doc_num as asset, date_format(ass.record_dt,'%m/%d/%Y') as created_at, ass.cname as name, 0 as type FROM documentid as d LEFT JOIN assignment as ass ON ass.rf_id = d.rf_id WHERE d.appno_doc_num IN(:appNo) GROUP BY d.appno_doc_num ORDER BY ass.record_dt DESC";
-
-            errors = await connection.application.query(queryErrorList,{
-                type: connection.Sequelize.QueryTypes.SELECT,
-                raw: true,
-                replacements: { appNo: getList },
-                logging: console.log,
-                }
-            );
-        }
-
-        res.status(200).json({portfolios: result, errors: errors, inprocess: inprocess});
+        res.status(200).json({portfolios: result});
     }catch( err ) {
         console.log(err);
         res.status(500).send("Internal server error.");
