@@ -26,43 +26,48 @@ route.get("/portfolios/", [authJWT.verifyToken, clientDBConnection.connect], asy
     try{
         const tabID = req.query.tab_id, portfolioID = req.query.portfolio;
         let result = [],  limit = req.query.limit, offset = req.query.offset;
-        if(portfolioID != '' && portfolioID != null && portfolioID != 'undefined') {
-            if(parseInt(tabID) >= 0) {
-                limit = limit > 0 ? parseInt(limit) : 1000;
-                offset = offset > 0 ? parseInt(offset) : 0;
-                const portfolioList = JSON.parse(portfolioID);
-                result = await TreeParties.findAll({
-                    attributes:[['assignor_and_assignee_id', 'id'], 'name'],
-                    where: {representative_id: portfolioList, organisation_id: req.orgId, tab_id: tabID},
-                    include:[
-                        {
-                            model: TreePartiesCollections,
-                            as: 'collections',
-                            attributes: ['rf_id'],
-                            where:{tab_id: tabID},
-                            include: [
-                                {
-                                    model: DocumentIds,
-                                    as: 'assets',
-                                    attributes: [['appno_doc_num','application'], ['grant_doc_num', 'patent']],
-                                }
-                            ]
-                        }
-                    ],
-                    limit: limit,
-                    offset: offset,
-                    order: [
-                        ['name', 'ASC']
-                    ]                    
-                });
-            }
-        } else {
-            if(typeof req.connection_db != "undefined" && req.connection_db != null ) {
-                const getCompaniesList = await helpers.getCompaniesList(req.connection_db);
-                if(getCompaniesList.length > 0) {
-                    const allPortfolioList = [];
-                    getCompaniesList.forEach(p =>  allPortfolioList.push(p.representative_id));
 
+        if(portfolioID != '' && portfolioID != null && portfolioID != 'undefined' && parseInt(tabID) >= 0) {            
+            limit = limit > 0 ? parseInt(limit) : 1000;
+            offset = offset > 0 ? parseInt(offset) : 0;
+            const portfolioList = JSON.parse(portfolioID);
+            result = await TreeParties.findAll({
+                attributes:[['assignor_and_assignee_id', 'id'], 'name'],
+                where: {representative_id: portfolioList, organisation_id: req.orgId, tab_id: tabID},
+                include:[
+                    {
+                        model: TreePartiesCollections,
+                        as: 'collections',
+                        attributes: ['rf_id'],
+                        where:{tab_id: tabID},
+                        include: [
+                            {
+                                model: DocumentIds,
+                                as: 'assets',
+                                attributes: [['appno_doc_num','application'], ['grant_doc_num', 'patent']],
+                            }
+                        ]
+                    }
+                ],
+                limit: limit,
+                offset: offset,
+                order: [
+                    ['name', 'ASC']
+                ]                    
+            });            
+        } else {
+            if(typeof req.connection_db != "undefined" && req.connection_db != null ) {                
+                let allPortfolioList = [];
+                if(portfolioID != '' && portfolioID != null && portfolioID != 'undefined') {            
+                    allPortfolioList = JSON.parse(portfolioID);
+                } else {
+                    const getCompaniesList = await helpers.getCompaniesList(req.connection_db);
+                    if(getCompaniesList.length > 0) {                   
+                        getCompaniesList.forEach(p =>  allPortfolioList.push(p.representative_id));
+                    }
+                }
+
+                if(allPortfolioList.length > 0){
                     result = await TreeParties.findAll({
                         attributes:['representative_id', 'representative_name','tab_id'],
                         where: {representative_id: allPortfolioList, organisation_id: req.orgId},
