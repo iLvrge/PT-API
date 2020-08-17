@@ -26,7 +26,8 @@ route.get("/portfolios/", [authJWT.verifyToken, clientDBConnection.connect], asy
     try{
         const tabID = req.query.tab_id, portfolioID = req.query.portfolio;
         let result = [],  limit = req.query.limit, offset = req.query.offset;
-
+        console.log(tabID);
+        console.log(portfolioID);
         if(portfolioID != '' && portfolioID != null && portfolioID != 'undefined' && parseInt(tabID) >= 0) {            
             limit = limit > 0 ? parseInt(limit) : 1000;
             offset = offset > 0 ? parseInt(offset) : 0;
@@ -38,8 +39,8 @@ route.get("/portfolios/", [authJWT.verifyToken, clientDBConnection.connect], asy
                     {
                         model: TreePartiesCollections,
                         as: 'collections',
-                        attributes: ['rf_id'],
-                        where:{tab_id: tabID},
+                        attributes: ['rf_id', 'exec_dt'],
+                        where:{tab_id: tabID, representative_id: portfolioList},
                         include: [
                             {
                                 model: DocumentIds,
