@@ -184,7 +184,7 @@ route.post("/customers/:id/users", [authJWT.verifyToken, authJWT.isAdmin, userEx
                                 /** */
                                 (async () => {
                                     const clientDB = await clientDBConnection.connect(req, res, next);
-                                    consoel.log(clientDB);
+                                    console.log(clientDB);
                                     if(clientDB != null) {
                                         const clientUser = {
                                             user_id: user.user_id,
