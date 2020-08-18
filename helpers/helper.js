@@ -180,13 +180,10 @@ let searchCompany = async(query, t) => {
                 logging: console.log,
                 }
             );
-            let parentAdded = [];
+            let parentAdded = [], children = [];
             if(getChildCompanyData.length > 0) {
                 getChildCompanyData.map(c => {
-                    const findIndex = searchResult.findIndex( x => x.name == c.name);
-                    if(findIndex >= 0) {
-                        searchResult.splice(findIndex,1);
-                    }
+                    
                     for(let i = 0; i < searchResult.length; i++) {  
                         if(searchResult[i].name == c.normalize_name){
                             if(!parentAdded.includes(searchResult[i].name)) {
@@ -197,10 +194,19 @@ let searchCompany = async(query, t) => {
                             }
                             if(searchResult[i].name != c.name) {
                                 searchResult[i].children.push(c);
+                                children.push(c.name);
                             }                            
                         }
                     }
                 });
+                if(children.length > 0) {
+                    children.map(c => {
+                        const findIndex = searchResult.findIndex( x => x.name == c);
+                        if(findIndex >= 0 && searchResult[findIndex].children.length == 0) {
+                            searchResult.splice(findIndex,1);
+                        }
+                    });
+                }
                 searchResult.map( (s, index) => {
                     if(s.children.length > 0) {
                         let total = 0;

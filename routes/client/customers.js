@@ -93,7 +93,6 @@ route.get("/portfolios/", [authJWT.verifyToken, clientDBConnection.connect], asy
                                 portfolioJSON.transaction_count = 0;        
                             }
                             result.push(portfolioJSON);
-                            console.log(result);
                             return findCounter;
                         });
                         await Promise.all(promises);
