@@ -183,6 +183,10 @@ let searchCompany = async(query, t) => {
             let parentAdded = [];
             if(getChildCompanyData.length > 0) {
                 getChildCompanyData.map(c => {
+                    const findIndex = searchResult.findIndex( x => x.name == c.name);
+                    if(findIndex >= 0) {
+                        searchResult.splice(findIndex,1);
+                    }
                     for(let i = 0; i < searchResult.length; i++) {  
                         if(searchResult[i].name == c.normalize_name){
                             if(!parentAdded.includes(searchResult[i].name)) {

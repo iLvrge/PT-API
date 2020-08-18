@@ -69,23 +69,35 @@ route.get("/portfolios/", [authJWT.verifyToken, clientDBConnection.connect], asy
                 }
 
                 if(allPortfolioList.length > 0){
-                    result = await TreeParties.findAll({
+                    const resultParties = await TreeParties.findAll({
                         attributes:['representative_id', 'representative_name','tab_id'],
                         where: {representative_id: allPortfolioList, organisation_id: req.orgId},
-                        group: ['organisation_id', 'representative_id', 'tab_id'],
-                        include: [
-                            {
-                                model: TreePartiesCollections,
-                                as: 'collections',
-                                attributes: [[connection.Sequelize.fn('COUNT', 'rf_id'), 'transaction_count']],
-                                group: ['assignor_and_assignee_id', 'tab_id'],
-                            }
-                        ],
+                        group: ['organisation_id', 'representative_id', 'tab_id'],                       
                         order: [
                             ['tab_id', 'ASC'],
                             ['representative_name', 'ASC']
                         ]
-                    }) 
+                    });
+
+                    if(resultParties.length > 0) {
+                        const promises = resultParties.map(async portfolio => {
+                            const findCounter = await TreePartiesCollections.findOne({
+                                attributes: [[connection.Sequelize.fn('COUNT', 'rf_id'), 'transaction_count']],
+                                where: {representative_id: portfolio.representative_id, tab_id: portfolio.tab_id},
+                                group: ['representative_id', 'tab_id']                      
+                            });
+                            const portfolioJSON = portfolio.toJSON();
+                            if(findCounter != null && findCounter.get('transaction_count') > 0) {                                
+                                portfolioJSON.transaction_count = findCounter.get('transaction_count');                               
+                            } else {
+                                portfolioJSON.transaction_count = 0;        
+                            }
+                            result.push(portfolioJSON);
+                            console.log(result);
+                            return findCounter;
+                        });
+                        await Promise.all(promises);
+                    }
                 }
             }
         }
