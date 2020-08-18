@@ -157,7 +157,7 @@ route.get("/customers/:id/users", [authJWT.verifyToken, authJWT.isAdmin], (req, 
  * Create new user in same organisation
  */
 
-route.post("/customers/:id/users", [authJWT.verifyToken, authJWT.isAdmin, userExist.checkDuplicateUsername, clientDBConnection.connect], function (req, res, next){
+route.post("/customers/:id/users", [authJWT.verifyToken, authJWT.isAdmin, userExist.checkDuplicateUsername, authJWT.addClientID, clientDBConnection.connect], function (req, res, next){
     (async () => {
         try{
             let organisationID = req.params.id;
@@ -179,7 +179,8 @@ route.post("/customers/:id/users", [authJWT.verifyToken, authJWT.isAdmin, userEx
                         organisation_id: organisationID
                     })
                     .then(function( user ){
-                        if(user != null) {    
+                        if(user != null) {   
+                            console.log(req.connection_db); 
                             if(typeof req.connection_db != "undefined" && req.connection_db != null ) {
                                 /** */
                                 (async () => {
@@ -195,8 +196,8 @@ route.post("/customers/:id/users", [authJWT.verifyToken, authJWT.isAdmin, userEx
                                         linkedin_url: req.body.person_linkedin_url,
                                         telephone1: req.body.telephone1,
                                         telephone: req.body.telephone,
-                                        role_id: roleID,
-                                        logo: logo
+                                        role_id: req.body.type == 0 ? 1 : 2,
+                                        logo: req.body.logo
                                     }
 
                                     const addClientUser = await dbUser.create(clientUser);
@@ -208,12 +209,12 @@ route.post("/customers/:id/users", [authJWT.verifyToken, authJWT.isAdmin, userEx
                                         let firmID = 0;
 
                                         let findFirm = await Firm.findOne({
-                                                        where: {firm_name: organisationName.name}
+                                                        where: {firm_name: organisation.name}
                                                     });
                                         if(findFirm != null && findFirm.firm_id > 0) {
                                             firmID = findFirm.firm_id;
                                         } else {
-                                            findFirm = await Firm.create({firm_name: organisationName.name});
+                                            findFirm = await Firm.create({firm_name: organisation.name});
                                             if(findFirm != null && findFirm.firm_id > 0) {
                                                 firmID = findFirm.firm_id;
                                             }
@@ -229,7 +230,7 @@ route.post("/customers/:id/users", [authJWT.verifyToken, authJWT.isAdmin, userEx
                                                 telephone1: req.body.telephone1,
                                                 telephone: req.body.telephone,
                                                 type: 0,
-                                                profile_logo: logo,
+                                                profile_logo: req.body.logo,
                                                 firm_id: firmID
                                             }
                                             const professionalUser = await Professional.create(addUserToProfessional);
