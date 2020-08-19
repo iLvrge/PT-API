@@ -661,22 +661,48 @@ let updateAllCustomerInventor = async(companyName, inventors, flag ) => {
     const list = await getCompaniesList(DBConnection);
     let entitiesList = [];
     if(list.length > 0) {
-        const representativeList = [];
-        list.map(r => representativeList.push(r.representative_id));
-        const queryRepresentativeTransactions = "SELECT rf_id FROM representativ_transactions where representative_id IN (:representative_list)";
+        const representativeNames = [];
+        list.map(r => representativeNames.push(r.original_name));
 
-        let listIDs = await connection.resources.query(queryRepresentativeTransactions,{
-            type: connection.Sequelize.QueryTypes.SELECT,
-            replacements: { representative_list: representativeList },
-            raw: true,
-            logging: console.log,
+
+
+        const findRepresentatives = await AssignorAndAssignee.findAll({
+            where:{name: representativeNames, representative_id: {[connection.Op.gt]: 0}},
+            attributes:['representative_id'],
+            include:[
+                {
+                    model: Representatives,
+                    as: "representative",
+                    attributes: ['representative_name']
+                }
+            ]
+        });
+
+        let listIDs = [];
+
+        if(findRepresentatives != null && findRepresentatives.length > 0) {
+            const representative_list = [];
+            findRepresentatives.map(r => {
+                if(findRepresentative != null && findRepresentative.representative.representative_name != null) {
+                    representative_list.push(findRepresentative.representative_id);
+                }
+            });
+
+            const queryRepresentativeTransactions = "SELECT rf_id FROM representativ_transactions where representative_id IN (:representative_list)";
+
+            listIDs = await connection.resources.query(queryRepresentativeTransactions,{
+                type: connection.Sequelize.QueryTypes.SELECT,
+                replacements: { representative_list: representativeList },
+                raw: true,
+                logging: console.log,
+                }
+            );
+
+            if(listIDs.length > 0) {
+                const rfIDs = [];
+                    listIDs.map( r => rfIDs.push(r.rf_id));
+                    entitiesList = await findAssignorAndAssigneeListFromRFIDs(rfIDs, type);
             }
-        );
-
-        if(listIDs.length > 0) {
-            const rfIDs = [];
-                istIDs.map( r => rfIDs.push(r.rf_id));
-                entitiesList = await findAssignorAndAssigneeListFromRFIDs(rfIDs, type);
         }
     }
     return entitiesList;
@@ -1264,6 +1290,7 @@ helper.findCompanyCustomersByID = findCompanyCustomersByID;
 helper.getCompaniesList = getCompaniesList;
 helper.getSubCompaniesList = getSubCompaniesList;
 helper.getAllCompaniesList = getAllCompaniesList;
+helper.findCompanyEntitiesByAccountID = findCompanyEntitiesByAccountID;
 helper.getCompaniesWithChildren = getCompaniesWithChildren;
 helper.getAssignmentDataByrfID = getAssignmentDataByrfID;
 helper.generateJSON = generateJSON;
