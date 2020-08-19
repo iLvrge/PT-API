@@ -651,6 +651,162 @@ let updateAllCustomerInventor = async(companyName, inventors, flag ) => {
 }
 
 /**
+ * 
+ * @param {
+ * } companyName 
+ * @param {*} type 
+ */
+
+ let findCompanyEntitiesByAccountID = async(orgID, type, DBConnection) => {
+    const list = await getCompaniesList(DBConnection);
+    let entitiesList = [];
+    if(list.length > 0) {
+        const representativeList = [];
+        list.map(r => representativeList.push(r.representative_id));
+        const queryRepresentativeTransactions = "SELECT rf_id FROM representativ_transactions where representative_id IN (:representative_list)";
+
+        let listIDs = await connection.resources.query(queryRepresentativeTransactions,{
+            type: connection.Sequelize.QueryTypes.SELECT,
+            replacements: { representative_list: representativeList },
+            raw: true,
+            logging: console.log,
+            }
+        );
+
+        if(listIDs.length > 0) {
+            const rfIDs = [];
+                istIDs.map( r => rfIDs.push(r.rf_id));
+                entitiesList = await findAssignorAndAssigneeListFromRFIDs(rfIDs, type);
+        }
+    }
+    return entitiesList;
+}
+
+
+let findAssignorAndAssigneeListFromRFIDs = async(rfIDs, type) => {
+    let customer_list = [], assignees = [], assignors = [];
+    
+    if(typeof type != 'undefined' &&  parseInt(type) < 3) {
+        let queryAssignor = "SELECT a.or_name as name, count(a.or_name) as counter, r.representative_name as normalize_name, (select rr.representative_name FROM representative as rr WHERE rr.representative_name = aaa.name GROUP BY rr.representative_name) as representativeCompany, (SELECT aa.instances FROM assignor_and_assignee as aa WHERE aa.assignor_and_assignee_id = a.assignor_and_assignee_id) as total_occurences FROM db_uspto.assignor as a LEFT JOIN assignor_and_assignee as aaa ON aaa.assignor_and_assignee_id = a.assignor_and_assignee_id LEFT JOIN db_uspto.representative_assignment_conveyance as rac ON rac.rf_id = a.rf_id LEFT JOIN representative as r ON r.representative_id = aaa.representative_id WHERE a.rf_id IN (:IDs) ";
+        console.log("TYPE: "+ parseInt(type));
+        if(parseInt(type) > 0) {
+            console.log("TYPE: "+ type);
+            if(parseInt(type) == 1) {
+                queryAssignor += " AND (rac.employer_assign = 1)";
+            } else {
+                queryAssignor += " AND (rac.employer_assign = 0)";
+            }
+        }
+
+        queryAssignor += " GROUP BY a.or_name";
+        assignors = await connection.resources.query(queryAssignor,{
+            type: connection.Sequelize.QueryTypes.SELECT,
+            replacements: { IDs: rfIDs },
+            raw: true,
+            logging: console.log,
+            }
+        );
+        if(parseInt(type) == 2) {
+            let queryAssignee = "SELECT a.ee_name as name, count(a.ee_name) as counter, r.representative_name as normalize_name, (select rr.representative_name FROM representative as rr WHERE rr.representative_name = aaa.name GROUP BY rr.representative_name) as representativeCompany, (SELECT aa.instances FROM assignor_and_assignee as aa WHERE aa.assignor_and_assignee_id = a.assignor_and_assignee_id) as total_occurences FROM db_uspto.assignee as a INNER JOIN assignment_conveyance as ac ON ac.rf_id = a.rf_id LEFT JOIN assignor_and_assignee as aaa ON aaa.assignor_and_assignee_id = a.assignor_and_assignee_id LEFT JOIN representative as r ON r.representative_id = aaa.representative_id WHERE a.rf_id IN (:IDs) ";
+
+            //queryAssignee +=" AND ac.employer_assign in (0,1)"; 
+        
+
+            queryAssignee += " GROUP BY a.ee_name";
+
+            console.log(queryAssignee);   
+            assignees = await connection.resources.query(queryAssignee,{
+                type: connection.Sequelize.QueryTypes.SELECT,
+                replacements: { IDs: rfIDs },
+                raw: true,
+                logging: console.log,
+                }
+            );   
+        }
+    } else if(typeof type != 'undefined' &&  parseInt(type) == 3) {
+        console.log("OLD RFIDS "+rfIDs.length);
+
+        queryDocumentID = 'SELECT rf_id FROM documentid WHERE appno_doc_num IN (SELECT appno_doc_num FROM documentid WHERE rf_id IN (:rfIDs)) GROUP BY rf_id';
+
+        documentRFIDs = await connection.resources.query(queryDocumentID,{
+            type: connection.Sequelize.QueryTypes.SELECT,
+            replacements: { rfIDs: rfIDs },
+            raw: true,
+            logging: console.log,
+            }
+        );
+
+        rfIDs = [];
+
+        documentRFIDs.map( r => rfIDs.push(r.rf_id));
+
+        console.log("NEW RFIDS "+rfIDs.length);
+
+        let queryAssignor = "SELECT a.or_name as name, count(a.or_name) as counter, r.representative_name as normalize_name, (select rr.representative_name FROM representative as rr WHERE rr.representative_name = aaa.name GROUP BY rr.representative_name) as representativeCompany, (SELECT aa.instances FROM assignor_and_assignee as aa WHERE aa.assignor_and_assignee_id = a.assignor_and_assignee_id) as total_occurences FROM assignor as a INNER JOIN assignor_and_assignee as aaa ON aaa.assignor_and_assignee_id = a.assignor_and_assignee_id INNER JOIN representative_assignment_conveyance as rac ON rac.rf_id = a.rf_id LEFT JOIN representative as r ON r.representative_id = aaa.representative_id WHERE a.rf_id IN (:IDs) AND rac.employer_assign = 0";
+
+        queryAssignor += " GROUP BY a.or_name";
+        assignors = await connection.resources.query(queryAssignor,{
+            type: connection.Sequelize.QueryTypes.SELECT,
+            replacements: { IDs: rfIDs },
+            raw: true,
+            logging: console.log,
+            }
+        );
+
+        let queryAssignee = "SELECT a.ee_name as name, count(a.ee_name) as counter, r.representative_name as normalize_name, (select rr.representative_name FROM representative as rr WHERE rr.representative_name = aaa.name GROUP BY rr.representative_name) as representativeCompany, (SELECT aa.instances FROM assignor_and_assignee as aa WHERE aa.assignor_and_assignee_id = a.assignor_and_assignee_id) as total_occurences FROM assignee as a INNER JOIN representative_assignment_conveyance as ac ON ac.rf_id = a.rf_id INNER JOIN assignor_and_assignee as aaa ON aaa.assignor_and_assignee_id = a.assignor_and_assignee_id LEFT JOIN representative as r ON r.representative_id = aaa.representative_id WHERE a.rf_id IN (:IDs) AND rac.employer_assign = 0 ";
+
+        queryAssignee += " GROUP BY a.ee_name";
+        console.log(queryAssignee);   
+        assignees = await connection.resources.query(queryAssignee,{
+            type: connection.Sequelize.QueryTypes.SELECT,
+            replacements: { IDs: rfIDs },
+            raw: true,
+            logging: console.log,
+            }
+        ); 
+    }             
+    console.log(assignees.length);
+    console.log(assignors.length);
+    customer_list = [...assignees, ...assignors];  
+
+    let list = [];
+    console.log(customer_list.length);
+    if(customer_list.length > 0) {
+        let names = [];
+        customer_list.forEach( async name => {
+            let n = name.normalize_name;
+            if(n == "" || n == null || n != undefined){
+                n = name.name;
+            }
+            n = n.trim().toLowerCase();
+            if(!names.includes(n)){
+                await names.push(n);
+            }
+        })
+
+        for(let i = 0; i < names.length; i++) {
+            let nam = names[i];
+            let getList = await customer_list.filter(n => {
+                /*let name = n.normalize_name;
+                if(name == "" || name == null || name == undefined) {
+                    name = n.name;
+                }*/
+                let name = n.name;
+                name = name.trim().toLowerCase();
+                return (name == nam.trim().toLowerCase())? n : undefined;
+            })/*(n.normalize_name.toLowerCase() == nam || n.name.trim().toLowerCase() == nam )? n : undefined);*/
+            if(getList != undefined && getList.length > 0){
+                let getCounter = await getList.reduce((a, b) => +a + +b.counter, 0);
+                let getOccurences = await getList.reduce((a, b) => +a + +b.total_occurences, 0);
+                await list.push({id: uuidv4(), name: getList[0].name, normalize_name: getList[0].normalize_name, counter: getCounter, total_occurences: getOccurences, representative_company: getList[0].representativeCompany});
+            }
+        }
+    }
+    console.log(list.length);
+    return list;
+}
+
+/**
  * Find Customer Parties
  * Input Company name
  * Find representative of the company name and then find assignors and assignees of the representative
@@ -671,6 +827,10 @@ let findCompanyCustomersByName = async(companyName, type) => {
             }
         ]
     })*/
+
+
+
+
 
     let representativeName = "";
 
@@ -756,157 +916,12 @@ let findCompanyCustomersByName = async(companyName, type) => {
 
             let rfIDs = [];
             rfIDsList.map( r => rfIDs.push(r.rf_id));
-            /*
-            let queryDocumentID = 'SELECT rf_id FROM documentid WHERE appno_doc_num <> "" AND  rf_id IN (:rfIDs) GROUP BY rf_id';
-
-            documentRFIDs = await connection.resources.query(queryDocumentID,{
-                type: connection.Sequelize.QueryTypes.SELECT,
-                replacements: { rfIDs: rfIDs },
-                raw: true,
-                logging: console.log,
-                }
-            );
-
-            rfIDs = [];
-
-            documentRFIDs.map( r => rfIDs.push(r.rf_id));*/
-
-            if(typeof type != 'undefined' &&  parseInt(type) < 3) {
-
-                let queryAssignor = "SELECT a.or_name as name, count(a.or_name) as counter, r.representative_name as normalize_name, (select rr.representative_name FROM representative as rr WHERE rr.representative_name = aaa.name GROUP BY rr.representative_name) as representativeCompany, (SELECT aa.instances FROM assignor_and_assignee as aa WHERE aa.assignor_and_assignee_id = a.assignor_and_assignee_id) as total_occurences FROM db_uspto.assignor as a LEFT JOIN assignor_and_assignee as aaa ON aaa.assignor_and_assignee_id = a.assignor_and_assignee_id LEFT JOIN db_uspto.representative_assignment_conveyance as rac ON rac.rf_id = a.rf_id LEFT JOIN representative as r ON r.representative_id = aaa.representative_id WHERE a.rf_id IN (:IDs) ";
-                console.log("TYPE: "+ parseInt(type));
-                if(parseInt(type) > 0) {
-                    console.log("TYPE: "+ type);
-                    if(parseInt(type) == 1) {
-                        queryAssignor += " AND (rac.employer_assign = 1)";
-                    } else {
-                        queryAssignor += " AND (rac.employer_assign = 0)";
-                    }
-                }
-
-                queryAssignor += " GROUP BY a.or_name";
-                assignors = await connection.resources.query(queryAssignor,{
-                    type: connection.Sequelize.QueryTypes.SELECT,
-                    replacements: { IDs: rfIDs },
-                    raw: true,
-                    logging: console.log,
-                    }
-                );
-                if(parseInt(type) == 2) {
-                    let queryAssignee = "SELECT a.ee_name as name, count(a.ee_name) as counter, r.representative_name as normalize_name, (select rr.representative_name FROM representative as rr WHERE rr.representative_name = aaa.name GROUP BY rr.representative_name) as representativeCompany, (SELECT aa.instances FROM assignor_and_assignee as aa WHERE aa.assignor_and_assignee_id = a.assignor_and_assignee_id) as total_occurences FROM db_uspto.assignee as a INNER JOIN assignment_conveyance as ac ON ac.rf_id = a.rf_id LEFT JOIN assignor_and_assignee as aaa ON aaa.assignor_and_assignee_id = a.assignor_and_assignee_id LEFT JOIN representative as r ON r.representative_id = aaa.representative_id WHERE a.rf_id IN (:IDs) ";
-
-                    //queryAssignee +=" AND ac.employer_assign in (0,1)"; 
-                
-
-                    queryAssignee += " GROUP BY a.ee_name";
-
-                    console.log(queryAssignee);   
-                    assignees = await connection.resources.query(queryAssignee,{
-                        type: connection.Sequelize.QueryTypes.SELECT,
-                        replacements: { IDs: rfIDs },
-                        raw: true,
-                        logging: console.log,
-                        }
-                    );   
-                }
-            } else if(typeof type != 'undefined' &&  parseInt(type) == 3) {
-                console.log("OLD RFIDS "+rfIDs.length);
-
-                queryDocumentID = 'SELECT rf_id FROM documentid WHERE appno_doc_num IN (SELECT appno_doc_num FROM documentid WHERE rf_id IN (:rfIDs)) GROUP BY rf_id';
-
-                documentRFIDs = await connection.resources.query(queryDocumentID,{
-                    type: connection.Sequelize.QueryTypes.SELECT,
-                    replacements: { rfIDs: rfIDs },
-                    raw: true,
-                    logging: console.log,
-                    }
-                );
-    
-                rfIDs = [];
-    
-                documentRFIDs.map( r => rfIDs.push(r.rf_id));
-
-                console.log("NEW RFIDS "+rfIDs.length);
-
-                let queryAssignor = "SELECT a.or_name as name, count(a.or_name) as counter, r.representative_name as normalize_name, (select rr.representative_name FROM representative as rr WHERE rr.representative_name = aaa.name GROUP BY rr.representative_name) as representativeCompany, (SELECT aa.instances FROM assignor_and_assignee as aa WHERE aa.assignor_and_assignee_id = a.assignor_and_assignee_id) as total_occurences FROM assignor as a INNER JOIN assignor_and_assignee as aaa ON aaa.assignor_and_assignee_id = a.assignor_and_assignee_id INNER JOIN representative_assignment_conveyance as rac ON rac.rf_id = a.rf_id LEFT JOIN representative as r ON r.representative_id = aaa.representative_id WHERE a.rf_id IN (:IDs)";
-
-                queryAssignor += " GROUP BY a.or_name";
-                assignors = await connection.resources.query(queryAssignor,{
-                    type: connection.Sequelize.QueryTypes.SELECT,
-                    replacements: { IDs: rfIDs },
-                    raw: true,
-                    logging: console.log,
-                    }
-                );
-
-                let queryAssignee = "SELECT a.ee_name as name, count(a.ee_name) as counter, r.representative_name as normalize_name, (select rr.representative_name FROM representative as rr WHERE rr.representative_name = aaa.name GROUP BY rr.representative_name) as representativeCompany, (SELECT aa.instances FROM assignor_and_assignee as aa WHERE aa.assignor_and_assignee_id = a.assignor_and_assignee_id) as total_occurences FROM assignee as a INNER JOIN representative_assignment_conveyance as ac ON ac.rf_id = a.rf_id INNER JOIN assignor_and_assignee as aaa ON aaa.assignor_and_assignee_id = a.assignor_and_assignee_id LEFT JOIN representative as r ON r.representative_id = aaa.representative_id WHERE a.rf_id IN (:IDs) ";
-
-                queryAssignee += " GROUP BY a.ee_name";
-                console.log(queryAssignee);   
-                assignees = await connection.resources.query(queryAssignee,{
-                    type: connection.Sequelize.QueryTypes.SELECT,
-                    replacements: { IDs: rfIDs },
-                    raw: true,
-                    logging: console.log,
-                    }
-                ); 
-
-                let queryAssignorinvntor = "SELECT a.or_name as name, count(a.or_name) as counter, r.representative_name as normalize_name, (select rr.representative_name FROM representative as rr WHERE rr.representative_name = aaa.name GROUP BY rr.representative_name) as representativeCompany, (SELECT aa.instances FROM assignor_and_assignee as aa WHERE aa.assignor_and_assignee_id = a.assignor_and_assignee_id) as total_occurences FROM assignor as a INNER JOIN assignor_and_assignee as aaa ON aaa.assignor_and_assignee_id = a.assignor_and_assignee_id INNER JOIN representative_assignment_conveyance as rac ON rac.rf_id = a.rf_id LEFT JOIN representative as r ON r.representative_id = aaa.representative_id WHERE a.rf_id IN (:IDs) AND rac.employer_assign = 1";
-
-                queryAssignorinvntor += " GROUP BY a.or_name";
-                assignors = await connection.resources.query(queryAssignor,{
-                    type: connection.Sequelize.QueryTypes.SELECT,
-                    replacements: { IDs: rfIDs },
-                    raw: true,
-                    logging: console.log,
-                    }
-                );
-
-            }             
-            console.log(assignees.length);
-            console.log(assignors.length);
-            customer_list = [...assignees, ...assignors];    
+            customer_list = await findAssignorAndAssigneeListFromRFIDs(rfIDs, type);               
         }
     } else {
         console.log("No representative company....");
-    }
-
-    
-    let list = [];
-    console.log(customer_list.length);
-    if(customer_list.length > 0) {
-        let names = [];
-        customer_list.forEach( async name => {
-            let n = name.normalize_name;
-            if(n == "" || n == null || n != undefined){
-                n = name.name;
-            }
-            n = n.trim().toLowerCase();
-            if(!names.includes(n)){
-                await names.push(n);
-            }
-        })
-
-        for(let i = 0; i < names.length; i++) {
-            let nam = names[i];
-            let getList = await customer_list.filter(n => {
-                /*let name = n.normalize_name;
-                if(name == "" || name == null || name == undefined) {
-                    name = n.name;
-                }*/
-                let name = n.name;
-                name = name.trim().toLowerCase();
-                return (name == nam.trim().toLowerCase())? n : undefined;
-            })/*(n.normalize_name.toLowerCase() == nam || n.name.trim().toLowerCase() == nam )? n : undefined);*/
-            if(getList != undefined && getList.length > 0){
-                let getCounter = await getList.reduce((a, b) => +a + +b.counter, 0);
-                let getOccurences = await getList.reduce((a, b) => +a + +b.total_occurences, 0);
-                await list.push({id: uuidv4(), name: getList[0].name, normalize_name: getList[0].normalize_name, counter: getCounter, total_occurences: getOccurences, representative_company: getList[0].representativeCompany});
-            }
-        }
-    }
-    console.log(list.length);
-    return list;
+    }  
+    return customer_list;
 }
 
 let findCompanyCustomersByID = async(ID) => {

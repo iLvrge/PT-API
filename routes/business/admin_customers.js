@@ -88,19 +88,24 @@ route.get("/customers/:id", [authJWT.verifyToken, authJWT.isAdmin], (req, res, n
 });
 
 /**
- * Get Customer assignor and assignees
+ * Get List from assignor and assignees
+ * 
  */
-route.get("/customers/customers/:company_name/:type", [authJWT.verifyToken, authJWT.isAdmin], (req, res, next) => {
-    (async () => {
-        try{            
-            const companyName = req.params.company_name, type = req.params.type;
-            let list = await helpers.findCompanyCustomersByName(companyName, type);
-            res.status(200).json(list);
-        } catch (e){
-            console.log(e);
-            res.status(402).send("No customers found");
+route.get("/customers/customers/:id/:type", [authJWT.verifyToken, authJWT.isAdmin, authJWT.addClientID, clientDBConnection.connect], async (req, res, next) => {
+    try{            
+        /*const companyName = req.params.company_name, type = req.params.type;*/
+        const organisationID = req.params.id, type = req.params.type;
+
+        let list = [];
+
+        if(typeof req.connection_db != "undefined" && req.connection_db != null ) {
+            list = await helpers.findCompanyEntitiesByAccountID(organisationID, type, req.connection_db);
         }
-    })();
+        res.status(200).json(list);
+    } catch (e){
+        console.log(e);
+        res.status(402).send("No customers found");
+    }
 });
 
 /**
@@ -520,45 +525,51 @@ route.get("/customers/:organisation_id/create_tree", [authJWT.verifyToken, authJ
  */
 
 /**
- * Create new Customer
+ * Create new Customer 
+ * Create Account in Business Database and create database for the customer
  */
 
-route.post("/customers", [authJWT.verifyToken, authJWT.isAdmin], (req, res, next) => {
-    (async () => {
-        try{
-            let companyName = req.body.company_name;
+route.post("/customers", [authJWT.verifyToken, authJWT.isAdmin], async (req, res, next) => {   
+    try{
+        let companyName = req.body.company_name;
+        if(companyName != undefined && companyName.length > 0) {
+            /**
+             * Check customer already exist!
+             */
+            let org = await Organisations.findOne({
+                where: {name: companyName}
+            })
 
-            if(companyName != undefined && companyName.length > 0) {
-
-                let org = await Organisations.findOne({
-                    where: {name: companyName}
+            if(org == null) {
+                /**
+                 * Create account
+                 */
+                org =  await Organisations.create({
+                    name: req.body.company_name,
+                    country_id:1,
                 })
-
-                if(org == null) {
-                    org =  await Organisations.create({
-                        name: req.body.company_name,
-                        country_id:1,
-                    })
-                }
-                if(org != null && org.organisation_id > 0){
-                    let organisationID = org.organisation_id;
-                    console.log(`php -f /var/www/html/trash/script_create_customer_db.php "${organisationID}"`);
-                    await exec(`php -f /var/www/html/trash/script_create_customer_db.php "${organisationID}"`, async (error, std, stderr) => {
-                        console.log("script_create_customer_db");
-                        console.log(error);
-                        console.log(stderr);
-                        console.log(std);
-                        res.status(200).json(org);   
-                    });                                            
-                } else {
-                    res.status(500).send("Internal server error");
-                }
             }
-        } catch (e) {
-            console.log(e);
-            res.status(402).send("Not able to create new customer ");
-        }         
-    })();     
+            if(org != null && org.organisation_id > 0){
+                let organisationID = org.organisation_id;
+                /**
+                 * Run script for creating database
+                 */
+                console.log(`php -f /var/www/html/trash/script_create_customer_db.php "${organisationID}"`);
+                await exec(`php -f /var/www/html/trash/script_create_customer_db.php "${organisationID}"`, async (error, std, stderr) => {
+                    console.log("script_create_customer_db");
+                    console.log(error);
+                    console.log(stderr);
+                    console.log(std);
+                    res.status(200).json(org);   
+                });                                            
+            } else {
+                res.status(500).send("Internal server error");
+            }
+        }
+    } catch (e) {
+        console.log(e);
+        res.status(402).send("Not able to create new customer ");
+    }    
 });
 
 route.get("/customers/:id/patents", [authJWT.verifyToken, authJWT.isAdmin], async (req, res, next) => {

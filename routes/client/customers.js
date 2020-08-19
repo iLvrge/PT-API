@@ -155,7 +155,7 @@ route.get("/:type", [authJWT.verifyToken, clientDBConnection.connect], async(req
                             case 'courtOrders':
                                 searchData.tabId = 7; 
                                 break;
-                            case 'employees':
+                            case 'employee':
                                 searchData.tabId = 8; 
                                 break;
                             case 'other':

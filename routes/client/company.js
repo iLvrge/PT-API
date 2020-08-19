@@ -89,8 +89,9 @@ route.post("/", [authJWT.verifyToken, clientDBConnection.connect], async(req, re
                         if(getList.length > 0) {                
                             getList.forEach(async company => {
                                 if(!listedCompanies.includes(company.name)){
+                                    let nameRepre = company.representative_name != null ? company.representative_name : company.name;
                                     await companies.push({
-                                        original_name: company.name , representative_name: company.representative_name, instances: company.instances, parent_id: findName.representative_id
+                                        original_name: company.name , representative_name: nameRepre, instances: company.instances, parent_id: findName.representative_id
                                     });
                                 } else {
                                     tap = true;
@@ -102,27 +103,33 @@ route.post("/", [authJWT.verifyToken, clientDBConnection.connect], async(req, re
                             const addCompanies = await Representative.bulkCreate(companies);
                             console.log(addCompanies);
                             if(addCompanies) {
-                                console.log(`php -f /var/www/html/trash/tree_script_client.php "${findName.representative_name}"`);
-                                await exec(`php -f /var/www/html/trash/tree_script_client.php "${findName.representative_name}"`, async (error, stdout, stderr) => {
+                                console.log(`php -f /var/www/html/trash/add_representative_rfids.php "${req.orgId}" "${findName.representative_name}"`);
+                                await exec(`php -f /var/www/html/trash/add_representative_rfids.php "${req.orgId}" "${findName.representative_name}"`, async (error, stdout, stderr) => {
                                     console.log(error);
                                     console.log(stdout);
                                     console.log(stderr);
-                                    console.log(`php -f /var/www/html/trash/fix_inventor_timeline_tree_transaction_assests_updates.php  "${req.orgId}" "${findName.representative_id}"`);
-                                    await exec(`php -f /var/www/html/trash/fix_inventor_timeline_tree_transaction_assests_updates.php  "${req.orgId}" "${findName.representative_id}"`, async (error, stdd, stderr)=> {    
+                                    console.log(`php -f /var/www/html/trash/tree_script_client.php "${findName.representative_name}"`);
+                                    await exec(`php -f /var/www/html/trash/tree_script_client.php "${findName.representative_name}"`, async (error, stdout, stderr) => {
                                         console.log(error);
-                                        console.log(stdd);
-                                        console.log(stderr);                                        
-                                        console.log("DONE>>>>>>>>>>>");
-                                        console.log(`php -f /var/www/html/trash/download_all_pdf.php "${findName.representative_name}"`);
-                                        exec(`php -f /var/www/html/trash/download_all_pdf.php "${findName.representative_name}"`, (error, stdd, stderr)=> {
-                                            console.log("donwload_all_pdf....")
-                                            console.log(error); 
-                                            console.log(stderr);
+                                        console.log(stdout);
+                                        console.log(stderr);
+                                        console.log(`php -f /var/www/html/trash/fix_inventor_timeline_tree_transaction_assests_updates.php  "${req.orgId}" "${findName.representative_id}"`);
+                                        await exec(`php -f /var/www/html/trash/fix_inventor_timeline_tree_transaction_assests_updates.php  "${req.orgId}" "${findName.representative_id}"`, async (error, stdd, stderr)=> {    
+                                            console.log(error);
                                             console.log(stdd);
-                                            console.log("DONE");
+                                            console.log(stderr);                                        
+                                            console.log("DONE>>>>>>>>>>>");
+                                            console.log(`php -f /var/www/html/trash/download_all_pdf.php "${findName.representative_name}"`);
+                                            exec(`php -f /var/www/html/trash/download_all_pdf.php "${findName.representative_name}"`, (error, stdd, stderr)=> {
+                                                console.log("donwload_all_pdf....")
+                                                console.log(error); 
+                                                console.log(stderr);
+                                                console.log(stdd);
+                                                console.log("DONE");
+                                            });
                                         });
                                     });
-                                })
+                                });
                                 res.status(200).json(companies);
                             } else {
                                 res.status(500).send("Internal server error");
@@ -144,14 +151,19 @@ route.post("/", [authJWT.verifyToken, clientDBConnection.connect], async(req, re
                     const Representative = req.connection_db.define('Representatives', Representatives.mainStructure, Representatives.options);
                     if(getList.length > 0) {                
                         getList.forEach( company => {
+                            let representativeName = "";
                             if(company.name != null) {
                                 originalNames.push(company.name);
                             } 
                             if(company.representative_name != null) {
                                 representativeNames.push(company.representative_name);
-                            } 
+                                representativeName = company.representative_name;
+                            } else {
+                                representativeName = company.name;
+                            }
+                            
                             companies.push({
-                                instances: company.instances, representative_id: company.representative_id, original_name: company.name, representative_name: company.representative_name
+                                instances: company.instances, representative_id: company.representative_id, original_name: company.name, representative_name: representativeName
                             });
                         });
                     }
@@ -170,8 +182,10 @@ route.post("/", [authJWT.verifyToken, clientDBConnection.connect], async(req, re
                             for(let i = 0; i < companies.length; i++) {
                                 
                                 /** Add in Client Representative */
+                                let representativeName = companies[i].representative_name != null ? companies[i].representative_name : companies[i].original_name;
+
                                 const addParent = await Representative.create({
-                                    original_name: companies[i].original_name, representative_name: companies[i].representative_name, instances: companies[i].instances
+                                    original_name: companies[i].original_name, representative_name: representativeName, instances: companies[i].instances
                                 });
                                 
                                 if(addParent != null && addParent.representative_id > 0){
@@ -203,7 +217,8 @@ route.post("/", [authJWT.verifyToken, clientDBConnection.connect], async(req, re
                                     if(list.length > 0) {
                                         const childCompanies = [];
                                         list.forEach( company => {
-                                            childCompanies.push({original_name: company.name, representative_name: company.representative_name, instances: company.instances, parent_id: addParent.representative_id});
+                                            let nameRepre = company.representative_name != null ? company.representative_name : company.name;
+                                            childCompanies.push({original_name: company.name, representative_name: nameRepre, instances: company.instances, parent_id: addParent.representative_id});
                                         });
                                         if(childCompanies.length > 0) {
                                             const addChildCompanies = await Representative.bulkCreate(childCompanies);
@@ -218,27 +233,33 @@ route.post("/", [authJWT.verifyToken, clientDBConnection.connect], async(req, re
                             if(addRecord > 0) {
                                 if(mainCompanies.length > 0){
                                     mainCompanies.map(async (company, index) => {
-                                        console.log(`php -f /var/www/html/trash/tree_script_client.php "${company}"`);
-                                        await exec(`php -f /var/www/html/trash/tree_script_client.php "${company}"`, async (error, stdout, stderr) => {
+                                        console.log(`php -f /var/www/html/trash/add_representative_rfids.php "${req.orgId}" "${company}"`);
+                                        await exec(`php -f /var/www/html/trash/add_representative_rfids.php "${req.orgId}" "${company}"`, async (error, stdout, stderr) => {
                                             console.log(error);
                                             console.log(stdout);
                                             console.log(stderr);
-                                            console.log(`php -f /var/www/html/trash/fix_inventor_timeline_tree_transaction_assests_updates.php "${req.orgId}" "${parentCompaniesID[index]}"`);
-                                            await exec(`php -f /var/www/html/trash/fix_inventor_timeline_tree_transaction_assests_updates.php "${req.orgId}" "${parentCompaniesID[index]}"`, async (error, std, stderr) => {
+                                            console.log(`php -f /var/www/html/trash/tree_script_client.php "${company}"`);
+                                            await exec(`php -f /var/www/html/trash/tree_script_client.php "${company}"`, async (error, stdout, stderr) => {
                                                 console.log(error);
-                                                console.log(std);
+                                                console.log(stdout);
                                                 console.log(stderr);
-                                                console.log("DONE>>>>>>>>>>>");
-                                                console.log(`php -f /var/www/html/trash/download_all_pdf.php "${company}"`);
-                                                exec(`php -f /var/www/html/trash/download_all_pdf.php "${company}"`, (error, stdout, stderr)=> {
-                                                    console.log("donwload_all_pdf....")
+                                                console.log(`php -f /var/www/html/trash/fix_inventor_timeline_tree_transaction_assests_updates.php "${req.orgId}" "${parentCompaniesID[index]}"`);
+                                                await exec(`php -f /var/www/html/trash/fix_inventor_timeline_tree_transaction_assests_updates.php "${req.orgId}" "${parentCompaniesID[index]}"`, async (error, std, stderr) => {
                                                     console.log(error);
+                                                    console.log(std);
                                                     console.log(stderr);
-                                                    console.log(stdout);
-                                                    console.log("DONE");
+                                                    console.log("DONE>>>>>>>>>>>");
+                                                    console.log(`php -f /var/www/html/trash/download_all_pdf.php "${company}"`);
+                                                    exec(`php -f /var/www/html/trash/download_all_pdf.php "${company}"`, (error, stdout, stderr)=> {
+                                                        console.log("donwload_all_pdf....")
+                                                        console.log(error);
+                                                        console.log(stderr);
+                                                        console.log(stdout);
+                                                        console.log("DONE");
+                                                    });
                                                 });
-                                            });
-                                        })
+                                            })
+                                        });
                                     });
                                 }
                                 res.status(200).send("Companies added");
