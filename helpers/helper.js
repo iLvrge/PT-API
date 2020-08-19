@@ -681,14 +681,14 @@ let updateAllCustomerInventor = async(companyName, inventors, flag ) => {
         let listIDs = [];
 
         if(findRepresentatives != null && findRepresentatives.length > 0) {
-            const representative_list = [];
+            const representativeList = [];
             findRepresentatives.map(r => {
-                if(findRepresentative != null && findRepresentative.representative.representative_name != null) {
-                    representative_list.push(findRepresentative.representative_id);
+                if(r  != null && r.representative.representative_name != null) {
+                    representativeList.push(r.representative_id);
                 }
             });
 
-            const queryRepresentativeTransactions = "SELECT rf_id FROM representativ_transactions where representative_id IN (:representative_list)";
+            const queryRepresentativeTransactions = "SELECT rf_id FROM representative_transactions where representative_id IN (:representative_list)";
 
             listIDs = await connection.resources.query(queryRepresentativeTransactions,{
                 type: connection.Sequelize.QueryTypes.SELECT,
@@ -779,7 +779,7 @@ let findAssignorAndAssigneeListFromRFIDs = async(rfIDs, type) => {
             }
         );
 
-        let queryAssignee = "SELECT a.ee_name as name, count(a.ee_name) as counter, r.representative_name as normalize_name, (select rr.representative_name FROM representative as rr WHERE rr.representative_name = aaa.name GROUP BY rr.representative_name) as representativeCompany, (SELECT aa.instances FROM assignor_and_assignee as aa WHERE aa.assignor_and_assignee_id = a.assignor_and_assignee_id) as total_occurences FROM assignee as a INNER JOIN representative_assignment_conveyance as ac ON ac.rf_id = a.rf_id INNER JOIN assignor_and_assignee as aaa ON aaa.assignor_and_assignee_id = a.assignor_and_assignee_id LEFT JOIN representative as r ON r.representative_id = aaa.representative_id WHERE a.rf_id IN (:IDs) AND rac.employer_assign = 0 ";
+        let queryAssignee = "SELECT a.ee_name as name, count(a.ee_name) as counter, r.representative_name as normalize_name, (select rr.representative_name FROM representative as rr WHERE rr.representative_name = aaa.name GROUP BY rr.representative_name) as representativeCompany, (SELECT aa.instances FROM assignor_and_assignee as aa WHERE aa.assignor_and_assignee_id = a.assignor_and_assignee_id) as total_occurences FROM assignee as a INNER JOIN representative_assignment_conveyance as ac ON ac.rf_id = a.rf_id INNER JOIN assignor_and_assignee as aaa ON aaa.assignor_and_assignee_id = a.assignor_and_assignee_id LEFT JOIN representative as r ON r.representative_id = aaa.representative_id WHERE a.rf_id IN (:IDs) AND ac.employer_assign = 0 ";
 
         queryAssignee += " GROUP BY a.ee_name";
         console.log(queryAssignee);   
