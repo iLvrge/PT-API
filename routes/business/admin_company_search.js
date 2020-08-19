@@ -101,6 +101,27 @@ route.put("/company/search/all/", [authJWT.verifyToken, authJWT.isAdmin], (req, 
 
                 let  representativeCompany = await helpers.checkRepresentativeCompany(normalize_name);
 
+                /**
+                 * Check normalize company is normalize with  another company
+                 * 
+                 */
+                let findNormalizedCompany  = await AssignorAndAssignee.findOne({
+                    where:{name: normalize_name}
+                });
+
+                if(findNormalizedCompany != null && findNormalizedCompany.representative_name > 0) {
+                    const representativeCompany  = await Representatives.findOne({
+                        where:{representative_id: findNormalizedCompany.representative_id}
+                    });
+
+                    if(findNormalizedCompanyData != null && findNormalizedCompanyData.representative_id > 0){
+                        await Representatives.update({
+                            representative_name: normalize_name
+                        }, {where: {representative_id: findNormalizedCompanyData.representative_id} });
+                    }
+                    representativeCompany = await helpers.checkRepresentativeCompany(normalize_name);
+                }
+
                 
                 if(representativeCompany == null) {
                     /**
@@ -123,6 +144,8 @@ route.put("/company/search/all/", [authJWT.verifyToken, authJWT.isAdmin], (req, 
                         });
                     }                    
                 }
+
+                
 
                 if(representativeCompany != null && representativeCompany.representative_id > 0) {                    
                    /**
