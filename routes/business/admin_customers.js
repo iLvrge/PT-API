@@ -733,12 +733,16 @@ route.get("/customers/:organisation_id/publish", [authJWT.verifyToken, authJWT.i
     } 
 });
 
-route.put("/customers/:organisation_name/flag_update_manually", [authJWT.verifyToken, authJWT.isAdmin], async(req, res, next) => {
-    let inventors = req.body.inventors, organisationName = req.params.organisation_name, flag = req.body.flag;
+route.put("/customers/:id/flag_update_manually", [authJWT.verifyToken, authJWT.isAdmin, authJWT.addClientID, clientDBConnection.connect], async(req, res, next) => {
+    let inventors = req.body.inventors, organisationID = req.params.id, flag = req.body.flag;
 
     if(inventors != undefined && inventors.length > 0) {
-        let update = await helpers.updateAllCustomerInventor(organisationName, inventors, flag);
-        res.status(200).json(update);
+        if(typeof req.connection_db != "undefined" && req.connection_db != null ) {
+            let update = await helpers.updateAllCustomerInventor(organisationID, inventors, flag, req.connection_db);
+            res.status(200).json(update);
+        } else {
+            res.status(400).send("No companies found ");
+        }
     } else {
         res.status(400).send("No list found! ");
     }
