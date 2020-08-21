@@ -33,6 +33,7 @@ route.get("/collections/:rf_id/illustration", [authJWT.verifyToken], async (req,
         ];
         if(itemDetails !== undefined && itemDetails.assignor.length > 0) {
             title = itemDetails.assignment.convey_text;
+            let oldAssigneeList = [];
             itemDetails.assignor.forEach( (assignor, index) => {
                 let boxName = assignor.normalize_name;
                 let assignorID = uuidv4();
@@ -106,8 +107,7 @@ route.get("/collections/:rf_id/illustration", [authJWT.verifyToken], async (req,
                 }
 
                 itemDetails.assignee.forEach( assignee => {
-                    let assigneeID = uuidv4();
-                    if( index === 0) {
+                    let assigneeID = "";
                         boxName = assignee.normalize_name;
 
 
@@ -117,27 +117,44 @@ route.get("/collections/:rf_id/illustration", [authJWT.verifyToken], async (req,
 
                         
 
-                        boxObj = {
-                            id: assigneeID,
-                            name: boxName,
-                            execution_date: execDate,
-                            recorded_date: moment(new Date(itemDetails.assignment.record_dt)).format('MMM DD, YYYY'),
-                            document: "https://patentrack.com/resources/shared/data/assignment-pat-" + itemDetails.assignment.reel_no + "-" + itemDetails.assignment.frame_no +".pdf",
-                        }
+                        if(oldAssigneeList.length > 0) {
+                            const findID = oldAssigneeList.filter(c => {
+                                
+                                if(c.name == boxName){
+                                    return true;
+                                }
+                            }).map(d => {return d.id});
+                            console.log(findID);
+                            if(findID.length > 0) {
+                                assigneeID = findID[0];
+                            }
+                        } 
+                        if(assigneeID == "") {
+                           
+                            assigneeID = uuidv4();
+                            oldAssigneeList.push({id:assigneeID, name: boxName});
 
-                        inventorDetails = box.filter( x => x.type === checkType ? x : '');
-                        if(inventorDetails !== ''){
-                            boxObj.type = type;
-                            boxObj.boxType = inventorDetails[0].id;
-                            boxObj.shape = inventorDetails[0].shape;
-                            boxObj.dimension = inventorDetails[0].dimension;
-                            boxObj.border_color = inventorDetails[0].border_color;
-                            boxObj.border_linepx = inventorDetails[0].border_px;
-                            boxObj.background_color = inventorDetails[0].background_color;
-                            boxObj.segment = segment.toString();
+                            boxObj = {
+                                id: assigneeID,
+                                name: boxName,
+                                execution_date: execDate,
+                                recorded_date: moment(new Date(itemDetails.assignment.record_dt)).format('MMM DD, YYYY'),
+                                document: "https://patentrack.com/resources/shared/data/assignment-pat-" + itemDetails.assignment.reel_no + "-" + itemDetails.assignment.frame_no +".pdf",
+                            }
+    
+                            inventorDetails = box.filter( x => x.type === checkType ? x : '');
+                            if(inventorDetails !== ''){
+                                boxObj.type = type;
+                                boxObj.boxType = inventorDetails[0].id;
+                                boxObj.shape = inventorDetails[0].shape;
+                                boxObj.dimension = inventorDetails[0].dimension;
+                                boxObj.border_color = inventorDetails[0].border_color;
+                                boxObj.border_linepx = inventorDetails[0].border_px;
+                                boxObj.background_color = inventorDetails[0].background_color;
+                                boxObj.segment = segment.toString();
+                            }
+                            boxes.push(boxObj);
                         }
-                        boxes.push(boxObj);
-                    }
                     //boxes[boxes.length] = boxObj
 
                     let connectionLine = line.filter( x => x.name === type ? x : []);
