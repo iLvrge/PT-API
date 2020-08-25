@@ -146,20 +146,23 @@ route.get("/:type", [authJWT.verifyToken, clientDBConnection.connect], async(req
                             case 'securities':
                                 searchData.tabId = 4; 
                                 break;
-                            case 'mergers':
+                            case 'mergerin':
                                 searchData.tabId = 5; 
                                 break;
-                            case 'options':
+                            case 'mergerout':
                                 searchData.tabId = 6; 
                                 break;
-                            case 'courtOrders':
+                            case 'options':
                                 searchData.tabId = 7; 
                                 break;
-                            case 'employees':
+                            case 'courtOrders':
                                 searchData.tabId = 8; 
                                 break;
-                            case 'other':
+                            case 'employees':
                                 searchData.tabId = 9; 
+                                break;
+                            case 'other':
+                                searchData.tabId = 10; 
                                 break;
                         }
 
