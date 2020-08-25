@@ -253,7 +253,7 @@ route.get("/errors/:type/:companyName", [authJWT.verifyToken, clientDBConnection
         }
     } else if(type == 'list') {        
         if(typeof req.connection_db != "undefined" && req.connection_db != null ) {
-
+            let getErrorList = [], invent = [], assign = [], corr = [], address = [], security = [];
             if(companyName != 'undefined' && companyName != 0) {
 
                 const queryFindParent = "SELECT representative_id FROM representative WHERE (original_name = :name OR representative_name = :name) AND parent_id = 0";
@@ -266,9 +266,8 @@ route.get("/errors/:type/:companyName", [authJWT.verifyToken, clientDBConnection
                     logging: console.log,
                     }
                 ); 
-                let getErrorList = [];
-                if(findParent != null && findParent.representative_id > 0) {
-                   
+                
+                if(findParent != null && findParent.representative_id > 0) {                   
                     const queryError = "SELECT appno_doc_num FROM error as e WHERE e.organisation_id = :organisationID AND e.representative_id = :representative_id GROUP BY e.appno_doc_num";
                     const getErrors= await connection.application.query(queryError,{
                         type: connection.Sequelize.QueryTypes.SELECT,
@@ -276,7 +275,7 @@ route.get("/errors/:type/:companyName", [authJWT.verifyToken, clientDBConnection
                         replacements: { organisationID: req.orgId, representative_id: findParent.representative_id },
                         logging: console.log,
                     });  
-
+                    
                     if(getErrors != null && getErrors.length > 0) {
                         const getList = [];
                         getErrors.map(e => getList.push(e.appno_doc_num));
@@ -290,11 +289,8 @@ route.get("/errors/:type/:companyName", [authJWT.verifyToken, clientDBConnection
                             logging: console.log,
                             }
                         );
-                    }       
-                    res.status(200).json({invent:getErrorList, assign: [], corr: [], address: [], security: []});
-                } else {
-                    res.status(200).json({invent:[], assign: [], corr: [], address: [], security: []});
-                }
+                    }  
+                } 
             } else {
                 const queryError = "SELECT appno_doc_num FROM error as e WHERE e.organisation_id = :organisationID  GROUP BY e.appno_doc_num";
                 const getErrors= await connection.application.query(queryError,{
@@ -303,7 +299,6 @@ route.get("/errors/:type/:companyName", [authJWT.verifyToken, clientDBConnection
                     replacements: { organisationID: req.orgId},
                     logging: console.log,
                 });  
-                let getErrorList = [];
                 if(getErrors != null && getErrors.length > 0) {
                     const getList = [];
                     getErrors.map(e => getList.push(e.appno_doc_num));
@@ -317,9 +312,30 @@ route.get("/errors/:type/:companyName", [authJWT.verifyToken, clientDBConnection
                         logging: console.log,
                         }
                     );
-                }       
-                res.status(200).json({invent:getErrorList, assign: [], corr: [], address: [], security: []});    
+                }    
             }
+            const promises = getErrorList.map(e => {
+                switch(parseInt(e.type)){
+                    case 0:
+                        invent.push(e);
+                        break;
+                    case 1:
+                        assign.push(e);
+                        break;
+                    case 2:
+                        corr.push(e);
+                        break;
+                    case 3:
+                        address.push(e);
+                        break;
+                    case 4:
+                        security.push(e);
+                        break;
+                }
+                return e;
+            });
+            await Promise.all(promises);
+            res.status(200).json({invent:invent, assign: assign, corr: corr, address: address, security: security});
         } else {
             res.status(200).json({invent:[], assign: [], corr: [], address: [], security: []});
         }
