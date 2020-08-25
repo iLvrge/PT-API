@@ -8,11 +8,81 @@ const connection = require("../../config/db.config");
 
 const Timelines = require("../../model/application/Timelines");
 
+const DocumentIds = require("../../model/application/DocumentIds");
+
 const helpers = require("../../helpers/helper");
 
 const authJWT = require("../../helpers/verifyJwtToken");
 
 const clientDBConnection = require("../../helpers/clientDBConnection");
+
+
+route.get("/", [authJWT.verifyToken, clientDBConnection.connect], async(req, res, next) => {
+    const from = req.query.from, to = req.query.to, companyList = req.query.companies, tabList = req.query.tabs;
+    let timelineList = [];
+    try {                
+        const organisationData = await helpers.findOrganisationbyID(req.orgId);
+        //console.log(0);
+        if(organisationData != null && organisationData.organisation_id > 0 && typeof req.connection_db != "undefined" && req.connection_db != null){
+            
+            const where = {organisation_id: req.orgId}, DATE_FORMAT = 'YYYY-MM-DD';
+            if(from != undefined && to != undefined) {
+                console.log(to);
+                where.exec_dt = {[connection.Op.between]: [moment(new Date(from)).format(DATE_FORMAT), moment(new Date(to)).add(1, 'days').format(DATE_FORMAT)]}
+            } else if(from != undefined) {
+                where.exec_dt = {[connection.Op.gte]: moment(new Date(from)).format(DATE_FORMAT)}
+            } else if(to != undefined) {
+                where.exec_dt = {[connection.Op.lte]: moment(new Date(to)).add(1, 'days').format(DATE_FORMAT)}
+            }
+            if(companyList != undefined && companyList != '') {
+                const companies = JSON.parse(companyList);
+                where.representative_id = companies;
+            }
+            if(tabList != undefined && tabList != '') {
+                const tabs = JSON.parse(tabList);
+                where.tab = tabs;
+            }
+           
+            const result = await Timelines.findAll({
+                attributes:[['rf_id', 'id'], 'exec_dt', ['original_name', 'customerName']],
+                where: where                
+            });
+            if(result.length > 0) {
+                const promises = result.map(async timeline => {
+                    /**
+                     * Get Count of all the Application number from all the rf_id from the parties collection table
+                     */
+                    const queryFindTotalAssets = "SELECT COUNT('appno_doc_num') as totalAssets FROM documentid WHERE rf_id = :rf_id";
+
+                    const findCounter =  await connection.application.query(queryFindTotalAssets,{
+                        type: connection.Sequelize.QueryTypes.SELECT,
+                        raw: true,
+                        logging: console.log,
+                        plain: true,
+                        replacements: { rf_id: timeline.get('id')},
+                      }
+                    );
+                    const timelineJSON = timeline.toJSON();
+                    
+                    timelineJSON.totalAssets = 0; 
+                    if(findCounter != null && findCounter.totalAssets > 0) {                                
+                        timelineJSON.totalAssets = findCounter.totalAssets;                               
+                    }
+                    timelineList.push(timelineJSON);
+                    return findCounter;
+                });
+                await Promise.all(promises);
+            }
+        }
+        res.status(200).json(timelineList);
+    } catch ( err ) {
+        console.log("Timeline:"+err);
+        res.status(500).send("Internal server error.");
+    }
+})
+
+
+
 
 
 route.get("/standalone/:groupId", [authJWT.addToken, clientDBConnection.connect], async(req, res, next) => {

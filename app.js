@@ -39,6 +39,7 @@ const timelines = require("./routes/application/timelines");
  * Route for Client database
  */
 const customers = require("./routes/client/customers");
+const tabs = require("./routes/client/tabs");
 const activities = require("./routes/client/activities");
 const professionals = require("./routes/client/professionals");
 const users = require("./routes/client/users");
@@ -84,6 +85,8 @@ app.use("/", errors);
 app.use("/", activities);
 
 app.use("/charts", charts);
+
+app.use("/tabs", tabs);
 
 app.use("/customers", customers);
 

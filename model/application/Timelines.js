@@ -3,10 +3,12 @@ const Sequelize = require("sequelize");
 const connection = require("../../config/db.config");
 
 
+
 const Timelines = connection.application.define('timeline',{
     rf_id: {
         type: Sequelize.INTEGER,
-        allowNull: false
+        allowNull: false,
+        primaryKey: true,
     },  
     reel_no: {
         type: Sequelize.INTEGER,
@@ -53,7 +55,7 @@ const Timelines = connection.application.define('timeline',{
     underscored: true,
     timestamps: false,
     freezeTableName: true,
-    tableName: 'representative'
+    tableName: 'timeline'
 });
 
 
