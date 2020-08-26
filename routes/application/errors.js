@@ -303,7 +303,7 @@ route.get("/errors/:type/:companyName", [authJWT.verifyToken, clientDBConnection
                     const getList = [];
                     getErrors.map(e => getList.push(e.appno_doc_num));
 
-                    const queryErrorList = "SELECT d.appno_doc_num as asset, date_format(ass.record_dt,'%m/%d/%Y') as created_at, ass.cname as name FROM documentid as d LEFT JOIN assignment as ass ON ass.rf_id = d.rf_id WHERE d.appno_doc_num IN(:appNo) GROUP BY d.appno_doc_num ORDER BY ass.record_dt DESC";
+                    const queryErrorList = "SELECT d.appno_doc_num as asset, date_format(ass.record_dt,'%m/%d/%Y') as created_at, ass.cname as name, type FROM documentid as d LEFT JOIN assignment as ass ON ass.rf_id = d.rf_id WHERE d.appno_doc_num IN(:appNo)  GROUP BY d.appno_doc_num ORDER BY ass.record_dt DESC";
 
                     getErrorList = await connection.application.query(queryErrorList,{
                         type: connection.Sequelize.QueryTypes.SELECT,
@@ -314,27 +314,11 @@ route.get("/errors/:type/:companyName", [authJWT.verifyToken, clientDBConnection
                     );
                 }    
             }
-            const promises = getErrorList.map(e => {
-                switch(parseInt(e.type)){
-                    case 0:
-                        invent.push(e);
-                        break;
-                    case 1:
-                        assign.push(e);
-                        break;
-                    case 2:
-                        corr.push(e);
-                        break;
-                    case 3:
-                        address.push(e);
-                        break;
-                    case 4:
-                        security.push(e);
-                        break;
-                }
-                return e;
-            });
-            await Promise.all(promises);
+            if(getErrorList.length > 0) {                
+                await Promise.all(getErrorList.map( e => { 
+                    return e.type == 0 ? invent.push(e) : e.type == 1 ? assign.push(e) : e.type == 2 ? corr.push(e) : e.type == 3 ? address.push(e) : security.push(e);                  
+                }));
+            }
             res.status(200).json({invent:invent, assign: assign, corr: corr, address: address, security: security});
         } else {
             res.status(200).json({invent:[], assign: [], corr: [], address: [], security: []});
