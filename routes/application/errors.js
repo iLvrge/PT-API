@@ -234,7 +234,7 @@ route.get("/errors/:type/:companyName", [authJWT.verifyToken, clientDBConnection
                 ); 
 
                 if(findParent != null && findParent.representative_id > 0) {
-                    eerrorCount = await Errors.findAll({
+                    errorCount = await Errors.findAll({
                         attributes:[[connection.Sequelize.fn('COUNT', 'error_id'), 'counter'],'type'],
                         where: {organisation_id: req.orgId, representative_id: findParent.representative_id},
                         group: ['type']                           
