@@ -219,6 +219,7 @@ route.get("/errors/:type/:companyName", [authJWT.verifyToken, clientDBConnection
     }
 
     if(type == 'count') {  
+        let errorCount = null;
         if(typeof req.connection_db != "undefined" && req.connection_db != null ) {     
             if(companyName != 'undefined' && companyName != 0) {
                 const queryFindParent = "SELECT representative_id FROM representative WHERE (original_name = :name OR representative_name = :name) AND parent_id = 0";
@@ -233,24 +234,35 @@ route.get("/errors/:type/:companyName", [authJWT.verifyToken, clientDBConnection
                 ); 
 
                 if(findParent != null && findParent.representative_id > 0) {
-                    const errorCount = await Errors.count({
-                                        where: {organisation_id: req.orgId, representative_id: findParent.representative_id},
-                                        col: 'error_id',                            
-                                    });
-                    res.status(200).json({uspto: errorCount, patent: 0});
-                } else {
-                    res.status(200).json({uspto: 0, patent: 0});
-                }
+                    eerrorCount = await Errors.findAll({
+                        attributes:[[connection.Sequelize.fn('COUNT', 'error_id'), 'counter'],'type'],
+                        where: {organisation_id: req.orgId, representative_id: findParent.representative_id},
+                        group: ['type']                           
+                    });
+                } 
             } else {
-                const errorCount = await Errors.count({
+                errorCount = await Errors.findAll({
+                    attributes:[[connection.Sequelize.fn('COUNT', 'error_id'), 'counter'],'type'],
                     where: {organisation_id: req.orgId},
-                    col: 'error_id',                            
+                    group: ['type']                            
                 });
-                res.status(200).json({uspto: errorCount, patent: 0});
+                
             }
-        } else {
-            res.status(200).json({uspto: 0, patent: 0});
         }
+        let title = 0, address = 0, other = 0;
+        if(errorCount != null && errorCount.length > 0) {
+            await Promise.all(errorCount.map(e => {
+                if(e.type == 1) {
+                    title = title + e.get('counter');
+                } else if(e.type == 3) {
+                    address = address + e.get('counter');
+                } else {
+                    other = other + e.get('counter');
+                }
+                return e;
+            }));
+        }
+        res.status(200).json({title: title, address: address, other: other});
     } else if(type == 'list') {        
         if(typeof req.connection_db != "undefined" && req.connection_db != null ) {
             let getErrorList = [], invent = [], assign = [], corr = [], address = [], security = [], getErrors = [];
