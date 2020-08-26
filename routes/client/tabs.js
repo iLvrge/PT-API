@@ -83,26 +83,31 @@ route.get("/:tabID/companies/:companyID", [authJWT.verifyToken, clientDBConnecti
         const tabID = req.params.tabID, representativeID = req.params.companyID;
         let limit = req.query.limit, offset = req.query.offset, customerList = [];
         if(typeof req.connection_db != "undefined" && req.connection_db != null ) {
-            limit = limit > 0 ? parseInt(limit) : 100;
-            offset = offset > 0 ? parseInt(offset) : 0;
-            const list = await TreeParties.findAll({
-                attributes:[['assignor_and_assignee_id', 'id'], 'name'],
-                where: {representative_id: representativeID, organisation_id: req.orgId, tab_id: tabID},
-                include:[
-                    {
-                        model: TreePartiesCollections,
-                        as: 'collections',
-                        attributes: [[connection.Sequelize.fn('COUNT', 'rf_id'), 'totalTransactions']],
-                        where:{tab_id: tabID, representative_id: representativeID},
-                        group: ['rf_id']
-                    }
-                ],
-                limit: limit,
-                offset: offset,
-                order: [
-                    ['name', 'ASC']
-                ]                    
-            });
+            const whereConstraint = {
+                    attributes:[['assignor_and_assignee_id', 'id'], 'name', [connection.Sequelize.fn('COUNT', 'collections.rf_id'), 'totalTransactions']],
+                    where: {representative_id: representativeID, organisation_id: req.orgId, tab_id: tabID},
+                    include:[
+                        {
+                            model: TreePartiesCollections,
+                            as: 'collections',
+                            attributes: [],
+                            where:{tab_id: tabID, representative_id: representativeID},
+                            group: ['rf_id']
+                        }
+                    ]};
+
+            if(limit != 'undefined') {
+                limit = limit > 0 ? parseInt(limit) : 100;
+                offset = offset > 0 ? parseInt(offset) : 0;
+
+                whereConstraint.limit = limit;
+                whereConstraint.offset = offset;
+            }
+
+            whereConstraint.order = [['name', 'ASC']];
+            
+            const list = await TreeParties.findAll(whereConstraint);
+            console.log(list);
             if(list.length > 0) {
                 const promises = list.map(async customer => {
                     /**

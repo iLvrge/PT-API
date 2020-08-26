@@ -14,7 +14,7 @@ route.get("/collections/:rf_id/illustration", [authJWT.verifyToken], async (req,
     const rfID = req.params.rf_id;
     if(rfID > 0) {
         const itemDetails = await helpers.getAssignmentDataByrfID(rfID.toString().trim());
-        let boxes = [], connections = [], execDate = '', execDate1 = '', fakeDate = '', title = "";
+        let boxes = [], connections = [], execDate = '', execDate1 = '', fakeDate = '', recordedDate = '', title = "";
         const box = [
             {id:1,segment:0,border_color:'#363636',border_px:'1',background_color:'#222222',dimension:'100x30',type:'Inventor',shape:'rectangle'},
             {id:2,segment:1,border_color:'#363636',border_px:'1',background_color:'#222222',dimension:'100x30',type:'Ownership',shape:'rectangle'},
@@ -42,14 +42,15 @@ route.get("/collections/:rf_id/illustration", [authJWT.verifyToken], async (req,
                 }
 
                 if(index === 0){
-                execDate = moment(new Date(assignor.exec_dt)).format('MMM DD, YYYY');
-                fakeDate = moment(new Date(assignor.exec_dt)).subtract(9, 'days');
+                    execDate = moment(new Date(assignor.exec_dt)).format('MMM DD, YYYY');
+                    fakeDate = moment(new Date(assignor.exec_dt)).subtract(9, 'days');
+                    recordedDate = moment(new Date(itemDetails.assignment.record_dt)).subtract(9, 'days');
                 }
                 let boxObj = {
                 id: assignorID.toString(),
                 name: boxName,
                 execution_date: fakeDate.format('MMM DD, YYYY'),
-                recorded_date: moment(new Date(itemDetails.assignment.record_dt)).format('MMM DD, YYYY'),
+                recorded_date: recordedDate.format('MMM DD, YYYY'),
                 document: "https://patentrack.com/resources/shared/data/assignment-pat-" + itemDetails.assignment.reel_no + "-" + itemDetails.assignment.frame_no +".pdf",
                 }
 
