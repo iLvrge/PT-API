@@ -138,7 +138,7 @@ route.get("/:tabID/companies/:companyID", [authJWT.verifyToken, clientDBConnecti
 });
 
 
-route.get("/:tabID/companies/:companyID/customer/:customerID", [authJWT.verifyToken, clientDBConnection.connect], async(req, res, next) => {
+route.get("/:tabID/companies/:companyID/customers/:customerID", [authJWT.verifyToken, clientDBConnection.connect], async(req, res, next) => {
     try {
         const tabID = req.params.tabID, representativeID = req.params.companyID, customerID = req.params.customerID;
         let limit = req.query.limit, offset = req.query.offset, transactionList = [];
@@ -198,7 +198,7 @@ route.get("/:tabID/companies/:companyID/customer/:customerID", [authJWT.verifyTo
     }
 });
 
-route.get("/:tabID/companies/:companyID/customer/:customerID/transactions/:rfID", [authJWT.verifyToken, clientDBConnection.connect], async(req, res, next) => {
+route.get("/:tabID/companies/:companyID/customers/:customerID/transactions/:rfID", [authJWT.verifyToken, clientDBConnection.connect], async(req, res, next) => {
     try {
         const tabID = req.params.tabID, representativeID = req.params.companyID, customerID = req.params.customerID, rfID = req.params.rfID;
         let assetList = [];
