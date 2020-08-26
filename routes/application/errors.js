@@ -253,7 +253,7 @@ route.get("/errors/:type/:companyName", [authJWT.verifyToken, clientDBConnection
         }
     } else if(type == 'list') {        
         if(typeof req.connection_db != "undefined" && req.connection_db != null ) {
-            let getErrorList = [], invent = [], assign = [], corr = [], address = [], security = [];
+            let getErrorList = [], invent = [], assign = [], corr = [], address = [], security = [], getErrors = [];
             if(companyName != 'undefined' && companyName != 0) {
 
                 const queryFindParent = "SELECT representative_id FROM representative WHERE (original_name = :name OR representative_name = :name) AND parent_id = 0";
@@ -268,8 +268,8 @@ route.get("/errors/:type/:companyName", [authJWT.verifyToken, clientDBConnection
                 ); 
                 
                 if(findParent != null && findParent.representative_id > 0) {                   
-                    const queryError = "SELECT appno_doc_num FROM error as e WHERE e.organisation_id = :organisationID AND e.representative_id = :representative_id GROUP BY e.appno_doc_num";
-                    const getErrors= await connection.application.query(queryError,{
+                    const queryError = "SELECT appno_doc_num, type FROM error as e WHERE e.organisation_id = :organisationID AND e.representative_id = :representative_id GROUP BY e.appno_doc_num";
+                    getErrors = await connection.application.query(queryError,{
                         type: connection.Sequelize.QueryTypes.SELECT,
                         raw: true,
                         replacements: { organisationID: req.orgId, representative_id: findParent.representative_id },
@@ -292,8 +292,8 @@ route.get("/errors/:type/:companyName", [authJWT.verifyToken, clientDBConnection
                     }  
                 } 
             } else {
-                const queryError = "SELECT appno_doc_num FROM error as e WHERE e.organisation_id = :organisationID  GROUP BY e.appno_doc_num";
-                const getErrors= await connection.application.query(queryError,{
+                const queryError = "SELECT appno_doc_num, type FROM error as e WHERE e.organisation_id = :organisationID  GROUP BY e.appno_doc_num";
+                getErrors= await connection.application.query(queryError,{
                     type: connection.Sequelize.QueryTypes.SELECT,
                     raw: true,
                     replacements: { organisationID: req.orgId},
@@ -314,10 +314,23 @@ route.get("/errors/:type/:companyName", [authJWT.verifyToken, clientDBConnection
                     );
                 }    
             }
-            if(getErrorList.length > 0) {                
-                await Promise.all(getErrorList.map( e => { 
+            if(getErrorList.length > 0) {     
+                await Promise.all(getErrors.map(async error => {
+                    let errorData = {};
+                    const promise = getErrorList.map( e => {
+                        if(e.asset == error.appno_doc_num){
+                            errorData = {...e, ...error};
+                        }
+                        return e;
+                    });
+                    await Promise.all(promise);
+                    if(Object.keys(errorData).length > 0) {
+                        return errorData.type == 0 ? invent.push(errorData) : errorData.type == 1 ? assign.push(errorData) : errorData.type == 2 ? corr.push(errorData) : errorData.type == 3 ? address.push(errorData) :  errorData.type == 4 ? security.push(errorData) : null;
+                    }
+                }))          
+                /*await Promise.all(getErrorList.map( e => { 
                     return e.type == 0 ? invent.push(e) : e.type == 1 ? assign.push(e) : e.type == 2 ? corr.push(e) : e.type == 3 ? address.push(e) : security.push(e);                  
-                }));
+                }));*/
             }
             res.status(200).json({invent:invent, assign: assign, corr: corr, address: address, security: security});
         } else {
