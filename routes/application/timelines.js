@@ -367,7 +367,7 @@ route.get("/:organisation/:name/:depth/:groupId", [authJWT.verifyToken, clientDB
 
             let customQuery, className = 'red', subNameQuery = 'CASE WHEN r.representative_name <> null THEN r.representative_name ELSE aa.name END  as content';
 
-            if(groupID == 8) {
+            if(groupID == 9) {
                 subNameQuery = 'SUBSTRING_INDEX(CASE WHEN r.representative_name <> null THEN r.representative_name ELSE aa.name END, " ", 1)  as content';
             }
             let patentN = 'grant_doc_num';
