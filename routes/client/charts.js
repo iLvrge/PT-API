@@ -30,7 +30,6 @@ route.get("/:type", [authJWT.verifyToken, clientDBConnection.connect], async(req
                     if(name == null || name == '') {
                         name = r.orginal_name;
                     }
-                    /*names.push('"'+name+'"');*/
                     names.push(name);
                     return r;
                 }));
@@ -63,7 +62,6 @@ route.get("/:type", [authJWT.verifyToken, clientDBConnection.connect], async(req
                     if(name == null || name == '') {
                         name = r.orginal_name;
                     }
-                    /*names.push('"'+name+'"');*/
                     names.push(name);
                     return r;
                 }));
@@ -95,7 +93,6 @@ route.get("/:type", [authJWT.verifyToken, clientDBConnection.connect], async(req
                     if(name == null || name == '') {
                         name = r.orginal_name;
                     }
-                    /*names.push('"'+name+'"');*/
                     names.push(name);
                     return r;
                 }));
@@ -127,7 +124,6 @@ route.get("/:type", [authJWT.verifyToken, clientDBConnection.connect], async(req
                     if(name == null || name == '') {
                         name = r.orginal_name;
                     }
-                    /*names.push('"'+name+'"');*/
                     names.push(name);
                     return r;
                 }));
@@ -145,12 +141,13 @@ route.get("/:type", [authJWT.verifyToken, clientDBConnection.connect], async(req
                 }
             }
             res.status(200).json(securityData);
-        } else if ( type === 5 ) {
+        } else if ( type == 5 ) {
             /**Security per assignee per month */
             const Representative = req.connection_db.define('Representatives', Representatives.mainStructure, Representatives.options);
             const getAllRepresentative = await  Representative.findAll({
                                                     where: {parent_id: 0}
                                                 });
+            /*console.log(getAllRepresentative);*/
             let securityData = []
             if(getAllRepresentative.length > 0) {
                 const names = [];
@@ -159,7 +156,6 @@ route.get("/:type", [authJWT.verifyToken, clientDBConnection.connect], async(req
                     if(name == null || name == '') {
                         name = r.orginal_name;
                     }
-                    /*names.push('"'+name+'"');*/
                     names.push(name);
                     return r;
                 }));
