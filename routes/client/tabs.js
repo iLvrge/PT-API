@@ -84,19 +84,11 @@ route.get("/:tabID/companies/:companyID", [authJWT.verifyToken, clientDBConnecti
         let limit = req.query.limit, offset = req.query.offset, customerList = [];
         if(typeof req.connection_db != "undefined" && req.connection_db != null ) {
             const whereConstraint = {
-                    attributes:[['assignor_and_assignee_id', 'id'], 'name', [connection.Sequelize.fn('COUNT', 'collections.rf_id'), 'totalTransactions']],
+                    attributes:[['assignor_and_assignee_id', 'id'], 'name'],
                     where: {representative_id: representativeID, organisation_id: req.orgId, tab_id: tabID},
-                    include:[
-                        {
-                            model: TreePartiesCollections,
-                            as: 'collections',
-                            attributes: [],
-                            where:{tab_id: tabID, representative_id: representativeID},
-                            group: ['rf_id']
-                        }
-                    ]};
+                    };
 
-            if(limit != 'undefined') {
+            if(limit != undefined && limit != null) {
                 limit = limit > 0 ? parseInt(limit) : 100;
                 offset = offset > 0 ? parseInt(offset) : 0;
 
@@ -113,24 +105,26 @@ route.get("/:tabID/companies/:companyID", [authJWT.verifyToken, clientDBConnecti
                     /**
                      * Get Count of all the Application number from all the rf_id from the parties collection table for particular customer
                      */
-                    const queryFindTotalAssets = "SELECT COUNT('appno_doc_num') as totalAssets FROM documentid WHERE rf_id IN (SELECT rf_id FROM tree_parties_collection WHERE representative_id = :representative_id AND tab_id = :tab_id AND assignor_and_assignee_id = :customer_id GROUP BY rf_id)";
+                    const queryFindTotalAssets = "SELECT COUNT(rf_id) as totalTransactions, (SELECT COUNT('appno_doc_num') as totalAssets FROM documentid as d WHERE rf_id IN (SELECT rf_id FROM tree_parties_collection WHERE representative_id = :representative_id AND tab_id = :tab_id AND assignor_and_assignee_id = :customer_id GROUP BY rf_id)) as totalAssets FROM tree_parties_collection WHERE representative_id = :representative_id AND tab_id = :tab_id AND assignor_and_assignee_id = :customer_id AND organisation_id = :organisation_id  ";
 
                     const findCounter =  await connection.application.query(queryFindTotalAssets,{
                         type: connection.Sequelize.QueryTypes.SELECT,
                         raw: true,
                         logging: console.log,
                         plain: true,
-                        replacements: { representative_id: representativeID, tab_id: tabID, customer_id: customer.get('id') },
+                        replacements: {organisation_id: req.orgId, representative_id: representativeID, tab_id: tabID, customer_id: customer.get('id') },
                     }
                     );
                     const customerJSON = customer.toJSON();
                     console.log(customerJSON);
-                    if(findCounter != null && findCounter.totalAssets > 0) {                                
-                        customerJSON.totalAssets = findCounter.totalAssets;                               
+                    if(findCounter != null && findCounter.totalTransactions > 0) {                                
+                        customerJSON.totalAssets = findCounter.totalAssets;  
+                        customerJSON.totalTransactions = findCounter.totalTransactions;                                    
                     } else {
-                        customerJSON.totalAssets = 0;        
+                        customerJSON.totalAssets = 0;      
+                        customerJSON.totalTransactions = 0;    
                     }
-                    customerList.push({id: customerJSON.id, name: customerJSON.name, totalTransactions: customerJSON.collections[0].totalTransactions, totalAssets: customerJSON.totalAssets });
+                    customerList.push(customerJSON);
                     return findCounter;
                 });
                 await Promise.all(promises);
@@ -151,15 +145,22 @@ route.get("/:tabID/companies/:companyID/customer/:customerID", [authJWT.verifyTo
         if(typeof req.connection_db != "undefined" && req.connection_db != null ) {
             limit = limit > 0 ? parseInt(limit) : 100;
             offset = offset > 0 ? parseInt(offset) : 0;
-            const list = await TreePartiesCollections.findAll({
+            const whereConstraint = {
                 attributes:[['rf_id', 'id'], 'exec_dt'],
-                where: {representative_id: representativeID, assignor_and_assignee_id: customerID, tab_id: tabID},               
-                limit: limit,
-                offset: offset,
-                order: [
-                    ['exec_dt', 'DESC']
-                ]                    
-            });
+                where: {representative_id: representativeID, assignor_and_assignee_id: customerID, tab_id: tabID}
+            };
+
+            if(limit != undefined && limit != null) {
+                limit = limit > 0 ? parseInt(limit) : 100;
+                offset = offset > 0 ? parseInt(offset) : 0;
+
+                whereConstraint.limit = limit;
+                whereConstraint.offset = offset;
+            }
+
+            whereConstraint.order = [['exec_dt', 'DESC']];
+            
+            const list = await TreePartiesCollections.findAll(whereConstraint);
             if(list.length > 0) {
                 const promises = list.map(async transaction => {
 
