@@ -9,7 +9,7 @@ const Documents = {
         },  
         title:{
             type: Sequelize.STRING,
-            allowNull: false,
+            allowNull: true,
         },
 		file:{
             type: Sequelize.STRING,
