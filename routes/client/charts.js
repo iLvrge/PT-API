@@ -24,16 +24,24 @@ route.get("/:type", [authJWT.verifyToken, clientDBConnection.connect], async(req
                                                 });
             let inventorData = []
             if(getAllRepresentative.length > 0) {
-                const IDs = [];
-                getAllRepresentative.map( r => IDs.push(r.representative_id));
+                const names = [];
+                await Promise.all(getAllRepresentative.map( r => {
+                    let name = r.representative_name;
+                    if(name == null || name == '') {
+                        name = r.orginal_name;
+                    }
+                    /*names.push('"'+name+'"');*/
+                    names.push(name);
+                    return r;
+                }));
 
-                if(IDs.length > 0) {
-                    const queryInventor = "Select date_format(exec_dt,'%m-%Y') as label1, exec_dt as label, count(or.rf_id) as value, sum(temp1.assets) as assets FROM assignor as `or` INNER JOIN (SELECT  or.rf_id, (select count(d.appno_doc_num) FROM documentid as d where d.rf_id = or.rf_id) as assets from assignor as `or` INNER JOIN (SELECT ee.rf_id FROM assignee as ee INNER JOIN assignment_conveyance as ac ON ac.rf_id = ee.rf_id INNER JOIN assignor_and_assignee as aaa ON aaa.assignor_and_assignee_id = ee.assignor_and_assignee_id INNER JOIN representative as r ON r.representative_id = aaa.representative_id WHERE r.representative_id IN (:IDs) AND ac.employer_assign = :employerAssign AND ac.convey_ty IN ('assignment', 'employee')) as temp ON temp.rf_id = or.rf_id GROUP BY or.rf_id) as temp1 ON temp1.rf_id = `or`.rf_id  GROUP BY label1";
+                if(names.length > 0) {
+                    const queryInventor = "Select date_format(exec_dt,'%m-%Y') as label1, exec_dt as label, count(or.rf_id) as value, sum(temp1.assets) as assets FROM assignor as `or` INNER JOIN (SELECT  or.rf_id, (select count(d.appno_doc_num) FROM documentid as d where d.rf_id = or.rf_id) as assets from assignor as `or` INNER JOIN (SELECT ee.rf_id FROM assignee as ee INNER JOIN assignment_conveyance as ac ON ac.rf_id = ee.rf_id INNER JOIN assignor_and_assignee as aaa ON aaa.assignor_and_assignee_id = ee.assignor_and_assignee_id INNER JOIN representative as r ON r.representative_id = aaa.representative_id WHERE (r.representative_name IN (:names) OR aaa.name IN (:names)) AND ac.employer_assign = :employerAssign AND ac.convey_ty IN ('partialassignment', 'assignment', 'employee')) as temp ON temp.rf_id = or.rf_id GROUP BY or.rf_id) as temp1 ON temp1.rf_id = `or`.rf_id  GROUP BY label1";
 
                     inventorData = await connection.application.query(queryInventor,{
                         type: connection.Sequelize.QueryTypes.SELECT,
                         raw: true,
-                        replacements: { IDs: IDs.join(','), employerAssign: 1},
+                        replacements: { names: names, employerAssign: 1},
                         logging: console.log,
                       }
                     );
@@ -49,16 +57,24 @@ route.get("/:type", [authJWT.verifyToken, clientDBConnection.connect], async(req
                                                 });
             let acquisitionData = []
             if(getAllRepresentative.length > 0) {
-                const IDs = [];
-                getAllRepresentative.map( r => IDs.push(r.representative_id));
+                const names = [];
+                await Promise.all(getAllRepresentative.map( r => {
+                    let name = r.representative_name;
+                    if(name == null || name == '') {
+                        name = r.orginal_name;
+                    }
+                    /*names.push('"'+name+'"');*/
+                    names.push(name);
+                    return r;
+                }));
 
-                if(IDs.length > 0) {
-                    const queryAcquisition = "Select date_format(exec_dt,'%m-%Y') as label1, exec_dt as label , count(or.rf_id) as value, sum(temp1.assets) as assets FROM assignor as `or` INNER JOIN (SELECT or.rf_id, (select count(d.appno_doc_num) FROM documentid as d where d.rf_id = or.rf_id) as assets from assignor as `or` INNER JOIN (SELECT ee.rf_id FROM assignee as ee INNER JOIN assignment_conveyance as ac ON ac.rf_id = ee.rf_id INNER JOIN assignor_and_assignee as aaa ON aaa.assignor_and_assignee_id = ee.assignor_and_assignee_id INNER JOIN representative as r ON r.representative_id = aaa.representative_id WHERE r.representative_id IN (:IDs) AND ac.employer_assign = :employerAssign AND ac.convey_ty = 'assignment') as temp ON temp.rf_id = or.rf_id GROUP BY or.rf_id) as temp1 ON temp1.rf_id = `or`.rf_id GROUP BY label1";
+                if(names.length > 0) {
+                    const queryAcquisition = "Select date_format(exec_dt,'%m-%Y') as label1, exec_dt as label , count(or.rf_id) as value, sum(temp1.assets) as assets FROM assignor as `or` INNER JOIN (SELECT or.rf_id, (select count(d.appno_doc_num) FROM documentid as d where d.rf_id = or.rf_id) as assets from assignor as `or` INNER JOIN (SELECT ee.rf_id FROM assignee as ee INNER JOIN assignment_conveyance as ac ON ac.rf_id = ee.rf_id INNER JOIN assignor_and_assignee as aaa ON aaa.assignor_and_assignee_id = ee.assignor_and_assignee_id INNER JOIN representative as r ON r.representative_id = aaa.representative_id WHERE (r.representative_name IN (:names) OR aaa.name IN (:names)) AND ac.employer_assign = :employerAssign AND ac.convey_ty IN ('partialassignment','assignment')) as temp ON temp.rf_id = or.rf_id GROUP BY or.rf_id) as temp1 ON temp1.rf_id = `or`.rf_id GROUP BY label1";
 
                     acquisitionData = await connection.application.query(queryAcquisition,{
                         type: connection.Sequelize.QueryTypes.SELECT,
                         raw: true,
-                        replacements: { IDs: IDs.join(','), employerAssign: 0},
+                        replacements: { names: names, employerAssign: 0},
                         logging: console.log,
                       }
                     );
@@ -73,16 +89,24 @@ route.get("/:type", [authJWT.verifyToken, clientDBConnection.connect], async(req
                                                 });
             let salesData = []
             if(getAllRepresentative.length > 0) {
-                const IDs = [];
-                getAllRepresentative.map( r => IDs.push(r.representative_id));
+                const names = [];
+                await Promise.all(getAllRepresentative.map( r => {
+                    let name = r.representative_name;
+                    if(name == null || name == '') {
+                        name = r.orginal_name;
+                    }
+                    /*names.push('"'+name+'"');*/
+                    names.push(name);
+                    return r;
+                }));
 
-                if(IDs.length > 0) {
-                    const queryAcquisition = "Select exec_dt as label , count(or.rf_id) as value, sum(temp1.assets) as assets FROM assignor as `or` INNER JOIN (SELECT ee.rf_id, (select count(d.appno_doc_num) FROM documentid as d where d.rf_id = ee.rf_id) as assets from assignee as `ee` INNER JOIN (SELECT or.rf_id FROM assignor as `or` INNER JOIN assignment_conveyance as ac ON ac.rf_id = or.rf_id INNER JOIN assignor_and_assignee as aaa ON aaa.assignor_and_assignee_id = or.assignor_and_assignee_id INNER JOIN representative as r ON r.representative_id = aaa.representative_id WHERE r.representative_id IN (:IDs) AND ac.employer_assign = :employerAssign AND ac.convey_ty = 'assignment') as temp ON temp.rf_id = ee.rf_id GROUP BY ee.rf_id) as temp1 ON temp1.rf_id = `or`.rf_id GROUP BY label";
+                if(names.length > 0) {
+                    const queryAcquisition = "Select exec_dt as label , count(or.rf_id) as value, sum(temp1.assets) as assets FROM assignor as `or` INNER JOIN (SELECT ee.rf_id, (select count(d.appno_doc_num) FROM documentid as d where d.rf_id = ee.rf_id) as assets from assignee as `ee` INNER JOIN (SELECT or.rf_id FROM assignor as `or` INNER JOIN assignment_conveyance as ac ON ac.rf_id = or.rf_id INNER JOIN assignor_and_assignee as aaa ON aaa.assignor_and_assignee_id = or.assignor_and_assignee_id INNER JOIN representative as r ON r.representative_id = aaa.representative_id WHERE (r.representative_name IN (:names) OR aaa.name IN (:names)) AND ac.employer_assign = :employerAssign AND ac.convey_ty IN ('partialassignment','assignment')) as temp ON temp.rf_id = ee.rf_id GROUP BY ee.rf_id) as temp1 ON temp1.rf_id = `or`.rf_id GROUP BY label";
 
                     salesData = await connection.application.query(queryAcquisition,{
                         type: connection.Sequelize.QueryTypes.SELECT,
                         raw: true,
-                        replacements: { IDs: IDs.join(','), employerAssign: 0},
+                        replacements: { names: names, employerAssign: 0},
                         logging: console.log,
                       }
                     );
@@ -97,16 +121,24 @@ route.get("/:type", [authJWT.verifyToken, clientDBConnection.connect], async(req
                                                 });
             let securityData = []
             if(getAllRepresentative.length > 0) {
-                const IDs = [];
-                getAllRepresentative.map( r => IDs.push(r.representative_id));
+                const names = [];
+                await Promise.all(getAllRepresentative.map( r => {
+                    let name = r.representative_name;
+                    if(name == null || name == '') {
+                        name = r.orginal_name;
+                    }
+                    /*names.push('"'+name+'"');*/
+                    names.push(name);
+                    return r;
+                }));
 
-                if(IDs.length > 0) {
-                    const querySecurity = "Select exec_dt as label , count(or.rf_id) as value, sum(temp1.assets) as assets FROM assignor as `or` INNER JOIN (SELECT ee.rf_id, (select count(d.appno_doc_num) FROM documentid as d where d.rf_id = ee.rf_id) as assets from assignee as `ee` INNER JOIN (SELECT or.rf_id FROM assignor as `or` INNER JOIN assignment_conveyance as ac ON ac.rf_id = or.rf_id INNER JOIN assignor_and_assignee as aaa ON aaa.assignor_and_assignee_id = or.assignor_and_assignee_id INNER JOIN representative as r ON r.representative_id = aaa.representative_id WHERE r.representative_id IN (:IDs) AND ac.employer_assign = :employerAssign AND ac.convey_ty = 'security') as temp ON temp.rf_id = ee.rf_id GROUP BY ee.rf_id) as temp1 ON temp1.rf_id = `or`.rf_id GROUP BY label";
+                if(names.length > 0) {
+                    const querySecurity = "Select exec_dt as label , count(or.rf_id) as value, sum(temp1.assets) as assets FROM assignor as `or` INNER JOIN (SELECT ee.rf_id, (select count(d.appno_doc_num) FROM documentid as d where d.rf_id = ee.rf_id) as assets from assignee as `ee` INNER JOIN (SELECT or.rf_id FROM assignor as `or` INNER JOIN assignment_conveyance as ac ON ac.rf_id = or.rf_id INNER JOIN assignor_and_assignee as aaa ON aaa.assignor_and_assignee_id = or.assignor_and_assignee_id INNER JOIN representative as r ON r.representative_id = aaa.representative_id WHERE (r.representative_name IN (:names) OR aaa.name IN (:names)) AND ac.employer_assign = :employerAssign AND ac.convey_ty IN ('security', 'restatedsecurity')) as temp ON temp.rf_id = ee.rf_id GROUP BY ee.rf_id) as temp1 ON temp1.rf_id = `or`.rf_id GROUP BY label";
 
                     securityData = await connection.application.query(querySecurity,{
                         type: connection.Sequelize.QueryTypes.SELECT,
                         raw: true,
-                        replacements: { IDs: IDs.join(','), employerAssign: 0},
+                        replacements: { names: names, employerAssign: 0},
                         logging: console.log,
                       }
                     );
@@ -121,16 +153,24 @@ route.get("/:type", [authJWT.verifyToken, clientDBConnection.connect], async(req
                                                 });
             let securityData = []
             if(getAllRepresentative.length > 0) {
-                const IDs = [];
-                getAllRepresentative.map( r => IDs.push(r.representative_id));
+                const names = [];
+                await Promise.all(getAllRepresentative.map( r => {
+                    let name = r.representative_name;
+                    if(name == null || name == '') {
+                        name = r.orginal_name;
+                    }
+                    /*names.push('"'+name+'"');*/
+                    names.push(name);
+                    return r;
+                }));
 
-                if(IDs.length > 0) {
-                    const querySecurity = "SELECT aa.name, r1.representative_name as normalize_name , sum((select count(d.appno_doc_num) FROM documentid as d where d.rf_id = ee.rf_id)) as assets, (select ass.exec_dt FROM assignor as ass where ass.rf_id = ee.rf_id GROUP BY rf_id ) as label, count(ee.rf_id) as value from assignee as `ee` INNER JOIN assignor_and_assignee as aa ON aa.assignor_and_assignee_id = ee.assignor_and_assignee_id INNER JOIN representative as r1 ON r1.representative_id = aa.representative_id INNER JOIN (SELECT or.rf_id FROM assignor as `or` INNER JOIN assignment_conveyance as ac ON ac.rf_id = or.rf_id INNER JOIN assignor_and_assignee as aaa ON aaa.assignor_and_assignee_id = or.assignor_and_assignee_id INNER JOIN representative as r ON r.representative_id = aaa.representative_id WHERE r.representative_id IN (:IDs) AND ac.employer_assign = :employerAssign AND ac.convey_ty = 'security') as temp ON temp.rf_id = ee.rf_id GROUP BY  r1.representative_name, label";
+                if(names.length > 0) {
+                    const querySecurity = "SELECT aa.name, r1.representative_name as normalize_name , sum((select count(d.appno_doc_num) FROM documentid as d where d.rf_id = ee.rf_id)) as assets, (select ass.exec_dt FROM assignor as ass where ass.rf_id = ee.rf_id GROUP BY rf_id ) as label, count(ee.rf_id) as value from assignee as `ee` INNER JOIN assignor_and_assignee as aa ON aa.assignor_and_assignee_id = ee.assignor_and_assignee_id INNER JOIN representative as r1 ON r1.representative_id = aa.representative_id INNER JOIN (SELECT or.rf_id FROM assignor as `or` INNER JOIN assignment_conveyance as ac ON ac.rf_id = or.rf_id INNER JOIN assignor_and_assignee as aaa ON aaa.assignor_and_assignee_id = or.assignor_and_assignee_id INNER JOIN representative as r ON r.representative_id = aaa.representative_id WHERE (r.representative_name IN (:names) OR aaa.name IN (:names)) AND ac.employer_assign = :employerAssign AND ac.convey_ty IN ('security', 'restatedsecurity')) as temp ON temp.rf_id = ee.rf_id GROUP BY  r1.representative_name, label";
 
                     securityData = await connection.application.query(querySecurity,{
                         type: connection.Sequelize.QueryTypes.SELECT,
                         raw: true,
-                        replacements: { IDs: IDs.join(','), employerAssign: 0},
+                        replacements: { names: names, employerAssign: 0},
                         logging: console.log,
                         }
                     );
