@@ -197,12 +197,13 @@ route.post("/activities/:type", [authJWT.verifyToken, clientDBConnection.connect
                 document_id: '1'
             };
             let insertData = true;
+            let professional;
             /**For RecordIt or FixIt */
             if((type == 1 || type == 2) && req.body.professional_id > 0) {
                 /**
                  * Find Professional
                  */
-                let professional;
+                
                 if(req.body.professional_id > 0) {
                     const Professional = req.connection_db.define('Professionals', Professionals.mainStructure, Professionals.options);
                     professional = await Professional.findOne({
