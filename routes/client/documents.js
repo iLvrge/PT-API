@@ -75,7 +75,7 @@ route.post("/", [authJWT.verifyToken, clientDBConnection.connect], async(req, re
                     console.log(mimeType);
                     if( mimeType.toLowerCase().indexOf('.exe') < 0){
                         let fileObject = req.files.file;
-                        await fileObject.mv('/var/www/html/PatenTrack/resources/shared/data/'+fileObject.name,function(err) {
+                        await fileObject.mv('/var/www/html/beta/resources/shared/data/'+fileObject.name,function(err) {
                             if (err){
                                 return res.status(500).send("ERROR: "+err);	
                             } else {
