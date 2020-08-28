@@ -238,8 +238,8 @@ route.post("/", [authJWT.verifyToken, clientDBConnection.connect], async(req, re
                                             console.log(error);
                                             console.log(stdout);
                                             console.log(stderr);
-                                            console.log(`php -f /var/www/html/trash/tree_script_client.php "${company}"`);
-                                            await exec(`php -f /var/www/html/trash/tree_script_client.php "${company}"`, async (error, stdout, stderr) => {
+                                            console.log(`php -f /var/www/html/trash/tree_script_client.php "${req.orgId}"  "${company}"`);
+                                            await exec(`php -f /var/www/html/trash/tree_script_client.php "${req.orgId}"  "${company}"`, async (error, stdout, stderr) => {
                                                 console.log(error);
                                                 console.log(stdout);
                                                 console.log(stderr);
