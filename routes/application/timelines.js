@@ -18,8 +18,8 @@ const clientDBConnection = require("../../helpers/clientDBConnection");
 
 
 route.get("/", [authJWT.verifyToken, clientDBConnection.connect], async(req, res, next) => {
-    const from = req.query.from, to = req.query.to, companyList = req.query.companies, tabList = req.query.tabs;
-    let timelineList = [];
+    const from = req.query.from, to = req.query.to, companyList = req.query.companies, tabList = req.query.tabs; 
+    let timelineList = [], limit = req.query.limit, offset = req.query.offset;
     try {                
         const organisationData = await helpers.findOrganisationbyID(req.orgId);
         //console.log(0);
@@ -42,14 +42,23 @@ route.get("/", [authJWT.verifyToken, clientDBConnection.connect], async(req, res
                 const tabs = JSON.parse(tabList);
                 where.tab = tabs;
             }
-           
-            const result = await Timelines.findAll({
-                attributes:[['rf_id', 'id'], 'exec_dt', ['original_name', 'customerName'], ['tab', 'tab_id']],
-                where: where,
-                order: [
-                    ['exec_dt', 'ASC']
-                ]                       
-            });
+
+           const whereConstraint = {
+                    attributes:[['rf_id', 'id'], 'exec_dt', ['original_name', 'customerName'], ['tab', 'tab_id']],
+                    where: where,
+                };
+
+            if(limit != undefined && limit != null) {
+                limit = limit > 0 ? parseInt(limit) : 100;
+                offset = offset > 0 ? parseInt(offset) : 0;
+
+                whereConstraint.limit = limit;
+                whereConstraint.offset = offset;
+            }
+
+            whereConstraint.order = [['exec_dt', 'DESC']];
+            const result = await Timelines.findAll(whereConstraint);
+
             if(result.length > 0) {
                 const promises = result.map(async timeline => {
                     /**
