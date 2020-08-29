@@ -44,8 +44,11 @@ route.get("/", [authJWT.verifyToken, clientDBConnection.connect], async(req, res
             }
            
             const result = await Timelines.findAll({
-                attributes:[['rf_id', 'id'], 'exec_dt', ['original_name', 'customerName']],
-                where: where                
+                attributes:[['rf_id', 'id'], 'exec_dt', ['original_name', 'customerName'], ['tab', 'tab_id']],
+                where: where,
+                order: [
+                    ['exec_dt', 'ASC']
+                ]                       
             });
             if(result.length > 0) {
                 const promises = result.map(async timeline => {

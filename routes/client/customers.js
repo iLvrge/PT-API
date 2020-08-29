@@ -12,6 +12,9 @@ const TreePartiesCollections = require("../../model/application/TreePartiesColle
 const DocumentIds = require("../../model/application/DocumentIds");
 const Errors = require("../../model/application/Errors");
 
+const Address = require("../../model/client/Address");
+const Lawyer = require("../../model/client/Lawyer");
+const Telephone = require("../../model/client/Telephone");
 
 const authJWT = require("../../helpers/verifyJwtToken");
 
@@ -451,6 +454,131 @@ route.get("/:rf_id/assets",[authJWT.verifyToken], async(req, res, next) => {
         res.status(200).json(allPatents);				
     } catch ( err ) {
         console.log(err);
+        res.status(500).send("Internal error");
+    }
+});
+
+/**
+ * Add Address
+ */
+route.post("/:representativeID/address", [authJWT.verifyToken, clientDBConnection.connect], async(req, res, next) => {
+    try{
+        if(typeof req.connection_db != "undefined" && req.connection_db != null ) {
+
+            const postData = {		
+                address: req.body.name,
+                representative_id: req.params.representativeID,
+            }
+
+            const Address = req.connection_db.define('Address', Address.mainStructure, Address.options);
+
+            const add = await Address.create(postData);
+
+            res.status(200).json(add);	
+        }
+    } catch (e) {
+        res.status(500).send("Internal error");
+    }
+});
+
+/**
+ * Add Telephone
+ */
+route.post("/:representativeID/telephone", [authJWT.verifyToken, clientDBConnection.connect], async(req, res, next) => {
+    try{
+        if(typeof req.connection_db != "undefined" && req.connection_db != null ) {
+
+            const postData = {		
+                telephone_number: req.body.name,
+                representative_id: req.params.representativeID,
+            }
+
+            const Telephone = req.connection_db.define('Telephone', Telephone.mainStructure, Telephone.options);
+
+            const add = await Telephone.create(postData);
+            
+            res.status(200).json(add);
+        }
+    } catch (e) {
+        res.status(500).send("Internal error");
+    }
+});
+
+/**
+ * Add CompanyLawyer
+ */
+route.post("/:representativeID/companylawyer", [authJWT.verifyToken, clientDBConnection.connect], async(req, res, next) => {
+    try{
+        if(typeof req.connection_db != "undefined" && req.connection_db != null ) {
+
+            const postData = {		
+                name: req.body.name,
+                representative_id: req.params.representativeID,
+            }
+
+            const Lawyer = req.connection_db.define('Lawyer', Lawyer.mainStructure, Lawyer.options);
+
+            const add = await Lawyer.create(postData);
+            
+            res.status(200).json(add);
+        }
+    } catch (e) {
+        res.status(500).send("Internal error");
+    }
+});
+
+/**
+ * Get Address
+ */
+route.get("/:representativeID/address", [authJWT.verifyToken, clientDBConnection.connect], async(req, res, next) => {
+    try{
+        if(typeof req.connection_db != "undefined" && req.connection_db != null ) {
+            
+            const list = await Address.findAll({
+                where: {representative_id: req.params.representativeID}
+            });
+            
+            res.status(200).json(list);
+        }
+    } catch (e) {
+        res.status(500).send("Internal error");
+    }
+});
+
+/**
+ * Get Telephone
+ */
+route.get("/:representativeID/telephone", [authJWT.verifyToken, clientDBConnection.connect], async(req, res, next) => {
+    try{
+        if(typeof req.connection_db != "undefined" && req.connection_db != null ) {
+
+            const list = await Telephone.findAll({
+                where: {representative_id: req.params.representativeID}
+            });
+            
+            res.status(200).json(list);
+        }
+    } catch (e) {
+        res.status(500).send("Internal error");
+    }
+});
+
+/**
+ * Get CompanyLawyer
+ */
+route.get("/:representativeID/companylawyer", [authJWT.verifyToken, clientDBConnection.connect], async(req, res, next) => {
+    try{
+        if(typeof req.connection_db != "undefined" && req.connection_db != null ) {
+
+            const Lawyer = req.connection_db.define('Lawyer', Lawyer.mainStructure, Lawyer.options);
+
+            const list = await Lawyer.findAll({
+                where: {representative_id: req.params.representativeID}
+            });
+            
+            res.status(200).json(list);
+        }
+    } catch (e) {
         res.status(500).send("Internal error");
     }
 });
