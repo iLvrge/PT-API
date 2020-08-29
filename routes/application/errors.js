@@ -34,7 +34,7 @@ route.get("/errors", [authJWT.verifyToken, clientDBConnection.connect], async(re
             
             let applicationNumber = [];
             if((customerList != undefined && customerList != '')  || (transactionList != undefined && transactionList != '') || (tabList != undefined && tabList != '')) {
-                let queryFindApplication = "SELECT appno_doc_num FROM documentid WHERE rf_id IN (SELECT rf_id FROM tree_parties_collection as tpc INNER JOIN tree_parties as tp ON tp.assignor_and_assignee_id = tpc.assignor_and_assignee_id WHERE organisation_id = :organisation_id ";
+                let queryFindApplication = "SELECT appno_doc_num FROM documentid WHERE rf_id IN (SELECT rf_id FROM tree_parties_collection as tpc INNER JOIN tree_parties as tp ON tp.assignor_and_assignee_id = tpc.assignor_and_assignee_id WHERE tpc.organisation_id = :organisation_id ";
 
                 let representatives = [], rfIDS = [], customers = [], tabs = [];
 
@@ -139,7 +139,7 @@ route.get("/errors", [authJWT.verifyToken, clientDBConnection.connect], async(re
 
                 if(getErrorDetails != null && getErrorDetails.length > 0) {
                     /**Notes */
-                    const Activity = req.connection_db.define('Activities', Activities.mainStructure, Activities.options);
+/*                    const Activity = req.connection_db.define('Activities', Activities.mainStructure, Activities.options);
                     const Professional = req.connection_db.define('Professionals', Professionals.mainStructure, Professionals.options);
     
                     Activity.belongsTo(Professional, { foreignKey: 'professional_id', as: 'creator' });
@@ -169,7 +169,7 @@ route.get("/errors", [authJWT.verifyToken, clientDBConnection.connect], async(re
                             ['created_at', 'DESC'],
                         ],
                     });
-
+*/
                     const promises = list.map( async e => {       
                         let error = {};                
                         getErrorDetails.forEach(d => {
@@ -181,7 +181,7 @@ route.get("/errors", [authJWT.verifyToken, clientDBConnection.connect], async(re
                         });
                         
                         if(error.hasOwnProperty('type')) {
-                            let notesList = [];                            
+                            /*let notesList = [];                            
                             if(notes != null) {
                                 const promise = notes.map( n => {                                   
                                     if(n.subject == e.appno_doc_num || n.subject == error.grant_doc_num){
@@ -191,9 +191,10 @@ route.get("/errors", [authJWT.verifyToken, clientDBConnection.connect], async(re
                                 });
                                 await Promise.all(promise);
                             }
-                            error.notes = notesList
+                            error.notes = notesList*/
                             errorList.push(error);
                         }
+
                         return e;
                     });
                     await Promise.all(promises);    
