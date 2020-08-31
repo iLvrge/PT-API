@@ -42,15 +42,15 @@ route.get("/collections/:rf_id/illustration", [authJWT.verifyToken], async (req,
                 }
 
                 if(index === 0){
-                    execDate = moment(new Date(assignor.exec_dt)).format('MMM DD, YYYY');
+                    execDate = moment(new Date(assignor.exec_dt)).format('YYYY-MM-DD');
                     fakeDate = moment(new Date(assignor.exec_dt)).subtract(9, 'days');
                     recordedDate = moment(new Date(itemDetails.assignment.record_dt)).subtract(9, 'days');
                 }
                 let boxObj = {
                 id: assignorID.toString(),
                 name: boxName,
-                execution_date: fakeDate.format('MMM DD, YYYY'),
-                recorded_date: recordedDate.format('MMM DD, YYYY'),
+                execution_date: fakeDate.format('YYYY-MM-DD'),
+                recorded_date: recordedDate.format('YYYY-MM-DD'),
                 document: "https://patentrack.com/resources/shared/data/assignment-pat-" + itemDetails.assignment.reel_no + "-" + itemDetails.assignment.frame_no +".pdf",
                 }
 
