@@ -463,6 +463,7 @@ route.get("/:rf_id/assets",[authJWT.verifyToken], async(req, res, next) => {
  */
 route.post("/:representativeID/address", [authJWT.verifyToken, clientDBConnection.connect], async(req, res, next) => {
     try{
+        let add = {};
         if(typeof req.connection_db != "undefined" && req.connection_db != null ) {
 
             const postData = {		
@@ -470,13 +471,13 @@ route.post("/:representativeID/address", [authJWT.verifyToken, clientDBConnectio
                 representative_id: req.params.representativeID,
             }
 
-            const Address = req.connection_db.define('Address', Address.mainStructure, Address.options);
+            const Addresses = req.connection_db.define('Address', Address.mainStructure, Address.options);
 
-            const add = await Address.create(postData);
-
-            res.status(200).json(add);	
+            add = await Addresses.create(postData);
         }
+        res.status(200).json(add);
     } catch (e) {
+        console.log(e);
         res.status(500).send("Internal error");
     }
 });
@@ -486,6 +487,7 @@ route.post("/:representativeID/address", [authJWT.verifyToken, clientDBConnectio
  */
 route.post("/:representativeID/telephone", [authJWT.verifyToken, clientDBConnection.connect], async(req, res, next) => {
     try{
+        let add = {};
         if(typeof req.connection_db != "undefined" && req.connection_db != null ) {
 
             const postData = {		
@@ -493,13 +495,14 @@ route.post("/:representativeID/telephone", [authJWT.verifyToken, clientDBConnect
                 representative_id: req.params.representativeID,
             }
 
-            const Telephone = req.connection_db.define('Telephone', Telephone.mainStructure, Telephone.options);
+            const Telephones = req.connection_db.define('Telephone', Telephone.mainStructure, Telephone.options);
 
-            const add = await Telephone.create(postData);
+            add = await Telephones.create(postData);
             
-            res.status(200).json(add);
         }
+        res.status(200).json(add);
     } catch (e) {
+        console.log(e);
         res.status(500).send("Internal error");
     }
 });
@@ -509,6 +512,7 @@ route.post("/:representativeID/telephone", [authJWT.verifyToken, clientDBConnect
  */
 route.post("/:representativeID/companylawyer", [authJWT.verifyToken, clientDBConnection.connect], async(req, res, next) => {
     try{
+        let add = {};
         if(typeof req.connection_db != "undefined" && req.connection_db != null ) {
 
             const postData = {		
@@ -516,13 +520,13 @@ route.post("/:representativeID/companylawyer", [authJWT.verifyToken, clientDBCon
                 representative_id: req.params.representativeID,
             }
 
-            const Lawyer = req.connection_db.define('Lawyer', Lawyer.mainStructure, Lawyer.options);
+            const companyLawyer = req.connection_db.define('Lawyer', Lawyer.mainStructure, Lawyer.options);
 
-            const add = await Lawyer.create(postData);
-            
-            res.status(200).json(add);
+            add = await companyLawyer.create(postData);
         }
+        res.status(200).json(add);
     } catch (e) {
+        console.log(e);
         res.status(500).send("Internal error");
     }
 });
