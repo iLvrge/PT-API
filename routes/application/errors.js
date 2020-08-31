@@ -6,9 +6,9 @@ const route = express.Router();
 
 const Errors = require("../../model/application/Errors");
 
-const Activities = require("../../model/client/Activities");
+/*const Activities = require("../../model/client/Activities");
 
-const Professionals = require("../../model/client/Professionals");
+const Professionals = require("../../model/client/Professionals");*/
 
 const authJWT = require("../../helpers/verifyJwtToken");
 
@@ -22,9 +22,9 @@ route.get("/errors", [authJWT.verifyToken, clientDBConnection.connect], async(re
     try {
         const companyList = req.query.companies, tabList = req.query.tabs, customerList = req.query.customers, transactionList = req.query.transactions, offset = req.query.offset, limit = req.query.limit;
         let errorList = [];
-        const organisationData = await helpers.findOrganisationbyID(req.orgId);
+        
         //console.log(0);
-        if(organisationData != null && organisationData.organisation_id > 0 && typeof req.connection_db != "undefined" && req.connection_db != null){            
+        if( req.orgId > 0 && typeof req.connection_db != "undefined" && req.connection_db != null){            
             const where = {organisation_id: req.orgId};
 
             if(companyList != undefined && companyList != '') {
@@ -33,7 +33,7 @@ route.get("/errors", [authJWT.verifyToken, clientDBConnection.connect], async(re
             }
             
             let applicationNumber = [];
-            if((customerList != undefined && customerList != '')  || (transactionList != undefined && transactionList != '') || (tabList != undefined && tabList != '')) {
+            if((customerList != undefined && customerList != '')  || (transactionList != undefined && transactionList != '')) {
                 let queryFindApplication = "SELECT appno_doc_num FROM documentid WHERE rf_id IN (SELECT rf_id FROM tree_parties_collection as tpc INNER JOIN tree_parties as tp ON tp.assignor_and_assignee_id = tpc.assignor_and_assignee_id WHERE tpc.organisation_id = :organisation_id ";
 
                 let representatives = [], rfIDS = [], customers = [], tabs = [];
@@ -71,20 +71,20 @@ route.get("/errors", [authJWT.verifyToken, clientDBConnection.connect], async(re
                 const applicationWhere = {organisation_id: req.orgId};
 
                 if(representatives.length > 0) {
-                    applicationWhere.companyList = representatives.join(',');
+                    applicationWhere.companyList = representatives;
                 }
 
                 if(customers.length > 0) {
-                    applicationWhere.customerList = customers.join(',');
+                    applicationWhere.customerList = customers;
                 }
 
                 if(rfIDS.length > 0) {
-                    applicationWhere.rfIDList = rfIDS.join(',');
+                    applicationWhere.rfIDList = rfIDS;
                 }
 
-                if(tabs.length > 0) {
-                    applicationWhere.tabList = tabs.join(',');
-                }
+                /*if(tabs.length > 0) {
+                    applicationWhere.tabList = tabs;
+                }*/
 
                 const findApplications = await connection.application.query(queryFindApplication,{
                         type: connection.Sequelize.QueryTypes.SELECT,
@@ -105,7 +105,14 @@ route.get("/errors", [authJWT.verifyToken, clientDBConnection.connect], async(re
 
             if(applicationNumber.length > 0) {
                 where.appno_doc_num = applicationNumber;
-            }           
+            }
+            
+            if(tabList != undefined && tabList != ''){
+                let tabs = JSON.parse(tabList);
+                if(tabs.length > 0) {
+                    where.type = tabs;
+                }                
+            }
 
 
             const conditionInError = {attributes: ['appno_doc_num', 'type'], where: where};
@@ -127,7 +134,7 @@ route.get("/errors", [authJWT.verifyToken, clientDBConnection.connect], async(re
                 const getList = [];
                 list.map(e => getList.push(e.appno_doc_num));
 
-                const queryErrorList = "SELECT d.appno_doc_num as assetId, CASE WHEN d.grant_doc_num = '' THEN 'patent' ELSE d.grant_doc_num END as grant_doc_num, date_format(ass.record_dt,'%m/%d/%Y') as date, date_format(ass.last_update_dt,'%m/%d/%Y') as updatedAt, ass.cname as name FROM documentid as d LEFT JOIN assignment as ass ON ass.rf_id = d.rf_id WHERE d.appno_doc_num IN(:appNo) GROUP BY d.appno_doc_num ORDER BY ass.record_dt DESC";
+                const queryErrorList = "SELECT d.appno_doc_num as assetId, date_format(ass.record_dt,'%m/%d/%Y') as date, date_format(ass.last_update_dt,'%m/%d/%Y') as updatedAt, ass.cname as name, ass.caddress_1 as lawyer_name FROM documentid as d LEFT JOIN assignment as ass ON ass.rf_id = d.rf_id WHERE d.appno_doc_num IN(:appNo) GROUP BY d.appno_doc_num ORDER BY ass.record_dt DESC";
 
                 const getErrorDetails = await connection.application.query(queryErrorList,{
                     type: connection.Sequelize.QueryTypes.SELECT,
@@ -293,7 +300,7 @@ route.get("/errors/:type/:companyName", [authJWT.verifyToken, clientDBConnection
                         const getList = [];
                         getErrors.map(e => getList.push(e.appno_doc_num));
 
-                        const queryErrorList = "SELECT d.appno_doc_num as asset, date_format(ass.record_dt,'%m/%d/%Y') as created_at, ass.cname as name FROM documentid as d LEFT JOIN assignment as ass ON ass.rf_id = d.rf_id WHERE d.appno_doc_num IN(:appNo) GROUP BY d.appno_doc_num ORDER BY ass.record_dt DESC";
+                        const queryErrorList = "SELECT d.appno_doc_num as asset, date_format(ass.record_dt,'%m/%d/%Y') as created_at, ass.cname as name, ass.caddress_1 as lawyer_name FROM documentid as d LEFT JOIN assignment as ass ON ass.rf_id = d.rf_id WHERE d.appno_doc_num IN(:appNo) GROUP BY d.appno_doc_num ORDER BY ass.record_dt DESC";
 
                         getErrorList = await connection.application.query(queryErrorList,{
                             type: connection.Sequelize.QueryTypes.SELECT,
@@ -316,7 +323,7 @@ route.get("/errors/:type/:companyName", [authJWT.verifyToken, clientDBConnection
                     const getList = [];
                     getErrors.map(e => getList.push(e.appno_doc_num));
 
-                    const queryErrorList = "SELECT d.appno_doc_num as asset, date_format(ass.record_dt,'%m/%d/%Y') as created_at, ass.cname as name FROM documentid as d LEFT JOIN assignment as ass ON ass.rf_id = d.rf_id WHERE d.appno_doc_num IN(:appNo)  GROUP BY d.appno_doc_num ORDER BY ass.record_dt DESC";
+                    const queryErrorList = "SELECT d.appno_doc_num as asset, date_format(ass.record_dt,'%m/%d/%Y') as created_at, ass.cname as name, ass.caddress_1 as lawyer_name FROM documentid as d LEFT JOIN assignment as ass ON ass.rf_id = d.rf_id WHERE d.appno_doc_num IN(:appNo)  GROUP BY d.appno_doc_num ORDER BY ass.record_dt DESC";
 
                     getErrorList = await connection.application.query(queryErrorList,{
                         type: connection.Sequelize.QueryTypes.SELECT,
