@@ -537,8 +537,10 @@ route.post("/:representativeID/companylawyer", [authJWT.verifyToken, clientDBCon
 route.get("/:representativeID/address", [authJWT.verifyToken, clientDBConnection.connect], async(req, res, next) => {
     try{
         if(typeof req.connection_db != "undefined" && req.connection_db != null ) {
-            
-            const list = await Address.findAll({
+
+            const Addresses = req.connection_db.define('Address', Address.mainStructure, Address.options);
+
+            const list = await Addresses.findAll({
                 attributes: [['address', 'item']],
                 where: {representative_id: req.params.representativeID}
             });
@@ -557,7 +559,9 @@ route.get("/:representativeID/telephone", [authJWT.verifyToken, clientDBConnecti
     try{
         if(typeof req.connection_db != "undefined" && req.connection_db != null ) {
 
-            const list = await Telephone.findAll({
+            const Telephones = req.connection_db.define('Telephone', Telephone.mainStructure, Telephone.options);
+
+            const list = await Telephones.findAll({
                 attributes: [['telephone_number', 'item']],
                 where: {representative_id: req.params.representativeID}
             });
@@ -576,9 +580,9 @@ route.get("/:representativeID/companylawyer", [authJWT.verifyToken, clientDBConn
     try{
         if(typeof req.connection_db != "undefined" && req.connection_db != null ) {
 
-            const Lawyer = req.connection_db.define('Lawyer', Lawyer.mainStructure, Lawyer.options);
+            const companyLawyer = req.connection_db.define('Lawyer', Lawyer.mainStructure, Lawyer.options);
 
-            const list = await Lawyer.findAll({
+            const list = await companyLawyer.findAll({
                 attributes: [['name', 'item']],
                 where: {representative_id: req.params.representativeID}
             });
