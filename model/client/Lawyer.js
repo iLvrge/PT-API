@@ -2,7 +2,7 @@ const Sequelize = require("sequelize");
 
 const Lawyer = {
     mainStructure: {
-        telephone_id: {
+        lawyer_id: {
             type: Sequelize.INTEGER,
             primaryKey: true,
             autoIncrement: true
