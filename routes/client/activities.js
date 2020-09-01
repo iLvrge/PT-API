@@ -323,9 +323,9 @@ route.post("/activities/:type", [authJWT.verifyToken, clientDBConnection.connect
 
 /**Update activities */
 
-route.put("/activities", [authJWT.verifyToken, clientDBConnection.connect], async(req, res, next) => {
+route.put("/activities/:ID", [authJWT.verifyToken, clientDBConnection.connect], async(req, res, next) => {
     try{
-        const ID = req.body.complete, type = req.params.type;
+        const complete = req.body.complete, ID = req.params.ID;
         if(typeof req.connection_db != "undefined" && req.connection_db != null ) {
             const Activity = req.connection_db.define('Activities', Activities.mainStructure, Activities.options);
 
@@ -335,7 +335,7 @@ route.put("/activities", [authJWT.verifyToken, clientDBConnection.connect], asyn
 
             if( findData != null && findData.id > 0) {
                 const t = await req.connection_db.transaction();
-                const items = await Activity.update({complete: 1},{where: {activity_id: ID}, transaction: t});
+                await Activity.update({complete: complete},{where: {activity_id: ID}, transaction: t});
                 if (t) await t.commit();
                 res.status(200).send("Updated successfully");
             } else {
