@@ -211,25 +211,7 @@ route.post("/activities/:type", [authJWT.verifyToken, clientDBConnection.connect
                         attributes: ['professional_id', 'email_address']
                     });
                 }  
-            } else if( type  == 3) {    
-                console.log("Asdsadada");            
-                /*const User = req.connection_db.define('Users', Users.mainStructure, Users.options);
-                const findUser = await User.findOne({
-                    where: {user_id: req.userId}
-                });
-                console.log(findUser);
-                if(findUser != null) {
-                    const Professional = req.connection_db.define('Professionals', Professionals.mainStructure, Professionals.options);
-                    professional = await Professional.findOne({
-                        where: {email_address: findUser.email_address, type: 0},
-                        attributes: ['professional_id', 'email_address']
-                    });
-
-                    if(professional != null) {
-                        postData.professional_id = professional.professional_id;
-                    }
-                }
-                let professionID = req.body.professional_id;*/
+            } else if( type  == 3) {
                 const findUserDetails = await helpers.findProfessionalFromUserID(req.userId, req.connection_db);
                 if(findUserDetails != null) {
                     postData.professional_id =  findUserDetails.professional_id;
@@ -242,7 +224,6 @@ route.post("/activities/:type", [authJWT.verifyToken, clientDBConnection.connect
                 if(findDocument != null) {
                     postData.document_id = findDocument.document_id;
                 }
-
             } else {
                 insertData = false;
             }
@@ -260,7 +241,7 @@ route.post("/activities/:type", [authJWT.verifyToken, clientDBConnection.connect
             }   
 
             /**For FixIt or RecordIt */
-            if(req.params.type == 1 || req.params.type == 2) {
+            if(req.params.type == 1) {
                 /**
                  * create sharing code
                  */
@@ -272,7 +253,7 @@ route.post("/activities/:type", [authJWT.verifyToken, clientDBConnection.connect
                     subject: req.body.subject,
                     subject_type: req.body.subject_type,
                 }
-                console.log(shareUrl);
+                
                 /**
                  * insert sharelink
                  */
@@ -285,8 +266,20 @@ route.post("/activities/:type", [authJWT.verifyToken, clientDBConnection.connect
             /**Insert new activity */
             if(insertData === true) {
                 const Activity = req.connection_db.define('Activities', Activities.mainStructure, Activities.options);
-            
-                const newActivity = await Activity.create(postData);
+
+                let mimeType = req.files.file.mimetype, newActivity = null;
+                console.log(mimeType);
+                if( mimeType.toLowerCase().indexOf('.exe') < 0){
+                    let fileObject = req.files.file;
+                    await fileObject.mv('/var/www/html/beta/resources/shared/data/'+fileObject.name,function(err) {
+                        if (!err){
+                            postData.upload_file = "https://patentrack.com/resources/shared/data/"+fileObject.name;
+                        }
+                        newActivity = await Activity.create(postData);
+                    })
+                } else {
+                    newActivity = await Activity.create(postData);
+                }                
                 if(newActivity != null && newActivity.activity_id > 0){                    
                     let response = newActivity.toJSON();
                     /**If type is RecordIt */
