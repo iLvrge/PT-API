@@ -46,7 +46,7 @@ route.get("/activities/:type/:option", [authJWT.verifyToken, clientDBConnection.
                 Activity.belongsTo(Document, { foreignKey: 'document_id', as: 'documents' });
 
                 const itemListToDO = await Activity.findAll({
-					attributes: [['activity_id','id'],'subject', 'subject_type', 'complete', 'comment', 'share_url','created_at'],
+					attributes: [['activity_id','id'],'subject', 'subject_type', 'complete', 'comment', 'share_url','created_at','updated_at'],
 					where:{ type: type, complete: 0},
 					include:[
 						{
@@ -330,10 +330,10 @@ route.put("/activities/:ID", [authJWT.verifyToken, clientDBConnection.connect], 
             const Activity = req.connection_db.define('Activities', Activities.mainStructure, Activities.options);
 
             const findData = await Activity.findOne({
-                where:{ type: type, activity_id: ID}
+                where:{ activity_id: ID}
             });
 
-            if( findData != null && findData.id > 0) {
+            if( findData != null && findData.activity_id > 0) {
                 const t = await req.connection_db.transaction();
                 await Activity.update({complete: complete},{where: {activity_id: ID}, transaction: t});
                 if (t) await t.commit();
