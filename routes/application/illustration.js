@@ -46,6 +46,7 @@ route.get("/collections/:rf_id/illustration", [authJWT.verifyToken], async (req,
                     fakeDate = moment(new Date(assignor.exec_dt)).subtract(9, 'days');
                     recordedDate = moment(new Date(itemDetails.assignment.record_dt)).subtract(9, 'days');
                 }
+                
                 let boxObj = {
                 id: assignorID.toString(),
                 name: boxName,
@@ -139,7 +140,7 @@ route.get("/collections/:rf_id/illustration", [authJWT.verifyToken], async (req,
                                 id: assigneeID,
                                 name: boxName,
                                 execution_date: execDate,
-                                recorded_date: moment(new Date(itemDetails.assignment.record_dt)).format('MMM DD, YYYY'),
+                                recorded_date: moment(new Date(itemDetails.assignment.record_dt)).format('YYYY-MM-DD'),
                                 document: "https://patentrack.com/resources/shared/data/assignment-pat-" + itemDetails.assignment.reel_no + "-" + itemDetails.assignment.frame_no +".pdf",
                             }
     
