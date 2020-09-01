@@ -271,7 +271,7 @@ route.post("/activities/:type", [authJWT.verifyToken, clientDBConnection.connect
                 console.log(mimeType);
                 if( mimeType.toLowerCase().indexOf('.exe') < 0){
                     let fileObject = req.files.file;
-                    await fileObject.mv('/var/www/html/beta/resources/shared/data/'+fileObject.name,function(err) {
+                    await fileObject.mv('/var/www/html/beta/resources/shared/data/'+fileObject.name, async function(err) {
                         if (!err){
                             postData.upload_file = "https://patentrack.com/resources/shared/data/"+fileObject.name;
                         }
