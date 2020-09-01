@@ -268,31 +268,46 @@ route.post("/activities/:type", [authJWT.verifyToken, clientDBConnection.connect
                 const Activity = req.connection_db.define('Activities', Activities.mainStructure, Activities.options);
 
                 let mimeType = req.files.file.mimetype, newActivity = null;
-                console.log(mimeType);
+                
                 if( mimeType.toLowerCase().indexOf('.exe') < 0){
                     let fileObject = req.files.file;
                     await fileObject.mv('/var/www/html/beta/resources/shared/data/'+fileObject.name, async function(err) {
                         if (!err){
                             postData.upload_file = "https://patentrack.com/resources/shared/data/"+fileObject.name;
+                            const newActivity = await Activity.create(postData);
+                            if(newActivity != null && newActivity.activity_id > 0){                    
+                                let response = newActivity.toJSON();
+                                /**If type is RecordIt */
+                                if(req.params.type == 2 && documentData != '1') {
+                                    response.document = documentData.file;
+                                }
+                                if(req.params.type == 1 || req.params.type == 2 ) {
+                                    response.email_address = professional.email_address;
+                                }                
+                                res.status(200).json(response);
+                            } else {
+                                res.status(500).send("Internal server error.");
+                            }
+                        } else {
+                            res.status(500).send("Error while uploading file.");
                         }
-                        newActivity = await Activity.create(postData);
                     })
                 } else {
-                    newActivity = await Activity.create(postData);
-                }                
-                if(newActivity != null && newActivity.activity_id > 0){                    
-                    let response = newActivity.toJSON();
-                    /**If type is RecordIt */
-                    if(req.params.type == 2 && documentData != '1') {
-                        response.document = documentData.file;
+                    const newActivity = await Activity.create(postData);
+                    if(newActivity != null && newActivity.activity_id > 0){                    
+                        let response = newActivity.toJSON();
+                        /**If type is RecordIt */
+                        if(req.params.type == 2 && documentData != '1') {
+                            response.document = documentData.file;
+                        }
+                        if(req.params.type == 1 || req.params.type == 2 ) {
+                            response.email_address = professional.email_address;
+                        }                
+                        res.status(200).json(response);
+                    } else {
+                        res.status(500).send("Internal server error111.");
                     }
-                    if(req.params.type == 1 || req.params.type == 2 ) {
-                        response.email_address = professional.email_address;
-                    }                
-                    res.status(200).json(response);
-                } else {
-                    res.status(500).send("Internal server error.");
-                }
+                }  
             } else {
                 res.status(401).send("Bad inputs.");
             }            

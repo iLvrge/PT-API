@@ -35,6 +35,10 @@ const Activities = {
             type: Sequelize.INTEGER,
 			allowNull: false,
         },
+        upload_file:{
+            type: Sequelize.STRING,
+            allowNull: true,
+        },
 		complete:{
             type: Sequelize.INTEGER,
             allowNull: true,
