@@ -153,7 +153,7 @@ route.get("/activities/:ID", [authJWT.verifyToken, clientDBConnection.connect], 
 
             const findData = await Activity.findOne({
                 where: {activity_id: req.params.ID},
-                attributes: [['activity_id','id'], 'comment', 'created_at', 'type', 'subject', 'subject_type'],
+                attributes: [['activity_id','id'], 'comment', 'created_at', 'type', 'subject', 'subject_type','upload_file'],
                 include:[
                     {
                         model: Document,
