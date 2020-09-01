@@ -46,7 +46,7 @@ route.get("/activities/:type/:option", [authJWT.verifyToken, clientDBConnection.
                 Activity.belongsTo(Document, { foreignKey: 'document_id', as: 'documents' });
 
                 const itemListToDO = await Activity.findAll({
-					attributes: [['activity_id','id'],'subject', 'subject_type', 'complete', 'comment', 'share_url','created_at','updated_at'],
+					attributes: [['activity_id','id'],'subject', 'subject_type', 'complete', 'comment', 'share_url','created_at'],
 					where:{ type: type, complete: 0},
 					include:[
 						{
@@ -78,7 +78,7 @@ route.get("/activities/:type/:option", [authJWT.verifyToken, clientDBConnection.
                 });
                 
                 const itemListComplete = await Activity.findAll({
-					attributes: [['activity_id','id'],'subject', 'subject_type', 'complete', 'comment', 'share_url','created_at'],
+					attributes: [['activity_id','id'],'subject', 'subject_type', 'complete', 'comment', 'share_url','created_at','updated_at'],
 					where:{complete: 1},
 					include:[
 						{
