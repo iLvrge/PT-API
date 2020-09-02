@@ -20,7 +20,7 @@ const helpers = require("../../helpers/helper");
 
 route.get("/errors", [authJWT.verifyToken, clientDBConnection.connect], async(req, res, next) => {
     try {
-        const companyList = req.query.companies, tabList = req.query.tabs, customerList = req.query.customers, transactionList = req.query.transactions, offset = req.query.offset, limit = req.query.limit;
+        const companyList = req.query.companies, tabList = req.query.tabs, customerList = req.query.customers, transactionList = req.query.transactions, offset = req.query.offset, limit = req.query.limit, patentList = req.query.patents;
         let errorList = [];
         
         //console.log(0);
@@ -33,10 +33,10 @@ route.get("/errors", [authJWT.verifyToken, clientDBConnection.connect], async(re
             }
             
             let applicationNumber = [];
-            if((customerList != undefined && customerList != '')  || (transactionList != undefined && transactionList != '')) {
-                let queryFindApplication = "SELECT appno_doc_num FROM documentid WHERE rf_id IN (SELECT rf_id FROM tree_parties_collection as tpc INNER JOIN tree_parties as tp ON tp.assignor_and_assignee_id = tpc.assignor_and_assignee_id WHERE tpc.organisation_id = :organisation_id ";
+            if((customerList != undefined && customerList != '')  || (transactionList != undefined && transactionList != '') || (patentList != undefined && patentList != '')) {
+                let queryFindApplication = "SELECT d.appno_doc_num FROM documentid as d WHERE d.rf_id IN (SELECT rf_id FROM tree_parties_collection as tpc INNER JOIN tree_parties as tp ON tp.assignor_and_assignee_id = tpc.assignor_and_assignee_id WHERE tpc.organisation_id = :organisation_id ";
 
-                let representatives = [], rfIDS = [], customers = [], tabs = [];
+                let representatives = [], rfIDS = [], customers = [], patents = [];
 
                 if(companyList != undefined && companyList != '') {
                     representatives = JSON.parse(companyList);
@@ -59,14 +59,15 @@ route.get("/errors", [authJWT.verifyToken, clientDBConnection.connect], async(re
                     }                    
                 }
 
-                if(tabList != undefined && tabList != '') {
-                    tabs = JSON.parse(tabList);
-                    if(tabs.length > 0) {
-                        queryFindApplication += " AND tpc.tab_id IN (:tabList)";
-                    }
+                if(patentList != undefined && patentList != '') {
+                    patents = JSON.parse(patentList);
+                    if(patents.length > 0) {
+                        queryFindApplication += " AND (d.grant_doc_num IN (:patList) OR d.appno_doc_num IN (:patList))";
+                    }                    
                 }
+                
 
-                queryFindApplication += " )";
+                queryFindApplication += " ) GROUP BY d.appno_doc_num";
 
                 const applicationWhere = {organisation_id: req.orgId};
 
@@ -82,9 +83,9 @@ route.get("/errors", [authJWT.verifyToken, clientDBConnection.connect], async(re
                     applicationWhere.rfIDList = rfIDS;
                 }
 
-                /*if(tabs.length > 0) {
-                    applicationWhere.tabList = tabs;
-                }*/
+                if(patents.length > 0) {
+                    applicationWhere.patList = patents;
+                }
 
                 const findApplications = await connection.application.query(queryFindApplication,{
                         type: connection.Sequelize.QueryTypes.SELECT,
