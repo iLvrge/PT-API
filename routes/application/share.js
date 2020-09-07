@@ -8,7 +8,7 @@ const helpers = require("../../helpers/helper");
 
 route.post("/share", [authJWT.verifyToken], async (req, res) =>{     
     const params = req.body;
-            params.organisation_id = req.orgId;
+            params.organisation_id = req.orgId ;
             params.user_id = req.userId;
     try {
         let code = await helpers.getNewCode();
