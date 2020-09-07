@@ -18,6 +18,90 @@ const helpers = require("../../helpers/helper");
 
 /**Get activities list */
 
+route.get("/activities/", [authJWT.verifyToken, clientDBConnection.connect], async(req, res, next) => {
+    try{
+        if(typeof req.connection_db != "undefined" && req.connection_db != null ) {
+            const type = req.query.type, option = req.query.count;
+            const Activity = req.connection_db.define('Activities', Activities.mainStructure, Activities.options);
+
+            if(option == "true" || option == true){
+                const where = {};
+                if(type == 'fix' || type == 'record') {
+                    where.type = type == 'fix' ? 1 :  2;
+                    where.complete = 0;
+                } else {
+                    where.complete = 1;
+                }               
+
+                const countItem = await Activity.findAll({
+					attributes: [[req.connection_db.fn('COUNT', 'id'), 'count_items']],
+					where:where
+				});
+				res.status(200).json(countItem);
+            } else {
+                const Professional = req.connection_db.define('Professionals', Professionals.mainStructure, Professionals.options);
+                const Firm = req.connection_db.define('Firms', Firms.mainStructure, Firms.options);
+                const User = req.connection_db.define('Users', Users.mainStructure, Users.options);
+                const Document = req.connection_db.define('Documents', Documents.mainStructure, Documents.options);
+                
+                Professional.belongsTo(Firm, { foreignKey: 'firm_id', as: 'firms' });
+
+                Activity.belongsTo(Professional, { foreignKey: 'professional_id', as: 'professionals' });
+                Activity.belongsTo(User, { foreignKey: 'user_id', as: 'users' });
+                Activity.belongsTo(Document, { foreignKey: 'document_id', as: 'documents' });
+
+                const where = {};
+                if(type == 'fix' || type == 'record') {
+                    where.type = type == 'fix' ? 1 :  2;
+                    where.complete = 0;
+                } else {
+                    where.complete = 1;
+                } 
+
+                const itemListToDO = await Activity.findAll({
+					attributes: [['activity_id','id'],'subject', 'subject_type', 'complete', 'comment', 'share_url','created_at'],
+					where: where,
+					include:[
+						{
+							model: Professional,
+							as: 'professionals',
+                            attributes:['first_name', 'last_name','email_address','telephone'],
+                            include:[
+								{
+									model: Firm,
+									as: 'firms',
+									attributes:['firm_name']
+								}
+							]
+						},
+						{
+							model: User,
+							as: 'users',
+							attributes:['first_name', 'last_name','email_address','telephone']
+                        },
+                        {
+							model: Document,
+							as: 'documents',
+							attributes:['title', 'file','type','description']
+						}
+					],
+					order: [
+						['created_at', 'DESC'],
+					],
+                });
+                
+                res.status(200).json(itemListToDO);
+            }
+        } else {
+            console.log("Client DB not connected");
+            res.status(402).send("Invalid option");
+        }
+    } catch (err) {
+        console.log('REQUEST GET, activities: '+ err);
+        res.status(402).send("Invalid option");
+    }    
+});
+
 route.get("/activities/:type/:option", [authJWT.verifyToken, clientDBConnection.connect], async(req, res, next) => {
     try{
         if(typeof req.connection_db != "undefined" && req.connection_db != null ) {
@@ -30,7 +114,7 @@ route.get("/activities/:type/:option", [authJWT.verifyToken, clientDBConnection.
 
                 const countItem = await Activity.findAll({
 					attributes: [[req.connection_db.fn('COUNT', 'id'), 'count_items']],
-					where:where
+					where: where
 				});
 				res.status(200).json(countItem);
             } else if(option == "list") {

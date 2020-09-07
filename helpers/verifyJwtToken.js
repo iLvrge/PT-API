@@ -22,7 +22,7 @@ let verifyToken = (req, res, next) => {
 		    console.log(err);
         return res.status(401).send('Authorization error');
       }
-      
+      console.log(decoded);
       req.userId = decoded.id;
       req.orgId = decoded.orgId;
       next();

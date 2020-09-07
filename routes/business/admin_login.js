@@ -21,7 +21,7 @@ route.post("/signin", (req, res, next) => {
             status:0
         }
     }).then(user => {
-        //console.log(user);
+        console.log(user);
         if (!user) {
             return res.status(401).send("Invalid Username and/or Password!");
         }
