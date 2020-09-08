@@ -666,13 +666,16 @@ let updateAllCustomerInventor = async(organisationID, inventors, flag, DBConnect
  * } companyName 
  * @param {*} type 
  */
-
+/*
  let findCompanyEntitiesByAccountID = async(orgID, type, DBConnection) => {
     const list = await getCompaniesList(DBConnection);
     let entitiesList = [];
     if(list.length > 0) {
-        const representativeNames = [];
-        list.map(r => representativeNames.push(r.original_name));
+        const representativeNames = [], IDs;
+        list.map(r => {
+            representativeNames.push(r.original_name);
+            IDs.push(r.representative_id);
+        });
 
 
 
@@ -703,6 +706,36 @@ let updateAllCustomerInventor = async(organisationID, inventors, flag, DBConnect
             listIDs = await connection.resources.query(queryRepresentativeTransactions,{
                 type: connection.Sequelize.QueryTypes.SELECT,
                 replacements: { representative_list: representativeList },
+                raw: true,
+                logging: console.log,
+                }
+            );
+
+            if(listIDs.length > 0) {
+                const rfIDs = [];
+                    listIDs.map( r => rfIDs.push(r.rf_id));
+                    entitiesList = await findAssignorAndAssigneeListFromRFIDs(rfIDs, type);
+            }
+        }
+    }
+    return entitiesList;
+}
+*/
+
+let findCompanyEntitiesByAccountID = async(orgID, type, DBConnection) => {
+    const list = await getCompaniesList(DBConnection);
+    let entitiesList = [];
+    if(list.length > 0) {
+        const IDs = [];
+        list.map(r => IDs.push(r.representative_id));
+        let listIDs = [];
+
+        if(IDs.length > 0) {
+            const queryRepresentativeTransactions = "SELECT rf_id FROM representative_transactions where organisation_id = :organisationID AND representative_id IN (:representativeIDs)";
+
+            listIDs = await connection.resources.query(queryRepresentativeTransactions,{
+                type: connection.Sequelize.QueryTypes.SELECT,
+                replacements: { representativeIDs: IDs, organisationID: orgID },
                 raw: true,
                 logging: console.log,
                 }
