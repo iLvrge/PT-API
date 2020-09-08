@@ -337,11 +337,10 @@ let downloadImageToUrl = async (org, res, url, filename, callback) => {
 
         response.on('end', async () => {                                             
             fs.writeFileSync(filename, data.read());  
-            console.log(filename);
             await org.update({
                 logo: filename.replace('/var/www/html/beta/', 'https://patentrack.com/')
             })
-            res.status(200).json(org);                             
+            res.status(200).json({name: org.name, logo: org.logo});                         
         });                                                                         
     }).end();
 };
@@ -375,8 +374,8 @@ route.put("/customers/:id/logo", [authJWT.verifyToken, authJWT.isAdmin], async (
                                         await org.update({
                                             logo: "https://patentrack.com/resources/shared/data/"+uploadedFileName
                                         })
-
-                                        res.status(200).json(org);
+                                       
+                                        res.status(200).json({name: org.name, logo: org.logo});
                                     })();
                                 }
                             })
