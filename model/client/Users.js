@@ -25,11 +25,11 @@ const Users = {
         },
         linkedin_url:{
             type: Sequelize.STRING,
-            allowNull: false,
+            allowNull: true,
         },
         job_title:{
             type: Sequelize.STRING,
-            allowNull: false,
+            allowNull: true,
         },
 		telephone:{
             type: Sequelize.STRING,

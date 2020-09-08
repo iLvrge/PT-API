@@ -22,11 +22,11 @@ const Users = connection.business.define('user',{
     }, 
     job_title:{
         type: Sequelize.STRING,
-        allowNull: false,
+        allowNull: true,
     },
     username:{
         type: Sequelize.STRING,
-        allowNull: false,
+        allowNull: true,
     },
     email_address:{
         type: Sequelize.STRING,
@@ -38,7 +38,7 @@ const Users = connection.business.define('user',{
     },
     organisation_id:{
         type: Sequelize.INTEGER,
-        allowNull: true,
+        allowNull: false,
         references: {
             model: Organisations,
             key: 'organisation_id',
