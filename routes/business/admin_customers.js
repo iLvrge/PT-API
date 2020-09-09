@@ -73,7 +73,7 @@ route.get("/customers/:id", [authJWT.verifyToken, authJWT.isAdmin], (req, res, n
             if(organisationID > 0){
                 let org = await helpers.findOrganisationbyID( organisationID );
                 if(org != null && org.organisation_id > 0) {
-                    res.status(200).json(org);
+                    res.status(200).json({name: org.name, organisation_id: org.organisation_id, logo: org.logo});
                 } else {
                     res.status(402).send("Not found");
                 }
@@ -119,7 +119,8 @@ route.get("/customers/:id/companies", [authJWT.verifyToken, authJWT.isAdmin, aut
             const organisation  = await helpers.findOrganisationbyID(organisationID);
             if(organisation != null && organisation.organisation_id > 0){
                 if(typeof req.connection_db != "undefined" && req.connection_db != null ) {
-                    const getCompaniesList = await helpers.getCompaniesWithChildren(req.connection_db);
+                    /*const getCompaniesList = await helpers.getCompaniesWithChildren(req.connection_db);*/
+                    const getCompaniesList = await helpers.getCompaniesList(req.connection_db);
                     res.status(200).json(getCompaniesList);
                 } else {
                     res.status(200).json([]);
