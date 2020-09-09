@@ -637,7 +637,7 @@ let updateAllCustomerInventor = async(organisationID, inventors, flag, DBConnect
                     const allIDs = [...findAssignors, ...findAssignees];
         
                     if(allIDs.length > 0) {
-                        rfIDs = [...allIDs];
+                        allIDs.map(l => rfIDs.push(l.rf_id));
                     }
                 }
                 console.log(rfIDs.length);
@@ -645,14 +645,14 @@ let updateAllCustomerInventor = async(organisationID, inventors, flag, DBConnect
                     
                     added = await AssignmentConveyance.update({employer_assign: flag},{where: {rf_id: rfIDs}});
                     added = await RepresentativeAssignmentConveyance.update({employer_assign: flag},{where: {rf_id: rfIDs}});
-                    const queryInsertConveyance = `INSERT IGNORE INTO representative_assignment_conveyance (rf_id, convey_ty, employer_assign) SELECT rf_id, convey_ty, ${flag} as employer_assign FROM assignment_conveyance WHERE rf_id IN (:rfIDs)`;
+                    /*const queryInsertConveyance = `INSERT IGNORE INTO representative_assignment_conveyance (rf_id, convey_ty, employer_assign) SELECT rf_id, convey_ty, ${flag} as employer_assign FROM assignment_conveyance WHERE rf_id IN (:rfIDs)`;
                     added = await connection.resources.query(queryInsertConveyance,{
                         type: connection.Sequelize.QueryTypes.INSERT,
                         replacements: { rfIDs:  rfIDs},
                         raw: true,
                         logging: console.log,
                         }
-                    );
+                    );*/
                 }
             }
         }
