@@ -58,7 +58,7 @@ let searchCompany = async(query, t) => {
             if(splitSearch.length > 1){				
                 if(splitSearch.length == 2) {
                     if(splitSearch[1] == '') {
-                        searchTerm = `${search}*`;
+                        searchTerm = `${search} *`;
                     } else {
                         const ftsQuery = new FtsQuery(true);			
                         searchTerm = ftsQuery.transform(search);
@@ -242,14 +242,12 @@ let findRepresentative = async (OrganisationName) => {
     });
 }
 
-let allAssignments = async (customerID) => {
+let allAssignments = async (customerID, req) => {
     let queryAllAssignments = "", assignmentsList = [];
-    if(parseInt(customerID) > 0) {
-        
+    if(parseInt(customerID) > 0) {        
         let org = await findOrganisationbyID( customerID );
         
         if(org != null && org.organisation_id > 0) {
-            console.log("ORG "+ org.organisation_id);
             const queryFindMainCompany = "SELECT aa.assignor_and_assignee_id, aa.name FROM assignor_and_assignee as aa LEFT JOIN representative as r1 ON r1.representative_id = aa.representative_id where (aa.name = :name OR r1.representative_name = :name )";
             const listIDs = await connection.application.query(queryFindMainCompany,{
                 type: connection.Sequelize.QueryTypes.SELECT,
@@ -306,14 +304,75 @@ let allAssignments = async (customerID) => {
             }
         }
     } else {
-        queryAllAssignments = "Select a.rf_id as id, a.convey_text as text, null as reel_frame, count(a.convey_text) as counter, ac.convey_ty, rac.convey_ty as updated_convey_ty, CASE    WHEN rac.convey_ty = 'assignment' THEN 0 	 WHEN rac.convey_ty = 'addresschg' THEN 1	 WHEN rac.convey_ty = 'correct' THEN 2	 WHEN rac.convey_ty = 'courtappointment' THEN 3	 WHEN rac.convey_ty = 'courtorder' THEN 4	 WHEN rac.convey_ty = 'employee' THEN 5	 WHEN rac.convey_ty = 'govern' THEN 6	 WHEN rac.convey_ty = 'license' THEN 7	 WHEN rac.convey_ty = 'licenseend' THEN 8	 WHEN rac.convey_ty = 'missing' THEN 9	 WHEN rac.convey_ty = 'merger' THEN 10	 WHEN rac.convey_ty = 'namechg' THEN 11	 WHEN rac.convey_ty = 'option' THEN 12	 WHEN rac.convey_ty = 'other' THEN 13	 WHEN rac.convey_ty = 'partialassignment' THEN 14	 WHEN rac.convey_ty = 'release' THEN 15	 WHEN rac.convey_ty = 'restatedsecurity' THEN 16	 WHEN rac.convey_ty = 'security' THEN 17	 ELSE '' END as assignment_convey_ty FROM assignment as a INNER JOIN assignment_conveyance as ac ON ac.rf_id = a.rf_id INNER JOIN representative_assignment_conveyance as rac ON rac.rf_id = a.rf_id WHERE a.convey_text <> '' AND a.convey_text IS NOT NULL GROUP BY a.convey_text, updated_convey_ty";
+        /*queryAllAssignments = "Select a.rf_id as id, a.convey_text as text, null as reel_frame, count(a.convey_text) as counter, ac.convey_ty, rac.convey_ty as updated_convey_ty, CASE  WHEN rac.convey_ty = 'assignment' THEN 0  WHEN rac.convey_ty = 'addresschg' THEN 1 WHEN rac.convey_ty = 'correct' THEN 2	 WHEN rac.convey_ty = 'courtappointment' THEN 3	 WHEN rac.convey_ty = 'courtorder' THEN 4 WHEN rac.convey_ty = 'employee' THEN 5 WHEN rac.convey_ty = 'govern' THEN 6	 WHEN rac.convey_ty = 'license' THEN 7	 WHEN rac.convey_ty = 'licenseend' THEN 8	 WHEN rac.convey_ty = 'missing' THEN 9	 WHEN rac.convey_ty = 'merger' THEN 10	 WHEN rac.convey_ty = 'namechg' THEN 11	 WHEN rac.convey_ty = 'option' THEN 12	 WHEN rac.convey_ty = 'other' THEN 13	 WHEN rac.convey_ty = 'partialassignment' THEN 14	 WHEN rac.convey_ty = 'release' THEN 15	 WHEN rac.convey_ty = 'restatedsecurity' THEN 16	 WHEN rac.convey_ty = 'security' THEN 17 ELSE '' END as assignment_convey_ty FROM assignment as a INNER JOIN assignment_conveyance as ac ON ac.rf_id = a.rf_id INNER JOIN representative_assignment_conveyance as rac ON rac.rf_id = a.rf_id WHERE a.convey_text <> '' AND a.convey_text IS NOT NULL GROUP BY a.convey_text, updated_convey_ty";*/
 
+        const search = req.query.search, replacements = {};
+
+        queryAllAssignments = "SELECT id, text, reel_frame, counter, convey_ty, updated_convey_ty FROM assignment_group ";
+        
+        if(search != "" && search != undefined) {
+            const splitSearch = search.toString().split(' ');
+            if(splitSearch.length > 1){				
+                if(splitSearch.length == 2) {
+                    if(splitSearch[1] == '') {
+                        searchTerm = `${search} *`;
+                    } else {
+                        const ftsQuery = new FtsQuery(true);			
+                        searchTerm = ftsQuery.transform(search);
+                        searchTerm = `${searchTerm}*`;
+                        searchTerm = searchTerm.replace(" AND ", " ");
+                        searchTerm = searchTerm.replace(" OR ", " ");
+                        searchTerm = searchTerm.replace(" NEAR ", " ");
+                    }
+                } else {
+                    const ftsQuery = new FtsQuery(true);			
+                    searchTerm = ftsQuery.transform(search);
+                    if(!!searchTerm.indexOf('"')){
+                        searchTerm = `${searchTerm}*`;
+                    }
+                    searchTerm = searchTerm.replace(" AND ", " ");
+                    searchTerm = searchTerm.replace(" OR ", " ");
+                    searchTerm = searchTerm.replace(" NEAR ", " ");
+                }				
+            } else {
+                searchTerm = `${search}*`;
+            }
+            queryAllAssignments += " WHERE MATCH(text) AGAINST (:search IN BOOLEAN MODE) ";
+            replacements.search =  searchTerm ;
+        }
+
+        queryAllAssignments += " GROUP BY text, updated_convey_ty";
+
+        
+        
         assignmentsList =  await connection.resources.query(queryAllAssignments,{
             type: connection.Sequelize.QueryTypes.SELECT,
             raw: true,
+            replacements: replacements,
             logging: console.log,
           }
         );
+
+        if(assignmentsList.length == 0){
+            queryAllAssignments = "SELECT id, text, reel_frame, counter, convey_ty, updated_convey_ty FROM assignment_group WHERE text = :search GROUP BY text, updated_convey_ty";
+            assignmentsList =  await connection.resources.query(queryAllAssignments,{
+                type: connection.Sequelize.QueryTypes.SELECT,
+                raw: true,
+                replacements: { search: `${search}%` },
+                logging: console.log,
+              }
+            );
+            if(assignmentsList.length == 0){
+                queryAllAssignments = "SELECT id, text, reel_frame, counter, convey_ty, updated_convey_ty FROM assignment_group WHERE text = :search GROUP BY text, updated_convey_ty";
+            }
+            assignmentsList =  await connection.resources.query(queryAllAssignments,{
+                type: connection.Sequelize.QueryTypes.SELECT,
+                raw: true,
+                replacements: { search: `%${search}%` },
+                logging: console.log,
+              }
+            );
+        }        
     } 
     return assignmentsList;
 }

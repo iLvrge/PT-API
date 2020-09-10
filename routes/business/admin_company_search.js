@@ -24,6 +24,8 @@ const AssignorAndAssignee = require('../../model/resources/AssignorAndAssignee')
 
 const RecentTransaction = require('../../model/resources/RecentTransaction');
 
+const AssignmentGroup = require('../../model/resources/AssignmentGroup');
+
 /**
  * Search entity by name
  */
@@ -257,7 +259,7 @@ route.get("/company/assignments/:customerID", [authJWT.verifyToken, authJWT.isAd
         /**
          * Group of all assignment texts and number of occurences
          */
-        let findAllAssignments  = await helpers.allAssignments(customerID);
+        let findAllAssignments  = await helpers.allAssignments(customerID, req);
 
         res.status(200).json({list:findAllAssignments, type: type, assignment_type: assignment_type});
     } catch(e) {
@@ -318,6 +320,12 @@ route.put("/company/assignments/:customerID", [authJWT.verifyToken, authJWT.isAd
                  */
 
                 await AssignmentConveyance.update({convey_ty: updateConveyType},{where: {rf_id: uniqueRFIDs}});
+
+                /**
+                 * Update Assignment GROUP
+                 */
+
+                await AssignmentGroup.update({updated_convey_ty: updateConveyType},{where: {text: text}});
             }
         }
         res.status(200).send(update);
