@@ -625,7 +625,7 @@ let updateAllCustomerInventor = async(organisationID, inventors, flag, DBConnect
                         }
                     );
         
-                    const queryAssigneeRFIDs = "SELECT ac.rf_id FROM assignee as aaa INNER JOIN representative_assignment_conveyance as ac ON ac.rf_id = aaa.rf_id WHERE aaa.rf_id IN(:rfIDs) AND ac.employer_assign = 0 AND aaa.ee_name IN (:inventors) GROUP BY ac.rf_id";
+                    const queryAssigneeRFIDs = "SELECT ac.rf_id FROM assignee as aaa INNER JOIN representative_assignment_conveyance as ac ON ac.rf_id = aaa.rf_id WHERE aaa.rf_id IN(:rfIDs) AND  aaa.ee_name IN (:inventors) GROUP BY ac.rf_id";
                     const findAssignees = await connection.resources.query(queryAssigneeRFIDs,{
                         type: connection.Sequelize.QueryTypes.SELECT,
                         replacements: { rfIDs: companyRFIDs, inventors: inventors },
@@ -776,7 +776,7 @@ let findAssignorAndAssigneeListFromRFIDs = async(rfIDs, type) => {
             }
         );
         if(parseInt(type) == 2) {
-            let queryAssignee = "SELECT a.ee_name as name, count(a.ee_name) as counter, r.representative_name as normalize_name, (select rr.representative_name FROM representative as rr WHERE rr.representative_name = aaa.name GROUP BY rr.representative_name) as representativeCompany, (SELECT aa.instances FROM assignor_and_assignee as aa WHERE aa.assignor_and_assignee_id = a.assignor_and_assignee_id) as total_occurences, a.rf_id FROM db_uspto.assignee as a INNER JOIN assignment_conveyance as ac ON ac.rf_id = a.rf_id LEFT JOIN assignor_and_assignee as aaa ON aaa.assignor_and_assignee_id = a.assignor_and_assignee_id LEFT JOIN representative as r ON r.representative_id = aaa.representative_id WHERE a.rf_id IN (:IDs) ";
+            let queryAssignee = "SELECT a.ee_name as name, count(a.ee_name) as counter, r.representative_name as normalize_name, (select rr.representative_name FROM representative as rr WHERE rr.representative_name = aaa.name GROUP BY rr.representative_name) as representativeCompany, (SELECT aa.instances FROM assignor_and_assignee as aa WHERE aa.assignor_and_assignee_id = a.assignor_and_assignee_id) as total_occurences, a.rf_id FROM db_uspto.assignee as a INNER JOIN representative_assignment_conveyance as ac ON ac.rf_id = a.rf_id LEFT JOIN assignor_and_assignee as aaa ON aaa.assignor_and_assignee_id = a.assignor_and_assignee_id LEFT JOIN representative as r ON r.representative_id = aaa.representative_id WHERE a.rf_id IN (:IDs) ";
 
             //queryAssignee +=" AND ac.employer_assign in (0,1)"; 
         
