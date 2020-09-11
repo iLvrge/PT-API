@@ -109,6 +109,26 @@ route.get("/customers/customers/:id/:type", [authJWT.verifyToken, authJWT.isAdmi
 });
 
 /**
+ * Get List from assignor and assignees
+ * 
+ */
+route.get("/customers/customers/:id/:representativeID/:type", [authJWT.verifyToken, authJWT.isAdmin, authJWT.addClientID, clientDBConnection.connect], async (req, res, next) => {
+    try{            
+        /*const companyName = req.params.company_name, type = req.params.type;*/
+        const organisationID = req.params.id, type = req.params.type, representativeIDs = JSON.parse(req.params.representativeID);
+
+        let list = [];
+
+        if(typeof req.connection_db != "undefined" && req.connection_db != null ) {
+            list = await helpers.findCompanyEntitiesByAccountIDByRepresentativeIDs(organisationID, representativeIDs, type, req.connection_db);
+        }
+        res.status(200).json(list);
+    } catch (e){
+        console.log(e);
+        res.status(402).send("No customers found");
+    }
+});
+/**
  * Client Portfolios list
  */
 
@@ -696,6 +716,83 @@ route.get("/customers/:id/patents", [authJWT.verifyToken, authJWT.isAdmin, authJ
                         }
                     }  
                 }                
+            }
+        }
+        res.status(200).json(patentList);
+    } catch(e) {
+        console.log(e);
+        res.status(402).send("No patents");
+    }
+});
+
+route.get("/customers/:id/:representativeID/patents", [authJWT.verifyToken, authJWT.isAdmin, authJWT.addClientID, clientDBConnection.connect], async (req, res, next) => {
+    try{
+        const organisationID = req.params.id, representativeIDs = JSON.parse(req.params.representativeID);
+        let patentList = [];
+        if(organisationID > 0){
+            let org = await helpers.findOrganisationbyID( organisationID );
+            if(org != null && org.organisation_id > 0) {
+                if(representativeIDs.length > 0) {
+                    let queryFindMainCompany = "SELECT rf_id FROM representative_transactions WHERE organisation_id = :organisationID AND representative_id IN (:representativeID) ";
+
+                    let listIDs = await connection.resources.query(queryFindMainCompany,{
+                        type: connection.Sequelize.QueryTypes.SELECT,
+                        replacements: { organisationID: organisationID, representativeID: representativeIDs },
+                        raw: true,
+                        logging: console.log,
+                        }
+                    );
+
+                    if(listIDs != null && listIDs.length > 0) {
+                        /*let assgnorAssigneeIDS = [], names = [];*/
+                        let rawRfIDs = [];
+                        listIDs.map(e => rawRfIDs.push(e.rf_id));
+                        /*for(let i = 0; i< listIDs.length; i++){
+                            assgnorAssigneeIDS.push(listIDs[i].assignor_and_assignee_id);
+                            names.push(listIDs[i].name);
+                        }*/
+                        //console.log(assgnorAssigneeIDS);
+                        /** Find Assignors */
+            
+                        let queryAssigneeRFIDs = "SELECT rf_id FROM assignee as ac WHERE ac.rf_id IN (:IDs)";
+            
+                        assigneeRFIDs = await connection.application.query(queryAssigneeRFIDs,{
+                            type: connection.Sequelize.QueryTypes.SELECT,
+                            replacements: { IDs: rawRfIDs },
+                            raw: true,
+                            logging: console.log,
+                            }
+                        );
+            
+                        let queryAssignorRFIDs = "SELECT rf_id FROM assignor as ac WHERE ac.rf_id IN (:IDs)";
+            
+                        assignorRFIDs = await connection.application.query(queryAssignorRFIDs,{
+                            type: connection.Sequelize.QueryTypes.SELECT,
+                            replacements: { IDs: rawRfIDs },
+                            raw: true,
+                            logging: console.log,
+                            }
+                        );
+            
+                        rfIDsList = [...assigneeRFIDs, ...assignorRFIDs];    
+                            
+            
+                        let rfIDs = [];
+                        rfIDsList.map( r => rfIDs.push(r.rf_id));
+
+                        if(rfIDsList.length > 0) {
+                            let queryAllPatentList = 'SELECT grant_doc_num as number, appno_doc_num as application FROM documentid WHERE appno_doc_num IN (SELECT appno_doc_num FROM documentid WHERE appno_doc_num <> "" AND  rf_id IN (:rfIDs)) GROUP BY number, application';
+            
+                            patentList = await connection.application.query(queryAllPatentList,{
+                                type: connection.Sequelize.QueryTypes.SELECT,
+                                replacements: { rfIDs: rfIDs },
+                                raw: true,
+                                logging: console.log,
+                                }
+                            );
+                        }
+                    } 
+                }            
             }
         }
         res.status(200).json(patentList);

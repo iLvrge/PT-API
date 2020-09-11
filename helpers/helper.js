@@ -381,6 +381,74 @@ let allAssignments = async (customerID, req) => {
     return assignmentsList;
 }
 
+
+
+let allAssignmentsByRepresentativeIDs = async (customerID, representativeIDs, req) => {
+    let queryAllAssignments = "", assignmentsList = [];
+    if(parseInt(customerID) > 0) {        
+        let org = await findOrganisationbyID( customerID );
+        
+        if(org != null && org.organisation_id > 0) {
+
+            if(representativeIDs != null && representativeIDs.length > 0) {
+                               
+                let queryFindMainCompany = "SELECT rf_id FROM representative_transactions WHERE organisation_id = :organisationID AND representative_id IN (:representativeID) ";
+
+                let listIDs = await connection.resources.query(queryFindMainCompany,{
+                    type: connection.Sequelize.QueryTypes.SELECT,
+                    replacements: { organisationID: org.organisation_id, representativeID: representativeIDs },
+                    raw: true,
+                    logging: console.log,
+                    }
+                );
+                if(listIDs != null && listIDs.length > 0) {
+                    /*let assgnorAssigneeIDS = [], names = [];*/
+                    let rawRfIDs = [];
+                    listIDs.map(e => rawRfIDs.push(e.rf_id));
+                    let queryAssigneeRFIDs = "SELECT rf_id FROM assignee as ac WHERE ac.rf_id IN (:IDs)";
+            
+                    assigneeRFIDs = await connection.application.query(queryAssigneeRFIDs,{
+                        type: connection.Sequelize.QueryTypes.SELECT,
+                        replacements: { IDs: rawRfIDs },
+                        raw: true,
+                        logging: console.log,
+                        }
+                    );
+        
+                    let queryAssignorRFIDs = "SELECT rf_id FROM assignor as ac WHERE ac.rf_id IN (:IDs)";
+        
+                    assignorRFIDs = await connection.application.query(queryAssignorRFIDs,{
+                        type: connection.Sequelize.QueryTypes.SELECT,
+                        replacements: { IDs: rawRfIDs },
+                        raw: true,
+                        logging: console.log,
+                        }
+                    );
+        
+                    rfIDsList = [...assigneeRFIDs, ...assignorRFIDs];    
+                        
+        
+                    let rfIDs = [];
+                    rfIDsList.map( r => rfIDs.push(r.rf_id));
+
+                    if(rfIDsList.length > 0) {
+                        queryAllAssignments = "Select a.rf_id as id, a.convey_text as text, CONCAT(a.reel_no, '/', a.frame_no) as reel_frame, a.frame_no, a.reel_no , ac.convey_ty, rac.convey_ty as updated_convey_ty,  CASE  WHEN rac.convey_ty = 'assignment' THEN 0 WHEN rac.convey_ty = 'addresschg' THEN 1	 WHEN rac.convey_ty = 'correct' THEN 2	 WHEN rac.convey_ty = 'courtappointment' THEN 3	 WHEN rac.convey_ty = 'courtorder' THEN 4	 WHEN rac.convey_ty = 'employee' THEN 5	 WHEN rac.convey_ty = 'govern' THEN 6	 WHEN rac.convey_ty = 'license' THEN 7	 WHEN rac.convey_ty = 'licenseend' THEN 8	 WHEN rac.convey_ty = 'missing' THEN 9	 WHEN rac.convey_ty = 'merger' THEN 10	 WHEN rac.convey_ty = 'namechg' THEN 11	 WHEN rac.convey_ty = 'option' THEN 12	 WHEN rac.convey_ty = 'other' THEN 13	 WHEN rac.convey_ty = 'partialassignment' THEN 14	 WHEN rac.convey_ty = 'release' THEN 15	 WHEN rac.convey_ty = 'restatedsecurity' THEN 16	 WHEN rac.convey_ty = 'security' THEN 17	 ELSE '' END as assignment_convey_ty from assignment as a INNER JOIN assignment_conveyance as ac ON ac.rf_id = a.rf_id LEFT JOIN representative_assignment_conveyance as rac ON rac.rf_id = a.rf_id WHERE a.convey_text <> '' AND a.convey_text IS NOT NULL AND a.rf_id IN (SELECT d.rf_id FROM documentid as d WHERE appno_doc_num <> '' AND  d.rf_id IN (:rfIDs) GROUP BY d.rf_id) ";
+    
+                        assignmentsList =  await connection.resources.query(queryAllAssignments,{
+                            type: connection.Sequelize.QueryTypes.SELECT,
+                            replacements: { rfIDs: rfIDs },
+                            raw: true,
+                            logging: console.log,
+                            }
+                        );
+                    }
+                }
+            }
+        }
+    }  
+    return assignmentsList;
+}
+
 let getCompanyListByEmployee = async(companyName) => {
 
     let queryEmployee = "SELECT ac.or_name as name, c1.company_name as normalize_name, 'Invented' as type FROM assignor as ac INNER JOIN (SELECT a.rf_id FROM assignment as a INNER JOIN assignment_conveyance as ass ON ass.rf_id = a.rf_id INNER JOIN assignee as acc ON acc.rf_id = a.rf_id LEFT JOIN representative as c ON c.representative_id = acc.representative_id WHERE ass.convey_ty = :convey_type AND ass.employer_assign = 1 AND (acc.ee_name = :name OR c.company_name = :name) GROUP BY a.rf_id) as temp ON temp.rf_id = ac.rf_id LEFT JOIN representative as c1 ON c1.representative_id = ac.representative_id GROUP BY name, normalize_name ORDER BY normalize_name ASC, name ASC ";
@@ -809,6 +877,29 @@ let findCompanyEntitiesByAccountID = async(orgID, type, DBConnection) => {
                     listIDs.map( r => rfIDs.push(r.rf_id));
                     entitiesList = await findAssignorAndAssigneeListFromRFIDs(rfIDs, type);
             }
+        }
+    }
+    return entitiesList;
+}
+
+let findCompanyEntitiesByAccountIDByRepresentativeIDs = async(orgID, representativeIDs, type, DBConnection) => {
+   
+    let entitiesList = [];
+    if(representativeIDs.length > 0) {        
+        const queryRepresentativeTransactions = "SELECT rf_id FROM representative_transactions where organisation_id = :organisationID AND representative_id IN (:representativeIDs)";
+
+        const listIDs = await connection.resources.query(queryRepresentativeTransactions,{
+            type: connection.Sequelize.QueryTypes.SELECT,
+            replacements: { representativeIDs: representativeIDs, organisationID: orgID },
+            raw: true,
+            logging: console.log,
+            }
+        );
+
+        if(listIDs.length > 0) {
+            const rfIDs = [];
+                listIDs.map( r => rfIDs.push(r.rf_id));
+                entitiesList = await findAssignorAndAssigneeListFromRFIDs(rfIDs, type);
         }
     }
     return entitiesList;
@@ -1379,6 +1470,7 @@ let getCompaniesMinAndMaxDateTransaction = async(searchData) => {
 
 const helper = {};
 helper.allAssignments = allAssignments;
+helper.allAssignmentsByRepresentativeIDs = allAssignmentsByRepresentativeIDs;
 helper.findOrganisationbyID = findOrganisationbyID;
 helper.findRepresentative = findRepresentative;
 helper.getCompanyListByEmployee = getCompanyListByEmployee;
@@ -1396,6 +1488,7 @@ helper.getCompaniesList = getCompaniesList;
 helper.getSubCompaniesList = getSubCompaniesList;
 helper.getAllCompaniesList = getAllCompaniesList;
 helper.findCompanyEntitiesByAccountID = findCompanyEntitiesByAccountID;
+helper.findCompanyEntitiesByAccountIDByRepresentativeIDs = findCompanyEntitiesByAccountIDByRepresentativeIDs;
 helper.getCompaniesWithChildren = getCompaniesWithChildren;
 helper.getAssignmentDataByrfID = getAssignmentDataByrfID;
 helper.generateJSON = generateJSON;
