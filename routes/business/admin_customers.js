@@ -176,7 +176,7 @@ route.post("/customers/:id/users", [authJWT.verifyToken, authJWT.isAdmin, userEx
                         last_name: req.body.last_name,
                         email_address: req.body.email_address,
                         username: req.body.email_address,						
-                        password: bcrypt.hashSync(req.body.last_name, 8),
+                        password: bcrypt.hashSync(req.body.password ? req.body.password : req.body.last_name, 8),
                         job_title: req.body.job_title,
                         linkedin_url: req.body.person_linkedin_url,
                         type: req.body.type,
@@ -574,17 +574,46 @@ route.post("/customers", [authJWT.verifyToken, authJWT.isAdmin], async (req, res
     }    
 });
 
-route.get("/customers/:id/patents", [authJWT.verifyToken, authJWT.isAdmin], async (req, res, next) => {
+route.put("/customers" , [authJWT.verifyToken, authJWT.isAdmin], async (req, res, next) => {
+    try{
+        const companyName = req.body.company_name, clientID = req.body.organisation_id;
+        if(companyName != undefined && companyName.length > 0 && clientID > 0) {
+            /**
+             * Check customer exist!
+             */
+            const org = await Organisations.findOne({
+                where: {organisation_id: clientID}
+            })
+            if(org != null) {
+                await org.update({
+                    name: req.body.company_name
+                });
+                res.status(200).json({name: org.name, logo: org.logo});   
+            } else {
+                res.status(403).send("Client not found");
+            }
+        } else {
+            res.status(400).send("Name cannot be blank");
+        }
+    }catch(e){
+        res.status(402).send("Not able to update client account ");
+    }
+})
+
+
+
+route.get("/customers/:id/patents", [authJWT.verifyToken, authJWT.isAdmin, authJWT.addClientID, clientDBConnection.connect], async (req, res, next) => {
     try{
         let organisationID = req.params.id;
         let patentList = [];
         if(organisationID > 0){
             let org = await helpers.findOrganisationbyID( organisationID );
             if(org != null && org.organisation_id > 0) {
-                const findRepresentative = await helpers.findRepresentative(org.name);
-                if(findRepresentative != null) {
+                const findRepresentative = await helpers.getCompaniesList(req.connection_db);
+                if(findRepresentative != null && findRepresentative.length > 0) {
                     let representativeID = [];
-                    representativeID.push(findRepresentative.representative_id);
+                    findRepresentative.map(e => representativeID.push(e.representative_id));
+                    
 
                     /*let queryFindAssignorAndAssigneeIDs = "SELECT aa.assignor_and_assignee_id, aa.name FROM assignor_and_assignee as aa LEFT JOIN representative as r1 ON r1.representative_id = aa.representative_id where (r1.representative_id=:representativeCompanies)";
 
@@ -597,7 +626,7 @@ route.get("/customers/:id/patents", [authJWT.verifyToken, authJWT.isAdmin], asyn
                     );*/
 
 
-                    let queryFindMainCompany = "SELECT aa.assignor_and_assignee_id, aa.name FROM assignor_and_assignee as aa LEFT JOIN representative as r1 ON r1.representative_id = aa.representative_id where (aa.name = :name OR r1.representative_name = :name )";
+                    /*let queryFindMainCompany = "SELECT aa.assignor_and_assignee_id, aa.name FROM assignor_and_assignee as aa LEFT JOIN representative as r1 ON r1.representative_id = aa.representative_id where (aa.name = :name OR r1.representative_name = :name )";
 
                     let listIDs = await connection.application.query(queryFindMainCompany,{
                         type: connection.Sequelize.QueryTypes.SELECT,
@@ -605,33 +634,44 @@ route.get("/customers/:id/patents", [authJWT.verifyToken, authJWT.isAdmin], asyn
                         raw: true,
                         logging: console.log,
                         }
+                    );*/
+
+                    let queryFindMainCompany = "SELECT rf_id FROM representative_transactions WHERE organisation_id = :organisationID AND representative_id IN (:representativeID) ";
+
+                    let listIDs = await connection.resources.query(queryFindMainCompany,{
+                        type: connection.Sequelize.QueryTypes.SELECT,
+                        replacements: { organisationID: organisationID, representativeID: representativeID },
+                        raw: true,
+                        logging: console.log,
+                        }
                     );
 
                     if(listIDs != null && listIDs.length > 0) {
-                        let assgnorAssigneeIDS = [], names = [];
-            
-                        for(let i = 0; i< listIDs.length; i++){
+                        /*let assgnorAssigneeIDS = [], names = [];*/
+                        let rawRfIDs = [];
+                        listIDs.map(e => rawRfIDs.push(e.rf_id));
+                        /*for(let i = 0; i< listIDs.length; i++){
                             assgnorAssigneeIDS.push(listIDs[i].assignor_and_assignee_id);
                             names.push(listIDs[i].name);
-                        }
-                        console.log(assgnorAssigneeIDS);
+                        }*/
+                        //console.log(assgnorAssigneeIDS);
                         /** Find Assignors */
             
-                        let queryAssigneeRFIDs = "SELECT rf_id FROM assignee as ac WHERE ac.assignor_and_assignee_id IN (:IDs)";
+                        let queryAssigneeRFIDs = "SELECT rf_id FROM assignee as ac WHERE ac.rf_id IN (:IDs)";
             
                         assigneeRFIDs = await connection.application.query(queryAssigneeRFIDs,{
                             type: connection.Sequelize.QueryTypes.SELECT,
-                            replacements: { IDs: assgnorAssigneeIDS },
+                            replacements: { IDs: rawRfIDs },
                             raw: true,
                             logging: console.log,
                             }
                         );
             
-                        let queryAssignorRFIDs = "SELECT rf_id FROM assignor as ac WHERE ac.assignor_and_assignee_id IN (:IDs)";
+                        let queryAssignorRFIDs = "SELECT rf_id FROM assignor as ac WHERE ac.rf_id IN (:IDs)";
             
                         assignorRFIDs = await connection.application.query(queryAssignorRFIDs,{
                             type: connection.Sequelize.QueryTypes.SELECT,
-                            replacements: { IDs: assgnorAssigneeIDS },
+                            replacements: { IDs: rawRfIDs },
                             raw: true,
                             logging: console.log,
                             }
