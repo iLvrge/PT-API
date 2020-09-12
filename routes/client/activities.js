@@ -351,9 +351,13 @@ route.post("/activities/:type", [authJWT.verifyToken, clientDBConnection.connect
             if(insertData === true) {
                 const Activity = req.connection_db.define('Activities', Activities.mainStructure, Activities.options);
 
-                let mimeType = req.files.file.mimetype, newActivity = null;
+                let mimeType = null, newActivity = null;
+
+                if(req.files != null && req.files != undefined && req.files.file != undefined) {
+                    mimeType = req.files.file.mimetype
+                }
                 
-                if( mimeType.toLowerCase().indexOf('.exe') < 0){
+                if(mimeType != null && mimeType != '' && mimeType.toLowerCase().indexOf('.exe') < 0){
                     let fileObject = req.files.file;
                     await fileObject.mv('/var/www/html/beta/resources/shared/data/'+fileObject.name, async function(err) {
                         if (!err){
