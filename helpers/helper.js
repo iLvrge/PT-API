@@ -43,10 +43,13 @@ let searchCompany = async(query, t) => {
     const stringWithNewLineSplit = query.toString().split(/\r\n|\r|\n/), regex = /[.,]/g; 
 
     if(stringWithNewLineSplit.length > 0) {
-        const promises = stringWithNewLineSplit.map(async search => {
-            const splitSearch = search.toString().split(' ');
-
-            search = search.replace(regex, '').toLowerCase().trim();
+        const promises = stringWithNewLineSplit.map(async searchText => {
+            const originalSearch = searchText.toString();
+            const splitSearch = originalSearch.split(' ');
+            /**
+             * const search = originalSearch.replace(regex, '').toLowerCase().trim();
+             */
+            const search = originalSearch.replace(regex, '').toLowerCase();
             if(search.slice(-4) == 'corp' || search.slice(-4) == 'gmbh') {
                 search = search.substr(0, search.length - 4);
             } else if(search.slice(-3) == 'ltd' || search.slice(-3) == 'inc'  || search.slice(-3) == ' sl') {
