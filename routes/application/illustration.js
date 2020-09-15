@@ -112,6 +112,18 @@ route.get("/collections/:rf_id/illustration", [authJWT.verifyToken], async (req,
                     
                     assigneeID = assignee.id;
                     oldAssigneeList.push({id:assigneeID, name: boxName});
+                    let checkType = "Ownership";
+                    if(itemDetails.assignment.convey_ty === "security"){
+                        checkType = "Security";
+                    } else if(itemDetails.assignment.convey_ty === "release"){
+                        checkType = "Release";
+                    } else if(itemDetails.assignment.convey_ty === "namechg"){
+                        checkType = "Ownership";
+                    } else if(itemDetails.assignment.convey_ty === "assignment"){
+                        checkType = "Ownership";
+                    } else if(itemDetails.assignment.convey_ty === "correct"){
+                        checkType = "Ownership";
+                    }
 
                     boxObj = {
                         id: assigneeID,
