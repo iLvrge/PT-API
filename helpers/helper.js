@@ -49,7 +49,7 @@ let searchCompany = async(query, t) => {
             /**
              * const search = originalSearch.replace(regex, '').toLowerCase().trim();
              */
-            const search = originalSearch.replace(regex, '').toLowerCase();
+            let search = originalSearch.replace(regex, '').toLowerCase();
             if(search.slice(-4) == 'corp' || search.slice(-4) == 'gmbh') {
                 search = search.substr(0, search.length - 4);
             } else if(search.slice(-3) == 'ltd' || search.slice(-3) == 'inc'  || search.slice(-3) == ' sl') {
