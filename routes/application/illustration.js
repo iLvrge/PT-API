@@ -174,6 +174,12 @@ route.get("/collections/:rf_id/illustration", [authJWT.verifyToken], async (req,
                     }
 
                     itemDetails.assignee.forEach( assignee => {
+                        boxName = assignee.normalize_name;
+
+
+                        if( boxName  === '' || boxName == null) {
+                            boxName = assignee.ee_name;
+                        }
                         let assigneeID = "";                        
                         if(oldAssigneeList.length > 0) {
                             const findID = oldAssigneeList.filter(c => {
