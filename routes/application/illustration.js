@@ -52,7 +52,7 @@ route.get("/collections/:rf_id/illustration", [authJWT.verifyToken], async (req,
                 let boxObj = {
                     id: assignorID.toString(),
                     name: boxName,
-                    assignment_no: 1,
+                    assignment_no: 0,
                     date_1: fakeDate.format('YYYY-MM-DD'),
                     execution_date: fakeDate.format('YYYY-MM-DD'),
                     recorded_date: recordedDate.format('YYYY-MM-DD'),
