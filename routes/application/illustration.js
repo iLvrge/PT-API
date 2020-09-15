@@ -31,12 +31,14 @@ route.get("/collections/:rf_id/illustration", [authJWT.verifyToken], async (req,
             {id:7,name:'Release',tooltip:'Release',color:'#70A800',line_type:0,segment:3,order_no:5,explanation:''},
             {id:8,name:'License End',tooltip:'License End',color:'#E38B4F',line_type:0,segment:1,order_no:6,explanation:''}
         ];
+
         if(itemDetails !== undefined && itemDetails.assignor.length > 0) {
             title = itemDetails.assignment.convey_text;
-            let oldAssigneeList = [];
+            let oldAssigneeList = [], inventorDetails, checkType = "" , type = "Ownership", boxType = 0, segment = 1;     
+
             itemDetails.assignor.forEach( (assignor, index) => {
                 let boxName = assignor.normalize_name;
-                let assignorID = uuidv4();
+                let assignorID = assignor.id;
                 if( boxName  === '' || boxName == null) {
                     boxName = assignor.or_name;
                 }
@@ -48,19 +50,14 @@ route.get("/collections/:rf_id/illustration", [authJWT.verifyToken], async (req,
                 }
                 
                 let boxObj = {
-                id: assignorID.toString(),
-                name: boxName,
-                assignment_no: 1,
-                date_1: fakeDate.format('YYYY-MM-DD'),
-                execution_date: fakeDate.format('YYYY-MM-DD'),
-                recorded_date: recordedDate.format('YYYY-MM-DD'),
-                document: "https://patentrack.com/resources/shared/data/assignment-pat-" + itemDetails.assignment.reel_no + "-" + itemDetails.assignment.frame_no +".pdf",
-                }
-
-                let type = "Ownership";
-                let boxType = 0;
-                let segment = 1;
-                let inventorDetails, checkType = "";
+                    id: assignorID.toString(),
+                    name: boxName,
+                    assignment_no: 1,
+                    date_1: fakeDate.format('YYYY-MM-DD'),
+                    execution_date: fakeDate.format('YYYY-MM-DD'),
+                    recorded_date: recordedDate.format('YYYY-MM-DD'),
+                    document: "https://patentrack.com/resources/shared/data/assignment-pat-" + itemDetails.assignment.reel_no + "-" + itemDetails.assignment.frame_no +".pdf",
+                }          
                 if(itemDetails.assignment.employer_assign === 1){
                     boxType = 0;
                     segment = 0;
@@ -74,53 +71,98 @@ route.get("/collections/:rf_id/illustration", [authJWT.verifyToken], async (req,
 
                 inventorDetails = box.filter( x => x.type === type ? x : '');
                 if(inventorDetails !== ''){
-                boxObj.type = type;
-                boxObj.boxType = inventorDetails[0].id;
-                boxObj.shape = inventorDetails[0].shape;
-                boxObj.dimension = inventorDetails[0].dimension;
-                boxObj.border_color = inventorDetails[0].border_color;
-                boxObj.border_linepx = inventorDetails[0].border_px;
-                boxObj.background_color = inventorDetails[0].background_color;
-                boxObj.segment = segment.toString();
+                    boxObj.type = type;
+                    boxObj.boxType = inventorDetails[0].id;
+                    boxObj.shape = inventorDetails[0].shape;
+                    boxObj.dimension = inventorDetails[0].dimension;
+                    boxObj.border_color = inventorDetails[0].border_color;
+                    boxObj.border_linepx = inventorDetails[0].border_px;
+                    boxObj.background_color = inventorDetails[0].background_color;
+                    boxObj.segment = segment.toString();
                 }
 
                 boxes.push(boxObj);
+            });
 
-                if(itemDetails.assignee.length > 0){
 
-                if(itemDetails.assignment.convey_ty === "security"){
-                    checkType = "Security";
-                    type = "Security";
-                    segment = 2;
-                } else if(itemDetails.assignment.convey_ty === "release"){
-                    checkType = "Security";
-                    type = "Release";
-                    segment = 2;
-                } else if(itemDetails.assignment.convey_ty === "namechg"){
-                    checkType = "Ownership";
-                    type = "Name Change";
-                    segment = 1;
-                } else if(itemDetails.assignment.convey_ty === "assignment"){
-                    checkType = "Ownership";
-                    type = "Ownership";
-                    segment = 1;
-                } else if(itemDetails.assignment.convey_ty === "correct"){
-                    checkType = "Ownership";
-                    type = "Ownership";
-                    segment = 1;
+            itemDetails.assignee.forEach( assignee => {
+                let assigneeID = "";
+                boxName = assignee.normalize_name;
+
+
+                if( boxName  === '' || boxName == null) {
+                    boxName = assignee.ee_name;
                 }
 
-                itemDetails.assignee.forEach( assignee => {
-                    let assigneeID = "";
-                        boxName = assignee.normalize_name;
+                
 
-
-                        if( boxName  === '' || boxName == null) {
-                            boxName = assignee.ee_name;
-                        }
-
+                if(oldAssigneeList.length > 0) {
+                    const findID = oldAssigneeList.filter(c => {
                         
+                        if(c.name == boxName){
+                            return true;
+                        }
+                    }).map(d => {return d.id});
+                    console.log(findID);
+                    if(findID.length > 0) {
+                        assigneeID = findID[0];
+                    }
+                } 
+                if(assigneeID == "") {
+                    
+                    assigneeID = assignee.id;
+                    oldAssigneeList.push({id:assigneeID, name: boxName});
 
+                    boxObj = {
+                        id: assigneeID,
+                        name: boxName,
+                        date_1: execDate,
+                        assignment_no: 1,
+                        execution_date: execDate,
+                        recorded_date: moment(new Date(itemDetails.assignment.record_dt)).format('YYYY-MM-DD'),
+                        document: "https://patentrack.com/resources/shared/data/assignment-pat-" + itemDetails.assignment.reel_no + "-" + itemDetails.assignment.frame_no +".pdf",
+                    }
+
+                    inventorDetails = box.filter( x => x.type === checkType ? x : '');
+                    if(inventorDetails !== ''){
+                        boxObj.type = type;
+                        boxObj.boxType = inventorDetails[0].id;
+                        boxObj.shape = inventorDetails[0].shape;
+                        boxObj.dimension = inventorDetails[0].dimension;
+                        boxObj.border_color = inventorDetails[0].border_color;
+                        boxObj.border_linepx = inventorDetails[0].border_px;
+                        boxObj.background_color = inventorDetails[0].background_color;
+                        boxObj.segment = segment.toString();
+                    }
+                    boxes.push(boxObj);
+                }
+            });
+        
+            title = itemDetails.assignment.convey_text;
+            
+            itemDetails.assignor.forEach( (assignor, index) => {
+                let assignorID = assignor.id;
+                if(index === 0){
+                    execDate = moment(new Date(assignor.exec_dt)).format('YYYY-MM-DD');
+                    fakeDate = moment(new Date(assignor.exec_dt)).subtract(9, 'days');
+                    recordedDate = moment(new Date(itemDetails.assignment.record_dt)).subtract(9, 'days');
+                }
+                let type = "assignment";
+                if(itemDetails.assignee.length > 0){
+                    if(itemDetails.assignment.convey_ty === "security"){
+                        type = "Security";
+                    } else if(itemDetails.assignment.convey_ty === "release"){
+                        type = "Release";
+                    } else if(itemDetails.assignment.convey_ty === "namechg"){
+                        type = "Name Change";
+                    } else if(itemDetails.assignment.convey_ty === "assignment"){
+                        type = "Ownership";
+                    } else if(itemDetails.assignment.convey_ty === "correct"){
+                        type = "Ownership";
+                    }
+
+                    itemDetails.assignee.forEach( assignee => {
+                        let assigneeID = "";                        
                         if(oldAssigneeList.length > 0) {
                             const findID = oldAssigneeList.filter(c => {
                                 
@@ -133,48 +175,24 @@ route.get("/collections/:rf_id/illustration", [authJWT.verifyToken], async (req,
                                 assigneeID = findID[0];
                             }
                         } 
-                        if(assigneeID == "") {
-                           
-                            assigneeID = uuidv4();
+                        if(assigneeID == "") {                           
+                            assigneeID = assignee.id;
                             oldAssigneeList.push({id:assigneeID, name: boxName});
-
-                            boxObj = {
-                                id: assigneeID,
-                                name: boxName,
-                                date_1: execDate,
-                                assignment_no: 1,
-                                execution_date: execDate,
-                                recorded_date: moment(new Date(itemDetails.assignment.record_dt)).format('YYYY-MM-DD'),
-                                document: "https://patentrack.com/resources/shared/data/assignment-pat-" + itemDetails.assignment.reel_no + "-" + itemDetails.assignment.frame_no +".pdf",
-                            }
-    
-                            inventorDetails = box.filter( x => x.type === checkType ? x : '');
-                            if(inventorDetails !== ''){
-                                boxObj.type = type;
-                                boxObj.boxType = inventorDetails[0].id;
-                                boxObj.shape = inventorDetails[0].shape;
-                                boxObj.dimension = inventorDetails[0].dimension;
-                                boxObj.border_color = inventorDetails[0].border_color;
-                                boxObj.border_linepx = inventorDetails[0].border_px;
-                                boxObj.background_color = inventorDetails[0].background_color;
-                                boxObj.segment = segment.toString();
-                            }
-                            boxes.push(boxObj);
                         }
-                    //boxes[boxes.length] = boxObj
+                        //boxes[boxes.length] = boxObj
 
-                    let connectionLine = line.filter( x => x.name === type ? x : []);
-                    console.log(connectionLine);
-                    if(connectionLine.length > 0) {
-                        let lineType = "Solid";
-                        if(connectionLine[0].line_type === 1){
-                            lineType = "Dashed";
+                        let connectionLine = line.filter( x => x.name === type ? x : []);
+                        console.log(connectionLine);
+                        if(connectionLine.length > 0) {
+                            let lineType = "Solid";
+                            if(connectionLine[0].line_type === 1){
+                                lineType = "Dashed";
+                            }
+                            let commentObj = {};
+                            commentObj[itemDetails.assignment.reel_no + "-" +  itemDetails.assignment.frame_no] = ["",""];
+                            connections.push({"id":assigneeID,"assignment_no1":1,"color":connectionLine[0].color,"type":type,"type_line":lineType,"ref_id":assignee.rf_id,"start_id":assignorID,"end_id":assigneeID,"box_creator_id":0,"box_creator_id2":0,"popup":[itemDetails.assignment.reel_no + "-" +  itemDetails.assignment.frame_no],"comment":[commentObj],"user_files":[""],"tooltip":connectionLine[0].name,"date":execDate,"document1":"https://patentrack.com/resources/shared/data/assignment-pat-"+itemDetails.assignment.reel_no + "-" +  itemDetails.assignment.frame_no+".pdf","document2":"","note1":"","pdf1":"","note2":"","pdf2":"","popuptop":itemDetails.assignment.reel_no + "-" +  itemDetails.assignment.frame_no,"popupbottom":""});
                         }
-                        let commentObj = {};
-                        commentObj[itemDetails.assignment.reel_no + "-" +  itemDetails.assignment.frame_no] = ["",""];
-                        connections.push({"id":assigneeID,"assignment_no1":1,"color":connectionLine[0].color,"type":type,"type_line":lineType,"ref_id":assignee.rf_id,"start_id":assignorID,"end_id":assigneeID,"box_creator_id":0,"box_creator_id2":0,"popup":[itemDetails.assignment.reel_no + "-" +  itemDetails.assignment.frame_no],"comment":[commentObj],"user_files":[""],"tooltip":connectionLine[0].name,"date":execDate,"document1":"https://patentrack.com/resources/shared/data/assignment-pat-"+itemDetails.assignment.reel_no + "-" +  itemDetails.assignment.frame_no+".pdf","document2":"","note1":"","pdf1":"","note2":"","pdf2":"","popuptop":itemDetails.assignment.reel_no + "-" +  itemDetails.assignment.frame_no,"popupbottom":""});
-                    }
-                });
+                    });
                 }
             }); 
         }
