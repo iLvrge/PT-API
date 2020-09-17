@@ -808,6 +808,28 @@ route.get("/customers/:organisation_id/publish", [authJWT.verifyToken, authJWT.i
         if(organisationID > 0){
             let org = await helpers.findOrganisationbyID( organisationID );
             if(org != null && org.organisation_id > 0) {
+                await exec(`php -f /var/www/html/trash/update_flag.php "${organisationID}"  ""`, (error, stdout, stderr) => {  
+                    res.status(200).send("Flag updated.");
+                })
+            } else {
+                res.status(402).send("Customer not exist.");
+            }
+        } else {
+            res.status(402).send("Invalid parameters.");
+        }
+    }catch(e) {
+        console.log(e);
+        res.status(402).send("Error while updating flag");
+    }
+})
+
+
+route.get("/customers/:organisation_id/publish", [authJWT.verifyToken, authJWT.isAdmin], async(req, res, next) => {
+    try{
+        let organisationID = req.params.organisation_id;
+        if(organisationID > 0){
+            let org = await helpers.findOrganisationbyID( organisationID );
+            if(org != null && org.organisation_id > 0) {
                 /**
                  * Get list of all from resources database.
                  */
