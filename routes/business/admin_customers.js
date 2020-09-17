@@ -808,9 +808,10 @@ route.get("/customers/:organisation_id/flag_automatic", [authJWT.verifyToken, au
         if(organisationID > 0){
             let org = await helpers.findOrganisationbyID( organisationID );
             if(org != null && org.organisation_id > 0) {
-                await exec(`php -f /var/www/html/trash/update_flag.php "${organisationID}"  ""`, (error, stdout, stderr) => {  
-                    res.status(200).send("Flag updated.");
-                })
+                console.log(`php -f /var/www/html/trash/update_flag.php "${organisationID}"`);
+                await exec(`php -f /var/www/html/trash/update_flag.php "${organisationID}"`, (error, stdout, stderr) => {  
+                    res.status(200).send("Flag fixing completed");
+                });
             } else {
                 res.status(402).send("Customer not exist.");
             }
