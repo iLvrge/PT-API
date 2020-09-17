@@ -802,7 +802,7 @@ route.get("/customers/:id/:representativeID/patents", [authJWT.verifyToken, auth
     }
 });
 
-route.get("/customers/:organisation_id/publish", [authJWT.verifyToken, authJWT.isAdmin], async(req, res, next) => {
+route.get("/customers/:organisation_id/flag_automatic", [authJWT.verifyToken, authJWT.isAdmin], async(req, res, next) => {
     try{
         let organisationID = req.params.organisation_id;
         if(organisationID > 0){
