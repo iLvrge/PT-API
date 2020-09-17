@@ -50,14 +50,15 @@ let searchCompany = async(query, t) => {
              * const search = originalSearch.replace(regex, '').toLowerCase().trim();
              */
             let search = originalSearch.replace(regex, '').toLowerCase();
-            if(search.slice(-4) == 'corp' || search.slice(-4) == 'gmbh') {
+            /*if(search.slice(-4) == 'corp' || search.slice(-4) == 'gmbh') {
                 search = search.substr(0, search.length - 4);
             } else if(search.slice(-3) == 'ltd' || search.slice(-3) == 'inc'  || search.slice(-3) == ' sl') {
                 search = search.substr(0, search.length - 3);
             } else if(search.slice(-2) == 'co') {
                 search = search.substr(0, search.length - 2);
-            }
-
+            }*/
+            search = search.replace(/\b(?:inc|llc|corp|llp|gmbh|lp|agent|sas|na|bank|co|states|ltd|kk|a\/s)\b/g,'').replace(/^\s+/,"");
+            
             if(splitSearch.length > 1){				
                 if(splitSearch.length == 2) {
                     if(splitSearch[1] == '') {
