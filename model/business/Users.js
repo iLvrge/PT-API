@@ -80,7 +80,7 @@ const Users = connection.business.define('user',{
     tableName: 'user'
 });
 
-console.log(Organisations);
+
 
 Users.belongsTo(Organisations, { foreignKey: 'organisation_id', as: 'organisation' });
 

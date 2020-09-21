@@ -41,6 +41,7 @@ const timelines = require("./routes/application/timelines");
 const customers = require("./routes/client/customers");
 const tabs = require("./routes/client/tabs");
 const activities = require("./routes/client/activities");
+const comments = require("./routes/client/comments");
 const professionals = require("./routes/client/professionals");
 const users = require("./routes/client/users");
 const documents = require("./routes/client/documents");
@@ -83,6 +84,8 @@ app.use("/", updates);
 app.use("/", errors); 
 
 app.use("/", activities);
+
+app.use("/", comments);
 
 app.use("/charts", charts);
 
