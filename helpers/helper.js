@@ -1272,6 +1272,22 @@ let findActivityByID = async (activityID, Activity, Comment) => {
     return findActivity;
 }
 
+let getCollectionList = async(Collection, CollectionCompanies) => {
+
+    const getList = Collection.findAll({
+        attributes: ['collection_id', 'name'],
+        includes: [
+            {
+                model: CollectionCompanies,
+                as: 'collection_companies'
+            }
+        ]
+    })
+
+    return getList;
+
+}
+
 let getAssignmentDataByrfID = async (rfID) => {
 	const assignorQuery = 'SELECT aaa.name as or_name, r.representative_name as normalize_name, date_format(a.exec_dt,"%Y-%m-%d %h:%i:%s") as exec_dt, aaa.assignor_and_assignee_id as id FROM assignor as a INNER JOIN assignor_and_assignee as aaa ON aaa.assignor_and_assignee_id = a.assignor_and_assignee_id LEFT JOIN representative as r ON r.representative_id = aaa.representative_id WHERE a.rf_id = :rfID  GROUP BY aaa.name, normalize_name ORDER BY a.exec_dt ASC';
 	const assigneeQuery = 'SELECT a.*, aaa.name as ee_name, r.representative_name as normalize_name, aaa.assignor_and_assignee_id as id FROM assignee as a INNER JOIN assignor_and_assignee as aaa ON aaa.assignor_and_assignee_id = a.assignor_and_assignee_id LEFT JOIN representative as r ON r.representative_id = aaa.representative_id WHERE a.rf_id = :rfID  GROUP BY aaa.name, normalize_name';
@@ -1521,4 +1537,5 @@ helper.getCompaniesMinAndMaxDateTransaction = getCompaniesMinAndMaxDateTransacti
 helper.findProfessionalFromUserID = findProfessionalFromUserID;
 helper.findFakeDocument = findFakeDocument;
 helper.findActivityByID = findActivityByID;
+helper.getCollectionList = getCollectionList;
 module.exports = helper;

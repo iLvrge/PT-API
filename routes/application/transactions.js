@@ -26,8 +26,14 @@ route.get("/transactions/:companyName", [authJWT.verifyToken, clientDBConnection
     }
     if(companyName != 'undefined' || companyName == 0) {
         if(typeof req.connection_db != "undefined" && req.connection_db != null ) {
-            if(companyName != 'undefined' && companyName != 0) {
-                const queryFindParent = "SELECT representative_id FROM representative WHERE (original_name = :name OR representative_name = :name) AND parent_id = 0";
+            if(companyName != 'undefined' || companyName > 0) {
+
+                let queryFindParent = "SELECT representative_id FROM representative WHERE (original_name = :name OR representative_name = :name) AND parent_id = 0";
+                
+                if(companyName > 0) {
+                    queryFindParent = "SELECT representative_id FROM representative WHERE representative_id = :name AND parent_id = 0";
+                }
+                
                 
                 const findParent = await req.connection_db.query(queryFindParent,{
                     type: connection.Sequelize.QueryTypes.SELECT,

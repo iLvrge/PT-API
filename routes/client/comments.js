@@ -21,7 +21,7 @@ const helpers = require("../../helpers/helper");
 route.get("/comments/:subjectType", [authJWT.verifyToken, clientDBConnection.connect], async(req, res, next) => {
     try{
         if(typeof req.connection_db != "undefined" && req.connection_db != null ) {
-            const subjectType = req.params.subjectType, subject = req.params.subject;
+            const subjectType = req.params.subjectType;
             const Activity = req.connection_db.define('Activities', Activities.mainStructure, Activities.options);
             const Type = req.connection_db.define('Types', Types.mainStructure, Types.options);
 
