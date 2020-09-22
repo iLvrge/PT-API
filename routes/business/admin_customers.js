@@ -832,7 +832,7 @@ route.get("/customers/:organisation_id/missing_inventor", [authJWT.verifyToken, 
             if(org != null && org.organisation_id > 0) {
                 console.log(`php -f /var/www/html/trash/find_missing_from_api_inventor_xml.php "${organisationID}"`);
                 await exec(`php -f /var/www/html/trash/find_missing_from_api_inventor_xml.php "${organisationID}"`, (error, stdout, stderr) => {  
-                    res.status(200).send("Flag fixing completed");
+                    res.status(200).send("Finding the missing inventor successfully completed");
                 });
             } else {
                 res.status(402).send("Customer not exist.");
@@ -854,7 +854,7 @@ route.get("/customers/:organisation_id/find_inventor", [authJWT.verifyToken, aut
             if(org != null && org.organisation_id > 0) {
                 console.log(`php -f /var/www/html/trash/missing_inventor_from_api_2000_2004.php "${organisationID}"`);
                 await exec(`php -f /var/www/html/trash/missing_inventor_from_api_2000_2004.php "${organisationID}"`, (error, stdout, stderr) => {  
-                    res.status(200).send("Flag fixing completed");
+                    res.status(200).send("Find the inventor from 2000-2004 successfully completed");
                 });
             } else {
                 res.status(402).send("Customer not exist.");
