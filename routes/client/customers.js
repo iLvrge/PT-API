@@ -29,8 +29,8 @@ route.get("/portfolios/", [authJWT.verifyToken, clientDBConnection.connect], asy
     try{
         const tabID = req.query.tab_id, portfolioID = req.query.portfolio;
         let result = [],  limit = req.query.limit, offset = req.query.offset;
-        console.log(tabID);
-        console.log(portfolioID);
+        console.log("tabID", tabID);
+        console.log("portfolioID", portfolioID);
         if(portfolioID != '' && portfolioID != null && portfolioID != 'undefined' && parseInt(tabID) >= 0) {            
             limit = limit > 0 ? parseInt(limit) : 1000;
             offset = offset > 0 ? parseInt(offset) : 0;
@@ -86,7 +86,7 @@ route.get("/portfolios/", [authJWT.verifyToken, clientDBConnection.connect], asy
                         const promises = resultParties.map(async portfolio => {
                             const findCounter = await TreePartiesCollections.findOne({
                                 attributes: [[connection.Sequelize.fn('COUNT', 'rf_id'), 'transaction_count']],
-                                where: {representative_id: portfolio.representative_id, tab_id: portfolio.tab_id},
+                                where: {organisation_id: req.orgId, representative_id: portfolio.representative_id, tab_id: portfolio.tab_id},
                                 group: ['representative_id', 'tab_id']                      
                             });
                             const portfolioJSON = portfolio.toJSON();
