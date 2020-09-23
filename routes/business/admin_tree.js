@@ -26,7 +26,10 @@ const { JSDOM } = jsdom;
  */
 async function addChild(child, td, company, index) {
     if(child.length == 0 || child[child.length - 1].level == td.length) {
-        /*child.push({name: td[td.length - 1].querySelectorAll('span.unselected, span.selected')[0].innerText, child:[], level: td.length});*/
+        /*
+        * Only working in DOM
+        *child.push({name: td[td.length - 1].querySelectorAll('span.unselected, span.selected')[0].innerText, child:[], level: td.length});
+        */
         child.push({name: td[td.length - 1].querySelectorAll('span')[0].querySelectorAll('span')[0].innerHTML, child:[], level: td.length});
     } else {
         child = addChild(child[child.length - 1].child, td, company, index);
@@ -62,7 +65,9 @@ route.post("/corporate_tree", [authJWT.verifyToken, authJWT.isAdmin], async(req,
                                         if(td.length == 3){
                                             console.log(td[td.length - 1].querySelectorAll('span').length);
                                             console.log(td[td.length - 1].querySelectorAll('span')[0].querySelectorAll('span')[0].innerHTML);
-                                            /*parentChild.push({name: td[td.length - 1].querySelector('span.unselected, span.selected')[0].innerText, child:[], level: td.length});*/
+                                            /*
+                                            * Only working in DOM
+                                            *parentChild.push({name: td[td.length - 1].querySelector('span.unselected, span.selected')[0].innerText, child:[], level: td.length});*/
                                             parentChild.push({name: td[td.length - 1].querySelectorAll('span')[0].querySelectorAll('span')[0].innerHTML, child:[], level: td.length});
                                         } else {
                                             await addChild(parentChild[0].child, td, company);        
