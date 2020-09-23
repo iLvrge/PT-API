@@ -355,4 +355,20 @@ route.put("/company/assignments/:customerID", [authJWT.verifyToken, authJWT.isAd
     }
 });
 
+
+/**
+ * Find All Transaction with conveyanceType and Entity Type
+ */
+route.get("/company/transactions/:conveyanceType/:type", [authJWT.verifyToken, authJWT.isAdmin], async (req, res, next) => {
+    try {
+        const conveyanceType = req.params.conveyanceType, type = req.params.type;
+
+        const findAllAssignments  = await helpers.allTransactionEntities(conveyanceType, type);
+
+        res.status(200).json(findAllAssignments);
+    } catch(e) {
+        console.log(e);
+        res.status(402).send("Unable to retrieve data.");
+    }
+})
 module.exports = route;

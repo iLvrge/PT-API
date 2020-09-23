@@ -234,6 +234,20 @@ let searchCompany = async(query, t) => {
     }
 }
 
+let allTransactionEntities = async( conveyanceType, entityType) => {
+    const queryTransaction = `SELECT aaa.name, count(aaa.name) as counter, r.representative_name as normalize_name, (SELECT rr.representative_name FROM representative as rr WHERE rr.representative_name = aaa.name GROUP BY rr.representative_name) as representative_company FROM assignment as a INNER JOIN ${entityType} as aa ON aa.rf_id = a.rf_id INNER JOIN representative_assignment_conveyance as rac ON rac.rf_id = a.rf_id INNER JOIN assignor_and_assignee as aaa ON aaa.assignor_and_assignee_id = aa.assignor_and_assignee_id LEFT JOIN representative as r ON r.representative_id = aaa.representative_id WHERE rac.convey_ty = :conveyanceType GROUP BY aaa.name`;
+
+    const getList = await connection.resources.query(queryTransaction,{
+        type: connection.Sequelize.QueryTypes.SELECT,
+        raw: true,
+        replacements: { conveyanceType: conveyanceType },
+        logging: console.log,
+        }
+    );
+
+    return getList;
+};
+
 let findOrganisationbyID = async (organisationID) => {
     return await Organisations.findOne({
                     where: {organisation_id: organisationID}
@@ -1538,4 +1552,5 @@ helper.findProfessionalFromUserID = findProfessionalFromUserID;
 helper.findFakeDocument = findFakeDocument;
 helper.findActivityByID = findActivityByID;
 helper.getCollectionList = getCollectionList;
+helper.allTransactionEntities = allTransactionEntities;
 module.exports = helper;
