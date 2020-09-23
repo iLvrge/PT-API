@@ -40,7 +40,7 @@ route.post("/corporate_tree", [authJWT.verifyToken, authJWT.isAdmin], async(req,
                     if (err){
                         return res.status(500).send("ERROR: "+err);	
                     } else {
-                        JSDOM.fromFile(filePathWithName, options).then(dom => {
+                        JSDOM.fromFile(filePathWithName).then(dom => {
                             console.log(dom.serialize());
                         });
                     }
