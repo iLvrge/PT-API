@@ -57,8 +57,9 @@ route.post("/corporate_tree", [authJWT.verifyToken, authJWT.isAdmin], async(req,
                                 const allCompanies = treeView.querySelectorAll('table');   
                                 if(allCompanies.length > 0) {
                                     allCompanies.forEach(async company => {
+                                        console.log(company);
                                         var td = company.querySelectorAll('td');
-                                        console.log(td);
+                                        //console.log(td);
                                         if(td.length == 3){
                                             parentChild.push({name: td[td.length - 1].querySelector('span.unselected').innerText, child:[], level: td.length});
                                         } else {
