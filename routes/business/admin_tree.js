@@ -24,10 +24,19 @@ const { JSDOM } = jsdom;
  * Tree HTML file upload
  * 
  */
+async function addChild(child, td, company, index) {
+    if(child.length == 0 || child[child.length - 1].level == td.length) {
+        child.push({name: td[td.length - 1].querySelectorAll('span.unselected, span.selected')[0].innerText, child:[], constructor: company, index: index, level: td.length});
+    } else {
+        child = addChild(child[child.length - 1].child, td, company, index);
+    }
+    return child;
+}
 
 route.post("/corporate_tree", [authJWT.verifyToken, authJWT.isAdmin], async(req, res, next) => {
     try{
         console.log(req.files);
+        var parentChild = [];
         if(req.files != null && req.files.file != null && req.files.file != undefined) {
             let mimeType = req.files.file.mimetype;
             console.log(mimeType);
@@ -36,12 +45,24 @@ route.post("/corporate_tree", [authJWT.verifyToken, authJWT.isAdmin], async(req,
                 let fileObject = req.files.file;
                 const filePathWithName = '/var/www/html/beta/resources/shared/data/'+fileObject.name;
 
-                await fileObject.mv(filePathWithName, function(err) {
+                await fileObject.mv(filePathWithName, async function(err) {
                     if (err){
                         return res.status(500).send("ERROR: "+err);	
                     } else {
                         JSDOM.fromFile(filePathWithName).then(dom => {
-                            console.log(dom.serialize());
+                            const document = dom.window.document;
+                            const treeView = document.querySelector("#TreeView1");
+                            if(treeView != null) {                                
+                                allCompanies.forEach(async (company, index) => {
+                                    var td = company.querySelectorAll('td');
+                                    if(td.length == 3){
+                                        parentChild.push({name: td[td.length - 1].querySelector('span.unselected').innerText, child:[], constructor: company, index: index, level: td.length});
+                                    } else {
+                                        await addChild(parentChild[0].child, td, company, index);        
+                                    }
+                                });
+                                res.status(200).json(parentChild);
+                            }
                         });
                     }
                 })
