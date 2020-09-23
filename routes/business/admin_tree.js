@@ -59,9 +59,10 @@ route.post("/corporate_tree", [authJWT.verifyToken, authJWT.isAdmin], async(req,
                                     console.log(allCompanies.length);
                                     allCompanies.forEach(async company => {
                                         var td = company.querySelectorAll('td');
-                                        console.log(td.length);
+                                        
                                         if(td.length == 3){
-                                            parentChild.push({name: td[td.length - 1].querySelector('span.unselected').innerText, child:[], level: td.length});
+                                            console.log(td[td.length - 1].querySelector('span.unselected, span.selected').length);
+                                            parentChild.push({name: td[td.length - 1].querySelector('span.unselected, span.selected')[0].innerText, child:[], level: td.length});
                                         } else {
                                             await addChild(parentChild[0].child, td, company);        
                                         }
