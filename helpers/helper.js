@@ -57,7 +57,7 @@ let searchCompany = async(query, t) => {
             } else if(search.slice(-2) == 'co') {
                 search = search.substr(0, search.length - 2);
             }*/
-            search = search.replace(/\b(?:inc|llc|corp|llp|gmbh|lp|agent|sas|na|bank|co|states|ltd|kk|a\/s)\b/g,'').replace(/^\s+/,"");
+            //search = search.replace(/\b(?:inc|llc|corp|llp|gmbh|lp|agent|sas|na|bank|co|states|ltd|kk|a\/s)\b/g,'').replace(/^\s+/,"");
             
             if(splitSearch.length > 1){				
                 if(splitSearch.length == 2) {
