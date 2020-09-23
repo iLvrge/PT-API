@@ -26,7 +26,7 @@ const { JSDOM } = jsdom;
  */
 async function addChild(child, td, company, index) {
     if(child.length == 0 || child[child.length - 1].level == td.length) {
-        child.push({name: td[td.length - 1].querySelectorAll('span.unselected, span.selected')[0].innerText, child:[], constructor: company, index: index, level: td.length});
+        child.push({name: td[td.length - 1].querySelectorAll('span.unselected, span.selected')[0].innerText, child:[], level: td.length});
     } else {
         child = addChild(child[child.length - 1].child, td, company, index);
     }
@@ -56,12 +56,13 @@ route.post("/corporate_tree", [authJWT.verifyToken, authJWT.isAdmin], async(req,
                             if(treeView != null) {   
                                 const allCompanies = treeView.querySelectorAll('table');   
                                 if(allCompanies.length > 0) {
-                                    allCompanies.forEach(async (company, index) => {
+                                    allCompanies.forEach(async company => {
                                         var td = company.querySelectorAll('td');
+                                        console.log(td);
                                         if(td.length == 3){
-                                            parentChild.push({name: td[td.length - 1].querySelector('span.unselected').innerText, child:[], constructor: company, index: index, level: td.length});
+                                            parentChild.push({name: td[td.length - 1].querySelector('span.unselected').innerText, child:[], level: td.length});
                                         } else {
-                                            await addChild(parentChild[0].child, td, company, index);        
+                                            await addChild(parentChild[0].child, td, company);        
                                         }
                                     });
                                 } 
