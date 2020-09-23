@@ -52,15 +52,19 @@ route.post("/corporate_tree", [authJWT.verifyToken, authJWT.isAdmin], async(req,
                         JSDOM.fromFile(filePathWithName).then(dom => {
                             const document = dom.window.document;
                             const treeView = document.querySelector("#TreeView1");
-                            if(treeView != null) {                                
-                                allCompanies.forEach(async (company, index) => {
-                                    var td = company.querySelectorAll('td');
-                                    if(td.length == 3){
-                                        parentChild.push({name: td[td.length - 1].querySelector('span.unselected').innerText, child:[], constructor: company, index: index, level: td.length});
-                                    } else {
-                                        await addChild(parentChild[0].child, td, company, index);        
-                                    }
-                                });
+                            
+                            if(treeView != null) {   
+                                const allCompanies = treeView.querySelectorAll('table');   
+                                if(allCompanies.length > 0) {
+                                    allCompanies.forEach(async (company, index) => {
+                                        var td = company.querySelectorAll('td');
+                                        if(td.length == 3){
+                                            parentChild.push({name: td[td.length - 1].querySelector('span.unselected').innerText, child:[], constructor: company, index: index, level: td.length});
+                                        } else {
+                                            await addChild(parentChild[0].child, td, company, index);        
+                                        }
+                                    });
+                                } 
                                 res.status(200).json(parentChild);
                             }
                         });
