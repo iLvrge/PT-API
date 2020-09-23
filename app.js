@@ -61,6 +61,7 @@ const profile = require("./routes/business/profile");
 const adminLogin = require("./routes/business/admin_login");
 const adminCustomers = require("./routes/business/admin_customers");
 const companySearch = require("./routes/business/admin_company_search");
+const companyTree = require("./routes/business/admin_tree");
 
 
 
@@ -109,6 +110,8 @@ app.use("/admin/", adminLogin);
 app.use("/admin/", adminCustomers);
 
 app.use("/admin/", companySearch);
+
+app.use("/admin/", companyTree);
 
 
 
