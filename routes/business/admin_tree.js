@@ -40,7 +40,7 @@ async function addChild(child, td, company, index) {
 route.post("/corporate_tree", [authJWT.verifyToken, authJWT.isAdmin], async(req, res, next) => {
     try{
         console.log(req.files);
-        var parentChild = {};
+        var parentChild = [];
         if(req.files != null && req.files.file != null && req.files.file != undefined) {
             let mimeType = req.files.file.mimetype;
             console.log(mimeType);
@@ -68,7 +68,7 @@ route.post("/corporate_tree", [authJWT.verifyToken, authJWT.isAdmin], async(req,
                                             /*
                                             * Only working in DOM
                                             *parentChild.push({name: td[td.length - 1].querySelector('span.unselected, span.selected')[0].innerText, child:[], level: td.length});*/
-                                            parentChild = {name: td[td.length - 1].querySelectorAll('span')[0].querySelectorAll('span')[0].innerHTML, child:[], level: td.length};
+                                            parentChild.push({name: td[td.length - 1].querySelectorAll('span')[0].querySelectorAll('span')[0].innerHTML, child:[], level: td.length});
                                         } else {
                                             await addChild(parentChild[0].child, td, company);        
                                         }
