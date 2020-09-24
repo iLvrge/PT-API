@@ -54,7 +54,7 @@ route.post("/corporate_tree", [authJWT.verifyToken, authJWT.isAdmin], async(req,
                         return res.status(500).send("ERROR: "+err);	
                     } else {
 
-                        
+                        res.status(200).send(filePathWithName.replace('/var/www/html/beta','https://patentrack.com'));
 
 
                         /*JSDOM.fromFile(filePathWithName).then(dom => {
