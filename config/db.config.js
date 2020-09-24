@@ -7,12 +7,12 @@ const application = new Sequelize('db_application', 'db_user_all', 'wDv%5tgn0O0k
     dialect: 'mysql',
     operatorsAliases: Op,
    
-    pool: {
+    /*pool: {
         max: 100,
         min: 1,
         acquire: 1000000,
         idle: 5000
-    }
+    }*/
 });
 
 const resources = new Sequelize('db_uspto', 'db_user_all', 'wDv%5tgn0O0kMkM', {
@@ -20,12 +20,12 @@ const resources = new Sequelize('db_uspto', 'db_user_all', 'wDv%5tgn0O0kMkM', {
     dialect: 'mysql',
     operatorsAliases: Op,
    
-    pool: {
+    /*pool: {
         max: 100,
         min: 1,
         acquire: 1000000,
         idle: 5000
-    }
+    }*/
 });
 
 const business = new Sequelize('db_business', 'db_user_all', 'wDv%5tgn0O0kMkM', {
@@ -33,29 +33,14 @@ const business = new Sequelize('db_business', 'db_user_all', 'wDv%5tgn0O0kMkM', 
     dialect: 'mysql',
     operatorsAliases: Op,
    
-    pool: {
+    /*pool: {
         max: 100,
         min: 1,
         acquire: 1000000,
         idle: 5000
-    }
+    }*/
 });
-/*productsDb.dialect.supports.schemas = true; // add this line
-{
-      tableName: "product",
-      timestamps: false,
-      schema: "products" // add this line
-    }
-    include: [
-    {
-      model: ProductsDb.models.product,
-      on: {
-        // this is where magic happens
-        order_id: Sequelize.literal("`order`.`id` = `products`.`products`.`order_id`") 
-      }
-    }
-  ]
- */
+
 const config = {
   'secret': process.env.SECRET || 'p@nt3nt8@60',
   'pusher_appId': '938985',
