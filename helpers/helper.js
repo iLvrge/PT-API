@@ -235,17 +235,53 @@ let searchCompany = async(query, t) => {
 }
 
 let allTransactionEntities = async( conveyanceType, entityType) => {
-    const queryTransaction = `SELECT aaa.name, count(aaa.name) as counter, r.representative_name as normalize_name, (SELECT rr.representative_name FROM representative as rr WHERE rr.representative_name = aaa.name GROUP BY rr.representative_name) as representative_company FROM assignment as a INNER JOIN ${entityType} as aa ON aa.rf_id = a.rf_id INNER JOIN representative_assignment_conveyance as rac ON rac.rf_id = a.rf_id INNER JOIN assignor_and_assignee as aaa ON aaa.assignor_and_assignee_id = aa.assignor_and_assignee_id LEFT JOIN representative as r ON r.representative_id = aaa.representative_id WHERE rac.convey_ty = :conveyanceType GROUP BY aaa.name`;
+    let cType = ['security', 'restatedsecurity'];
 
-    const getList = await connection.resources.query(queryTransaction,{
+    let queryTransaction = `SELECT aaa.assignor_and_assignee_id, aaa.name, count(aaa.name) as counter, r.representative_name as normalize_name, (SELECT rr.representative_name FROM representative as rr WHERE rr.representative_name = aaa.name GROUP BY rr.representative_name) as representative_company FROM assignment as a INNER JOIN assignee as aa ON aa.rf_id = a.rf_id INNER JOIN representative_assignment_conveyance as rac ON rac.rf_id = a.rf_id INNER JOIN assignor_and_assignee as aaa ON aaa.assignor_and_assignee_id = aa.assignor_and_assignee_id LEFT JOIN representative as r ON r.representative_id = aaa.representative_id WHERE rac.convey_ty IN (:conveyanceType) GROUP BY aaa.name`;
+
+    let getAssignees = await connection.resources.query(queryTransaction,{
         type: connection.Sequelize.QueryTypes.SELECT,
         raw: true,
-        replacements: { conveyanceType: conveyanceType },
+        replacements: { conveyanceType:  cType},
         logging: console.log,
         }
     );
 
-    return getList;
+    cType = ['release'];
+    queryTransaction = `SELECT aaa.assignor_and_assignee_id, aaa.name, count(aaa.name) as counter, r.representative_name as normalize_name, (SELECT rr.representative_name FROM representative as rr WHERE rr.representative_name = aaa.name GROUP BY rr.representative_name) as representative_company FROM assignment as a INNER JOIN assignor as aa ON aa.rf_id = a.rf_id INNER JOIN representative_assignment_conveyance as rac ON rac.rf_id = a.rf_id INNER JOIN assignor_and_assignee as aaa ON aaa.assignor_and_assignee_id = aa.assignor_and_assignee_id LEFT JOIN representative as r ON r.representative_id = aaa.representative_id WHERE rac.convey_ty IN (:conveyanceType) GROUP BY aaa.name`;
+
+    let getAssignors = await connection.resources.query(queryTransaction,{
+        type: connection.Sequelize.QueryTypes.SELECT,
+        raw: true,
+        replacements: { conveyanceType:  cType},
+        logging: console.log,
+        }
+    );
+
+    const customer_list = [...getAssignees, ...getAssignors];  
+    console.log(customer_list.length);
+    let list = [];
+    
+    if(customer_list.length > 0) {
+        let entityIDs = [];
+        customer_list.forEach( async c => {
+            await names.push(c.assignor_and_assignee_id);
+        })
+
+        for(let i = 0; i < entityIDs.length; i++) {
+            let ID = entityIDs[i];
+            let getList = await customer_list.filter(n => {
+                return (ID == n.assignor_and_assignee_id) ? n : undefined;
+            })/*(n.normalize_name.toLowerCase() == nam || n.name.trim().toLowerCase() == nam )? n : undefined);*/
+            if(getList != undefined && getList.length > 0){
+                let getCounter = await getList.reduce((a, b) => +a + +b.counter, 0);
+                let getOccurences = await getList.reduce((a, b) => +a + +b.total_occurences, 0);
+                await list.push({id: getList[0].assignor_and_assignee_id , name: getList[0].name, normalize_name: getList[0].normalize_name, counter: getCounter, total_occurences: getOccurences, representative_company: getList[0].representativeCompany});
+            }
+        }
+    }
+    console.log(list.length);
+    return list;
 };
 
 let findOrganisationbyID = async (organisationID) => {

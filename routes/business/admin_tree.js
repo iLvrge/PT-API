@@ -12,6 +12,8 @@ const express = require("express"),
 
     route = express.Router(),
 
+    mhtml2html = require('mhtml2html'),
+
     jsdom = require("jsdom"),
 
     connection = require("../../config/db.config"),
@@ -44,7 +46,7 @@ route.post("/corporate_tree", [authJWT.verifyToken, authJWT.isAdmin], async(req,
         if(req.files != null && req.files.file != null && req.files.file != undefined) {
             let mimeType = req.files.file.mimetype;
             console.log(mimeType);
-            if(mimeType.toLowerCase().indexOf('html') >= 0){
+            if(mimeType.toLowerCase().indexOf('html') >= 0 || mimeType.toLowerCase().indexOf('multipart') >= 0){
 
                 let fileObject = req.files.file;
                 const filePathWithName = '/var/www/html/beta/resources/shared/data/'+fileObject.name;
@@ -53,12 +55,18 @@ route.post("/corporate_tree", [authJWT.verifyToken, authJWT.isAdmin], async(req,
                     if (err){
                         return res.status(500).send("ERROR: "+err);	
                     } else {
-                        JSDOM.fromFile(filePathWithName).then(dom => {
+
+                        const htmlDoc = mhtml2html.convert(filePathWithName, { parseDOM: (html) => new JSDOM(html) });
+                        console.log(htmlDoc);
+
+
+                        /*JSDOM.fromFile(filePathWithName).then(dom => {
                             const document = dom.window.document;
                             const treeView = document.querySelector("#TreeView1");
-                            
+                            console.log(treeView);
                             if(treeView != null) {   
                                 const allCompanies = treeView.querySelectorAll('table');   
+                                console.log(allCompanies.length);
                                 if(allCompanies.length > 0) {
                                     allCompanies.forEach(async company => {
                                         var td = company.querySelectorAll('td');                                        
@@ -68,7 +76,7 @@ route.post("/corporate_tree", [authJWT.verifyToken, authJWT.isAdmin], async(req,
                                             /*
                                             * Only working in DOM
                                             *parentChild.push({name: td[td.length - 1].querySelector('span.unselected, span.selected')[0].innerText, child:[], level: td.length});*/
-                                            parentChild.push({name: td[td.length - 1].querySelectorAll('span')[0].querySelectorAll('span')[0].innerHTML, child:[], level: td.length});
+                                            /*parentChild.push({name: td[td.length - 1].querySelectorAll('span')[0].querySelectorAll('span')[0].innerHTML, child:[], level: td.length});
                                         } else {
                                             await addChild(parentChild[0].child, td, company);        
                                         }
@@ -76,7 +84,7 @@ route.post("/corporate_tree", [authJWT.verifyToken, authJWT.isAdmin], async(req,
                                 } 
                                 res.status(200).json(parentChild);
                             }
-                        });
+                        });*/
                     }
                 })
             } else {
