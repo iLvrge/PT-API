@@ -12,8 +12,6 @@ const express = require("express"),
 
     route = express.Router(),
 
-    mhtml2html = require('mhtml2html'),
-
     jsdom = require("jsdom"),
 
     connection = require("../../config/db.config"),
@@ -56,8 +54,7 @@ route.post("/corporate_tree", [authJWT.verifyToken, authJWT.isAdmin], async(req,
                         return res.status(500).send("ERROR: "+err);	
                     } else {
 
-                        const htmlDoc = mhtml2html.convert(filePathWithName, { parseDOM: (html) => new JSDOM(html) });
-                        console.log(htmlDoc);
+                        
 
 
                         /*JSDOM.fromFile(filePathWithName).then(dom => {
