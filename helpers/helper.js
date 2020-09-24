@@ -259,7 +259,7 @@ let allTransactionEntities = async( conveyanceType, entityType) => {
     );
 
     const customer_list = [...getAssignees, ...getAssignors];  
-    console.log(list.length);
+    console.log(customer_list.length);
     let list = [];
     
     if(customer_list.length > 0) {
