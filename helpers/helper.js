@@ -259,24 +259,36 @@ let allTransactionEntities = async( conveyanceType, entityType) => {
     );
 
     const customer_list = [...getAssignees, ...getAssignors];  
-    console.log(customer_list.length);
+    console.log(list.length);
     let list = [];
     
     if(customer_list.length > 0) {
-        let entityIDs = [];
-        customer_list.forEach( async c => {
-            await names.push(c.assignor_and_assignee_id);
+        let names = [];
+        customer_list.forEach( async name => {
+            let n = name.normalize_name;
+            if(n == "" || n == null || n != undefined){
+                n = name.name;
+            }
+            n = n.trim().toLowerCase();
+            if(!names.includes(n)){
+                await names.push(n);
+            }
         })
 
-        for(let i = 0; i < entityIDs.length; i++) {
-            let ID = entityIDs[i];
+        for(let i = 0; i < names.length; i++) {
+            let nam = names[i];
             let getList = await customer_list.filter(n => {
-                return (ID == n.assignor_and_assignee_id) ? n : undefined;
+                /*let name = n.normalize_name;
+                if(name == "" || name == null || name == undefined) {
+                    name = n.name;
+                }*/
+                let name = n.name;
+                name = name.trim().toLowerCase();
+                return (name == nam.trim().toLowerCase())? n : undefined;
             })/*(n.normalize_name.toLowerCase() == nam || n.name.trim().toLowerCase() == nam )? n : undefined);*/
             if(getList != undefined && getList.length > 0){
                 let getCounter = await getList.reduce((a, b) => +a + +b.counter, 0);
-                let getOccurences = await getList.reduce((a, b) => +a + +b.total_occurences, 0);
-                await list.push({id: getList[0].assignor_and_assignee_id , name: getList[0].name, normalize_name: getList[0].normalize_name, counter: getCounter, total_occurences: getOccurences, representative_company: getList[0].representativeCompany});
+                await list.push({id: getList[0].assignor_and_assignee_id , name: getList[0].name, normalize_name: getList[0].normalize_name, counter: getCounter, representative_company: getList[0].representativeCompany});
             }
         }
     }
