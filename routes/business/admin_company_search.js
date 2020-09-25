@@ -271,6 +271,17 @@ route.get("/company/assignments/:id", [authJWT.verifyToken, authJWT.isAdmin, aut
     }
 });
 
+route.get("/company/assignments/law_firms/:id/:representativeID", [authJWT.verifyToken, authJWT.isAdmin, authJWT.addClientID, clientDBConnection.connect], async (req, res, next) => {
+    try {
+        const customerID = req.params.id, representativeIDs = JSON.parse(req.params.representativeID);
+
+        
+
+    } catch(e) {
+        console.log(e);
+        res.status(402).send("Unable to retrieve data.");
+    }
+});
 
 route.get("/company/assignments/:id/:representativeID", [authJWT.verifyToken, authJWT.isAdmin, authJWT.addClientID, clientDBConnection.connect], async (req, res, next) => {
     try {
@@ -361,7 +372,7 @@ route.put("/company/assignments/:customerID", [authJWT.verifyToken, authJWT.isAd
  */
 route.get("/company/transactions/:conveyanceType", [authJWT.verifyToken, authJWT.isAdmin], async (req, res, next) => {
     try {
-        const conveyanceType = req.params.conveyanceType, type = req.params.type;
+        const conveyanceType = req.params.conveyanceType;
 
         const findAllAssignments  = await helpers.allTransactionEntities(conveyanceType);
 
@@ -370,5 +381,7 @@ route.get("/company/transactions/:conveyanceType", [authJWT.verifyToken, authJWT
         console.log(e);
         res.status(402).send("Unable to retrieve data.");
     }
-})
+});
+
+
 module.exports = route;

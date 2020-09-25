@@ -235,11 +235,19 @@ let searchCompany = async(query, t) => {
 }
 
 let allTransactionEntities = async( conveyanceType, entityType) => {
+
     let cType = ['security', 'restatedsecurity'];
 
-    let queryTransaction = `SELECT aaa.assignor_and_assignee_id, aaa.name, count(aaa.name) as counter, r.representative_name as normalize_name, (SELECT rr.representative_name FROM representative as rr WHERE rr.representative_name = aaa.name GROUP BY rr.representative_name) as representative_company FROM assignment as a INNER JOIN assignee as aa ON aa.rf_id = a.rf_id INNER JOIN representative_assignment_conveyance as rac ON rac.rf_id = a.rf_id INNER JOIN assignor_and_assignee as aaa ON aaa.assignor_and_assignee_id = aa.assignor_and_assignee_id LEFT JOIN representative as r ON r.representative_id = aaa.representative_id WHERE rac.convey_ty IN (:conveyanceType) GROUP BY aaa.name`;
+    let queryTransaction = '';
+    
+    if(conveyanceType === 'borrowers') {
+        queryTransaction = `SELECT aaa.assignor_and_assignee_id, aaa.name, count(aaa.name) as counter, r.representative_name as normalize_name, (SELECT rr.representative_name FROM representative as rr WHERE rr.representative_name = aaa.name GROUP BY rr.representative_name) as representative_company FROM assignment as a INNER JOIN assignors as aa ON aa.rf_id = a.rf_id INNER JOIN representative_assignment_conveyance as rac ON rac.rf_id = a.rf_id INNER JOIN assignor_and_assignee as aaa ON aaa.assignor_and_assignee_id = aa.assignor_and_assignee_id LEFT JOIN representative as r ON r.representative_id = aaa.representative_id WHERE rac.convey_ty IN (:conveyanceType) GROUP BY aaa.name`;
+    } else {
+        queryTransaction = `SELECT aaa.assignor_and_assignee_id, aaa.name, count(aaa.name) as counter, r.representative_name as normalize_name, (SELECT rr.representative_name FROM representative as rr WHERE rr.representative_name = aaa.name GROUP BY rr.representative_name) as representative_company FROM assignment as a INNER JOIN assignee as aa ON aa.rf_id = a.rf_id INNER JOIN representative_assignment_conveyance as rac ON rac.rf_id = a.rf_id INNER JOIN assignor_and_assignee as aaa ON aaa.assignor_and_assignee_id = aa.assignor_and_assignee_id LEFT JOIN representative as r ON r.representative_id = aaa.representative_id WHERE rac.convey_ty IN (:conveyanceType) GROUP BY aaa.name`;
+    }
+    
 
-    let getAssignees = await connection.resources.query(queryTransaction,{
+    let getList = await connection.resources.query(queryTransaction,{
         type: connection.Sequelize.QueryTypes.SELECT,
         raw: true,
         replacements: { conveyanceType:  cType},
@@ -248,9 +256,14 @@ let allTransactionEntities = async( conveyanceType, entityType) => {
     );
 
     cType = ['release'];
-    queryTransaction = `SELECT aaa.assignor_and_assignee_id, aaa.name, count(aaa.name) as counter, r.representative_name as normalize_name, (SELECT rr.representative_name FROM representative as rr WHERE rr.representative_name = aaa.name GROUP BY rr.representative_name) as representative_company FROM assignment as a INNER JOIN assignor as aa ON aa.rf_id = a.rf_id INNER JOIN representative_assignment_conveyance as rac ON rac.rf_id = a.rf_id INNER JOIN assignor_and_assignee as aaa ON aaa.assignor_and_assignee_id = aa.assignor_and_assignee_id LEFT JOIN representative as r ON r.representative_id = aaa.representative_id WHERE rac.convey_ty IN (:conveyanceType) GROUP BY aaa.name`;
 
-    let getAssignors = await connection.resources.query(queryTransaction,{
+    if(conveyanceType === 'borrowers') {
+        queryTransaction = `SELECT aaa.assignor_and_assignee_id, aaa.name, count(aaa.name) as counter, r.representative_name as normalize_name, (SELECT rr.representative_name FROM representative as rr WHERE rr.representative_name = aaa.name GROUP BY rr.representative_name) as representative_company FROM assignment as a INNER JOIN assignee as aa ON aa.rf_id = a.rf_id INNER JOIN representative_assignment_conveyance as rac ON rac.rf_id = a.rf_id INNER JOIN assignor_and_assignee as aaa ON aaa.assignor_and_assignee_id = aa.assignor_and_assignee_id LEFT JOIN representative as r ON r.representative_id = aaa.representative_id WHERE rac.convey_ty IN (:conveyanceType) GROUP BY aaa.name`;
+    } else {
+        queryTransaction = `SELECT aaa.assignor_and_assignee_id, aaa.name, count(aaa.name) as counter, r.representative_name as normalize_name, (SELECT rr.representative_name FROM representative as rr WHERE rr.representative_name = aaa.name GROUP BY rr.representative_name) as representative_company FROM assignment as a INNER JOIN assignor as aa ON aa.rf_id = a.rf_id INNER JOIN representative_assignment_conveyance as rac ON rac.rf_id = a.rf_id INNER JOIN assignor_and_assignee as aaa ON aaa.assignor_and_assignee_id = aa.assignor_and_assignee_id LEFT JOIN representative as r ON r.representative_id = aaa.representative_id WHERE rac.convey_ty IN (:conveyanceType) GROUP BY aaa.name`;
+    }    
+
+    let getList2 = await connection.resources.query(queryTransaction,{
         type: connection.Sequelize.QueryTypes.SELECT,
         raw: true,
         replacements: { conveyanceType:  cType},
@@ -258,7 +271,7 @@ let allTransactionEntities = async( conveyanceType, entityType) => {
         }
     );
 
-    const customer_list = [...getAssignees, ...getAssignors];  
+    const customer_list = [...getList, ...getList2];  
     console.log(customer_list.length);
     let list = [];
     
