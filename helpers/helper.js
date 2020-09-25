@@ -234,7 +234,7 @@ let searchCompany = async(query, t) => {
     }
 }
 
-let allTransactionEntities = async( conveyanceType, entityType) => {
+let allTransactionEntities = async( conveyanceType) => {
 
     let cType = ['security', 'restatedsecurity'];
 
@@ -276,34 +276,24 @@ let allTransactionEntities = async( conveyanceType, entityType) => {
     let list = [];
     
     if(customer_list.length > 0) {
-        let names = [];
-        customer_list.forEach( async name => {
-            let n = name.normalize_name;
-            if(n == "" || n == null || n != undefined){
-                n = name.name;
-            }
-            n = n.trim().toLowerCase();
-            if(!names.includes(n)){
-                await names.push(n);
+        let IDs = [];
+        customer_list.forEach( async customer => {
+             if(!IDs.includes(customer.assignor_and_assignee_id)){
+                await IDs.push(customer.assignor_and_assignee_id);
             }
         })
-
-        for(let i = 0; i < names.length; i++) {
-            let nam = names[i];
-            let getList = await customer_list.filter(n => {
-                /*let name = n.normalize_name;
-                if(name == "" || name == null || name == undefined) {
-                    name = n.name;
-                }*/
-                let name = n.name;
-                name = name.trim().toLowerCase();
-                return (name == nam.trim().toLowerCase())? n : undefined;
-            })/*(n.normalize_name.toLowerCase() == nam || n.name.trim().toLowerCase() == nam )? n : undefined);*/
+        const promises = IDs.map(async id => {
+            let getList = await customer_list.filter( customer => {
+                return id == customer.assignor_and_assignee_id ? customer : undefined;
+            });
             if(getList != undefined && getList.length > 0){
                 let getCounter = await getList.reduce((a, b) => +a + +b.counter, 0);
-                await list.push({id: getList[0].assignor_and_assignee_id , name: getList[0].name, normalize_name: getList[0].normalize_name, counter: getCounter, representative_company: getList[0].representative_company});
+                list.push({id: getList[0].assignor_and_assignee_id , name: getList[0].name, normalize_name: getList[0].normalize_name, counter: getCounter, representative_company: getList[0].representative_company});
             }
-        }
+            return id;
+        });
+        await Promise.all(promises);
+        console.log(IDs.length);
     }
     console.log(list.length);
     return list;
