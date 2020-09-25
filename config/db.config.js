@@ -7,12 +7,12 @@ const application = new Sequelize('db_application', 'db_user_all', 'wDv%5tgn0O0k
     dialect: 'mysql',
     operatorsAliases: Op,
    
-    /*pool: {
-        max: 100,
+    pool: {
+        max: 1000,
         min: 1,
         acquire: 1000000,
-        idle: 5000
-    }*/
+        idle: 10000
+    }
 });
 
 const resources = new Sequelize('db_uspto', 'db_user_all', 'wDv%5tgn0O0kMkM', {
@@ -20,12 +20,12 @@ const resources = new Sequelize('db_uspto', 'db_user_all', 'wDv%5tgn0O0kMkM', {
     dialect: 'mysql',
     operatorsAliases: Op,
    
-    /*pool: {
-        max: 100,
+    pool: {
+        max: 1000,
         min: 1,
         acquire: 1000000,
-        idle: 5000
-    }*/
+        idle: 10000
+    }
 });
 
 const business = new Sequelize('db_business', 'db_user_all', 'wDv%5tgn0O0kMkM', {
@@ -33,12 +33,12 @@ const business = new Sequelize('db_business', 'db_user_all', 'wDv%5tgn0O0kMkM', 
     dialect: 'mysql',
     operatorsAliases: Op,
    
-    /*pool: {
-        max: 100,
+    pool: {
+        max: 1000,
         min: 1,
         acquire: 1000000,
-        idle: 5000
-    }*/
+        idle: 10000
+    }
 });
 
 const config = {
