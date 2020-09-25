@@ -2,6 +2,7 @@ const Sequelize = require("sequelize");
 
 const connection = require("../../config/db.config");
 
+const RepresentativeLawFirms = require('./RepresentativeLawFirms');
 
 const LawFirm = connection.resources.define('law_firm',{
     law_firm_id:{
@@ -26,5 +27,7 @@ const LawFirm = connection.resources.define('law_firm',{
     timestamps: false,
     freezeTableName: true
 });
+
+LawFirm.belongsTo(RepresentativeLawFirms, { foreignKey: 'representative_id', as: 'representativelawfirm' });
 
 module.exports = LawFirm;

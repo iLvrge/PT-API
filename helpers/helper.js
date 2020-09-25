@@ -257,43 +257,50 @@ let allTransactionEntities = async( conveyanceType) => {
 
     cType = ['release'];
 
+    let getList2 = [];
+
     if(conveyanceType === 'borrowers') {
         queryTransaction = `SELECT aaa.assignor_and_assignee_id, aaa.name, count(aaa.name) as counter, r.representative_name as normalize_name, (SELECT rr.representative_name FROM representative as rr WHERE rr.representative_name = aaa.name GROUP BY rr.representative_name) as representative_company FROM assignment as a INNER JOIN assignee as aa ON aa.rf_id = a.rf_id INNER JOIN representative_assignment_conveyance as rac ON rac.rf_id = a.rf_id INNER JOIN assignor_and_assignee as aaa ON aaa.assignor_and_assignee_id = aa.assignor_and_assignee_id LEFT JOIN representative as r ON r.representative_id = aaa.representative_id WHERE rac.convey_ty IN (:conveyanceType) GROUP BY aaa.name`;
     } else {
         queryTransaction = `SELECT aaa.assignor_and_assignee_id, aaa.name, count(aaa.name) as counter, r.representative_name as normalize_name, (SELECT rr.representative_name FROM representative as rr WHERE rr.representative_name = aaa.name GROUP BY rr.representative_name) as representative_company FROM assignment as a INNER JOIN assignor as aa ON aa.rf_id = a.rf_id INNER JOIN representative_assignment_conveyance as rac ON rac.rf_id = a.rf_id INNER JOIN assignor_and_assignee as aaa ON aaa.assignor_and_assignee_id = aa.assignor_and_assignee_id LEFT JOIN representative as r ON r.representative_id = aaa.representative_id WHERE rac.convey_ty IN (:conveyanceType) GROUP BY aaa.name`;
-    }    
 
-    let getList2 = await connection.resources.query(queryTransaction,{
-        type: connection.Sequelize.QueryTypes.SELECT,
-        raw: true,
-        replacements: { conveyanceType:  cType},
-        logging: console.log,
-        }
-    );
+        getList2 = await connection.resources.query(queryTransaction,{
+            type: connection.Sequelize.QueryTypes.SELECT,
+            raw: true,
+            replacements: { conveyanceType:  cType},
+            logging: console.log,
+            }
+        );
+    } 
+
 
     const customer_list = [...getList, ...getList2];  
     console.log(customer_list.length);
     let list = [];
     
     if(customer_list.length > 0) {
-        let IDs = [];
-        customer_list.forEach( async customer => {
-             if(!IDs.includes(customer.assignor_and_assignee_id)){
-                await IDs.push(customer.assignor_and_assignee_id);
-            }
-        })
-        const promises = IDs.map(async id => {
-            let getList = await customer_list.filter( customer => {
-                return id == customer.assignor_and_assignee_id ? customer : undefined;
+        if(conveyanceType != 'borrowers') {
+            let IDs = [];
+            customer_list.forEach( async customer => {
+                if(!IDs.includes(customer.assignor_and_assignee_id)){
+                    await IDs.push(customer.assignor_and_assignee_id);
+                }
+            })
+            const promises = IDs.map(async id => {
+                let getList = await customer_list.filter( customer => {
+                    return id == customer.assignor_and_assignee_id ? customer : undefined;
+                });
+                if(getList != undefined && getList.length > 0){
+                    let getCounter = await getList.reduce((a, b) => +a + +b.counter, 0);
+                    list.push({id: getList[0].assignor_and_assignee_id , name: getList[0].name, normalize_name: getList[0].normalize_name, counter: getCounter, representative_company: getList[0].representative_company});
+                }
+                return id;
             });
-            if(getList != undefined && getList.length > 0){
-                let getCounter = await getList.reduce((a, b) => +a + +b.counter, 0);
-                list.push({id: getList[0].assignor_and_assignee_id , name: getList[0].name, normalize_name: getList[0].normalize_name, counter: getCounter, representative_company: getList[0].representative_company});
-            }
-            return id;
-        });
-        await Promise.all(promises);
-        console.log(IDs.length);
+            await Promise.all(promises);
+            console.log(IDs.length);
+        } else {
+            list = customer_list;
+        }
     }
     console.log(list.length);
     return list;
@@ -450,6 +457,15 @@ let allAssignments = async (customerID, req) => {
     return assignmentsList;
 }
 
+let findAllLawFirms = async (customerID, representativeIDs, req ) => {
+
+   /* let queryAllLawFirms = "", lawFirmList = [];
+    if(parseInt(customerID) > 0) {      
+
+    } else {
+        queryAllLawFirms = "SELECT law_firm_id, name, instances as counter,  FROM law_firm as l"
+    }*/
+}
 
 
 let allAssignmentsByRepresentativeIDs = async (customerID, representativeIDs, req) => {
@@ -1574,6 +1590,7 @@ let getCompaniesMinAndMaxDateTransaction = async(searchData) => {
 const helper = {};
 helper.allAssignments = allAssignments;
 helper.allAssignmentsByRepresentativeIDs = allAssignmentsByRepresentativeIDs;
+helper.findAllLawFirms = findAllLawFirms;
 helper.findOrganisationbyID = findOrganisationbyID;
 helper.findRepresentative = findRepresentative;
 helper.getCompanyListByEmployee = getCompanyListByEmployee;

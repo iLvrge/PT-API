@@ -28,6 +28,12 @@ const RecentTransaction = require('../../model/resources/RecentTransaction');
 
 const AssignmentGroup = require('../../model/resources/AssignmentGroup');
 
+const LawFirms = require('../../model/resources/LawFirms');
+
+const RepresentativeLawFirms = require('../../model/resources/RepresentativeLawFirms');
+
+const RepresentativeTransactions = require('../../model/resources/RepresentativeTransactions');
+
 /**
  * Search entity by name
  */
@@ -275,8 +281,52 @@ route.get("/company/assignments/law_firms/:id/:representativeID", [authJWT.verif
     try {
         const customerID = req.params.id, representativeIDs = JSON.parse(req.params.representativeID);
 
-        
+        /*const findAllLawFirms =  await helpers.findAllLawFirms(customerID, representativeIDs, req);*/
+        let findAllLawFirms = [];
+        if(customerID == 0) {
+            findAllLawFirms = await LawFirms.findAll({
+                attributes: ['law_firm_id', 'name', ['instances', 'counter']],
+                include: [
+                    {
+                        model: RepresentativeLawFirms,
+                        as: "representativelawfirm",
+                        attributes: ['representative_id','representative_name'],
+                        required:false
+                    }
+                ]
+            });
+        } else {
+            const where = {organisation_id: customerID};
+            if(representativeIDs.length > 0) {
+                where.representative_id = representativeIDs;
+            }
 
+            findAllLawFirms = await Assignments.findAll({
+                attributes: ['law_firm_id'],               
+                include: [
+                    {
+                        model: RepresentativeTransactions,
+                        as: "representativetransaction",
+                        attributes: [],
+                        where: where,                        
+                    },
+                    {
+                        model: LawFirms,
+                        as: "lawfirm",
+                        attributes: ['law_firm_id', 'name', ['instances', 'counter']],
+                        include: [
+                            {
+                                model: RepresentativeLawFirms,
+                                as: "representativelawfirm",
+                                attributes: ['representative_id','representative_name'],
+                                required:false
+                            }
+                        ]
+                    }
+                ]
+            });
+        }
+        res.status(200).json(findAllLawFirms);
     } catch(e) {
         console.log(e);
         res.status(402).send("Unable to retrieve data.");
