@@ -74,9 +74,9 @@ let searchCompany = async(query, t) => {
                 } else {
                     const ftsQuery = new FtsQuery(true);			
                     searchTerm = ftsQuery.transform(search);
-                    if(!!searchTerm.indexOf('"')){
+                    /*if(!!searchTerm.indexOf('"')){
                         searchTerm = `${searchTerm}*`;
-                    }
+                    }*/
                     searchTerm = searchTerm.replace(" AND ", " ");
                     searchTerm = searchTerm.replace(" OR ", " ");
                     searchTerm = searchTerm.replace(" NEAR ", " ");
