@@ -6,39 +6,39 @@ const application = new Sequelize('db_application', 'db_user_all', 'wDv%5tgn0O0k
     host: '167.172.195.92',
     dialect: 'mysql',
     operatorsAliases: Op,
-   
+   /*
     pool: {
-        max: 1000,
-        min: 1,
-        acquire: 1000000,
-        idle: 10000
-    }
+      max: 1000,
+      min: 0,
+      acquire: 1000000,
+      idle: 1000
+    }*/
 });
 
 const resources = new Sequelize('db_uspto', 'db_user_all', 'wDv%5tgn0O0kMkM', {
     host: '167.172.195.92',
     dialect: 'mysql',
     operatorsAliases: Op,
-   
+   /*
     pool: {
-        max: 1000,
-        min: 1,
-        acquire: 1000000,
-        idle: 10000
-    }
+      max: 1000,
+      min: 0,
+      acquire: 1000000,
+      idle: 1000
+    }*/
 });
 
 const business = new Sequelize('db_business', 'db_user_all', 'wDv%5tgn0O0kMkM', {
     host: '167.172.195.92',
     dialect: 'mysql',
     operatorsAliases: Op,
-   
+   /*
     pool: {
-        max: 1000,
-        min: 1,
-        acquire: 1000000,
-        idle: 10000
-    }
+      max: 1000,
+      min: 0,
+      acquire: 1000000,
+      idle: 1000
+    }*/
 });
 
 const config = {
