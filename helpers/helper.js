@@ -234,6 +234,12 @@ let searchCompany = async(query, t) => {
     }
 }
 
+let getDifference = (arrayA, arrayB, result) =>{
+    return arrayB.filter(function(item) {
+            return arrayA.indexOf(item) === -1;    
+    });
+}
+
 let allTransactionEntities = async( conveyanceType) => {
 
     let cType = ['security', 'restatedsecurity'];
@@ -277,13 +283,13 @@ let allTransactionEntities = async( conveyanceType) => {
     let list = [];
     
     if(customer_list.length > 0) {
-        if(conveyanceType != 'borrowers') {
-            let IDs = [];
-            customer_list.forEach( async customer => {
-                if(!IDs.includes(customer.assignor_and_assignee_id)){
-                    await IDs.push(customer.assignor_and_assignee_id);
-                }
-            })
+        let IDs = [];
+        customer_list.forEach( async customer => {
+            if(!IDs.includes(customer.assignor_and_assignee_id)){
+                await IDs.push(customer.assignor_and_assignee_id);
+            }
+        })
+        if(conveyanceType != 'borrowers') {            
             const promises = IDs.map(async id => {
                 let getList = await customer_list.filter( customer => {
                     return id == customer.assignor_and_assignee_id ? customer : undefined;
@@ -303,6 +309,28 @@ let allTransactionEntities = async( conveyanceType) => {
     console.log(list.length);
     return list;
 };
+
+let findEntityAssets = async (assignorAssigneeID) => {
+    let countAssets = 0;
+    const queryFindHoldingAssets = "Select count(*) as countAssets FROM (SELECT appno_doc_num FROM documentid WHERE rf_id IN (SELECT `ee`.rf_id  from assignee as `ee` INNER JOIN assignment_conveyance as ac ON ac.rf_id = ee.rf_id WHERE ee.assignor_and_assignee_id = :assignorAssigneeID AND ac.convey_ty IN (:conveyanceType)) AND appno_doc_num NOT IN (SELECT appno_doc_num FROM documentid WHERE rf_id IN (SELECT `or`.rf_id  FROM assignor as `or` INNER JOIN assignment_conveyance as ac ON ac.rf_id = or.rf_id WHERE or.assignor_and_assignee_id = :assignorAssigneeID AND ac.convey_ty IN (:conveyanceType)) GROUP BY appno_doc_num) GROUP BY appno_doc_num) as temp";
+
+
+    let findCounter = await connection.resources.query(queryFindHoldingAssets,{
+        type: connection.Sequelize.QueryTypes.SELECT,
+        replacements: { conveyanceType: ["assignment","partialassignment","namechg","merger","employee", "courtappointment", "courtorder"], assignorAssigneeID: assignorAssigneeID },
+        raw: true,
+        plain: true,
+        logging: console.log,
+        }
+    );
+
+    if(findCounter != null && findCounter.countAssets > 0) {
+        countAssets = findCounter.countAssets;
+    }
+
+    return countAssets;
+    
+}
 
 let findOrganisationbyID = async (organisationID) => {
     return await Organisations.findOne({
@@ -1619,4 +1647,5 @@ helper.findFakeDocument = findFakeDocument;
 helper.findActivityByID = findActivityByID;
 helper.getCollectionList = getCollectionList;
 helper.allTransactionEntities = allTransactionEntities;
+helper.findEntityAssets = findEntityAssets;
 module.exports = helper;

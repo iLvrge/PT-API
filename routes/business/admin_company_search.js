@@ -433,5 +433,21 @@ route.get("/company/transactions/:conveyanceType", [authJWT.verifyToken, authJWT
     }
 });
 
+/**
+ * Find  Entity Holding Assets
+ */
+route.get("/company/assets/:entityID", [authJWT.verifyToken, authJWT.isAdmin], async (req, res, next) => {
+    try {
+        const entityID = req.params.entityID;
+
+        const holdingAssetsCounter  = await helpers.findEntityAssets(entityID);
+
+        console.log(holdingAssetsCounter);
+        res.status(200).send(holdingAssetsCounter.toString());
+    } catch(e) {
+        console.log(e);
+        res.status(402).send("Unable to retrieve data.");
+    }
+});
 
 module.exports = route;
