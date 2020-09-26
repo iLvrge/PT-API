@@ -442,8 +442,7 @@ route.get("/company/assets/:entityID", [authJWT.verifyToken, authJWT.isAdmin], a
 
         const holdingAssetsCounter  = await helpers.findEntityAssets(entityID);
 
-        console.log(holdingAssetsCounter);
-        res.status(200).send(holdingAssetsCounter.toString());
+        res.status(200).json({entity_id: entityID, count: holdingAssetsCounter});
     } catch(e) {
         console.log(e);
         res.status(402).send("Unable to retrieve data.");
