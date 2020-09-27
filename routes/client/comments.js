@@ -40,7 +40,7 @@ route.get("/comments/:subjectType", [authJWT.verifyToken, clientDBConnection.con
                 as: 'comments',
             });
 
-            if(subjectType == 'Record') {
+            if(subjectType == 'record') {
                 const findTypeID = await Type.findOne({
                     where: {name: subjectType}
                 });
@@ -100,7 +100,7 @@ route.get("/comments/:subjectType/:subject", [authJWT.verifyToken, clientDBConne
 
             let where = {subject: subject};
 
-            if(subjectType == 'Record') {
+            if(subjectType == 'record') {
                 include.push({
                     model: Document,
                     as: 'documents',
@@ -139,11 +139,11 @@ route.post("/comments/:subjectType", [authJWT.verifyToken, clientDBConnection.co
 
                 let findActivity = null;
 
-                if(subjectType != 'Record' ) {
+                if(subjectType != 'record' ) {
                     findActivity = await Activity.findOne({
                         where: {type: type, subject: subject}
                     });
-                } else if ( subject > 0 && subjectType == 'Record' ) {
+                } else if ( subject > 0 && subjectType == 'record' ) {
                     findActivity = await Activity.findOne({
                         where: {type: type, activity_id: subject}
                     });
@@ -162,7 +162,7 @@ route.post("/comments/:subjectType", [authJWT.verifyToken, clientDBConnection.co
                         document_id: '1'
                     };
                     let professional, documentData;
-                    if((subjectType == 'Fix' || subjectType == 'Record') && req.body.professional_id > 0) {
+                    if((subjectType == 'fix' || subjectType == 'record') && req.body.professional_id > 0) {
                         /**
                          * Find Professional
                          */
@@ -189,7 +189,7 @@ route.post("/comments/:subjectType", [authJWT.verifyToken, clientDBConnection.co
                         }
                     }
     
-                    if(subjectType == 'Record' && req.body.document_id > 0) {
+                    if(subjectType == 'record' && req.body.document_id > 0) {
                         const Document = req.connection_db.define('Documents', Documents.mainStructure, Documents.options);
                         documentData = await Document.findOne({
                             where: {document_id: req.body.document_id},
@@ -197,7 +197,7 @@ route.post("/comments/:subjectType", [authJWT.verifyToken, clientDBConnection.co
                         })
                         postData.document_id = req.body.document_id;
                     } 
-                    if(subjectType == 'Fix') {
+                    if(subjectType == 'fix') {
                         /**
                          * create sharing code
                          */

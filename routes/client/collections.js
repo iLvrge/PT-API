@@ -5,20 +5,18 @@ const exec = require("child_process").exec;
 const route = express.Router();
 //require the Model
 
-const Representatives = require("../../model/client/Representatives");
-
 const ApplicationRepresentative = require("../../model/application/Representatives");
 
 const Collections = require("../../model/client/Collections");
 
 const CollectionCompanies = require("../../model/client/CollectionCompanies");
 
+const AssignorAndAssignee = require('../../model/resources/AssignorAndAssignee');
+
 
 const helpers = require("../../helpers/helper");
 
 const authJWT = require("../../helpers/verifyJwtToken");
-
-const connection = require("../../config/db.config");
 
 const clientDBConnection = require("../../helpers/clientDBConnection");
 
@@ -30,11 +28,6 @@ route.get("/collections", [authJWT.verifyToken, clientDBConnection.connect], asy
             const Collection = req.connection_db.define('Collections', Collections.mainStructure, Collections.options);
 
             const CollectionCompany = req.connection_db.define('CollectionCompanies', CollectionCompanies.mainStructure, CollectionCompanies.options);
-
-            Collection.hasMany(CollectionCompany, { foreignKey: 'collection_id', as: 'collection_companies' });
-
-            CollectionCompany.belongsTo(Collection, { foreignKey: 'collection_id', as: 'collections' });
-
 
             const getCollectionList = await helpers.getCollectionList(Collection, CollectionCompany);
 
@@ -53,45 +46,83 @@ route.get("/collections", [authJWT.verifyToken, clientDBConnection.connect], asy
 route.post("/collections", [authJWT.verifyToken, clientDBConnection.connect], async(req, res, next) => {
     try{
         if(typeof req.connection_db != "undefined" && req.connection_db != null ) {
-            const collectionName = req.body.name;
+            
+            const collectionName = req.body.collection_name;
 
             const Collection = req.connection_db.define('Collections', Collections.mainStructure, Collections.options);
 
             const CollectionCompany = req.connection_db.define('CollectionCompanies', CollectionCompanies.mainStructure, CollectionCompanies.options);
 
-
-            if(collectionName != '' && collectionName.length > 0) {
+            let collectionID = 0;
+            console.log(collectionName);
+            if(collectionName != '' && collectionName.toString().length > 0) {
                 const findCollectionByName = await Collection.findOne({
                     where:{name: collectionName}
                 });
 
-                let collectionID = 0;
-
                 if(findCollectionByName == null) {
                     const addCollection = await Collection.create({
-                        name: collectionName
+                        name: collectionName,
+                        user_id: req.userId
                     });
 
                     if( addCollection && addCollection.collection_id > 0 ) {
-                        collectionID = addCollection.collection_id;
+                        collectionID = addCollection.collection_id;                        
                     }
+                } else {
+                    collectionID = findCollectionByName.collection_id;
                 }
 
                 if(collectionID > 0) {
-                    const companiesList = req.body.companies;
+                    const companiesList = JSON.parse(req.body.companies);
 
                     if( companiesList.length > 0) {
+                        const getCompanyList = await AssignorAndAssignee.findAll({
+                            where:{assignor_and_assignee_id: companiesList},
+                            include:[
+                                {
+                                    model: ApplicationRepresentative,
+                                    as: 'representative',
+                                    attributes:['representative_name'],
+                                    required:false,          
+                                }
+                            ]
+                        })
 
+                        if(getCompanyList.length > 0) {
+                            const list = [];
+                            const promises = getCompanyList.map( c => {
+
+                                let name = c.representative != null && c.representative_id > 0 ? c.representative.representative_name  : c.name ;
+
+                                list.push({collection_id: collectionID, name: name, instances: c.instances});
+
+                                return c;
+                            });
+
+                            await Promise.all(promises);
+
+                            if(list.length > 0) {
+                                await CollectionCompany.bulkCreate(list);
+                            }
+                        }
                     }
                 }
             }
+            if(collectionID > 0) {               
+                const getCollection = await helpers.getCollectionByID(Collection, CollectionCompany, collectionID);
+
+                res.status(200).json(getCollection);
+            } else {
+                res.status(500).json({message: "Internal server error"});
+            }
             
         } else {
-            res.status(401).send("Unable to retrieve collections");
+            res.status(500).json({message: "Internal server error"});
         }
     } catch (err) {
         console.log(err);
-        res.status(500).json({message: "Unable to retrieve collections"})
+        res.status(500).json({message: "Unable to create collection"});
     }
 });
 
@@ -99,30 +130,72 @@ route.post("/collections", [authJWT.verifyToken, clientDBConnection.connect], as
 route.put("/collections/:collection_id", [authJWT.verifyToken, clientDBConnection.connect], async(req, res, next) => {
     try{
         if(typeof req.connection_db != "undefined" && req.connection_db != null ) {
-            
-            const Collection = req.connection_db.define('Collections', Collections.mainStructure, Collections.options);
 
-            const CollectionCompany = req.connection_db.define('CollectionCompanies', CollectionCompanies.mainStructure, CollectionCompanies.options);
+            const collectionID = req.params.collection_id;
 
-            const getCollection = await Collection.findOne({
-                where:{collection_id: collectionID}
-            });
+            if(collectionID > 0) {
 
-            if(getCollection != null && getCollection.collection_id > 0) {
-                const updateCollectionName = await getCollection.update({
-                    name: req.body.name
-                });
+                const Collection = req.connection_db.define('Collections', Collections.mainStructure, Collections.options);
 
-                if(updateCollectionName) {
-                    const companiesList = req.body.companies;
+                const CollectionCompany = req.connection_db.define('CollectionCompanies', CollectionCompanies.mainStructure, CollectionCompanies.options);
+
+                const getCollection = await Collection.findByPk(collectionID);
+
+                if(getCollection != null && getCollection.collection_id > 0) {
+                    
+                    
+                    await Collection.update({
+                        name: req.body.collection_name
+                    }, {where: {collection_id: collectionID}});
+
+                    const companiesList = JSON.parse(req.body.companies);
 
                     if( companiesList.length > 0) {
+                        const deleteCollections = CollectionCompany.destroy({
+                            where: {collection_id: collectionID}
+                        })
 
+                        if(deleteCollections) {
+                            const getCompanyList = await AssignorAndAssignee.findAll({
+                                where:{assignor_and_assignee_id: companiesList},
+                                include:[
+                                    {
+                                        model: ApplicationRepresentative,
+                                        as: 'representative',
+                                        attributes:['representative_name'],
+                                        required:false,          
+                                    }
+                                ]
+                            });
+
+                            const list = [];
+                            const promises = getCompanyList.map( c => {
+
+                                let name = c.representative != null && c.representative_id > 0 ? c.representative.representative_name  : c.name ;
+
+                                list.push({collection_id: collectionID, name: name, instances: c.instances});
+
+                                return c;
+                            });
+
+                            await Promise.all(promises);
+
+                            if(list.length > 0) {
+                                await CollectionCompany.bulkCreate(list);
+                            }
+                        }
                     }
+
+                    const getCollection = await helpers.getCollectionByID(Collection, CollectionCompany, collectionID);
+
+                    res.status(200).json(getCollection);
+
+                } else {
+                    res.status(403).send("No collection exist.");
                 }
-            } else {
-                res.status(403).send("No collection exist.");
-            }
+            }else {
+                res.status(404).send("Invalid collection ID.");
+            }            
         } else {
             res.status(401).send("Unable to retrieve collections");
         }
@@ -142,6 +215,8 @@ route.delete("/collections/:collection_id", [authJWT.verifyToken, clientDBConnec
             const Collection = req.connection_db.define('Collections', Collections.mainStructure, Collections.options);
 
             const CollectionCompany = req.connection_db.define('CollectionCompanies', CollectionCompanies.mainStructure, CollectionCompanies.options);
+
+            
             
             const getCollection = await Collection.findOne({
                 where:{collection_id: collectionID}
@@ -177,3 +252,5 @@ route.delete("/collections/:collection_id", [authJWT.verifyToken, clientDBConnec
         res.status(500).json({message: "Unable to retrieve collections"})
     }
 });
+
+module.exports = route;

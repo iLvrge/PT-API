@@ -1379,20 +1379,42 @@ let findActivityByID = async (activityID, Activity, Comment) => {
     return findActivity;
 }
 
-let getCollectionList = async(Collection, CollectionCompanies) => {
+let getCollectionList = async(Collection, CollectionCompany) => {
 
-    const getList = Collection.findAll({
+    Collection.hasMany(CollectionCompany, { foreignKey: 'collection_id', as: 'collection_companies' });
+
+    const getList = await Collection.findAll({
         attributes: ['collection_id', 'name'],
-        includes: [
+        include: [
             {
-                model: CollectionCompanies,
-                as: 'collection_companies'
+                model: CollectionCompany,
+                as: 'collection_companies',
+                attributes: ['collection_company_id', 'name', 'instances'],
             }
         ]
     })
 
     return getList;
 
+}
+
+let getCollectionByID = async(Collection, CollectionCompany, collectionID) => {
+
+    Collection.hasMany(CollectionCompany, { foreignKey: 'collection_id', as: 'collection_companies' });
+
+    const getData = await Collection.findOne({
+        attributes: ['collection_id', 'name'],
+        where: {collection_id: collectionID},
+        include: [
+            {
+                model: CollectionCompany,
+                as: 'collection_companies',
+                attributes: ['collection_company_id', 'name', 'instances'],
+            }
+        ]
+    })
+
+    return getData;
 }
 
 let getAssignmentDataByrfID = async (rfID) => {
@@ -1646,6 +1668,7 @@ helper.findProfessionalFromUserID = findProfessionalFromUserID;
 helper.findFakeDocument = findFakeDocument;
 helper.findActivityByID = findActivityByID;
 helper.getCollectionList = getCollectionList;
+helper.getCollectionByID = getCollectionByID;
 helper.allTransactionEntities = allTransactionEntities;
 helper.findEntityAssets = findEntityAssets;
 module.exports = helper;

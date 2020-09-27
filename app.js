@@ -47,6 +47,7 @@ const users = require("./routes/client/users");
 const documents = require("./routes/client/documents");
 const company = require("./routes/client/company");
 const charts = require("./routes/client/charts");
+const collections = require("./routes/client/collections");
 /**
  * Route for Client Login
  */
@@ -87,6 +88,8 @@ app.use("/", errors);
 app.use("/", activities);
 
 app.use("/", comments);
+
+app.use("/", collections);
 
 app.use("/charts", charts);
 

@@ -35,6 +35,6 @@ const AssignorAndAssignee = connection.resources.define('assignor_and_assignee',
     tableName: 'assignor_and_assignee'
 });
 
-AssignorAndAssignee.belongsTo(Representatives, { foreignKey: 'representative_id', as: 'representative' });
+AssignorAndAssignee.belongsTo(Representatives, { foreignKey: 'representative_id', as: 'representative', targetKey: 'representative_id' });
 
 module.exports = AssignorAndAssignee;
