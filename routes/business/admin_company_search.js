@@ -277,62 +277,6 @@ route.get("/company/assignments/:id", [authJWT.verifyToken, authJWT.isAdmin, aut
     }
 });
 
-route.get("/company/law_firms/:id/:representativeID", [authJWT.verifyToken, authJWT.isAdmin, authJWT.addClientID, clientDBConnection.connect], async (req, res, next) => {
-    try {
-        const customerID = req.params.id, representativeIDs = JSON.parse(req.params.representativeID);
-
-        /*const findAllLawFirms =  await helpers.findAllLawFirms(customerID, representativeIDs, req);*/
-        let findAllLawFirms = [];
-        if(customerID == 0) {
-            findAllLawFirms = await LawFirms.findAll({
-                attributes: ['law_firm_id', 'name', ['instances', 'counter']],
-                include: [
-                    {
-                        model: RepresentativeLawFirms,
-                        as: "representativelawfirm",
-                        attributes: ['representative_id','representative_name'],
-                        required:false
-                    }
-                ]
-            });
-        } else {
-            const where = {organisation_id: customerID};
-            if(representativeIDs.length > 0) {
-                where.representative_id = representativeIDs;
-            }
-
-            findAllLawFirms = await Assignments.findAll({
-                attributes: ['law_firm_id'],               
-                include: [
-                    {
-                        model: RepresentativeTransactions,
-                        as: "representativetransaction",
-                        attributes: [],
-                        where: where,                        
-                    },
-                    {
-                        model: LawFirms,
-                        as: "lawfirm",
-                        attributes: ['law_firm_id', 'name', ['instances', 'counter']],
-                        include: [
-                            {
-                                model: RepresentativeLawFirms,
-                                as: "representativelawfirm",
-                                attributes: ['representative_id','representative_name'],
-                                required:false
-                            }
-                        ]
-                    }
-                ]
-            });
-        }
-        res.status(200).json(findAllLawFirms);
-    } catch(e) {
-        console.log(e);
-        res.status(402).send("Unable to retrieve data.");
-    }
-});
-
 route.get("/company/assignments/:id/:representativeID", [authJWT.verifyToken, authJWT.isAdmin, authJWT.addClientID, clientDBConnection.connect], async (req, res, next) => {
     try {
         const customerID = req.params.id, representativeIDs = JSON.parse(req.params.representativeID), type = [{name: 'assignment', id: 'assignment'},{name: 'addresschg', id: 'addresschg'},{name: 'correct', id: 'correct'},{name: 'courtappointment', id: 'courtappointment'},{name: 'courtorder', id: 'courtorder'},{name: 'employee', id: 'employee'},{name: 'govern', id: 'govern'},{name: 'license', id: 'license'},{name: 'licenseend', id: 'licenseend'},{name: 'missing', id: 'missing'},{name: 'merger', id: 'merger'},{name: 'namechg', id: 'namechg'},{name: 'option', id: 'option'},{name: 'other', id: 'other'},{name: 'partialassignment', id: 'partialassignment'},{name: 'release', id: 'release'},{name: 'restatedsecurity', id: 'restatedsecurity'},{name: 'security', id: 'security'}], assignment_type = {0: 'assignment',1: 'addresschg',2: 'correct',3: 'courtappointment',4: 'courtorder',5: 'employee', 6: 'govern',7: 'license',8: 'licenseend',9: 'missing',10: 'merger',11: 'namechg',12: 'option',13: 'other',14: 'partialassignment',15: 'release',16: 'restatedsecurity',17: 'security'};
@@ -410,6 +354,64 @@ route.put("/company/assignments/:customerID", [authJWT.verifyToken, authJWT.isAd
             }
         }
         res.status(200).send(update);
+    } catch(e) {
+        console.log(e);
+        res.status(402).send("Unable to retrieve data.");
+    }
+});
+
+
+
+route.get("/company/law_firms/:id/:representativeID", [authJWT.verifyToken, authJWT.isAdmin, authJWT.addClientID, clientDBConnection.connect], async (req, res, next) => {
+    try {
+        const customerID = req.params.id, representativeIDs = JSON.parse(req.query.portfolios);
+
+        /*const findAllLawFirms =  await helpers.findAllLawFirms(customerID, representativeIDs, req);*/
+        let findAllLawFirms = [];
+        if(customerID == 0) {
+            findAllLawFirms = await LawFirms.findAll({
+                attributes: ['law_firm_id', 'name', ['instances', 'counter']],
+                include: [
+                    {
+                        model: RepresentativeLawFirms,
+                        as: "representativelawfirm",
+                        attributes: ['representative_id','representative_name'],
+                        required:false
+                    }
+                ]
+            });
+        } else {
+            const where = {organisation_id: customerID};
+            if(representativeIDs.length > 0) {
+                where.representative_id = representativeIDs;
+            }
+
+            findAllLawFirms = await Assignments.findAll({
+                attributes: ['law_firm_id'],               
+                include: [
+                    {
+                        model: RepresentativeTransactions,
+                        as: "representativetransaction",
+                        attributes: [],
+                        where: where,                        
+                    },
+                    {
+                        model: LawFirms,
+                        as: "lawfirm",
+                        attributes: ['law_firm_id', 'name', ['instances', 'counter']],
+                        include: [
+                            {
+                                model: RepresentativeLawFirms,
+                                as: "representativelawfirm",
+                                attributes: ['representative_id','representative_name'],
+                                required:false
+                            }
+                        ]
+                    }
+                ]
+            });
+        }
+        res.status(200).json(findAllLawFirms);
     } catch(e) {
         console.log(e);
         res.status(402).send("Unable to retrieve data.");
