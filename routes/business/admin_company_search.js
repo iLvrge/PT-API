@@ -32,6 +32,10 @@ const LawFirms = require('../../model/resources/LawFirms');
 
 const RepresentativeLawFirms = require('../../model/resources/RepresentativeLawFirms');
 
+const Lawyers = require('../../model/resources/Lawyers');
+
+const RepresentativeLawyers = require('../../model/resources/RepresentativeLawyers');
+
 const RepresentativeTransactions = require('../../model/resources/RepresentativeTransactions');
 
 /**
@@ -421,6 +425,94 @@ route.get("/company/law_firms/:id", [authJWT.verifyToken, authJWT.isAdmin, authJ
             }
         }
         res.status(200).json(findAllLawFirms);
+    } catch(e) {
+        console.log(e);
+        res.status(402).send("Unable to retrieve data.");
+    }
+});
+
+
+route.get("/company/lawyers", [authJWT.verifyToken, authJWT.isAdmin, authJWT.addClientID, clientDBConnection.connect], async (req, res, next) => {
+    try {
+        const findAllLawers = await Lawyers.findAll({
+            attributes: ['lawyer_id', 'name', ['instances', 'counter']],
+            include: [
+                {
+                    model: RepresentativeLawyers,
+                    as: "representativelawyers",
+                    attributes: ['representative_lawyer_id','representative_name'],
+                    required:false
+                },
+                {
+                    model: LawFirms,
+                    as: "lawfirms",
+                    attributes: ['law_firm_id',['name', 'law_firm_name']],
+                    required:false
+                }
+            ]
+        });        
+        res.status(200).json(findAllLawers);
+    } catch(e) {
+        console.log(e);
+        res.status(402).send("Unable to retrieve data.");
+    }
+});
+
+route.get("/company/lawyers/:id", [authJWT.verifyToken, authJWT.isAdmin, authJWT.addClientID, clientDBConnection.connect], async (req, res, next) => {
+    try {
+        const customerID = req.params.id, representativeIDs = JSON.parse(req.query.portfolios != undefined ? req.query.portfolios : "[]");
+
+        /*const findAllLawFirms =  await helpers.findAllLawFirms(customerID, representativeIDs, req);*/
+        let findAllLawers = [];
+        if(customerID > 0) {
+            const where = {organisation_id: customerID};
+            if(representativeIDs.length > 0) {
+                where.representative_id = representativeIDs;
+            }
+
+            const list = await Assignments.findAll({
+                attributes: ['law_firm_id'],               
+                include: [
+                    {
+                        model: RepresentativeTransactions,
+                        as: "representativetransaction",
+                        attributes: [],
+                        where: where,                        
+                    }
+                ]
+            });
+
+            const allLawFirms = [];
+
+            if(list.length > 0) {
+                const promises = list.map( r => {
+                    allLawFirms.push(r.law_firm_id);
+                    return r;
+                });
+
+                await Promise.all(promises);
+
+                findAllLawers = await Lawyers.findAll({
+                    attributes: ['lawyer_id', 'name', ['instances', 'counter']],
+                    where: {law_firm_id: allLawFirms},
+                    include: [
+                        {
+                            model: RepresentativeLawyers,
+                            as: "representativelawyers",
+                            attributes: ['representative_lawyer_id','representative_name'],
+                            required:false
+                        },
+                        {
+                            model: LawFirms,
+                            as: "lawfirms",
+                            attributes: ['law_firm_id',['name', 'law_firm_name']]
+                        }
+                    ]
+                });  
+
+            }
+        }
+        res.status(200).json(findAllLawers);
     } catch(e) {
         console.log(e);
         res.status(402).send("Unable to retrieve data.");
