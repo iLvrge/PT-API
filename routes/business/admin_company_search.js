@@ -277,7 +277,7 @@ route.get("/company/assignments/:id", [authJWT.verifyToken, authJWT.isAdmin, aut
     }
 });
 
-route.get("/company/assignments/law_firms/:id/:representativeID", [authJWT.verifyToken, authJWT.isAdmin, authJWT.addClientID, clientDBConnection.connect], async (req, res, next) => {
+route.get("/company/law_firms/:id/:representativeID", [authJWT.verifyToken, authJWT.isAdmin, authJWT.addClientID, clientDBConnection.connect], async (req, res, next) => {
     try {
         const customerID = req.params.id, representativeIDs = JSON.parse(req.params.representativeID);
 
