@@ -386,7 +386,7 @@ route.get("/company/law_firms/:id", [authJWT.verifyToken, authJWT.isAdmin, authJ
                 where.representative_id = representativeIDs;
             }
 
-            findAllLawFirms = await Assignments.findAll({
+            const list = await Assignments.findAll({
                 attributes: ['law_firm_id'],               
                 include: [
                     {
@@ -410,6 +410,15 @@ route.get("/company/law_firms/:id", [authJWT.verifyToken, authJWT.isAdmin, authJ
                     }
                 ]
             });
+
+            if(list.length > 0) {
+                const promises = list.map( r => {
+                    findAllLawFirms.push(r.lawfirm);
+                    return r;
+                });
+
+                await Promise.all(promises);
+            }
         }
         res.status(200).json(findAllLawFirms);
     } catch(e) {
