@@ -96,169 +96,167 @@ route.get("/company/search/:search", [authJWT.verifyToken, authJWT.isAdmin], asy
 /**
  * Update normalize name of the Entity
  */
-route.put("/company/search/all/", [authJWT.verifyToken, authJWT.isAdmin], (req, res, next) => {
-    (async () => {
-        try {
+route.put("/company/search/all/", [authJWT.verifyToken, authJWT.isAdmin], async (req, res, next) => {
+    try {
 
-            let name = req.body.name, normalize_name = req.body.normalize_name;
-            if(name != "" && normalize_name != ""){
+        let name = req.body.name, normalize_name = req.body.normalize_name;
+        if(name != "" && normalize_name != ""){
 
-                /**
-                 * This check is to find company is already normalised with other representative company
-                 */
-                let oldRepresentativeCompanyID = 0, oldRepresentativeCompanyName = "";
-                let findIsNormalized  = await AssignorAndAssignee.findOne({
-                                            where:{name: name}
-                                        });
-                if(findIsNormalized != null && findIsNormalized.representative_id > 0) {
-                    findIsNormalized  = await Representatives.findOne({
-                        where:{representative_id: findIsNormalized.representative_id}
-                    });
-                } else {
-                    findIsNormalized  = await Representatives.findOne({
-                        where:{representative_name: name}
-                    });
-                }
+            /**
+             * This check is to find company is already normalised with other representative company
+             */
+            let oldRepresentativeCompanyID = 0, oldRepresentativeCompanyName = "";
+            let findIsNormalized  = await AssignorAndAssignee.findOne({
+                                        where:{name: name}
+                                    });
+            if(findIsNormalized != null && findIsNormalized.representative_id > 0) {
+                findIsNormalized  = await Representatives.findOne({
+                    where:{representative_id: findIsNormalized.representative_id}
+                });
+            } else {
+                findIsNormalized  = await Representatives.findOne({
+                    where:{representative_name: name}
+                });
+            }
 
-                if(findIsNormalized != null && findIsNormalized.representative_id > 0) {
-                    /** 
-                     * Find old representative company
-                    */
-                    oldRepresentativeCompanyID = findIsNormalized.representative_id;
-                    oldRepresentativeCompanyName = findIsNormalized.representative_name;
-                }
+            if(findIsNormalized != null && findIsNormalized.representative_id > 0) {
+                /** 
+                 * Find old representative company
+                */
+                oldRepresentativeCompanyID = findIsNormalized.representative_id;
+                oldRepresentativeCompanyName = findIsNormalized.representative_name;
+            }
 
-                let  representativeCompany = await helpers.checkRepresentativeCompany(normalize_name);
+            let  representativeCompany = await helpers.checkRepresentativeCompany(normalize_name);
 
-                /**
-                 * Check normalize company is normalize with  another company
-                 * 
-                 */
-                let findNormalizedCompany  = await AssignorAndAssignee.findOne({
-                    where:{name: normalize_name}
+            /**
+             * Check normalize company is normalize with  another company
+             * 
+             */
+            let findNormalizedCompany  = await AssignorAndAssignee.findOne({
+                where:{name: normalize_name}
+            });
+
+            console.log(findNormalizedCompany);
+
+            if(findNormalizedCompany != null && findNormalizedCompany.representative_id > 0) {
+                representativeCompany  = await Representatives.findOne({
+                    where:{representative_id: findNormalizedCompany.representative_id}
                 });
 
-                console.log(findNormalizedCompany);
-
-                if(findNormalizedCompany != null && findNormalizedCompany.representative_id > 0) {
-                    representativeCompany  = await Representatives.findOne({
-                        where:{representative_id: findNormalizedCompany.representative_id}
-                    });
-
-                    if(representativeCompany != null && representativeCompany.representative_id > 0){
-                        await Representatives.update({
-                            representative_name: normalize_name
-                        }, {where: {representative_id: representativeCompany.representative_id} });
-                    }
+                if(representativeCompany != null && representativeCompany.representative_id > 0){
+                    await Representatives.update({
+                        representative_name: normalize_name
+                    }, {where: {representative_id: representativeCompany.representative_id} });
                 }
+            }
 
-                
-                if(representativeCompany == null) {
+            
+            if(representativeCompany == null) {
+                /**
+                 * If Old representative found
+                 */                    
+                if(oldRepresentativeCompanyID > 0) {
                     /**
-                     * If Old representative found
-                     */                    
-                    if(oldRepresentativeCompanyID > 0) {
-                        /**
-                         * Update old representative company name with new representative name i.e normalize name
-                         */
-                        await Representatives.update({
-                            representative_name: normalize_name
-                        }, {where: {representative_id: oldRepresentativeCompanyID} });
-                        representativeCompany = await helpers.checkRepresentativeCompany(normalize_name);
-                    } else {
-                        /**
-                         * Insert new representative company in the representative table
-                         */                        
-                        representativeCompany = await Representatives.create({
-                            representative_name: normalize_name
-                        });
-                    }                    
-                }
-
-                
-
-                if(representativeCompany != null && representativeCompany.representative_id > 0) {                    
-                   /**
-                    * Update representative ID in the AssignorAndAssignee table
-                    */
-                    const item = {representative_id: representativeCompany.representative_id};
-                    
-                    if(oldRepresentativeCompanyID == 0) {
-                        /**
-                         * Update representative ID
-                         */
-                        await AssignorAndAssignee.update(item, {where: {name: name}});                                             
-                    } else {                        
-                        await AssignorAndAssignee.update(item, {where: {name: oldRepresentativeCompanyName}});
-                        await AssignorAndAssignee.update(item, {where: {representative_id: oldRepresentativeCompanyID}});
-
-                        /**
-                         * Checking Client name with same old Company name
-                         */
-                        const findCustomerWithOldName = await Organisations.findOne({
-                            attributes:['name'],
-                            where:{type: 0, name: oldRepresentativeCompanyName}
-                        });
-
-                        if(findCustomerWithOldName != null) {
-                            await findCustomerWithOldName.update({name: representativeCompany.representative_name});
-                        }
-                    }
-
-                    
-
-
-                    /**
-                     * Check Representative company is the Customer
+                     * Update old representative company name with new representative name i.e normalize name
                      */
-                    const findCustomer = await Organisations.findOne({
+                    await Representatives.update({
+                        representative_name: normalize_name
+                    }, {where: {representative_id: oldRepresentativeCompanyID} });
+                    representativeCompany = await helpers.checkRepresentativeCompany(normalize_name);
+                } else {
+                    /**
+                     * Insert new representative company in the representative table
+                     */                        
+                    representativeCompany = await Representatives.create({
+                        representative_name: normalize_name
+                    });
+                }                    
+            }
+
+            
+
+            if(representativeCompany != null && representativeCompany.representative_id > 0) {                    
+                /**
+                * Update representative ID in the AssignorAndAssignee table
+                */
+                const item = {representative_id: representativeCompany.representative_id};
+                
+                if(oldRepresentativeCompanyID == 0) {
+                    /**
+                     * Update representative ID
+                     */
+                    await AssignorAndAssignee.update(item, {where: {name: name}});                                             
+                } else {                        
+                    await AssignorAndAssignee.update(item, {where: {name: oldRepresentativeCompanyName}});
+                    await AssignorAndAssignee.update(item, {where: {representative_id: oldRepresentativeCompanyID}});
+
+                    /**
+                     * Checking Client name with same old Company name
+                     */
+                    const findCustomerWithOldName = await Organisations.findOne({
                         attributes:['name'],
-                        where:{type: 0, name: representativeCompany.representative_name}
+                        where:{type: 0, name: oldRepresentativeCompanyName}
                     });
 
-                    if(findCustomer != null) {
-                        /**
-                         * Transfer all RFIDs for the new client
-                         */
-
-                        const queryInsertAssignors  = `INSERT IGNORE INTO db_uspto.representative_transactions(representative_id, rf_id) SELECT ${representativeCompany.representative_id} as representative_id, rf_id FROM db_uspto.assignor WHERE assignor_and_assignee_id IN (SELECT assignor_and_assignee_id FROM db_uspto.assignor_and_assignee WHERE name = :name)`;
-
-                        await connection.resources.query(queryInsertAssignors,{
-                            type: connection.Sequelize.QueryTypes.INSERT,
-                            replacements: { name:  name},
-                            raw: true,
-                            logging: console.log,
-                            }
-                        );	
-
-                        const queryInsertAssignees  = `INSERT IGNORE INTO db_uspto.representative_transactions(representative_id, rf_id) SELECT ${representativeCompany.representative_id} as representative_id, rf_id FROM db_uspto.assignee WHERE assignor_and_assignee_id IN (SELECT assignor_and_assignee_id FROM db_uspto.assignor_and_assignee WHERE name = :name)`;
-
-                        await connection.resources.query(queryInsertAssignees,{
-                            type: connection.Sequelize.QueryTypes.INSERT,
-                            replacements: { name:  name},
-                            raw: true,
-                            logging: console.log,
-                            }
-                        );
+                    if(findCustomerWithOldName != null) {
+                        await findCustomerWithOldName.update({name: representativeCompany.representative_name});
                     }
-                     
-                    res.status(200).send("Updated successfully");	
-                } else {
-                    res.status(200).send("Company not created");	
-                }	
-            }  else {
-                if(name != "" && normalize_name == ""){                           
-                    await AssignorAndAssignee.update({representative_id: 0}, {where: {name: name}});
-                    res.status(200).send("Updated successfully");		
-                } else {
-                    res.status(402).send("Bad inputs");
                 }
-            }      
-        } catch(e) {
-            console.log(e);
-            res.status(402).send("Bad inputs");
-        }
-    })();
+
+                
+
+
+                /**
+                 * Check Representative company is the Customer
+                 */
+                const findCustomer = await Organisations.findOne({
+                    attributes:['name'],
+                    where:{type: 0, name: representativeCompany.representative_name}
+                });
+
+                if(findCustomer != null) {
+                    /**
+                     * Transfer all RFIDs for the new client
+                     */
+
+                    const queryInsertAssignors  = `INSERT IGNORE INTO db_uspto.representative_transactions(representative_id, rf_id) SELECT ${representativeCompany.representative_id} as representative_id, rf_id FROM db_uspto.assignor WHERE assignor_and_assignee_id IN (SELECT assignor_and_assignee_id FROM db_uspto.assignor_and_assignee WHERE name = :name)`;
+
+                    await connection.resources.query(queryInsertAssignors,{
+                        type: connection.Sequelize.QueryTypes.INSERT,
+                        replacements: { name:  name},
+                        raw: true,
+                        logging: console.log,
+                        }
+                    );	
+
+                    const queryInsertAssignees  = `INSERT IGNORE INTO db_uspto.representative_transactions(representative_id, rf_id) SELECT ${representativeCompany.representative_id} as representative_id, rf_id FROM db_uspto.assignee WHERE assignor_and_assignee_id IN (SELECT assignor_and_assignee_id FROM db_uspto.assignor_and_assignee WHERE name = :name)`;
+
+                    await connection.resources.query(queryInsertAssignees,{
+                        type: connection.Sequelize.QueryTypes.INSERT,
+                        replacements: { name:  name},
+                        raw: true,
+                        logging: console.log,
+                        }
+                    );
+                }
+                    
+                res.status(200).send("Updated successfully");	
+            } else {
+                res.status(200).send("Company not created");	
+            }	
+        }  else {
+            if(name != "" && normalize_name == ""){                           
+                await AssignorAndAssignee.update({representative_id: 0}, {where: {name: name}});
+                res.status(200).send("Updated successfully");		
+            } else {
+                res.status(402).send("Bad inputs");
+            }
+        }      
+    } catch(e) {
+        console.log(e);
+        res.status(402).send("Bad inputs");
+    }
 });
 
 /**
@@ -366,25 +364,33 @@ route.put("/company/assignments/:customerID", [authJWT.verifyToken, authJWT.isAd
 
 
 
+route.get("/company/law_firms", [authJWT.verifyToken, authJWT.isAdmin, authJWT.addClientID, clientDBConnection.connect], async (req, res, next) => {
+    try {        
+        const findAllLawFirms = await LawFirms.findAll({
+            attributes: ['law_firm_id', 'name', ['instances', 'counter']],
+            include: [
+                {
+                    model: RepresentativeLawFirms,
+                    as: "representativelawfirm",
+                    attributes: ['representative_id','representative_name'],
+                    required:false
+                }
+            ]
+        });
+        res.status(200).json(findAllLawFirms);
+    } catch(e) {
+        console.log(e);
+        res.status(402).send("Unable to retrieve data.");
+    }
+});
+
 route.get("/company/law_firms/:id", [authJWT.verifyToken, authJWT.isAdmin, authJWT.addClientID, clientDBConnection.connect], async (req, res, next) => {
     try {
         const customerID = req.params.id, representativeIDs = JSON.parse(req.query.portfolios);
 
         /*const findAllLawFirms =  await helpers.findAllLawFirms(customerID, representativeIDs, req);*/
-        let findAllLawFirms = [];
-        if(customerID == 0) {
-            findAllLawFirms = await LawFirms.findAll({
-                attributes: ['law_firm_id', 'name', ['instances', 'counter']],
-                include: [
-                    {
-                        model: RepresentativeLawFirms,
-                        as: "representativelawfirm",
-                        attributes: ['representative_id','representative_name'],
-                        required:false
-                    }
-                ]
-            });
-        } else {
+        let findAllLawFirms = [];        
+        if(customerID > 0) {
             const where = {organisation_id: customerID};
             if(representativeIDs.length > 0) {
                 where.representative_id = representativeIDs;
@@ -428,6 +434,19 @@ route.get("/company/law_firms/:id", [authJWT.verifyToken, authJWT.isAdmin, authJ
     } catch(e) {
         console.log(e);
         res.status(402).send("Unable to retrieve data.");
+    }
+});
+
+route.put("/company/law_firms", [authJWT.verifyToken, authJWT.isAdmin, authJWT.addClientID, clientDBConnection.connect], async (req, res, next) => {
+    try{
+        let IDs = JSON.stringify(req.body.law_firm_ids), normalize_name = req.body.normalize_name;
+
+        console.log(IDs);
+        console.log(normalize_name);
+        res.status(200).send("UPDATED");
+    } catch(e) {
+        console.log(e);
+        res.status(402).send("Unable to update data.");
     }
 });
 
