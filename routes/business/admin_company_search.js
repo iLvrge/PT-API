@@ -578,7 +578,15 @@ route.get("/company/lawyers", [authJWT.verifyToken, authJWT.isAdmin, authJWT.add
                     model: LawFirms,
                     as: "lawfirms",
                     attributes: ['law_firm_id',['name', 'law_firm_name']],
-                    required:false
+                    include: [
+                        {
+                            model: RepresentativeLawFirms,
+                            as: "representativelawfirm",
+                            attributes: ['representative_id','representative_name'],
+                            required:false
+                        }
+                    ]
+
                 }
             ]
         });        
@@ -636,7 +644,15 @@ route.get("/company/lawyers/:id", [authJWT.verifyToken, authJWT.isAdmin, authJWT
                         {
                             model: LawFirms,
                             as: "lawfirms",
-                            attributes: ['law_firm_id',['name', 'law_firm_name']]
+                            attributes: ['law_firm_id',['name', 'law_firm_name']],
+                            include: [
+                                {
+                                    model: RepresentativeLawFirms,
+                                    as: "representativelawfirm",
+                                    attributes: ['representative_id','representative_name'],
+                                    required:false
+                                }
+                            ]
                         }
                     ]
                 });  
@@ -647,6 +663,130 @@ route.get("/company/lawyers/:id", [authJWT.verifyToken, authJWT.isAdmin, authJWT
     } catch(e) {
         console.log(e);
         res.status(402).send("Unable to retrieve data.");
+    }
+});
+
+route.put("/company/lawyers", [authJWT.verifyToken, authJWT.isAdmin, authJWT.addClientID, clientDBConnection.connect], async (req, res, next) => {
+    try{
+        let IDs = JSON.parse(req.body.lawyer_ids), normalize_name = req.body.normalize_name;
+
+        console.log(IDs);
+        console.log(normalize_name);
+
+        if(IDs.length > 0) {
+            if(normalize_name != '') {
+                const promises = IDs.map(async lawyerID => {
+
+                    let oldRepresentativeCompanyID = 0, oldRepresentativeCompanyName = "";
+
+                    let findIsNormalized  = await Lawyers.findOne({
+                                            where:{law_firm_id: lawyerID}
+                                        });
+                    if(findIsNormalized != null ) {
+                        if(findIsNormalized.representative_id > 0) {
+                            findIsNormalized  = await RepresentativeLawyers.findOne({
+                                where:{representative_id: findIsNormalized.representative_id}
+                            });
+                        } else {
+                            findIsNormalized  = await RepresentativeLawyers.findOne({
+                                where:{representative_name: findIsNormalized.name}
+                            });
+                        }                        
+                    } 
+
+                    if(findIsNormalized != null && findIsNormalized.representative_id > 0) {
+                        /** 
+                         * Find old representative company
+                        */
+                        oldRepresentativeCompanyID = findIsNormalized.representative_id;
+                        oldRepresentativeCompanyName = findIsNormalized.representative_name;
+                    }
+
+                    let  representativeLawyer = await RepresentativeLawyers.findOne({
+                        where: {representative_name: normalize_name}
+                    });
+
+                    /**
+                     * Check normalize company is normalize with  another company
+                     * 
+                     */
+                    let findNormalizedCompany  = await Lawyers.findOne({
+                        where:{name: normalize_name}
+                    });
+
+                    if(findNormalizedCompany != null && findNormalizedCompany.representative_id > 0) {
+                        representativeLawyer  = await RepresentativeLawyers.findOne({
+                            where:{representative_id: findNormalizedCompany.representative_id}
+                        });
+        
+                        if(representativeLawyer != null && representativeLawyer.representative_id > 0){
+                            await RepresentativeLawyers.update({
+                                representative_name: normalize_name
+                            }, {where: {representative_id: representativeLawyer.representative_id} });
+                        }
+                    }
+
+                    if(representativeLawyer == null) {
+                        /**
+                         * If Old representative found
+                         */                    
+                        if(oldRepresentativeCompanyID > 0) {
+                            /**
+                             * Update old representative company name with new representative name i.e normalize name
+                             */
+                            await RepresentativeLawyers.update({
+                                representative_name: normalize_name
+                            }, {where: {representative_id: oldRepresentativeCompanyID} });
+
+                            representativeLawyer = await RepresentativeLawyers.findOne({
+                                where: {representative_name: normalize_name}
+                            });
+                        } else {
+                            /**
+                             * Insert new representative company in the representative table
+                             */                        
+                            representativeLawyer = await RepresentativeLawyers.create({
+                                representative_name: normalize_name
+                            });
+                        }                    
+                    }
+
+                    if(representativeLawyer != null && representativeLawyer.representative_id > 0) { 
+                        const item = {representative_id: representativeLawyer.representative_id};
+
+                        if(oldRepresentativeCompanyID == 0) {
+                            /**
+                             * Update representative ID
+                             */
+                            await Lawyers.update(item, {where: {law_firm_id: lawFirmID}});                                             
+                        } else {  
+                            
+                            await Lawyers.update(item, {where: {representative_id: oldRepresentativeCompanyID}});
+
+                            await Lawyers.update(item, {where: {name: oldRepresentativeCompanyName}});
+
+                        }
+                    }
+
+                    return lawFirmID;
+                })
+
+                await Promise.all(promises);
+                res.status(200).send("Updated successfully");	
+                /**
+                 * This check is to find company is already normalised with other representative company
+                 */
+                
+            } else {
+                await LawFirms.update({representative_id: 0}, {where: {law_firm_id: IDs}});
+                res.status(200).send("Updated successfully");	
+            }
+        } else {
+            res.status(403).send("Please select lawyers");
+        }
+    } catch(e) {
+        console.log(e);
+        res.status(402).send("Unable to update data.");
     }
 });
 
