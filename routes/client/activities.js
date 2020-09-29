@@ -362,6 +362,8 @@ route.post("/activities/:type", [authJWT.verifyToken, clientDBConnection.connect
                     findActivity = await Activity.findOne({
                         where: {subject: postData.subject}
                     });
+                } else if(type == 2 ) {
+                    postData.subject = '';
                 }
 
                 if(findActivity != null) {
