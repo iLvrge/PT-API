@@ -141,11 +141,11 @@ route.post("/comments/:subjectType", [authJWT.verifyToken, clientDBConnection.co
 
                 if(subjectType != 'record' ) {
                     findActivity = await Activity.findOne({
-                        where: {type: type, subject: subject}
+                        where: {subject: subject}
                     });
                 } else if ( subject > 0 && subjectType == 'record' ) {
                     findActivity = await Activity.findOne({
-                        where: {type: type, activity_id: subject}
+                        where: {activity_id: subject}
                     });
                 }
 
