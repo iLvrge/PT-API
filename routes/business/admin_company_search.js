@@ -683,9 +683,9 @@ route.put("/company/lawyers", [authJWT.verifyToken, authJWT.isAdmin, authJWT.add
                                             where:{law_firm_id: lawyerID}
                                         });
                     if(findIsNormalized != null ) {
-                        if(findIsNormalized.representative_id > 0) {
+                        if(findIsNormalized.representative_lawyer_id > 0) {
                             findIsNormalized  = await RepresentativeLawyers.findOne({
-                                where:{representative_id: findIsNormalized.representative_id}
+                                where:{representative_lawyer_id: findIsNormalized.representative_lawyer_id}
                             });
                         } else {
                             findIsNormalized  = await RepresentativeLawyers.findOne({
@@ -694,11 +694,11 @@ route.put("/company/lawyers", [authJWT.verifyToken, authJWT.isAdmin, authJWT.add
                         }                        
                     } 
 
-                    if(findIsNormalized != null && findIsNormalized.representative_id > 0) {
+                    if(findIsNormalized != null && findIsNormalized.representative_lawyer_id > 0) {
                         /** 
                          * Find old representative company
                         */
-                        oldRepresentativeCompanyID = findIsNormalized.representative_id;
+                        oldRepresentativeCompanyID = findIsNormalized.representative_lawyer_id;
                         oldRepresentativeCompanyName = findIsNormalized.representative_name;
                     }
 
@@ -714,15 +714,15 @@ route.put("/company/lawyers", [authJWT.verifyToken, authJWT.isAdmin, authJWT.add
                         where:{name: normalize_name}
                     });
 
-                    if(findNormalizedCompany != null && findNormalizedCompany.representative_id > 0) {
+                    if(findNormalizedCompany != null && findNormalizedCompany.representative_lawyer_id > 0) {
                         representativeLawyer  = await RepresentativeLawyers.findOne({
-                            where:{representative_id: findNormalizedCompany.representative_id}
+                            where:{representative_lawyer_id: findNormalizedCompany.representative_lawyer_id}
                         });
         
-                        if(representativeLawyer != null && representativeLawyer.representative_id > 0){
+                        if(representativeLawyer != null && representativeLawyer.representative_lawyer_id > 0){
                             await RepresentativeLawyers.update({
                                 representative_name: normalize_name
-                            }, {where: {representative_id: representativeLawyer.representative_id} });
+                            }, {where: {representative_lawyer_id: representativeLawyer.representative_lawyer_id} });
                         }
                     }
 
@@ -736,7 +736,7 @@ route.put("/company/lawyers", [authJWT.verifyToken, authJWT.isAdmin, authJWT.add
                              */
                             await RepresentativeLawyers.update({
                                 representative_name: normalize_name
-                            }, {where: {representative_id: oldRepresentativeCompanyID} });
+                            }, {where: {representative_lawyer_id: oldRepresentativeCompanyID} });
 
                             representativeLawyer = await RepresentativeLawyers.findOne({
                                 where: {representative_name: normalize_name}
@@ -751,8 +751,8 @@ route.put("/company/lawyers", [authJWT.verifyToken, authJWT.isAdmin, authJWT.add
                         }                    
                     }
 
-                    if(representativeLawyer != null && representativeLawyer.representative_id > 0) { 
-                        const item = {representative_id: representativeLawyer.representative_id};
+                    if(representativeLawyer != null && representativeLawyer.representative_lawyer_id > 0) { 
+                        const item = {representative_lawyer_id: representativeLawyer.representative_lawyer_id};
 
                         if(oldRepresentativeCompanyID == 0) {
                             /**
@@ -761,7 +761,7 @@ route.put("/company/lawyers", [authJWT.verifyToken, authJWT.isAdmin, authJWT.add
                             await Lawyers.update(item, {where: {lawyer_id: lawyerID}});                                             
                         } else {  
                             
-                            await Lawyers.update(item, {where: {representative_id: oldRepresentativeCompanyID}});
+                            await Lawyers.update(item, {where: {representative_lawyer_id: oldRepresentativeCompanyID}});
 
                             await Lawyers.update(item, {where: {name: oldRepresentativeCompanyName}});
 
@@ -778,7 +778,7 @@ route.put("/company/lawyers", [authJWT.verifyToken, authJWT.isAdmin, authJWT.add
                  */
                 
             } else {
-                await LawFirms.update({representative_id: 0}, {where: {law_firm_id: IDs}});
+                await LawFirms.update({representative_lawyer_id: 0}, {where: {law_firm_id: IDs}});
                 res.status(200).send("Updated successfully");	
             }
         } else {
