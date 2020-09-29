@@ -9,7 +9,7 @@ const Firms = require("../../model/client/Firms");
 const Users = require("../../model/client/Users");
 const Documents = require("../../model/client/Documents");
 const Comments = require("../../model/client/Comments");
-
+const Types = require("../../model/client/Types");
 const ShareLink = require("../../model/business/ShareLinks");
 
 const authJWT = require("../../helpers/verifyJwtToken");
@@ -350,7 +350,12 @@ route.post("/activities/:type", [authJWT.verifyToken, clientDBConnection.connect
             /**Insert new activity */
             if(insertData === true) {
                 const Activity = req.connection_db.define('Activities', Activities.mainStructure, Activities.options);
+                const Type = req.connection_db.define('Types', Types.mainStructure, Types.options);
+                const Comment = req.connection_db.define('Comments', Comments.mainStructure, Comments.options);
 
+                Activity.belongsTo(Type, { foreignKey: 'type', as: 'types' });
+
+                
                 let findActivity = null, activityID = 0;
 
                 if(type == 1 ) {
@@ -363,7 +368,7 @@ route.post("/activities/:type", [authJWT.verifyToken, clientDBConnection.connect
                     activityID = findActivity.activity_id
                 }
 
-                let mimeType = null, newActivity = null;
+                let mimeType = null;
 
                 if(req.files != null && req.files != undefined && req.files.file != undefined) {
                     mimeType = req.files.file.mimetype
@@ -375,24 +380,25 @@ route.post("/activities/:type", [authJWT.verifyToken, clientDBConnection.connect
                         if (!err){
                             postData.upload_file = "https://patentrack.com/resources/shared/data/"+fileObject.name;
                             
-                            let newActivity = null;
-
                             if(activityID == 0){
-                                newActivity = await Activity.create(postData);
+                                const newActivity = await Activity.create(postData);
+                                if(newActivity != null && newActivity.activity_id > 0){
+                                    activityID = newActivity.activity_id;
+                                }
                             } else {
-                                newActivity = await Activity.update(postData,{where:{activity_id: activityID}});
+                               await Activity.update(postData,{where:{activity_id: activityID}});
                             }
 
-                            if(newActivity != null && newActivity.activity_id > 0){
+                            
+
+                            if(activityID > 0){
                                 const postComment = {
-                                    activity_id: newActivity.activity_id,
+                                    activity_id: activityID,
                                     user_id: req.userId,
                                     comment: req.body.comment,
                                 }
             
                                 await Comment.create(postComment);
-                                
-                                
 
                                 const activityData = await helpers.findActivityByID(activityID, Activity, Comment);
 
@@ -407,17 +413,20 @@ route.post("/activities/:type", [authJWT.verifyToken, clientDBConnection.connect
                     })
                 } else {
 
-                    let newActivity = null;
-
                     if(activityID == 0){
-                        newActivity = await Activity.create(postData);
+                        const newActivity = await Activity.create(postData);
+                        if(newActivity != null && newActivity.activity_id > 0){
+                            activityID = newActivity.activity_id;
+                        }
                     } else {
-                        newActivity = await Activity.update(postData,{where:{activity_id: activityID}});
+                       await Activity.update(postData,{where:{activity_id: activityID}});
                     }
 
-                    if(newActivity != null && newActivity.activity_id > 0){
+                    
+
+                    if(activityID > 0){
                         const postComment = {
-                            activity_id: newActivity.activity_id,
+                            activity_id: activityID,
                             user_id: req.userId,
                             comment: req.body.comment,
                         }
