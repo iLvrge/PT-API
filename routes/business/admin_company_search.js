@@ -439,7 +439,7 @@ route.get("/company/law_firms/:id", [authJWT.verifyToken, authJWT.isAdmin, authJ
 
 route.put("/company/law_firms", [authJWT.verifyToken, authJWT.isAdmin, authJWT.addClientID, clientDBConnection.connect], async (req, res, next) => {
     try{
-        let IDs = JSON.stringify(req.body.law_firm_ids), normalize_name = req.body.normalize_name;
+        let IDs = JSON.parse(req.body.law_firm_ids), normalize_name = req.body.normalize_name;
 
         console.log(IDs);
         console.log(normalize_name);
