@@ -758,7 +758,7 @@ route.put("/company/lawyers", [authJWT.verifyToken, authJWT.isAdmin, authJWT.add
                             /**
                              * Update representative ID
                              */
-                            await Lawyers.update(item, {where: {law_firm_id: lawFirmID}});                                             
+                            await Lawyers.update(item, {where: {lawyer_id: lawyerID}});                                             
                         } else {  
                             
                             await Lawyers.update(item, {where: {representative_id: oldRepresentativeCompanyID}});
@@ -768,7 +768,7 @@ route.put("/company/lawyers", [authJWT.verifyToken, authJWT.isAdmin, authJWT.add
                         }
                     }
 
-                    return lawFirmID;
+                    return lawyerID;
                 })
 
                 await Promise.all(promises);
