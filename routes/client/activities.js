@@ -8,6 +8,7 @@ const Professionals = require("../../model/client/Professionals");
 const Firms = require("../../model/client/Firms");
 const Users = require("../../model/client/Users");
 const Documents = require("../../model/client/Documents");
+const Comments = require("../../model/client/Comments");
 
 const ShareLink = require("../../model/business/ShareLinks");
 
@@ -274,8 +275,7 @@ route.post("/activities/:type", [authJWT.verifyToken, clientDBConnection.connect
                 user_id: req.userId,
                 professional_id: req.body.professional_id,	
                 subject: req.body.subject,
-                subject_type: req.body.subject_type, /** Company, Party, RfID, Application, PatentNumber*/
-                comment: req.body.comment,
+                subject_type: req.body.subject_type, /** Company, Customer, Transaction, Application, PatentNumber*/
                 type: type, /**RecordIt, FixIt, Comment */
                 share_url: '',
                 document_id: '1'
@@ -351,6 +351,18 @@ route.post("/activities/:type", [authJWT.verifyToken, clientDBConnection.connect
             if(insertData === true) {
                 const Activity = req.connection_db.define('Activities', Activities.mainStructure, Activities.options);
 
+                let findActivity = null, activityID = 0;
+
+                if(type == 1 ) {
+                    findActivity = await Activity.findOne({
+                        where: {subject: postData.subject}
+                    });
+                }
+
+                if(findActivity != null) {
+                    activityID = findActivity.activity_id
+                }
+
                 let mimeType = null, newActivity = null;
 
                 if(req.files != null && req.files != undefined && req.files.file != undefined) {
@@ -362,17 +374,30 @@ route.post("/activities/:type", [authJWT.verifyToken, clientDBConnection.connect
                     await fileObject.mv('/var/www/html/beta/resources/shared/data/'+fileObject.name, async function(err) {
                         if (!err){
                             postData.upload_file = "https://patentrack.com/resources/shared/data/"+fileObject.name;
-                            const newActivity = await Activity.create(postData);
-                            if(newActivity != null && newActivity.activity_id > 0){                    
-                                let response = newActivity.toJSON();
-                                /**If type is RecordIt */
-                                if(req.params.type == 2 && documentData != '1') {
-                                    response.document = documentData.file;
+                            
+                            let newActivity = null;
+
+                            if(activityID == 0){
+                                newActivity = await Activity.create(postData);
+                            } else {
+                                newActivity = await Activity.update(postData,{where:{activity_id: activityID}});
+                            }
+
+                            if(newActivity != null && newActivity.activity_id > 0){
+                                const postComment = {
+                                    activity_id: newActivity.activity_id,
+                                    user_id: req.userId,
+                                    comment: req.body.comment,
                                 }
-                                if(req.params.type == 1 || req.params.type == 2 ) {
-                                    response.email_address = professional.email_address;
-                                }                
-                                res.status(200).json(response);
+            
+                                await Comment.create(postComment);
+                                
+                                
+
+                                const activityData = await helpers.findActivityByID(activityID, Activity, Comment);
+
+                                res.status(200).json(activityData);
+
                             } else {
                                 res.status(500).send("Internal server error.");
                             }
@@ -381,19 +406,30 @@ route.post("/activities/:type", [authJWT.verifyToken, clientDBConnection.connect
                         }
                     })
                 } else {
-                    const newActivity = await Activity.create(postData);
-                    if(newActivity != null && newActivity.activity_id > 0){                    
-                        let response = newActivity.toJSON();
-                        /**If type is RecordIt */
-                        if(req.params.type == 2 && documentData != '1') {
-                            response.document = documentData.file;
-                        }
-                        if(req.params.type == 1 || req.params.type == 2 ) {
-                            response.email_address = professional.email_address;
-                        }                
-                        res.status(200).json(response);
+
+                    let newActivity = null;
+
+                    if(activityID == 0){
+                        newActivity = await Activity.create(postData);
                     } else {
-                        res.status(500).send("Internal server error111.");
+                        newActivity = await Activity.update(postData,{where:{activity_id: activityID}});
+                    }
+
+                    if(newActivity != null && newActivity.activity_id > 0){
+                        const postComment = {
+                            activity_id: newActivity.activity_id,
+                            user_id: req.userId,
+                            comment: req.body.comment,
+                        }
+    
+                        await Comment.create(postComment);
+
+                        const activityData = await helpers.findActivityByID(activityID, Activity, Comment);
+
+                        res.status(200).json(activityData);
+
+                    } else {
+                        res.status(500).send("Internal server error.");
                     }
                 }  
             } else {
