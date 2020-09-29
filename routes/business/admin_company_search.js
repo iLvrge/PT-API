@@ -443,7 +443,119 @@ route.put("/company/law_firms", [authJWT.verifyToken, authJWT.isAdmin, authJWT.a
 
         console.log(IDs);
         console.log(normalize_name);
-        res.status(200).send("UPDATED");
+
+        if(IDs.length > 0) {
+            if(normalize_name != '') {
+                const promises = IDs.map(async lawFirmID => {
+
+                    let oldRepresentativeCompanyID = 0, oldRepresentativeCompanyName = "";
+
+                    let findIsNormalized  = await LawFirms.findOne({
+                                            where:{law_firm_id: lawFirmID}
+                                        });
+                    if(findIsNormalized != null ) {
+                        if(findIsNormalized.representative_id > 0) {
+                            findIsNormalized  = await RepresentativeLawFirms.findOne({
+                                where:{representative_id: findIsNormalized.representative_id}
+                            });
+                        } else {
+                            findIsNormalized  = await RepresentativeLawFirms.findOne({
+                                where:{representative_name: findIsNormalized.name}
+                            });
+                        }                        
+                    } 
+
+                    if(findIsNormalized != null && findIsNormalized.representative_id > 0) {
+                        /** 
+                         * Find old representative company
+                        */
+                        oldRepresentativeCompanyID = findIsNormalized.representative_id;
+                        oldRepresentativeCompanyName = findIsNormalized.representative_name;
+                    }
+
+                    let  representativeLawFirm = await RepresentativeLawFirms.findOne({
+                        where: {representative_name: normalize_name}
+                    });
+
+                    /**
+                     * Check normalize company is normalize with  another company
+                     * 
+                     */
+                    let findNormalizedCompany  = await LawFirms.findOne({
+                        where:{name: normalize_name}
+                    });
+
+                    if(findNormalizedCompany != null && findNormalizedCompany.representative_id > 0) {
+                        representativeLawFirm  = await RepresentativeLawFirms.findOne({
+                            where:{representative_id: findNormalizedCompany.representative_id}
+                        });
+        
+                        if(representativeLawFirm != null && representativeLawFirm.representative_id > 0){
+                            await RepresentativeLawFirms.update({
+                                representative_name: normalize_name
+                            }, {where: {representative_id: representativeLawFirm.representative_id} });
+                        }
+                    }
+
+                    if(representativeLawFirm == null) {
+                        /**
+                         * If Old representative found
+                         */                    
+                        if(oldRepresentativeCompanyID > 0) {
+                            /**
+                             * Update old representative company name with new representative name i.e normalize name
+                             */
+                            await RepresentativeLawFirms.update({
+                                representative_name: normalize_name
+                            }, {where: {representative_id: oldRepresentativeCompanyID} });
+
+                            representativeLawFirm = await RepresentativeLawFirms.findOne({
+                                where: {representative_name: normalize_name}
+                            });
+                        } else {
+                            /**
+                             * Insert new representative company in the representative table
+                             */                        
+                            representativeLawFirm = await RepresentativeLawFirms.create({
+                                representative_name: normalize_name
+                            });
+                        }                    
+                    }
+
+                    if(representativeLawFirm != null && representativeLawFirm.representative_id > 0) { 
+                        const item = {representative_id: representativeLawFirm.representative_id};
+
+                        if(oldRepresentativeCompanyID == 0) {
+                            /**
+                             * Update representative ID
+                             */
+                            await LawFirms.update(item, {where: {law_firm_id: lawFirmID}});                                             
+                        } else {  
+                            
+                            await LawFirms.update(item, {where: {representative_id: oldRepresentativeCompanyID}});
+
+                            await LawFirms.update(item, {where: {name: oldRepresentativeCompanyName}});
+
+
+                        }
+                    }
+
+                    return lawFirmID;
+                })
+
+                await Promise.all(promises);
+                res.status(200).send("Updated successfully");	
+                /**
+                 * This check is to find company is already normalised with other representative company
+                 */
+                
+            } else {
+                await LawFirms.update({representative_id: 0}, {where: {law_firm_id: IDs}});
+                res.status(200).send("Updated successfully");	
+            }
+        } else {
+            res.status(403).send("Please select lawfirms");
+        }
     } catch(e) {
         console.log(e);
         res.status(402).send("Unable to update data.");
