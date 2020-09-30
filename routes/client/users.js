@@ -22,6 +22,33 @@ const authJWT = require("../../helpers/verifyJwtToken");
 
 
 const clientDBConnection = require("../../helpers/clientDBConnection");
+
+
+var emailRegex = /^[-!#$%&'*+\/0-9=?A-Z^_a-z{|}~](\.?[-!#$%&'*+\/0-9=?A-Z^_a-z`{|}~])*@[a-zA-Z0-9](-*\.?[a-zA-Z0-9])*\.[a-zA-Z](-?[a-zA-Z0-9])+$/;
+
+function isEmailValid(email) {
+    if (!email)
+        return false;
+
+    if(email.length>254)
+        return false;
+
+    var valid = emailRegex.test(email);
+    if(!valid)
+        return false;
+
+    // Further checking of some things regex can't handle
+    var parts = email.split("@");
+    if(parts[0].length>64)
+        return false;
+
+    var domainParts = parts[1].split(".");
+    if(domainParts.some(function(part) { return part.length>63; }))
+        return false;
+
+    return true;
+}
+
 /**Get User List */
 route.get("/", [authJWT.verifyToken, clientDBConnection.connect], async(req, res, next) => {
     try{
@@ -58,9 +85,19 @@ route.post("/", [authJWT.verifyToken, clientDBConnection.connect], async(req, re
                     type = '0';
                     roleID = 1;
                 }
-                const checkUser = await LoginUsers.findOne({
-                                            where: {username: req.body.email_address, email_address: req.body.email_address}
-                                        });
+
+                if(req.body.first_name == '' || req.body.first_name == undefined || req.body.first_name == null) {
+                    res.status(402).send("Firstname cannot be empty."); 
+                } else if(req.body.last_name == '' || req.body.last_name == undefined || req.body.last_name == null) {
+                    res.status(402).send("Lastname cannot be empty."); 
+                } else if(req.body.email_address == '' || req.body.email_address == undefined || req.body.email_address == null) {
+                    res.status(402).send("Email address cannot be empty."); 
+                } else if(req.body.email_address != '' && !isEmailValid(req.body.email_address)) {
+                    res.status(402).send("Email address is not valid"); 
+                } else {
+                    const checkUser = await LoginUsers.findOne({
+                        where: {username: req.body.email_address, email_address: req.body.email_address}
+                    });
                     if(checkUser == null) {
                         const loginCredential = {
                             username: req.body.email_address,
@@ -73,7 +110,9 @@ route.post("/", [authJWT.verifyToken, clientDBConnection.connect], async(req, re
                             password: bcrypt.hashSync(req.body.last_name, 8)
                         };
                         const addUser = await LoginUsers.create(loginCredential);
+
                         console.log(addUser);
+
                         if(addUser != null && addUser.user_id > 0) {
                             let logo = "";
                             const clientUser = {
@@ -156,8 +195,9 @@ route.post("/", [authJWT.verifyToken, clientDBConnection.connect], async(req, re
                             res.status(400).send("Bad inputs");
                         }
                     } else {
-                        res.status(402).send("User with this email address is already exist.");  
+                        res.status(402).send("Email address is already exist.");  
                     }
+                }
             } else {
                 res.status(400).send("You are not authorized user to perform this action.");  
             } 
