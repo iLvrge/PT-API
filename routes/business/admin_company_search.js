@@ -634,8 +634,9 @@ route.get("/company/lawyers/:id", [authJWT.verifyToken, authJWT.isAdmin, authJWT
                 await Promise.all(promises);
 
                 findAllLawers = await Lawyers.findAll({
-                    attributes: ['lawyer_id', 'name', ['instances', 'counter']],
+                    attributes: ['lawyer_id', 'name',[connection.Sequelize.fn('COUNT', 'lawyer_id'), 'counter'], ['instances', 'total_occurences']],
                     where: {law_firm_id: allLawFirms},
+                    group: ['lawyer_id'],
                     include: [
                         {
                             model: RepresentativeLawyers,
