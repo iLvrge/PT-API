@@ -97,8 +97,11 @@ route.get("/assets/:patentNumber/:type/outsource",[authJWT.verifyToken], async (
                 res.status(200).send("");
             }
         })
-    }
-    
+    }    
 });
+
+route.post("/assets/search",[authJWT.verifyToken], async (req, res) => {        
+    console.log(req.body.value);
+})
 
 module.exports = route;

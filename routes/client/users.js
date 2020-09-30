@@ -65,6 +65,8 @@ route.post("/", [authJWT.verifyToken, clientDBConnection.connect], async(req, re
                         const loginCredential = {
                             username: req.body.email_address,
                             email_address: req.body.email_address,
+                            first_name: req.body.first_name,
+                            last_name: req.body.last_name,
                             role_id: roleID,
                             type: type,
                             organisation_id: req.orgId,
