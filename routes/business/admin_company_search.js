@@ -397,7 +397,8 @@ route.get("/company/law_firms/:id", [authJWT.verifyToken, authJWT.isAdmin, authJ
             }
 
             const list = await Assignments.findAll({
-                attributes: ['law_firm_id'],               
+                attributes: ['law_firm_id'], 
+                group: ['law_firm_id'],                  
                 include: [
                     {
                         model: RepresentativeTransactions,
@@ -610,7 +611,8 @@ route.get("/company/lawyers/:id", [authJWT.verifyToken, authJWT.isAdmin, authJWT
             }
 
             const list = await Assignments.findAll({
-                attributes: ['law_firm_id'],               
+                attributes: ['law_firm_id'],    
+                group: ['law_firm_id'],           
                 include: [
                     {
                         model: RepresentativeTransactions,
