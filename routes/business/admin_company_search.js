@@ -263,7 +263,7 @@ route.put("/company/search/all/", [authJWT.verifyToken, authJWT.isAdmin], async 
  * Get all Assignment Text from USPTO database 
  * if customerID is 0 then this is for whole database other it will be for the particular client
  */
-route.get("/company/assignments/:id", [authJWT.verifyToken, authJWT.isAdmin, authJWT.addClientID, clientDBConnection.connect], async (req, res, next) => {
+route.get("/company/transactions/:id", [authJWT.verifyToken, authJWT.isAdmin, authJWT.addClientID, clientDBConnection.connect], async (req, res, next) => {
     try {
         const customerID = req.params.id, type = [{name: 'assignment', id: 'assignment'},{name: 'addresschg', id: 'addresschg'},{name: 'correct', id: 'correct'},{name: 'courtappointment', id: 'courtappointment'},{name: 'courtorder', id: 'courtorder'},{name: 'employee', id: 'employee'},{name: 'govern', id: 'govern'},{name: 'license', id: 'license'},{name: 'licenseend', id: 'licenseend'},{name: 'missing', id: 'missing'},{name: 'merger', id: 'merger'},{name: 'namechg', id: 'namechg'},{name: 'option', id: 'option'},{name: 'other', id: 'other'},{name: 'partialassignment', id: 'partialassignment'},{name: 'release', id: 'release'},{name: 'restatedsecurity', id: 'restatedsecurity'},{name: 'security', id: 'security'}], assignment_type = {0: 'assignment',1: 'addresschg',2: 'correct',3: 'courtappointment',4: 'courtorder',5: 'employee', 6: 'govern',7: 'license',8: 'licenseend',9: 'missing',10: 'merger',11: 'namechg',12: 'option',13: 'other',14: 'partialassignment',15: 'release',16: 'restatedsecurity',17: 'security'};
         /**
@@ -279,7 +279,7 @@ route.get("/company/assignments/:id", [authJWT.verifyToken, authJWT.isAdmin, aut
     }
 });
 
-route.get("/company/assignments/:id/:representativeID", [authJWT.verifyToken, authJWT.isAdmin, authJWT.addClientID, clientDBConnection.connect], async (req, res, next) => {
+route.get("/company/transactions/:id/:representativeID", [authJWT.verifyToken, authJWT.isAdmin, authJWT.addClientID, clientDBConnection.connect], async (req, res, next) => {
     try {
         const customerID = req.params.id, representativeIDs = JSON.parse(req.params.representativeID), type = [{name: 'assignment', id: 'assignment'},{name: 'addresschg', id: 'addresschg'},{name: 'correct', id: 'correct'},{name: 'courtappointment', id: 'courtappointment'},{name: 'courtorder', id: 'courtorder'},{name: 'employee', id: 'employee'},{name: 'govern', id: 'govern'},{name: 'license', id: 'license'},{name: 'licenseend', id: 'licenseend'},{name: 'missing', id: 'missing'},{name: 'merger', id: 'merger'},{name: 'namechg', id: 'namechg'},{name: 'option', id: 'option'},{name: 'other', id: 'other'},{name: 'partialassignment', id: 'partialassignment'},{name: 'release', id: 'release'},{name: 'restatedsecurity', id: 'restatedsecurity'},{name: 'security', id: 'security'}], assignment_type = {0: 'assignment',1: 'addresschg',2: 'correct',3: 'courtappointment',4: 'courtorder',5: 'employee', 6: 'govern',7: 'license',8: 'licenseend',9: 'missing',10: 'merger',11: 'namechg',12: 'option',13: 'other',14: 'partialassignment',15: 'release',16: 'restatedsecurity',17: 'security'};
         /**
@@ -299,7 +299,7 @@ route.get("/company/assignments/:id/:representativeID", [authJWT.verifyToken, au
  * Update the assignment transaction for the client
  */
 
-route.put("/company/assignments/:customerID", [authJWT.verifyToken, authJWT.isAdmin], async (req, res, next) => {
+route.put("/company/transactions/:customerID", [authJWT.verifyToken, authJWT.isAdmin], async (req, res, next) => {
     try {
         let text = req.body.text, updateConveyType = req.body.updated_convey_ty, update = 0;
         const customerID = req.params.customerID;
@@ -793,6 +793,86 @@ route.put("/company/lawyers", [authJWT.verifyToken, authJWT.isAdmin, authJWT.add
     }
 });
 
+
+route.get("/company/assignments", [authJWT.verifyToken, authJWT.isAdmin], async (req, res, next) => {
+    const getList = await Assignments.findAll({
+        attributes: ['rf_id', 'cname', 'caddress_1', 'caddress_2', 'reel_no', 'frame_no']
+    });
+    res.status(200).json(getList);
+});
+
+route.get("/company/assignments/:id", [authJWT.verifyToken, authJWT.isAdmin], async (req, res, next) => {
+
+    const customerID = req.params.id, representativeIDs = JSON.parse(req.query.portfolios != undefined ? req.query.portfolios : "[]");
+    let getList = [];
+    if(customerID > 0) {
+        const where = {organisation_id: customerID};
+        if(representativeIDs.length > 0) {
+            where.representative_id = representativeIDs;
+        }
+
+        getList = await Assignments.findAll({
+            attributes: ['rf_id', 'cname', 'caddress_1', 'caddress_2', 'reel_no', 'frame_no'],    
+            group: ['rf_id'],           
+            include: [
+                {
+                    model: RepresentativeTransactions,
+                    as: "representativetransaction",
+                    attributes: [],
+                    where: where                       
+                }
+            ]
+        });
+    }   
+    res.status(200).json(getList);
+});
+
+route.put("/company/assignments", [authJWT.verifyToken, authJWT.isAdmin], async (req, res, next) => {
+    try{
+        const rfID = req.body.rf_id;
+        if(rfID > 0) {
+            const getData = await Assignments.findOne({
+                where: {rf_id: rfID}
+            });
+    
+            if(getData != null && getData.rf_id > 0) {
+                const updateData = {};
+                if(req.body.type == 2) {
+                    updateData.caddress_5 = getData.caddress_1;
+                    updateData.caddress_1 = '';
+
+                    updateData.caddress_6 = getData.caddress_2;
+                    updateData.caddress_2 = '';
+                } else {
+                    updateData.caddress_6 = getData.caddress_2;
+                    updateData.caddress_2 = '';
+                }
+                const updateRecord = await Assignments.update(updateData, {where:{rf_id: rfID}});
+
+                if(updateRecord) {
+                    if(updateData.caddress_1 == '') {
+                        const getData = Lawyers.findOne({
+                            where: {law_firm_id: getData.law_firm_id,  name: getData.caddress_1}
+                        });
+
+                        if(getData != null && getData.lawyer_id > 0) {
+                            await Lawyers.destroy({where: getData.lawyer_id});
+                        }
+                    }
+                    res.status(200).send("Records Updated");
+                } else {
+                    res.status(401).send("Unable to update records");
+                }
+            } else {
+                res.status(402).send("Invalid inputs");
+            }
+        } else {
+            res.status(402).send("Invalid inputs");
+        }
+    } catch(e) {
+        res.status(402).send("Unable to update data.");
+    }    
+});
 
 /**
  * Find All Transaction with conveyanceType and Entity Type
