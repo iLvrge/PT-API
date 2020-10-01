@@ -1034,7 +1034,7 @@ route.put("/company/assignments", [authJWT.verifyToken, authJWT.isAdmin], async 
 
 
                 if(findOtherRecords.length > 0) {
-                    const promise = findOtherRecords.map( assignment => {
+                    const promise = findOtherRecords.map(async assignment => {
                         const updateData = {};
                         if(req.body.type == 1) {
                             updateData.caddress_1 = assignment.caddress_2;
@@ -1050,7 +1050,7 @@ route.put("/company/assignments", [authJWT.verifyToken, authJWT.isAdmin], async 
 
                         const updateRecord = await Assignments.update(updateData, {where:{rf_id: assignment.rf_id}});
                         if(updateRecord) {
-                            if(req.body.type == 1) {
+                            if(req.body.type == 1) {   
                                 const lawyerData = Lawyers.findOne({
                                     where: {law_firm_id: findOtherRecords.law_firm_id,  name: findOtherRecords.caddress_1}
                                 });
