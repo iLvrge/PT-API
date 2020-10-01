@@ -424,8 +424,9 @@ route.get("/company/law_firms/:id", [authJWT.verifyToken, authJWT.isAdmin, authJ
                     {
                         model: LawFirms,
                         as: "lawfirm",
-                        attributes: ['law_firm_id', 'name', ['instances', 'counter']],
-                        where: whereLawFirms,     
+                        attributes: ['law_firm_id', 'name', [connection.Sequelize.fn('COUNT', 'law_firm_id'), 'counter'], ['instances', 'total_occurences']],
+                        where: whereLawFirms,   
+                        group: ['law_firm_id'],   
                         include: [
                             {
                                 model: RepresentativeLawFirms,

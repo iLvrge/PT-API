@@ -2,7 +2,7 @@ const Sequelize = require("sequelize");
 
 const connection = require("../../config/db.config");
 
-//const LawFirms = require("./LawFirms");
+const LawFirms = require("./LawFirms");
 
 const RepresentativeTransactions = require("./RepresentativeTransactions");
 
@@ -82,7 +82,7 @@ const Assignments = connection.resources.define('assignment',{
     freezeTableName: true
 });
 
-//Assignments.belongsTo(LawFirms, { foreignKey: 'law_firm_id', as: 'lawfirm', otherKey: 'law_firm_id' });
+Assignments.belongsTo(LawFirms, { foreignKey: 'law_firm_id', as: 'lawfirm', otherKey: 'law_firm_id' });
 
 Assignments.belongsTo(RepresentativeTransactions, { foreignKey: 'rf_id', as: 'representativetransaction', targetKey: 'rf_id' });
 

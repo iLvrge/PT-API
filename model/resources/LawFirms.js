@@ -4,7 +4,7 @@ const connection = require("../../config/db.config");
 
 const RepresentativeLawFirms = require('./RepresentativeLawFirms');
 
-const Assignments = require('./Assignments');
+//const Assignments = require('./Assignments');
 
 const LawFirms = connection.resources.define('law_firm',{
     law_firm_id:{
@@ -32,6 +32,6 @@ const LawFirms = connection.resources.define('law_firm',{
 
 LawFirms.belongsTo(RepresentativeLawFirms, { foreignKey: 'representative_id', as: 'representativelawfirm' });
 
-LawFirms.belongsTo(Assignments, { foreignKey: 'law_firm_id', as: 'assignment' });
+//LawFirms.belongsTo(Assignments, { foreignKey: 'law_firm_id', as: 'assignment' });
 
 module.exports = LawFirms;
