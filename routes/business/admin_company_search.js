@@ -16,11 +16,17 @@ const Organisations = require('../../model/business/Organisations');
 
 const Representatives = require('../../model/resources/Representatives');
 
+const RepresentativeCustomer = require('../../model/client/Representatives');
+
 const RepresentativeAssignmentConveyance = require('../../model/resources/RepresentativeAssignmentConveyance');
 
 const AssignmentConveyance = require('../../model/application/AssignmentConveyance');
 
 const Assignments = require('../../model/resources/Assignments');
+
+const Assignors = require('../../model/resources/Assignors');
+
+const Assignees = require('../../model/resources/Assignees');
 
 const AssignorAndAssignee = require('../../model/resources/AssignorAndAssignee');
 
@@ -400,15 +406,54 @@ route.get("/company/law_firms/:id", [authJWT.verifyToken, authJWT.isAdmin, authJ
         let findAllLawFirms = [];        
         if(customerID > 0) {
             const where = {organisation_id: customerID};
+            let whereRepresentative = {};
             if(representativeIDs.length > 0) {
                 where.representative_id = representativeIDs;
+                whereRepresentative = {
+                    [connection.Op.or]: [
+                        {parent_id: representativeIDs},
+                        {representative_id: representativeIDs}
+                    ]
+                }
             }
 
-            const query = req.query.search;
-            const whereLawFirms = {};
+            const assignorAndAssigneeIDs = [];
 
-            if(query != undefined && query != null) {
-                whereLawFirms.name = {name: {[connection.Op.like]: '%' + query + '%'}}
+            if(req.connection_db != null) {
+                const RepresentativeClient = req.connection_db.define('Representatives', RepresentativeCustomer.mainStructure, RepresentativeCustomer.options);
+                const findRepresentativeCompanies = await RepresentativeClient.findAll({
+                    attributes:['original_name'],
+                    where:whereRepresentative
+                });
+    
+                if(findRepresentativeCompanies != null && findRepresentativeCompanies.length > 0) {
+                   const allNames = [];
+                    const promises = findRepresentativeCompanies.map( company => {
+                        allNames.push(company.original_name);
+                        return company;
+                    });
+    
+                    await Promise.all(promises);
+    
+                    const findAssignorAndAssignee = await AssignorAndAssignee.findAll({
+                        attributes: ['assignor_and_assignee_id'],
+                        where:{name: allNames}
+                    });
+    
+                    if(findAssignorAndAssignee != null && findAssignorAndAssignee.length > 0) {
+                        const assignorAndAssigneePromises = findAssignorAndAssignee.map( assignor_and_assignee => {
+                            assignorAndAssigneeIDs.push(assignor_and_assignee.assignor_and_assignee_id);
+                            return assignor_and_assignee;
+                        });
+        
+                        await Promise.all(assignorAndAssigneePromises);
+                    }
+                }
+            }
+
+            const whereAssignor = {};
+            if(assignorAndAssigneeIDs.length > 0) {
+                whereAssignor.assignor_and_assignee_id = assignorAndAssigneeIDs;
             }
 
             const list = await Assignments.findAll({
@@ -419,13 +464,20 @@ route.get("/company/law_firms/:id", [authJWT.verifyToken, authJWT.isAdmin, authJ
                         model: RepresentativeTransactions,
                         as: "representativetransaction",
                         attributes: [],
-                        where: where,                        
+                        where: where,  
+                        include: [
+                            {
+                                model: Assignees,
+                                as: 'assignee',
+                                attributes: [],
+                                where: whereAssignor
+                            }
+                        ]                      
                     },
                     {
                         model: LawFirms,
                         as: "lawfirm",
                         attributes: ['law_firm_id', 'name', [connection.Sequelize.fn('COUNT', 'law_firm_id'), 'counter'], ['instances', 'total_occurences']],
-                        where: whereLawFirms,   
                         group: ['law_firm_id'],   
                         include: [
                             {
@@ -622,37 +674,101 @@ route.get("/company/lawyers/:id", [authJWT.verifyToken, authJWT.isAdmin, authJWT
         /*const findAllLawFirms =  await helpers.findAllLawFirms(customerID, representativeIDs, req);*/
         let findAllLawers = [];
         if(customerID > 0) {
+            let whereRepresentative = {};
             const where = {organisation_id: customerID};
             if(representativeIDs.length > 0) {
                 where.representative_id = representativeIDs;
+                whereRepresentative = {
+                    [connection.Op.or]: [
+                        {parent_id: representativeIDs},
+                        {representative_id: representativeIDs}
+                    ]
+                }
             }
 
+            const assignorAndAssigneeIDs = [];
+
+            if(req.connection_db != null) {
+                const RepresentativeClient = req.connection_db.define('Representatives', RepresentativeCustomer.mainStructure, RepresentativeCustomer.options);
+                const findRepresentativeCompanies = await RepresentativeClient.findAll({
+                    attributes:['original_name'],
+                    where:whereRepresentative
+                });
+    
+                if(findRepresentativeCompanies != null && findRepresentativeCompanies.length > 0) {
+                   const allNames = [];
+                    const promises = findRepresentativeCompanies.map( company => {
+                        allNames.push(company.original_name);
+                        return company;
+                    });
+    
+                    await Promise.all(promises);
+    
+                    const findAssignorAndAssignee = await AssignorAndAssignee.findAll({
+                        attributes: ['assignor_and_assignee_id'],
+                        where:{name: allNames}
+                    });
+    
+                    if(findAssignorAndAssignee != null && findAssignorAndAssignee.length > 0) {
+                        const assignorAndAssigneePromises = findAssignorAndAssignee.map( assignor_and_assignee => {
+                            assignorAndAssigneeIDs.push(assignor_and_assignee.assignor_and_assignee_id);
+                            return assignor_and_assignee;
+                        });
+        
+                        await Promise.all(assignorAndAssigneePromises);
+                    }
+                }
+            }
+
+
+            const whereAssignor = {};
+            if(assignorAndAssigneeIDs.length > 0) {
+                whereAssignor.assignor_and_assignee_id = assignorAndAssigneeIDs;
+            }
+
+
             const list = await Assignments.findAll({
-                attributes: ['law_firm_id'],    
-                group: ['law_firm_id'],           
+                attributes: ['law_firm_id', 'caddress_1'],    
+                group: ['law_firm_id', 'caddress_1'],
+                where : {
+                    caddress_1: {
+                        [connection.Op.ne]: ''
+                    }
+                },
                 include: [
                     {
                         model: RepresentativeTransactions,
                         as: "representativetransaction",
                         attributes: [],
-                        where: where,                        
+                        where: where,  
+                        include: [
+                            {
+                                model: Assignees,
+                                as: 'assignee',
+                                attributes: [],
+                                where: whereAssignor
+                            }
+                        ]                    
                     }
                 ]
             });
 
-            const allLawFirms = [];
+            const allLawFirms = [], lawer_names = [];
 
             if(list.length > 0) {
                 const promises = list.map( r => {
                     allLawFirms.push(r.law_firm_id);
+                    lawer_names.push(r.caddress_1);
                     return r;
                 });
 
                 await Promise.all(promises);
 
+
+
                 findAllLawers = await Lawyers.findAll({
                     attributes: ['lawyer_id', 'name',[connection.Sequelize.fn('COUNT', 'lawyer_id'), 'counter'], ['instances', 'total_occurences']],
-                    where: {law_firm_id: allLawFirms},
+                    where: {law_firm_id: allLawFirms, name: lawer_names},
                     group: ['lawyer_id'],
                     include: [
                         {
@@ -818,14 +934,60 @@ route.get("/company/assignments", [authJWT.verifyToken, authJWT.isAdmin], async 
     res.status(200).json(getList);
 });
 
-route.get("/company/assignments/:id", [authJWT.verifyToken, authJWT.isAdmin], async (req, res, next) => {
+route.get("/company/assignments/:id", [authJWT.verifyToken, authJWT.isAdmin, authJWT.addClientID, clientDBConnection.connect], async (req, res, next) => {
 
     const customerID = req.params.id, representativeIDs = JSON.parse(req.query.portfolios != undefined ? req.query.portfolios : "[]");
     let getList = [];
     if(customerID > 0) {
         const where = {organisation_id: customerID};
+        let whereRepresentative = {};
         if(representativeIDs.length > 0) {
             where.representative_id = representativeIDs;
+            whereRepresentative = {
+                [connection.Op.or]: [
+                    {parent_id: representativeIDs},
+                    {representative_id: representativeIDs}
+                ]
+            }
+        }
+
+        const assignorAndAssigneeIDs = [];
+
+        if(req.connection_db != null) {
+            const RepresentativeClient = req.connection_db.define('Representatives', RepresentativeCustomer.mainStructure, RepresentativeCustomer.options);
+            const findRepresentativeCompanies = await RepresentativeClient.findAll({
+                attributes:['original_name'],
+                where:whereRepresentative
+            });
+
+            if(findRepresentativeCompanies != null && findRepresentativeCompanies.length > 0) {
+                const allNames = [];
+                const promises = findRepresentativeCompanies.map( company => {
+                    allNames.push(company.original_name);
+                    return company;
+                });
+
+                await Promise.all(promises);
+
+                const findAssignorAndAssignee = await AssignorAndAssignee.findAll({
+                    attributes: ['assignor_and_assignee_id'],
+                    where:{name: allNames}
+                });
+
+                if(findAssignorAndAssignee != null && findAssignorAndAssignee.length > 0) {
+                    const assignorAndAssigneePromises = findAssignorAndAssignee.map( assignor_and_assignee => {
+                        assignorAndAssigneeIDs.push(assignor_and_assignee.assignor_and_assignee_id);
+                        return assignor_and_assignee;
+                    });
+    
+                    await Promise.all(assignorAndAssigneePromises);
+                }
+            }
+        }
+
+        const whereAssignor = {};
+        if(assignorAndAssigneeIDs.length > 0) {
+            whereAssignor.assignor_and_assignee_id = assignorAndAssigneeIDs;
         }
 
         getList = await Assignments.findAll({
@@ -836,7 +998,15 @@ route.get("/company/assignments/:id", [authJWT.verifyToken, authJWT.isAdmin], as
                     model: RepresentativeTransactions,
                     as: "representativetransaction",
                     attributes: [],
-                    where: where                       
+                    where: where,
+                    include: [
+                        {
+                            model: Assignees,
+                            as: 'assignee',
+                            attributes: [],
+                            where: whereAssignor
+                        }
+                    ]                      
                 }
             ]
         });
@@ -854,22 +1024,45 @@ route.put("/company/assignments", [authJWT.verifyToken, authJWT.isAdmin], async 
     
             if(getData != null && getData.rf_id > 0) {
                 const updateData = {};
-                updateData.caddress_6 = getData.caddress_2;
-                updateData.caddress_2 = '';
-                if(req.body.type == 2) {
-                    updateData.caddress_5 = getData.caddress_1;
-                    updateData.caddress_1 = '';
-                } 
+                if(req.body.type == 1) {
+                    updateData.caddress_1 = getData.caddress_2;
+                    updateData.caddress_2 = '';
+                } else {
+                    updateData.caddress_6 = getData.caddress_2;
+                    updateData.caddress_2 = '';
+                    if(req.body.type == 3) {
+                        updateData.caddress_5 = getData.caddress_1;
+                        updateData.caddress_1 = '';
+                    }
+                }            
+                 
                 const updateRecord = await Assignments.update(updateData, {where:{rf_id: rfID}});
 
                 if(updateRecord) {
+                    if(req.body.type == 1) {
+                        const lawyerData = Lawyers.findOne({
+                            where: {law_firm_id: getData.law_firm_id,  name: getData.caddress_1}
+                        });
+                        if(lawyerData != null && lawyerData.lawyer_id > 0) {
+
+                            const findAnother  = Lawyers.findOne({
+                                where: {law_firm_id: getData.law_firm_id,  name: getData.caddress_2}
+                            });
+                            if(findAnother == null) {
+                                await Lawyers.update({name: getData.caddress_2},{where: {lawyer_id: lawyerData.lawyer_id}});
+                            } else {
+                                await Lawyers.destroy({where: {lawyer_id: lawyerData.lawyer_id}});
+                                await Lawyers.update({instance: findAnother.instance + 1},{where: {lawyer_id: findAnother.lawyer_id}});
+                            }
+                        }
+                    }
                     if(updateData.caddress_1 == '') {
-                        const getData = Lawyers.findOne({
+                        const lawyerData = Lawyers.findOne({
                             where: {law_firm_id: getData.law_firm_id,  name: getData.caddress_1}
                         });
 
-                        if(getData != null && getData.lawyer_id > 0) {
-                            await Lawyers.destroy({where: getData.lawyer_id});
+                        if(lawyerData != null && lawyerData.lawyer_id > 0) {
+                            await Lawyers.destroy({where: {lawyer_id: lawyerData.lawyer_id}});
                         }
                     }
                     res.status(200).send("Records Updated");
