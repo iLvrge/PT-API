@@ -25,6 +25,14 @@ const Assignments = connection.application.define('assignments',{
         type: Sequelize.DATE,
         allowNull: false,
     },
+    caddress_5: {
+        type: Sequelize.STRING,
+        allowNull: true,
+    },
+    caddress_6: {
+        type: Sequelize.STRING,
+        allowNull: true,
+    },
     caddress_3:{
         type: Sequelize.STRING,
         allowNull: true,

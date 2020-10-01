@@ -366,8 +366,16 @@ route.put("/company/transactions/:customerID", [authJWT.verifyToken, authJWT.isA
 
 route.get("/company/law_firms", [authJWT.verifyToken, authJWT.isAdmin, authJWT.addClientID, clientDBConnection.connect], async (req, res, next) => {
     try {        
+        const query = req.query.search;
+        const where = {};
+
+        if(query != undefined && query != null) {
+            where.name = {name: {[connection.Op.like]: '%' + query + '%'}}
+        }
+        
         const findAllLawFirms = await LawFirms.findAll({
             attributes: ['law_firm_id', 'name', ['instances', 'counter']],
+            where: where,
             include: [
                 {
                     model: RepresentativeLawFirms,
@@ -396,6 +404,13 @@ route.get("/company/law_firms/:id", [authJWT.verifyToken, authJWT.isAdmin, authJ
                 where.representative_id = representativeIDs;
             }
 
+            const query = req.query.search;
+            const whereLawFirms = {};
+
+            if(query != undefined && query != null) {
+                whereLawFirms.name = {name: {[connection.Op.like]: '%' + query + '%'}}
+            }
+
             const list = await Assignments.findAll({
                 attributes: ['law_firm_id'], 
                 group: ['law_firm_id'],                  
@@ -410,6 +425,7 @@ route.get("/company/law_firms/:id", [authJWT.verifyToken, authJWT.isAdmin, authJ
                         model: LawFirms,
                         as: "lawfirm",
                         attributes: ['law_firm_id', 'name', ['instances', 'counter']],
+                        where: whereLawFirms,     
                         include: [
                             {
                                 model: RepresentativeLawFirms,
