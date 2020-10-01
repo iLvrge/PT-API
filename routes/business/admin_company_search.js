@@ -992,7 +992,7 @@ route.get("/company/assignments/:id", [authJWT.verifyToken, authJWT.isAdmin, aut
 
         getList = await Assignments.findAll({
             attributes: [['rf_id', 'id'], 'rf_id', 'cname', 'caddress_1', 'caddress_2', 'reel_no', 'frame_no'],    
-            group: ['rf_id'],           
+            group: ['caddress_1','caddress_2'],           
             include: [
                 {
                     model: RepresentativeTransactions,
@@ -1023,48 +1023,65 @@ route.put("/company/assignments", [authJWT.verifyToken, authJWT.isAdmin], async 
             });
     
             if(getData != null && getData.rf_id > 0) {
-                const updateData = {};
-                if(req.body.type == 1) {
-                    updateData.caddress_1 = getData.caddress_2;
-                    updateData.caddress_2 = '';
-                } else {
-                    updateData.caddress_6 = getData.caddress_2;
-                    updateData.caddress_2 = '';
-                    if(req.body.type == 3) {
-                        updateData.caddress_5 = getData.caddress_1;
-                        updateData.caddress_1 = '';
-                    }
-                }            
-                 
-                const updateRecord = await Assignments.update(updateData, {where:{rf_id: rfID}});
+                
+                /**
+                 * Other Records
+                 */
+                const findOtherRecords = await Assignments.findAll({
+                    attributes: ['rf_id','law_firm_id', 'caddress_1', 'caddress_2'],
+                    where: {caddress_1: getData.caddress_1, caddress_2: getData.caddress_2}
+                })
 
-                if(updateRecord) {
-                    if(req.body.type == 1) {
-                        const lawyerData = Lawyers.findOne({
-                            where: {law_firm_id: getData.law_firm_id,  name: getData.caddress_1}
-                        });
-                        if(lawyerData != null && lawyerData.lawyer_id > 0) {
 
-                            const findAnother  = Lawyers.findOne({
-                                where: {law_firm_id: getData.law_firm_id,  name: getData.caddress_2}
-                            });
-                            if(findAnother == null) {
-                                await Lawyers.update({name: getData.caddress_2},{where: {lawyer_id: lawyerData.lawyer_id}});
-                            } else {
-                                await Lawyers.destroy({where: {lawyer_id: lawyerData.lawyer_id}});
-                                await Lawyers.update({instance: findAnother.instance + 1},{where: {lawyer_id: findAnother.lawyer_id}});
+                if(findOtherRecords.length > 0) {
+                    const promise = findOtherRecords.map( assignment => {
+                        const updateData = {};
+                        if(req.body.type == 1) {
+                            updateData.caddress_1 = assignment.caddress_2;
+                            updateData.caddress_2 = '';
+                        } else {
+                            updateData.caddress_6 = assignment.caddress_2;
+                            updateData.caddress_2 = '';
+                            if(req.body.type == 3) {
+                                updateData.caddress_5 = assignment.caddress_1;
+                                updateData.caddress_1 = '';
                             }
                         }
-                    }
-                    if(updateData.caddress_1 == '') {
-                        const lawyerData = Lawyers.findOne({
-                            where: {law_firm_id: getData.law_firm_id,  name: getData.caddress_1}
-                        });
 
-                        if(lawyerData != null && lawyerData.lawyer_id > 0) {
-                            await Lawyers.destroy({where: {lawyer_id: lawyerData.lawyer_id}});
+                        const updateRecord = await Assignments.update(updateData, {where:{rf_id: assignment.rf_id}});
+                        if(updateRecord) {
+                            if(req.body.type == 1) {
+                                const lawyerData = Lawyers.findOne({
+                                    where: {law_firm_id: findOtherRecords.law_firm_id,  name: findOtherRecords.caddress_1}
+                                });
+                                if(lawyerData != null && lawyerData.lawyer_id > 0) {
+        
+                                    const findAnother  = Lawyers.findOne({
+                                        where: {law_firm_id: findOtherRecords.law_firm_id,  name: findOtherRecords.caddress_2}
+                                    });
+                                    if(findAnother == null) {
+                                        await Lawyers.update({name: findOtherRecords.caddress_2},{where: {lawyer_id: lawyerData.lawyer_id}});
+                                    } else {
+                                        await Lawyers.destroy({where: {lawyer_id: lawyerData.lawyer_id}});
+                                        await Lawyers.update({instance: findAnother.instance + 1},{where: {lawyer_id: findAnother.lawyer_id}});
+                                    }
+                                }
+                            }
+                            if(updateData.caddress_1 == '') {
+                                const lawyerData = Lawyers.findOne({
+                                    where: {law_firm_id: findOtherRecords.law_firm_id,  name: findOtherRecords.caddress_1}
+                                });
+        
+                                if(lawyerData != null && lawyerData.lawyer_id > 0) {
+                                    await Lawyers.destroy({where: {lawyer_id: lawyerData.lawyer_id}});
+                                }
+                            }
                         }
-                    }
+                        return assignment;
+                    })
+
+                    await Promise.all(promise);
+
                     res.status(200).send("Records Updated");
                 } else {
                     res.status(401).send("Unable to update records");
