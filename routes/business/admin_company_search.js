@@ -370,7 +370,7 @@ route.get("/company/law_firms", [authJWT.verifyToken, authJWT.isAdmin, authJWT.a
         const where = {};
 
         if(query != undefined && query != null) {
-            where.name = {name: {[connection.Op.like]: '%' + query + '%'}}
+            where.name = {[connection.Op.like]: '%' + query + '%'};
         }
         
         const findAllLawFirms = await LawFirms.findAll({
