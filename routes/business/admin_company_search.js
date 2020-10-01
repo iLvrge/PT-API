@@ -837,16 +837,12 @@ route.put("/company/assignments", [authJWT.verifyToken, authJWT.isAdmin], async 
     
             if(getData != null && getData.rf_id > 0) {
                 const updateData = {};
+                updateData.caddress_6 = getData.caddress_2;
+                updateData.caddress_2 = '';
                 if(req.body.type == 2) {
                     updateData.caddress_5 = getData.caddress_1;
                     updateData.caddress_1 = '';
-
-                    updateData.caddress_6 = getData.caddress_2;
-                    updateData.caddress_2 = '';
-                } else {
-                    updateData.caddress_6 = getData.caddress_2;
-                    updateData.caddress_2 = '';
-                }
+                } 
                 const updateRecord = await Assignments.update(updateData, {where:{rf_id: rfID}});
 
                 if(updateRecord) {
