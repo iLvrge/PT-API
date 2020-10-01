@@ -796,7 +796,7 @@ route.put("/company/lawyers", [authJWT.verifyToken, authJWT.isAdmin, authJWT.add
 
 route.get("/company/assignments", [authJWT.verifyToken, authJWT.isAdmin], async (req, res, next) => {
     const getList = await Assignments.findAll({
-        attributes: ['rf_id', 'cname', 'caddress_1', 'caddress_2', 'reel_no', 'frame_no']
+        attributes: [['rf_id', 'id'], 'rf_id', 'cname', 'caddress_1', 'caddress_2', 'reel_no', 'frame_no']
     });
     res.status(200).json(getList);
 });
@@ -812,7 +812,7 @@ route.get("/company/assignments/:id", [authJWT.verifyToken, authJWT.isAdmin], as
         }
 
         getList = await Assignments.findAll({
-            attributes: ['rf_id', 'cname', 'caddress_1', 'caddress_2', 'reel_no', 'frame_no'],    
+            attributes: [['rf_id', 'id'], 'rf_id', 'cname', 'caddress_1', 'caddress_2', 'reel_no', 'frame_no'],    
             group: ['rf_id'],           
             include: [
                 {
