@@ -35,8 +35,7 @@ route.post("/signin", (req, res, next) => {
         }
         
         let token = jwt.sign({ id: user.user_id, orgId:user.organisation_id, iat: Date.now() }, config.config.secret, {
-            expiresIn: 86400, // expires in 24 hours,
-            algorithm: 'RS256'
+            expiresIn: 86400 // expires in 24 hours,
         });
 
         res.status(200).send({ auth: true, accessToken: token ,message: "Login successfully!"});
