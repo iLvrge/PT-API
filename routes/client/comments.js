@@ -103,6 +103,11 @@ route.get("/comments/:subjectType/:subject", [authJWT.verifyToken, clientDBConne
 
             if(subjectType[0] == 'error' || subjectType[0] == 'fix'){
                 subjectType.push('asset');
+                if(!subjectType.includes('error')){
+                    subjectType.push('error');
+                } else if(!subjectType.includes('fix')){
+                    subjectType.push('fix');
+                }
             } else if(subjectType[0] == 'asset'){
                 subjectType.push('error');
                 subjectType.push('fix');
