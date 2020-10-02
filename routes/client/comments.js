@@ -21,15 +21,17 @@ const helpers = require("../../helpers/helper");
 route.get("/comments/:subjectType", [authJWT.verifyToken, clientDBConnection.connect], async(req, res, next) => {
     try{
         if(typeof req.connection_db != "undefined" && req.connection_db != null ) {
-            const subjectType = req.params.subjectType;
+            let subjectType = req.params.subjectType;
             const Activity = req.connection_db.define('Activities', Activities.mainStructure, Activities.options);
             const Type = req.connection_db.define('Types', Types.mainStructure, Types.options);
-
+            const Document = req.connection_db.define('Documents', Documents.mainStructure, Documents.options);
             const Comment = req.connection_db.define('Comments', Comments.mainStructure, Comments.options);
 
             Activity.belongsTo(Type, { foreignKey: 'type', as: 'types' });
 
             Activity.hasMany(Comment, { foreignKey: 'activity_id', as: 'comments' });
+
+            Activity.belongsTo(Document, { foreignKey: 'document_id', as: 'documents' });
 
             Comment.belongsTo(Activity, { foreignKey: 'activity_id', as: 'activities' });
 
@@ -40,13 +42,25 @@ route.get("/comments/:subjectType", [authJWT.verifyToken, clientDBConnection.con
                 as: 'comments',
             });
 
-            if(subjectType == 'record') {
-                const findTypeID = await Type.findOne({
+            if(subjectType[0] == 'error' || subjectType[0] == 'fix'){
+                subjectType.push('asset');
+            } else if(subjectType[0] == 'asset'){
+                subjectType.push('error');
+                subjectType.push('fix');
+            }
+
+            if(subjectType[0] == 'record') {                
+                const findTypes = await Type.findAll({
                     where: {name: subjectType}
                 });
     
-                if(findTypeID != null) {
-                    const type = findTypeID.type_id;
+                if(findTypeID != null && findTypes.length > 0) {
+                    const type = [];
+                    const promises = findTypes.map( t => {
+                        type.push(t.type_id);
+                        return t;
+                    })
+                    await Promise.all(promises);
                     include.push({
                         model: Document,
                         as: 'documents',
@@ -69,21 +83,30 @@ route.get("/comments/:subjectType", [authJWT.verifyToken, clientDBConnection.con
     }
 });
 
+
 route.get("/comments/:subjectType/:subject", [authJWT.verifyToken, clientDBConnection.connect], async(req, res, next) => {
     try{
         if(typeof req.connection_db != "undefined" && req.connection_db != null ) {
-            const subjectType = req.params.subjectType, subject = req.params.subject;
+            const subjectType = [req.params.subjectType], subject = req.params.subject;
             const Activity = req.connection_db.define('Activities', Activities.mainStructure, Activities.options);
             const Type = req.connection_db.define('Types', Types.mainStructure, Types.options);
-
+            const Document = req.connection_db.define('Documents', Documents.mainStructure, Documents.options);
             const Comment = req.connection_db.define('Comments', Comments.mainStructure, Comments.options);
 
             Activity.belongsTo(Type, { foreignKey: 'type', as: 'types' });
 
             Activity.hasMany(Comment, { foreignKey: 'activity_id', as: 'comments' });
 
+            Activity.belongsTo(Document, { foreignKey: 'document_id', as: 'documents' });
+
             Comment.belongsTo(Activity, { foreignKey: 'activity_id', as: 'activities' });
 
+            if(subjectType[0] == 'error' || subjectType[0] == 'fix'){
+                subjectType.push('asset');
+            } else if(subjectType[0] == 'asset'){
+                subjectType.push('error');
+                subjectType.push('fix');
+            }
             const include = [];
 
             include.push({
@@ -100,23 +123,24 @@ route.get("/comments/:subjectType/:subject", [authJWT.verifyToken, clientDBConne
 
             let where = {subject: subject};
 
-            if(subjectType == 'record') {
+            if(subjectType[0] == 'record') {
                 include.push({
                     model: Document,
                     as: 'documents',
                     required:false,
                     attributes:['file','title']                    
                 });
-                where = {id: subject};
+                where = {activity_id: subject};
             }
-
+            
             const findActivity = await Activity.findOne({
-                where: {subject: subject},
+                where: where,
                 include:include
             });
             res.status(200).json(findActivity);
         }
     } catch ( err ) {
+        console.log(err);
         res.status(402).send("Invalid option");
     }
 });

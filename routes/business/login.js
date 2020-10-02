@@ -34,8 +34,9 @@ route.post("/signin", (req, res, next) => {
             return res.status(401).send("Incorrect credentials.");
         }
         
-        let token = jwt.sign({ id: user.user_id,orgId:user.organisation_id }, config.config.secret, {
-            expiresIn: 86400 // expires in 24 hours
+        let token = jwt.sign({ id: user.user_id, orgId:user.organisation_id, iat: Date.now() }, config.config.secret, {
+            expiresIn: 86400, // expires in 24 hours,
+            algorithm: 'RS256'
         });
 
         res.status(200).send({ auth: true, accessToken: token ,message: "Login successfully!"});
