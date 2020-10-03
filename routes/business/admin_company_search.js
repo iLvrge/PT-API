@@ -987,7 +987,12 @@ route.get("/company/raw/assignments/:id", [authJWT.verifyToken, authJWT.isAdmin,
 
         getList = await Assignments.findAll({
             attributes: [['rf_id', 'id'], 'rf_id', 'cname', 'caddress_1', 'caddress_2', 'reel_no', 'frame_no'],  
-            where: {caddress_1: {[connection.Op.ne]: ''},caddress_2: {[connection.Op.ne]: ''}},          
+            where: {
+                [connection.Op.or]: [
+                    {caddress_1: {[connection.Op.ne]: ''}},
+                    {caddress_2: {[connection.Op.ne]: ''}}
+                ]
+            },        
             include: [
                 {
                     model: RepresentativeTransactions,
