@@ -86,6 +86,11 @@ route.post("/", [authJWT.verifyToken, clientDBConnection.connect], async(req, re
                     roleID = 1;
                 }
 
+                if(req.body.role != undefined && req.body.role > 0) {
+                    type = req.body.role == 1 ? '0' : '1';
+                    roleID = req.body.role;
+                }
+
                 if(req.body.first_name == '' || req.body.first_name == undefined || req.body.first_name == null) {
                     res.status(402).send("Firstname cannot be empty."); 
                 } else if(req.body.last_name == '' || req.body.last_name == undefined || req.body.last_name == null) {

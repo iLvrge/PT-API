@@ -32,8 +32,12 @@ route.post("/signin", (req, res, next) => {
             return res.status(401).send("Invalid Username and/or Password!");
         }
         
-        let token = jwt.sign({ id: user.user_id,orgId:user.organisation_id }, config.config.secret, {
-            expiresIn: 86400 // expires in 24 hours
+        const currentDate = Date.now();
+
+        const expiredDate = moment(new Date(currentDate)).add(1,'days').valueOf();
+        
+        let token = jwt.sign({ id: user.user_id, orgId:user.organisation_id, iat: currentDate, exp: expiredDate }, config.config.secret, {
+            expiresIn: 86400 // expires in 24 hours,
         });
 
         res.status(200).send({ auth: true, accessToken: token ,message: "Login successfully!"});

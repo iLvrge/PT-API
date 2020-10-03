@@ -8,7 +8,7 @@ const Professionals = require("../../model/client/Professionals");
 const Documents = require("../../model/client/Documents");
 const Types = require("../../model/client/Types");
 const Comments = require("../../model/client/Comments");
-
+const Users = require("../../model/client/Users");
 const ShareLink = require("../../model/business/ShareLinks");
 
 const authJWT = require("../../helpers/verifyJwtToken");
@@ -26,6 +26,7 @@ route.get("/comments/:subjectType", [authJWT.verifyToken, clientDBConnection.con
             const Type = req.connection_db.define('Types', Types.mainStructure, Types.options);
             const Document = req.connection_db.define('Documents', Documents.mainStructure, Documents.options);
             const Comment = req.connection_db.define('Comments', Comments.mainStructure, Comments.options);
+            const User = req.connection_db.define('Users', Users.mainStructure, Users.options);
 
             Activity.belongsTo(Type, { foreignKey: 'type', as: 'types' });
 
@@ -35,11 +36,17 @@ route.get("/comments/:subjectType", [authJWT.verifyToken, clientDBConnection.con
 
             Comment.belongsTo(Activity, { foreignKey: 'activity_id', as: 'activities' });
 
+            Comment.belongsTo(User, { foreignKey: 'user_id', as: 'user', otherKey: 'user_id' });
+
             const include = [];
 
             include.push({
                 model: Comment,
                 as: 'comments',
+                include:[{
+                    model: User,
+                    as: 'user',           
+                }]
             });
 
             if(subjectType[0] == 'error' || subjectType[0] == 'fix'){
@@ -92,6 +99,7 @@ route.get("/comments/:subjectType/:subject", [authJWT.verifyToken, clientDBConne
             const Type = req.connection_db.define('Types', Types.mainStructure, Types.options);
             const Document = req.connection_db.define('Documents', Documents.mainStructure, Documents.options);
             const Comment = req.connection_db.define('Comments', Comments.mainStructure, Comments.options);
+            const User = req.connection_db.define('Users', Users.mainStructure, Users.options);
 
             Activity.belongsTo(Type, { foreignKey: 'type', as: 'types' });
 
@@ -100,6 +108,8 @@ route.get("/comments/:subjectType/:subject", [authJWT.verifyToken, clientDBConne
             Activity.belongsTo(Document, { foreignKey: 'document_id', as: 'documents' });
 
             Comment.belongsTo(Activity, { foreignKey: 'activity_id', as: 'activities' });
+
+            Comment.belongsTo(User, { foreignKey: 'user_id', as: 'user', otherKey: 'user_id' });
 
             if(subjectType[0] == 'error' || subjectType[0] == 'fix'){
                 subjectType.push('asset');
@@ -124,6 +134,10 @@ route.get("/comments/:subjectType/:subject", [authJWT.verifyToken, clientDBConne
             include.push({
                 model: Comment,
                 as: 'comments',
+                include:[{
+                    model: User,
+                    as: 'user',           
+                }]
             });
 
             let where = {subject: subject};
