@@ -2,6 +2,8 @@ const express = require("express");
 
 const route = express.Router();
 
+const exec = require("child_process").exec;
+
 const connection = require("../../config/db.config");
 
 const clientDBConnection = require("../../helpers/clientDBConnection");
@@ -924,6 +926,97 @@ route.put("/company/lawyers", [authJWT.verifyToken, authJWT.isAdmin, authJWT.add
         console.log(e);
         res.status(402).send("Unable to update data.");
     }
+});
+
+
+route.get("/company/raw/assignments/:id", [authJWT.verifyToken, authJWT.isAdmin, authJWT.addClientID, clientDBConnection.connect], async (req, res, next) => {
+
+    const customerID = req.params.id, representativeIDs = JSON.parse(req.query.portfolios != undefined ? req.query.portfolios : "[]");
+    let getList = [];
+    if(customerID > 0) {
+        const where = {organisation_id: customerID};
+        let whereRepresentative = {};
+        if(representativeIDs.length > 0) {
+            where.representative_id = representativeIDs;
+            whereRepresentative = {
+                [connection.Op.or]: [
+                    {parent_id: representativeIDs},
+                    {representative_id: representativeIDs}
+                ]
+            }
+        }
+
+        const assignorAndAssigneeIDs = [];
+
+        if(req.connection_db != null) {
+            const RepresentativeClient = req.connection_db.define('Representatives', RepresentativeCustomer.mainStructure, RepresentativeCustomer.options);
+            const findRepresentativeCompanies = await RepresentativeClient.findAll({
+                attributes:['original_name'],
+                where:whereRepresentative
+            });
+
+            if(findRepresentativeCompanies != null && findRepresentativeCompanies.length > 0) {
+                const allNames = [];
+                const promises = findRepresentativeCompanies.map( company => {
+                    allNames.push(company.original_name);
+                    return company;
+                });
+
+                await Promise.all(promises);
+
+                const findAssignorAndAssignee = await AssignorAndAssignee.findAll({
+                    attributes: ['assignor_and_assignee_id'],
+                    where:{name: allNames}
+                });
+
+                if(findAssignorAndAssignee != null && findAssignorAndAssignee.length > 0) {
+                    const assignorAndAssigneePromises = findAssignorAndAssignee.map( assignor_and_assignee => {
+                        assignorAndAssigneeIDs.push(assignor_and_assignee.assignor_and_assignee_id);
+                        return assignor_and_assignee;
+                    });
+    
+                    await Promise.all(assignorAndAssigneePromises);
+                }
+            }
+        }
+
+        const whereAssignor = {};
+        if(assignorAndAssigneeIDs.length > 0) {
+            whereAssignor.assignor_and_assignee_id = assignorAndAssigneeIDs;
+        }
+
+        getList = await Assignments.findAll({
+            attributes: [['rf_id', 'id'], 'rf_id', 'cname', 'caddress_1', 'caddress_2', 'reel_no', 'frame_no'],  
+            where: {caddress_1: {[connection.Op.ne]: ''},caddress_2: {[connection.Op.ne]: ''}},          
+            include: [
+                {
+                    model: RepresentativeTransactions,
+                    as: "representativetransaction",
+                    attributes: [],
+                    where: where,
+                    include: [
+                        {
+                            model: Assignees,
+                            as: 'assignee',
+                            attributes: [],
+                            where: whereAssignor
+                        }
+                    ]                      
+                }
+            ]
+        });
+    }   
+    res.status(200).json(getList);
+});
+
+route.get("/company/raw/assignments/:id", [authJWT.verifyToken, authJWT.isAdmin, authJWT.addClientID, clientDBConnection.connect], async (req, res, next) => {
+    const customerID = req.params.id, representativeIDs = JSON.parse(req.query.portfolios != undefined ? req.query.portfolios : "[]");
+    exec(`php -f /var/www/html/trash/address_swapping.php "${customerID}" "${representativeIDs}"`, function (error, stdout, stderr) {
+        console.log(error);
+        console.log(stdout);
+        console.log(stderr);
+    });
+    res.status(200).send("In process");
 });
 
 
