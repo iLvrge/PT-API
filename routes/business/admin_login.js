@@ -36,7 +36,7 @@ route.post("/signin", (req, res, next) => {
 
         const expiredDate = moment(new Date(currentDate)).add(1,'days').valueOf();
         
-        let token = jwt.sign({ id: user.user_id, orgId:user.organisation_id, iat: currentDate, exp: expiredDate }, config.config.secret, {
+        let token = jwt.sign({ id: user.user_id, orgId:user.organisation_id, iat: currentDate, expired: expiredDate }, config.config.secret, {
             expiresIn: 86400 // expires in 24 hours,
         });
 
