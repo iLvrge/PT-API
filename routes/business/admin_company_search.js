@@ -1027,7 +1027,7 @@ route.put("/company/raw/assignments/:id", [authJWT.verifyToken, authJWT.isAdmin,
 
 route.get("/company/assignments", [authJWT.verifyToken, authJWT.isAdmin], async (req, res, next) => {
     const getList = await Assignments.findAll({
-        attributes: [['rf_id', 'id'], 'rf_id', 'cname', 'caddress_1', 'caddress_2', 'reel_no', 'frame_no'],
+        attributes: [['rf_id', 'id'], 'rf_id', 'cname', 'caddress_1', 'caddress_2','caddress_7','caddress_5','caddress_6','caddress_3','caddress_4', 'reel_no', 'frame_no'],  
         where: {
             [connection.Op.or]: [
                 {caddress_1: {[connection.Op.ne]: ''}},
@@ -1096,7 +1096,7 @@ route.get("/company/assignments/:id", [authJWT.verifyToken, authJWT.isAdmin, aut
         }
 
         getList = await Assignments.findAll({
-            attributes: [['rf_id', 'id'], 'rf_id', 'cname', 'caddress_1', 'caddress_2', 'reel_no', 'frame_no'],  
+            attributes: [['rf_id', 'id'], 'rf_id', 'cname', 'caddress_1', 'caddress_2','caddress_7','caddress_5','caddress_6','caddress_3','caddress_4', 'reel_no', 'frame_no'],  
             where: {
                 [connection.Op.or]: [
                     {caddress_1: {[connection.Op.ne]: ''}},
