@@ -85,7 +85,7 @@ route.post("/", [authJWT.verifyToken, clientDBConnection.connect], async(req, re
                 const professional = await Professional.create(professionalData);
                 console.log(professional);
                 if(professional != null && professional.professional_id > 0) { 
-                    console.log("professional created successfully");
+                    console.log("Lawyer created successfully");
                     res.status(200).json(professional);
                 } else {
                     console.log("Error comes while create professional user");
