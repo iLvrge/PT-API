@@ -14,7 +14,9 @@ const SuperKeywords = require("../../model/resources/SuperKeywords");
  * Get list of keywords
  */
 route.get("/keywords", [authJWT.verifyToken, authJWT.isAdmin], async(req, res, next) => {
-    const getKeywordList = await Keywords.findAll();
+    const getKeywordList = await Keywords.findAll({
+        attributes:[['keyword_id', 'id'], ['keyword_name', 'keyword']]
+    });
     res.status(200).json(getKeywordList);
 });
 
@@ -113,7 +115,9 @@ route.delete("/keywords/:keywordID", [authJWT.verifyToken, authJWT.isAdmin], asy
  * Get list of superKeyword
  */
 route.get("/super_keywords", [authJWT.verifyToken, authJWT.isAdmin], async(req, res, next) => {
-    const getKeywordList = await SuperKeywords.findAll();
+    const getKeywordList = await SuperKeywords.findAll({
+        attributes:[['super_keyword_id', 'id'], ['super_keyword_name', 'keyword']]
+    });
     res.status(200).json(getKeywordList);
 });
 
