@@ -63,6 +63,7 @@ const adminLogin = require("./routes/business/admin_login");
 const adminCustomers = require("./routes/business/admin_customers");
 const companySearch = require("./routes/business/admin_company_search");
 const companyTree = require("./routes/business/admin_tree");
+const keywords = require("./routes/business/admin_keywords");
 
 
 
@@ -115,6 +116,8 @@ app.use("/admin/", adminCustomers);
 app.use("/admin/", companySearch);
 
 app.use("/admin/", companyTree);
+
+app.use("/admin/", keywords);
 
 
 
