@@ -25,7 +25,7 @@ route.get("/keywords", [authJWT.verifyToken, authJWT.isAdmin], async(req, res, n
  */
 route.post("/keywords", [authJWT.verifyToken, authJWT.isAdmin], async(req, res, next) => {
     try{
-        const name = req.body.keyword_name;
+        const name = req.body.keyword;
 
         if(name != undefined && name != '') {
             const addRecord = await Keywords.create({keyword_name: name});
@@ -55,7 +55,7 @@ route.put("/keywords/:keywordID", [authJWT.verifyToken, authJWT.isAdmin], async(
             const findRecord = await Keywords.findByPk(keywordID);
 
             if(findRecord != null && findRecord.keyword_id > 0) {
-                const name = req.body.keyword_name;
+                const name = req.body.keyword;
 
                 if(name != undefined && name != '') {
                     const update = await findRecord.update({keyword_name: name});
@@ -127,7 +127,7 @@ route.get("/super_keywords", [authJWT.verifyToken, authJWT.isAdmin], async(req, 
  */
 route.post("/super_keywords", [authJWT.verifyToken, authJWT.isAdmin], async(req, res, next) => {
     try{
-        const name = req.body.keyword_name;
+        const name = req.body.keyword;
 
         if(name != undefined && name != '') {
             const addRecord = await SuperKeywords.create({keyword_name: name});
@@ -158,7 +158,7 @@ route.put("/super_keywords/:keywordID", [authJWT.verifyToken, authJWT.isAdmin], 
             const findRecord = await SuperKeywords.findByPk(keywordID);
 
             if(findRecord != null && findRecord.keyword_id > 0) {
-                const name = req.body.keyword_name;
+                const name = req.body.keyword;
 
                 if(name != undefined && name != '') {
                     const update = await findRecord.update({keyword_name: name});
