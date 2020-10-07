@@ -104,7 +104,7 @@ route.get("/collections/:rf_id/illustration", [authJWT.verifyToken], async (req,
                     recorded_date: recordedDate.format('YYYY-MM-DD'),
                     document: "",
                     document_file: "",
-                    flag: "0"
+                    flag: 1
                 }          
                 if(itemDetails.assignment.employer_assign === 1){
                     boxType = 0;
@@ -191,7 +191,8 @@ route.get("/collections/:rf_id/illustration", [authJWT.verifyToken], async (req,
                         document: mainDocument,
                         document_file: mainDocument,
                         document_form: document_form,
-                        document_agreement: document_agreement
+                        document_agreement: document_agreement,
+                        flag: 1
                     }
 
                     inventorDetails = box.filter( x => x.type === checkType ? x : '');
