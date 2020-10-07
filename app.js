@@ -46,6 +46,10 @@ const professionals = require("./routes/client/professionals");
 const users = require("./routes/client/users");
 const documents = require("./routes/client/documents");
 const company = require("./routes/client/company");
+const address = require("./routes/client/address");
+const telephone = require("./routes/client/telephone");
+const lawyer = require("./routes/client/lawyer");
+
 const charts = require("./routes/client/charts");
 const collections = require("./routes/client/collections");
 /**
@@ -107,6 +111,12 @@ app.use("/professionals", professionals);
 app.use("/documents", documents);
 
 app.use("/companies", company);
+
+app.use("/", address);
+
+app.use("/", telephone);
+
+app.use("/", lawyer);
 
 //routes for admin
 app.use("/admin/", adminLogin);
