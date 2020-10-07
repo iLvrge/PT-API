@@ -104,6 +104,7 @@ route.get("/collections/:rf_id/illustration", [authJWT.verifyToken], async (req,
                     recorded_date: recordedDate.format('YYYY-MM-DD'),
                     document: "",
                     document_file: "",
+                    flag: "0"
                 }          
                 if(itemDetails.assignment.employer_assign === 1){
                     boxType = 0;
@@ -314,7 +315,7 @@ route.get("/collections/:rf_id/illustration", [authJWT.verifyToken], async (req,
             }];
             
         }
-        let illustrationData = await {box: boxes, connection: connections, line: connections, all_boxes: box, legend: line, box_menu: { border_color:["#e8665d","#e8a41c","#c1ed0e","#ed0e2f"], background_color:["#fae3e3","#f5f5d7","#d7f0f5","#f5d7dc"]}, general:{"background": "#000000" ,patent_number:`${rfID} ${title}`, original_number: rfID, logo_1:"",logo_2:"",copyright:""},popup: popup,comment:"", fakeDate: fakeDate, flag: "1"};
+        let illustrationData = await {box: boxes, connection: connections, line: connections, all_boxes: box, legend: line, box_menu: { border_color:["#e8665d","#e8a41c","#c1ed0e","#ed0e2f"], background_color:["#fae3e3","#f5f5d7","#d7f0f5","#f5d7dc"]}, general:{"background": "#000000" ,patent_number:`${rfID} ${title}`, original_number: rfID, logo_1:"",logo_2:"",copyright:""},popup: popup,comment:"", fakeDate: fakeDate};
         res.status(200).json( illustrationData );		
     } else {
         res.status(400).send("Invalid number");
