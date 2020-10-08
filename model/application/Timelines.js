@@ -39,7 +39,7 @@ const Timelines = connection.application.define('timeline',{
         allowNull: false
     }, 
     exec_dt:{
-        type: Sequelize.DATE,
+        type: Sequelize.DATEONLY,
         allowNull: true,
     },
     convey_ty:{
