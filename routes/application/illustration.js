@@ -19,6 +19,7 @@ route.get("/collections/:rf_id/illustration", [authJWT.verifyToken], async (req,
             {id:1,segment:0,border_color:'#363636',border_px:'1',background_color:'#222222',dimension:'100x30',type:'Inventor',shape:'rectangle'},
             {id:2,segment:1,border_color:'#363636',border_px:'1',background_color:'#222222',dimension:'100x30',type:'Ownership',shape:'rectangle'},
             {id:3,segment:2,border_color:'#363636',border_px:'1',background_color:'#222222',dimension:'100x30',type:'Security',shape:'rectangle'},
+            {id:3,segment:2,border_color:'#363636',border_px:'1',background_color:'#222222',dimension:'100x30',type:'Release',shape:'rectangle'},
             {id:4,segment:3,border_color:'#363636',border_px:'1',background_color:'#222222',dimension:'100x30',type:'Licenses',shape:'rectangle'},
             {id:5,segment:3,border_color:'#363636',border_px:'1',background_color:'#222222',dimension:'100x30',type:'3rdParties',shape:'rectangle'}
         ];
@@ -196,7 +197,7 @@ route.get("/collections/:rf_id/illustration", [authJWT.verifyToken], async (req,
                     }
                     console.log(checkType);
                     inventorDetails = box.filter( x => x.type === checkType ? x : '');
-                    if(inventorDetails !== '' && inventorDetails.length > 0){
+                    if(inventorDetails !== ''){
                         boxObj.type = type;
                         boxObj.boxType = inventorDetails[0].id;
                         boxObj.shape = inventorDetails[0].shape;
