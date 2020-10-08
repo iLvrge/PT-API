@@ -235,7 +235,7 @@ route.put("/:user_id", [authJWT.verifyToken, clientDBConnection.connect], async(
                         if(req.body.password != undefined){
                             const newPassword = bcrypt.hashSync(req.body.password, 8);
                             if(newPassword.length > 0) {
-                                const loginPasswordUpdate = await LoginUsers.update({password:newPassword},{where:{user_id: findUser.user_id}});
+                                await LoginUsers.update({password:newPassword},{where:{user_id: findUser.user_id}});
                             }
                         } 
                         if(req.body.status != undefined && (req.body.status == 0 || req.body.status == 1)){
@@ -262,11 +262,16 @@ route.put("/:user_id", [authJWT.verifyToken, clientDBConnection.connect], async(
                                 user.role_id = 2;
                             }
                         }
+
+                        if(req.body.role != undefined && req.body.role > 0) {
+                            updateUserType = {type : req.body.role == 1 ? '0' : '1'};
+                            user.role_id = req.body.role;
+                        }
                         
                         const u = await User.update(user,{where: {user_id: findUser.user_id}});
                         if(u) {
                             if(updateUserType != null) {
-                                const loginStatusUpdate = await LoginUsers.update(updateUserType,{where:{user_id: findUser.user_id}});
+                                await LoginUsers.update(updateUserType,{where:{user_id: findUser.user_id}});
                                 res.status(200).send("Updated successfully");
                             } else {
                                 res.status(200).send("Updated successfully");

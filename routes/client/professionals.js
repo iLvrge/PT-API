@@ -122,8 +122,31 @@ route.put("/:professional_id", [authJWT.verifyToken, clientDBConnection.connect]
                         data.telephone = req.body.telephone;
                         data.telephone1 = req.body.telephone1;
                     
-                        console.log(data);
-                    (async () => {									
+                        //console.log(data);
+                        
+                    (async () => {	
+                        const Firm = req.connection_db.define('Firms', Firms.mainStructure, Firms.options);
+
+                        const firmName = req.body.firm_name;
+            
+                        let firmID = 0;
+            
+                        let findFirm = await Firm.findOne({
+                            where: {firm_name: firmName}
+                        });
+                        if(findFirm != null && findFirm.firm_id > 0) {
+                            firmID = findFirm.firm_id;
+                        } else {
+                            findFirm = await Firm.create({firm_name: firmName});
+                            if(findFirm != null && findFirm.firm_id > 0) {
+                                firmID = findFirm.firm_id;
+                            }
+                        }
+
+                        if(firmID != data.firm_id) {
+                            data.firm_id = firmID;
+                        }
+                        								
                         const u = await Professional.update(data,{where: {professional_id: data.professional_id}});
                         if(u) {
                             res.status(200).send("Updated successfully");
