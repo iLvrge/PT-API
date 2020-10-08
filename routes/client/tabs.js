@@ -42,14 +42,14 @@ route.get("/:tabID", [authJWT.verifyToken, clientDBConnection.connect], async(re
                             /**
                              * Get Count of all the Application number from all the rf_id from the parties collection table
                              */
-                            const queryFindTotalAssets = "SELECT COUNT('appno_doc_num') as totalAssets FROM documentid WHERE rf_id IN (SELECT rf_id FROM tree_parties_collection WHERE representative_id = :representative_id AND tab_id = :tab_id GROUP BY rf_id)";
+                            const queryFindTotalAssets = "SELECT COUNT('appno_doc_num') as totalAssets FROM documentid WHERE rf_id IN (SELECT rf_id FROM tree_parties_collection WHERE representative_id = :representative_id AND tab_id = :tab_id AND organisation_id = :organisationID GROUP BY rf_id)";
 
                             const findCounter =  await connection.application.query(queryFindTotalAssets,{
                                 type: connection.Sequelize.QueryTypes.SELECT,
                                 raw: true,
                                 logging: console.log,
                                 plain: true,
-                                replacements: { representative_id: portfolio.get('id'), tab_id: tabID },
+                                replacements: { organisationID: req.orgId, representative_id: portfolio.get('id'), tab_id: tabID },
                               }
                             );
                             const portfolioJSON = portfolio.toJSON();
