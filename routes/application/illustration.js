@@ -113,8 +113,17 @@ route.get("/collections/:rf_id/illustration", [authJWT.verifyToken], async (req,
                     type = 'Inventor';
                     checkType = 'Inventor';
                 } else {
-                    checkType = "Ownership";
-                    type = "Ownership";
+                    if(itemDetails.assignment.convey_ty === "security"){
+                        checkType = "Security";
+                        type = "Security";
+                    } else if(itemDetails.assignment.convey_ty === "release"){
+                        checkType = "Release";
+                        type = "Release";
+                    } else {
+                        checkType = "Ownership";
+                        type = "Ownership";
+                    }
+                    
                     segment = 1;
                 }
 
@@ -172,10 +181,13 @@ route.get("/collections/:rf_id/illustration", [authJWT.verifyToken], async (req,
                     let checkType = "Ownership";
                     if(itemDetails.assignment.convey_ty === "security"){
                         checkType = "Security";
+                        type = "Security";
                     } else if(itemDetails.assignment.convey_ty === "release"){
                         checkType = "Release";
+                        type = "Release";
                     } else if(itemDetails.assignment.convey_ty === "namechg"){
                         checkType = "Ownership";
+                        type = "Release";
                     } else if(itemDetails.assignment.convey_ty === "assignment"){
                         checkType = "Ownership";
                     } else if(itemDetails.assignment.convey_ty === "correct"){
