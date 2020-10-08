@@ -40,7 +40,7 @@ route.get("/portfolios/", [authJWT.verifyToken, clientDBConnection.connect], asy
                         model: TreePartiesCollections,
                         as: 'collections',
                         attributes: ['rf_id', 'exec_dt'],
-                        where:{tab_id: tabID, representative_id: portfolioList},
+                        where:{tab_id: tabID, representative_id: portfolioList, organisation_id: req.orgId},
                         include: [
                             {
                                 model: DocumentIds,
