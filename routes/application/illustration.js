@@ -82,7 +82,6 @@ route.get("/collections/:rf_id/illustration", [authJWT.verifyToken], async (req,
                 assignors.push(boxName);
                 
                 if (fs.existsSync(sourceID + path + rfIDno + ext)) {
-                    console.log("file exists");
                     mainDocument = url + path + rfIDno + ext;
 
                     if (fs.existsSync(sourceID + path + rfIDno + "_form" + ext)) {
@@ -92,8 +91,6 @@ route.get("/collections/:rf_id/illustration", [authJWT.verifyToken], async (req,
                     if (fs.existsSync(sourceID + path + rfIDno + "_agreement" + ext)) {
                         document_agreement = url + path + rfIDno + "_agreement" + ext
                     }
-                } else {
-                    console.log("file not exists");
                 }
                 
                 let boxObj = {
@@ -127,7 +124,7 @@ route.get("/collections/:rf_id/illustration", [authJWT.verifyToken], async (req,
                     segment = 1;
                 }
 
-                inventorDetails = box.filter( x => x.type === type ? x : '');
+                inventorDetails = box.filter( x => x.type == type ? x : '');
                 if(inventorDetails !== ''){
                     boxObj.type = type;
                     boxObj.boxType = inventorDetails[0].id;
@@ -169,7 +166,6 @@ route.get("/collections/:rf_id/illustration", [authJWT.verifyToken], async (req,
                             return true;
                         }
                     }).map(d => {return d.id});
-                    console.log(findID);
                     if(findID.length > 0) {
                         assigneeID = findID[0];
                     }
@@ -207,8 +203,7 @@ route.get("/collections/:rf_id/illustration", [authJWT.verifyToken], async (req,
                         document_agreement: document_agreement,
                         flag: 0
                     }
-                    console.log(checkType);
-                    inventorDetails = box.filter( x => x.type === checkType ? x : '');
+                    inventorDetails = box.filter( x => x.type == checkType ? x : '');
                     if(inventorDetails !== ''){
                         boxObj.type = type;
                         boxObj.boxType = inventorDetails[0].id;
@@ -260,7 +255,6 @@ route.get("/collections/:rf_id/illustration", [authJWT.verifyToken], async (req,
                                     return true;
                                 }
                             }).map(d => {return d.id});
-                            console.log(findID);
                             if(findID.length > 0) {
                                 assigneeID = findID[0];
                             }
@@ -271,8 +265,10 @@ route.get("/collections/:rf_id/illustration", [authJWT.verifyToken], async (req,
                         }
                         //boxes[boxes.length] = boxObj
 
-                        let connectionLine = line.filter( x => x.name === type ? x : []);
-                        console.log(connectionLine);
+                        let connectionLine = line.filter( x => {
+                            return x.name == type;
+                        });
+                        
                         if(connectionLine.length > 0) {
                             let lineType = "Solid";
                             if(connectionLine[0].line_type === 1){
