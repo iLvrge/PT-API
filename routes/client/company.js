@@ -367,17 +367,63 @@ route.delete("/:ids", [authJWT.verifyToken, clientDBConnection.connect], async(r
             IDs = IDs.toString().split(',');
             const Representative = req.connection_db.define('Representatives', Representatives.mainStructure, Representatives.options);
             const findParentCompanies = await Representative.findAll({
-                attributes:['representative_id'],
-                where:{representative_id: IDs, parent_id:{[connection.Op.eq]: 0}}
+                attributes:['representative_id', 'parent_id'],
+                where:{representative_id: IDs},
+                group:['parent_id']
             });
-            const deleteParentCompanies = []
+            const deleteParentCompanies = [];
             if(findParentCompanies.length > 0) {
                 findParentCompanies.map(c => deleteParentCompanies.push(c.representative_id));
                 Representative.destroy({
                     where: {[connection.Op.or]: [{representative_id: deleteParentCompanies},{parent_id: deleteParentCompanies}]},
                 })
-                .then( u => {
-                    console.log("DELETE COMPANIES: " + u);
+                .then( deleted => {
+                    (async () => {
+                        const parentCompanies = [];
+                        const promise = findParentCompanies.map(c => {
+                            parentCompanies.push(c.parent_id == 0 ? c.representative_id : c.parent_id);
+                            return c;
+                        });
+
+                        await Promise.all(promise);
+                        const mainCompanies = await Representative.findAll({
+                            attributes:['representative_id', 'original_name'],
+                            where:{representative_id: parentCompanies, parent_id: 0}
+                        });
+
+                        if(mainCompanies.length > 0) {
+                            mainCompanies.map(async company => {
+                                console.log(`php -f /var/www/html/trash/add_representative_rfids.php "${req.orgId}" "${company.original_name}"`);
+                                await exec(`php -f /var/www/html/trash/add_representative_rfids.php "${req.orgId}" "${company.original_name}"`, async (error, stdout, stderr) => {
+                                    console.log(error);
+                                    console.log(stdout);
+                                    console.log(stderr);
+                                    console.log(`php -f /var/www/html/trash/tree_script_client.php "${req.orgId}"  "${company.original_name}"`);
+                                    await exec(`php -f /var/www/html/trash/tree_script_client.php "${req.orgId}"  "${company.original_name}"`, async (error, stdout, stderr) => {
+                                        console.log(error);
+                                        console.log(stdout);
+                                        console.log(stderr);
+                                        console.log(`php -f /var/www/html/trash/fix_inventor_timeline_tree_transaction_assests_updates.php "${req.orgId}" "${company.representative_id}"`);
+                                        await exec(`php -f /var/www/html/trash/fix_inventor_timeline_tree_transaction_assests_updates.php "${req.orgId}" "${company.representative_id}"`, async (error, std, stderr) => {
+                                            console.log(error);
+                                            console.log(std);
+                                            console.log(stderr);
+                                            console.log("DONE>>>>>>>>>>>");
+                                            console.log(`php -f /var/www/html/trash/download_all_pdf.php "${company.original_name}"`);
+                                            exec(`php -f /var/www/html/trash/download_all_pdf.php "${company.original_name}"`, (error, stdout, stderr)=> {
+                                                console.log("download_all_pdf....")
+                                                console.log(error);
+                                                console.log(stderr);
+                                                console.log(stdout);
+                                                console.log("DONE");
+                                            });
+                                        });
+                                    })
+                                });
+                            });
+                        }
+                    })();
+                    console.log("DELETE COMPANIES: " + deleted);
                     res.status(200).send("Companies deleted.");
                 })
                 .catch(err => {

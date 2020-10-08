@@ -32,7 +32,7 @@ const assets = require("./routes/application/assets");
 const updates = require("./routes/application/updates");
 const errors = require("./routes/application/errors");
 const validity = require("./routes/application/validity");
-
+const events = require("./routes/application/events");
 const timelines = require("./routes/application/timelines");
 
 /**
@@ -95,6 +95,8 @@ app.use("/", activities);
 app.use("/", comments);
 
 app.use("/", collections);
+
+app.use("/", events);
 
 app.use("/charts", charts);
 

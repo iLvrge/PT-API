@@ -11,7 +11,7 @@ const application = new Sequelize('db_application', 'db_user_all', 'wDv%5tgn0O0k
       max: 1000,
       min: 0,
       acquire: 1000000,
-      idle: 1000
+      idle: 10000
     }*/
 });
 
@@ -24,7 +24,7 @@ const resources = new Sequelize('db_uspto', 'db_user_all', 'wDv%5tgn0O0kMkM', {
       max: 1000,
       min: 0,
       acquire: 1000000,
-      idle: 1000
+      idle: 10000
     }*/
 });
 
@@ -37,8 +37,21 @@ const business = new Sequelize('db_business', 'db_user_all', 'wDv%5tgn0O0kMkM', 
       max: 1000,
       min: 0,
       acquire: 1000000,
-      idle: 1000
+      idle: 10000
     }*/
+});
+
+const maintainence = new Sequelize('db_patent_maintainence_fee', 'db_user_all', 'wDv%5tgn0O0kMkM', {
+  host: '167.172.195.92',
+  dialect: 'mysql',
+  operatorsAliases: Op,
+ /*
+  pool: {
+    max: 1000,
+    min: 0,
+    acquire: 1000000,
+    idle: 10000
+  }*/
 });
 
 const config = {
@@ -51,18 +64,6 @@ const config = {
   'pusher_channel': 'patentrack-channel',
   'pusher_event': 'patentrack-event',
 }
-const db = {};
+const db = {Sequelize, Op, application, resources, business, maintainence, config};
  
-db.Sequelize = Sequelize;
-
-db.Op = Op;
-
-db.application = application;
-
-db.resources = resources;
-
-db.business = business;
-
-db.config = config;
-
 module.exports = db;
