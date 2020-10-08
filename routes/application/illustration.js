@@ -194,9 +194,9 @@ route.get("/collections/:rf_id/illustration", [authJWT.verifyToken], async (req,
                         document_agreement: document_agreement,
                         flag: 0
                     }
-
+                    console.log(checkType);
                     inventorDetails = box.filter( x => x.type === checkType ? x : '');
-                    if(inventorDetails !== ''){
+                    if(inventorDetails !== '' && inventorDetails.length > 0){
                         boxObj.type = type;
                         boxObj.boxType = inventorDetails[0].id;
                         boxObj.shape = inventorDetails[0].shape;
