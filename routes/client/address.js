@@ -90,15 +90,19 @@ route.delete("/address/:addressID", [authJWT.verifyToken, clientDBConnection.con
                 
                 const Addresses = req.connection_db.define('Address', Address.mainStructure, Address.options);
 
-                const findData = Addresses.findOne({
+                const findData = await Addresses.findOne({
                     where:{address_id: req.params.addressID}
                 })
 
                 if(findData != null) {
-                    await findData.destroy();
-                    res.status(200).send("Record delete successfully");    
+                    const deleteData = await Addresses.destroy({where:{address_id: req.params.addressID}});
+                    if(deleteData) {
+                        res.status(200).send("Record delete successfully");    
+                    } else {
+                        res.status(500).send("Deleting data failed.");    
+                    }                    
                 } else {
-                    res.status(402).send("Invalid telephone ID");    
+                    res.status(402).send("Invalid address ID");    
                 }
             } else {
                 res.status(402).send("Invalid inputs");        

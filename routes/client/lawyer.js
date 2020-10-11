@@ -92,15 +92,19 @@ route.delete("/lawyer/:lawyerID", [authJWT.verifyToken, clientDBConnection.conne
                 
                 const companyLawyer = req.connection_db.define('Lawyer', Lawyer.mainStructure, Lawyer.options);
 
-                const findData = companyLawyer.findOne({
+                const findData = await companyLawyer.findOne({
                     where:{lawyer_id: req.params.lawyerID}
                 })
 
                 if(findData != null) {
-                    await findData.destroy();
-                    res.status(200).send("Record delete successfully");    
+                    const deleteData = await companyLawyer.destroy({where:{lawyer_id: req.params.lawyerID}});
+                    if(deleteData) {
+                        res.status(200).send("Record delete successfully");    
+                    } else {
+                        res.status(500).send("Deleting data failed.");    
+                    } 
                 } else {
-                    res.status(402).send("Invalid telephone ID");    
+                    res.status(402).send("Invalid address ID");    
                 }
             } else {
                 res.status(402).send("Invalid inputs");        
