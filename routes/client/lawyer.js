@@ -68,7 +68,7 @@ route.get("/lawyer", [authJWT.verifyToken, clientDBConnection.connect], async(re
                     {
                         model: companyLawyer,
                         as: 'lawyer',
-                        attributes: ['lawyer_id', 'name']
+                        attributes: ['lawyer_id', 'name','created_at','updated_at']
                     }
                 ]
             });
@@ -93,7 +93,7 @@ route.delete("/lawyer/:lawyerID", [authJWT.verifyToken, clientDBConnection.conne
                 const companyLawyer = req.connection_db.define('Lawyer', Lawyer.mainStructure, Lawyer.options);
 
                 const findData = companyLawyer.findOne({
-                    where:{telephone_id: req.params.lawyerID}
+                    where:{lawyer_id: req.params.lawyerID}
                 })
 
                 if(findData != null) {

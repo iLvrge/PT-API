@@ -66,7 +66,7 @@ route.get("/telephone", [authJWT.verifyToken, clientDBConnection.connect], async
                     {
                         model: Telephones,
                         as: 'telephone',
-                        attributes: ['telephone_id', 'telephone_number']
+                        attributes: ['telephone_id', 'telephone_number','created_at','updated_at']
                     }
                 ]
             });

@@ -14,11 +14,19 @@ const Lawyer = {
         name:{
             type: Sequelize.STRING,
 			allowNull: false,
-        }
+        },
+        created_at:{
+            type: Sequelize.DATE,
+            allowNull: true,
+        },
+        updated_at:{
+            type: Sequelize.DATE,
+            allowNull: true,
+        },
     },
     options: {
         underscored: true,
-        timestamps: false,
+        timestamps: true,
         freezeTableName: true,
         tableName: 'lawyer'
     }

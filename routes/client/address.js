@@ -67,7 +67,7 @@ route.get("/address", [authJWT.verifyToken, clientDBConnection.connect], async(r
                     {
                         model: Addresses,
                         as: 'address',
-                        attributes: ['address_id', 'address']
+                        attributes: ['address_id', 'address','created_at','updated_at']
                     }
                 ]
             });
@@ -91,7 +91,7 @@ route.delete("/address/:addressID", [authJWT.verifyToken, clientDBConnection.con
                 const Addresses = req.connection_db.define('Address', Address.mainStructure, Address.options);
 
                 const findData = Addresses.findOne({
-                    where:{telephone_id: req.params.addressID}
+                    where:{address_id: req.params.addressID}
                 })
 
                 if(findData != null) {
