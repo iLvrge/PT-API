@@ -29,6 +29,14 @@ const ShareLink = require("../model/business/ShareLinks");
 
 const ClientRepesentative = require("../model/client/Representatives");
 
+const TreePartiesCollections = require("../model/application/TreePartiesCollections");
+
+const DocumentIds = require("../model/application/DocumentIds");
+
+const moment = require('moment');
+
+const ASSETS_LIFE_SPAN_DATE_FORMAT = 'YYYY';
+
 
 /**
  * 
@@ -722,6 +730,14 @@ let getCompaniesList = async (DBConnection) => {
 
     return await Representative.findAll({
         where: {parent_id: 0}
+    });
+}
+
+let findRepresentativeByID = async (DBConnection, representativeID) => {
+    const Representative = DBConnection.define('ClientRepesentative', ClientRepesentative.mainStructure, ClientRepesentative.options);
+
+    return await Representative.findOne({
+        where: {representative_id: representativeID}
     });
 }
 
@@ -1618,8 +1634,6 @@ let getCompaniesMinAndMaxDateTransaction = async(searchData) => {
         secondDate = new Date(getMaxAssigneeData.exec_dt).getTime();
     }
 
-    
-
     if(firstDate != "" && secondDate != "") {
         if(firstDate > secondDate) {
             maxDate = firstDate;
@@ -1633,6 +1647,61 @@ let getCompaniesMinAndMaxDateTransaction = async(searchData) => {
     }
 
     return {min_date: minDate, max_date: maxDate};
+}
+
+const findAssetsTimeSpan = async(portfolioList, tabID, customerID, rfID, orgID) => {    
+    const where = {representative_id: portfolioList, organisation_id: orgID}, assetsLifeSpan = [];
+    if(parseInt(tabID) > 0) {
+        where.tab_id = parseInt(tabID);
+    }
+    if(parseInt(customerID) > 0) {
+        where.assignor_and_assignee_id = parseInt(customerID);
+    }
+    if(parseInt(rfID) > 0) {
+        where.rf_id = parseInt(rfID);
+    }
+    const getAssetList = await TreePartiesCollections.findAll({
+        attributes:[],
+        where: where,
+        group:['rf_id'],
+        include:[
+            {                       
+                model: DocumentIds,
+                as: 'assets',
+                attributes: [['appno_doc_num','application'], ['grant_doc_num', 'patent'], 'status', 'appno_date'],
+                where:{appno_doc_num: {[connection.Op.ne]: ''},grant_doc_num: {[connection.Op.ne] : ''}},
+                order: [['appno_date', 'ASC']],
+                group:['appno_doc_num']
+            }
+        ]                    
+    });
+
+    if(getAssetList.length > 0) {                
+        const timelineSpan = [];
+        const promises = getAssetList.map( application => {
+            const startYear = moment(new Date(application.assets[0].appno_date)).format(ASSETS_LIFE_SPAN_DATE_FORMAT);
+            let endYear = moment(new Date(application.assets[0].appno_date)).add(20, 'years').format(ASSETS_LIFE_SPAN_DATE_FORMAT);
+            for(let i = startYear; i <= endYear; i++) {
+                timelineSpan.push({year: i, count: 1});
+            }
+            return application;
+        });
+
+        await Promise.all(promises);
+
+        const min = Math.min(...timelineSpan.map(item => item.year)), max = Math.max(...timelineSpan.map(item => item.year));
+
+        for(let i = min; i < max; i++) {
+            let getList = await timelineSpan.filter( item => {
+                return i == item.year ? item : undefined;
+            });
+            if(getList != undefined && getList.length > 0){
+                let Counter = await getList.reduce((a, b) => +a + +b.count, 0);
+                assetsLifeSpan.push({year: i, count: Counter});
+            }
+        }
+    }
+    return assetsLifeSpan;
 }
 
 const helper = {};
@@ -1653,6 +1722,7 @@ helper.findCompanyCustomersByName = findCompanyCustomersByName;
 helper.updateAllCustomerInventor = updateAllCustomerInventor;
 helper.findCompanyCustomersByID = findCompanyCustomersByID;
 helper.getCompaniesList = getCompaniesList;
+helper.findRepresentativeByID = findRepresentativeByID;
 helper.getSubCompaniesList = getSubCompaniesList;
 helper.getAllCompaniesList = getAllCompaniesList;
 helper.findCompanyEntitiesByAccountID = findCompanyEntitiesByAccountID;
@@ -1671,4 +1741,5 @@ helper.getCollectionList = getCollectionList;
 helper.getCollectionByID = getCollectionByID;
 helper.allTransactionEntities = allTransactionEntities;
 helper.findEntityAssets = findEntityAssets;
+helper.findAssetsTimeSpan = findAssetsTimeSpan
 module.exports = helper;

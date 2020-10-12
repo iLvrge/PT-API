@@ -1,22 +1,56 @@
-const express = require("express");
+const express = require("express"),
 
-const route = express.Router();
+    route = express.Router(),
 
-const connection = require("../../config/db.config");
+    moment = require('moment'),
 
-const helpers = require("../../helpers/helper");
+    connection = require("../../config/db.config"),
+
+    helpers = require("../../helpers/helper"),
+
+    authJWT = require("../../helpers/verifyJwtToken"),
+
+    clientDBConnection = require("../../helpers/clientDBConnection");
 
 //require the Model
 const TreeParties = require("../../model/application/TreeParties");
 const TreePartiesCollections = require("../../model/application/TreePartiesCollections");
 const DocumentIds = require("../../model/application/DocumentIds");
-const Errors = require("../../model/application/Errors");
+//const Errors = require("../../model/application/Errors");
 
 
-const authJWT = require("../../helpers/verifyJwtToken");
+/**
+ * Find lifespan for all the company assets
+ */
 
-const clientDBConnection = require("../../helpers/clientDBConnection");
+route.get("/events/", [authJWT.verifyToken, clientDBConnection.connect], async(req, res, next) => {
+    try{
+        console.log("EVENTSSSS");
+        const tabID = req.query.tab_id, portfolioID = req.query.portfolio;
+        let portfolioList = [], assetsLifeSpan = [];
+        if(portfolioID != '' && portfolioID != null && portfolioID != 'undefined') {            
+            portfolioList = JSON.parse(portfolioID);
+        } else {
+            const getCompaniesList = await helpers.getCompaniesList(req.connection_db);
+            if(getCompaniesList.length > 0) {                   
+                const promises = getCompaniesList.map(p => {
+                    portfolioList.push(p.representative_id);
+                    return p;
+                });
 
+                await Promise.all(promises);
+            }
+        }
+
+        if(portfolioList.length > 0) {
+            assetsLifeSpan = await helpers.findAssetsTimeSpan(portfolioList, tabID, 0, 0, req.orgId);            
+        }
+        res.status(200).json(assetsLifeSpan);
+    } catch(err) {
+        console.log(err);
+        res.status(500).send("Internal server error.");
+    }
+});
 
 /**
  * List of all portfolio from new table
@@ -454,6 +488,7 @@ route.get("/:rf_id/assets",[authJWT.verifyToken], async(req, res, next) => {
         res.status(500).send("Internal error");
     }
 });
+
 
 
 

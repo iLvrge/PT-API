@@ -6,7 +6,7 @@ const express = require("express"),
 
     connection = require("../../config/db.config"),
     
-    moment = require('moment');
+    clientDBConnection = require("../../helpers/clientDBConnection");
 
 const MaintainenceCode = require("../../model/maintainence/MaintainenceCode"),
     
@@ -14,7 +14,134 @@ const MaintainenceCode = require("../../model/maintainence/MaintainenceCode"),
     
     Documentid = require("../../model/application/DocumentIds");
 
-route.get("/events/:applicationNumber", [authJWT.verifyToken], async (req, res) =>{     
+
+
+route.get("/events/tabs/:tabID", [authJWT.verifyToken, clientDBConnection.connect], async(req, res, next) => {
+    try {
+        const tabID = req.params.tabID;
+        let assetsLifeSpan = [];
+        if(typeof req.connection_db != "undefined" && req.connection_db != null ) {
+            const getCompaniesList = await helpers.getCompaniesList(req.connection_db);
+            const portfolioList = [];
+            if(getCompaniesList.length > 0) {                   
+                const promises = getCompaniesList.map(p => {
+                    portfolioList.push(p.representative_id);
+                    return p;
+                });
+
+                await Promise.all(promises);
+            }
+            if(portfolioList.length > 0) {
+                assetsLifeSpan = await helpers.findAssetsTimeSpan(portfolioList, tabID, 0, 0, req.orgId);
+            }
+        }
+        res.status(200).json(assetsLifeSpan);
+    } catch (err) {
+        console.log(err);
+        res.status(500).send("Internal server error.");
+    }
+});
+
+
+route.get("/events/tabs/:tabID/companies/:companyID", [authJWT.verifyToken, clientDBConnection.connect], async(req, res, next) => {
+    try {
+        const tabID = req.params.tabID, representativeID = req.params.companyID;
+        let assetsLifeSpan = [];
+        if(typeof req.connection_db != "undefined" && req.connection_db != null ) {
+            const findRepresentative = await helpers.findRepresentativeByID(req.connection_db, representativeID);
+
+            if(findRepresentative != null && findRepresentative.representative_id > 0) {
+                assetsLifeSpan = await helpers.findAssetsTimeSpan([findRepresentative.representative_id], tabID, 0, 0, req.orgId);
+            }
+        }
+        res.status(200).json(assetsLifeSpan);
+    } catch (err) {
+        console.log(err);
+        res.status(500).send("Internal server error.");
+    }
+});
+
+route.get("/events/tabs/:tabID/companies/:companyID/customers/:customerID", [authJWT.verifyToken, clientDBConnection.connect], async(req, res, next) => {
+    try {
+        const tabID = req.params.tabID, representativeID = req.params.companyID, customerID = req.params.customerID;
+        let assetsLifeSpan = [];
+        if(typeof req.connection_db != "undefined" && req.connection_db != null ) {
+            const findRepresentative = await helpers.findRepresentativeByID(req.connection_db, representativeID);
+
+            if(findRepresentative != null && findRepresentative.representative_id > 0) {
+                assetsLifeSpan = await helpers.findAssetsTimeSpan([findRepresentative.representative_id], tabID, customerID, 0, req.orgId);
+            }
+        }
+        res.status(200).json(assetsLifeSpan);
+    } catch (err) {
+        console.log(err);
+        res.status(500).send("Internal server error.");
+    }
+});
+
+route.get("/events/tabs/:tabID/companies/:companyID/customers/:customerID/transactions/:rfID", [authJWT.verifyToken, clientDBConnection.connect], async(req, res, next) => {
+    try {
+        const tabID = req.params.tabID, representativeID = req.params.companyID, customerID = req.params.customerID, rfID = req.params.rfID;
+        let assetsLifeSpan = [];
+        if(typeof req.connection_db != "undefined" && req.connection_db != null ) {
+            const findRepresentative = await helpers.findRepresentativeByID(req.connection_db, representativeID);
+
+            if(findRepresentative != null && findRepresentative.representative_id > 0) {
+                assetsLifeSpan = await helpers.findAssetsTimeSpan([findRepresentative.representative_id], tabID, customerID, rfID, req.orgId);
+            }
+        }
+        res.status(200).json(assetsLifeSpan);
+    } catch (err) {
+        console.log(err);
+        res.status(500).send("Internal server error.");
+    }
+});
+
+
+route.get("/events/tabs/:tabID/companies/:companyID/customers/:customerID/transactions/:rfID/assets/:applicationNumber", [authJWT.verifyToken, clientDBConnection.connect], async (req, res) =>{     
+    try {
+        const tabID = req.params.tabID, representativeID = req.params.companyID, customerID = req.params.customerID, rfID = req.params.rfID, applicationNumber = req.params.applicationNumber;
+        
+        if(applicationNumber != undefined && applicationNumber != null){
+            if(typeof req.connection_db != "undefined" && req.connection_db != null ) {
+                const findRepresentative = await helpers.findRepresentativeByID(req.connection_db, representativeID);
+    
+                if(findRepresentative != null && findRepresentative.representative_id > 0) {
+                    const findData = await MaintainenceFees.findAll({
+                        attributes:['grant_doc_num', 'appno_doc_num', [connection.Sequelize.fn('date_format', connection.Sequelize.col('event_date'), '%Y-%m-%d'), 'eventdate'], 'event_code'],
+                        where: {appno_doc_num: applicationNumber},
+                        group: ['eventdate','event_code'],
+                        include: [
+                            {
+                                model: MaintainenceCode,
+                                as: 'maintainence_code',
+                                attributes:['event_description']
+                            }
+                        ]
+                    })
+                    res.status(200).json(findData);
+                } else {
+                    res.status(402).send("Invalid application number.");
+                }
+            } else {
+                res.status(402).send("Invalid application number.");
+            }
+        } else {
+            res.status(402).send("Invalid application number.");
+        }
+    } catch(err){
+        console.log(err);
+        res.status(500).send("Internal server error.");
+    }
+});
+
+
+
+
+
+
+
+/*route.get("/events/:applicationNumber", [authJWT.verifyToken], async (req, res) =>{     
     try {
         const applicationNumber = req.params.applicationNumber;
         if(applicationNumber != undefined && applicationNumber != null){
@@ -38,8 +165,9 @@ route.get("/events/:applicationNumber", [authJWT.verifyToken], async (req, res) 
         console.log(err);
         res.status(500).send("Internal server error.");
     }
-});
+});*/
 
+/*
 route.get("/events/transactions/:rfID", [authJWT.verifyToken], async (req, res) =>{    
     try {        
         const rfID = req.params.rfID, DATE_FORMAT = 'YYYY';
@@ -130,5 +258,5 @@ route.get("/events/transactions/:rfID", [authJWT.verifyToken], async (req, res) 
         console.log(err);
         res.status(500).send("Internal server error.");
     }
-});
+});*/
 module.exports = route;
