@@ -78,6 +78,9 @@ let searchCompany = async(query, t) => {
                         searchTerm = searchTerm.replace(" AND ", " ");
                         searchTerm = searchTerm.replace(" OR ", " ");
                         searchTerm = searchTerm.replace(" NEAR ", " ");
+                        searchTerm = searchTerm.split(' ');
+                        searchTerm = searchTerm.join('* ')
+                        searchTerm = searchTerm+'*';
                     }
                 } else {
                     const ftsQuery = new FtsQuery(true);			
@@ -88,6 +91,9 @@ let searchCompany = async(query, t) => {
                     searchTerm = searchTerm.replace(" AND ", " ");
                     searchTerm = searchTerm.replace(" OR ", " ");
                     searchTerm = searchTerm.replace(" NEAR ", " ");
+                    searchTerm = searchTerm.split(' ');
+                    searchTerm = searchTerm.join('* ')
+                    searchTerm = searchTerm+'*';
                 }				
             } else {
                 searchTerm = `${search}*`;
