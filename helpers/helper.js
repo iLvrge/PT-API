@@ -762,7 +762,7 @@ let getAllCompaniesList = async (DBConnection) => {
 }
 
 
-let getCompaniesWithChildren = async (DBConnection) => {
+let getCompaniesWithChildren = async (DBConnection, organisationID) => {
     let companies = [];
     const parentCompanyQuery = "SELECT representative_id as id, original_name, representative_name, instances, instances + (Select sum(instances) FROM representative as r1 WHERE r1.parent_id = r.representative_id) as counter FROM representative as r WHERE r.parent_id = 0";
 
@@ -805,8 +805,34 @@ let getCompaniesWithChildren = async (DBConnection) => {
                 companies[i]['children'] = children;
             }
         }
+
+        const queryCustomer = "SELECT tab_id, assignor_and_assignee_id, name, representative_id FROM tree_parties WHERE organisation_id = :organisationID AND representative_id IN (:representativeID) GROUP BY organisation_id, representative_id, assignor_and_assignee_id, tab_id";
+
+        let allCustomers = await connection.application.query(queryCustomer,{
+            type: connection.Sequelize.QueryTypes.SELECT,
+            replacements: { representativeID: getAllIDs, organisationID: organisationID },
+            raw: true,
+            logging: console.log,
+        }); 
+
+        if(allCustomers.length > 0) {
+            const promises = companies.map((c, index) => {
+                let allTabs = {};
+                /**Tabs from 0 to 10 */
+                for(let i = 0; i <= 10; i++){
+                    
+                    const customers = allCustomers.filter( company => {
+                        return company.representative_id == c.id && company.tab_id == i ? company : undefined;
+                    });
+                    allTabs[i] = customers;
+                }
+                companies[index].tabs = allTabs;                
+                return c;
+            });
+
+            await Promise.all(promises);
+        }
     }
-    
     return companies;
 }
 

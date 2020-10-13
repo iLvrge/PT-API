@@ -20,7 +20,7 @@ const clientDBConnection = require("../../helpers/clientDBConnection");
 route.get("/", [authJWT.verifyToken, clientDBConnection.connect], async(req, res, next) => {
     try{
         if(typeof req.connection_db != "undefined" && req.connection_db != null ) {
-            const getCompaniesList = await helpers.getCompaniesWithChildren(req.connection_db);
+            const getCompaniesList = await helpers.getCompaniesWithChildren(req.connection_db, req.orgId);
             res.status(200).json(getCompaniesList);
         } else {
             res.status(401).send("Unable to retrieve companies");
