@@ -136,12 +136,7 @@ route.get("/events/tabs/:tabID/companies/:companyID/customers/:customerID/transa
 });
 
 
-
-
-
-
-
-/*route.get("/events/:applicationNumber", [authJWT.verifyToken], async (req, res) =>{     
+route.get("/events/:applicationNumber", [authJWT.verifyToken], async (req, res) =>{     
     try {
         const applicationNumber = req.params.applicationNumber;
         if(applicationNumber != undefined && applicationNumber != null){
@@ -165,7 +160,7 @@ route.get("/events/tabs/:tabID/companies/:companyID/customers/:customerID/transa
         console.log(err);
         res.status(500).send("Internal server error.");
     }
-});*/
+});
 
 /*
 route.get("/events/transactions/:rfID", [authJWT.verifyToken], async (req, res) =>{    
