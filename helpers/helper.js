@@ -1651,7 +1651,7 @@ let getCompaniesMinAndMaxDateTransaction = async(searchData) => {
 
 const findAssetsTimeSpan = async(portfolioList, tabID, customerID, rfID, orgID) => {    
     const where = {representative_id: portfolioList, organisation_id: orgID}, assetsLifeSpan = [];
-    if(parseInt(tabID) > 0) {
+    if(tabID != undefined && tabID != null && parseInt(tabID) > 0) {
         where.tab_id = parseInt(tabID);
     }
     if(parseInt(customerID) > 0) {
