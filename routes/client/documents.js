@@ -71,37 +71,41 @@ route.post("/", [authJWT.verifyToken, clientDBConnection.connect], async(req, re
                         res.status(500).json("Error while adding new document");
                     }
                 } else {
-                    let mimeType = req.files.file.mimetype;
-                    console.log(mimeType);
-                    if( mimeType.toLowerCase().indexOf('.exe') < 0){
-                        let fileObject = req.files.file;
-                        await fileObject.mv('/var/www/html/beta/resources/shared/data/'+fileObject.name,function(err) {
-                            if (err){
-                                return res.status(500).send("ERROR: "+err);	
-                            } else {
-                                let uploadedFileName = fileObject.name;
-                                Document.create({	
-                                    user_id: req.userId,
-                                    title: req.body.name,
-                                    description: req.body.description,
-                                    file: "https://patentrack.com/resources/shared/data/"+uploadedFileName
-                                }).then(addRecord => {
-                                    if(addRecord != null && addRecord.document_id > 0){
-                                        console.log("Record Item added"+addRecord.document_id);
-                                        res.status(200).json(addRecord);
-                                    } else {
-                                        console.log("Unable to create new document")
-                                        res.status(500).json("Error while adding new document");
-                                    }
-                                }).catch( err => {
-                                    console.log(err);
-                                    res.status(500).send("Internal server error");
-                                });
-                            }
-                        });
+                    if(req.files.file != null) {
+                        let mimeType = req.files.file.mimetype;
+                        console.log(mimeType);
+                        if( mimeType.toLowerCase().indexOf('.exe') < 0){
+                            let fileObject = req.files.file;
+                            await fileObject.mv('/var/www/html/beta/resources/shared/data/'+fileObject.name,function(err) {
+                                if (err){
+                                    return res.status(500).send("ERROR: "+err);	
+                                } else {
+                                    let uploadedFileName = fileObject.name;
+                                    Document.create({	
+                                        user_id: req.userId,
+                                        title: req.body.name,
+                                        description: req.body.description,
+                                        file: "https://patentrack.com/resources/shared/data/"+uploadedFileName
+                                    }).then(addRecord => {
+                                        if(addRecord != null && addRecord.document_id > 0){
+                                            console.log("Record Item added"+addRecord.document_id);
+                                            res.status(200).json(addRecord);
+                                        } else {
+                                            console.log("Unable to create new document")
+                                            res.status(500).json("Error while adding new document");
+                                        }
+                                    }).catch( err => {
+                                        console.log(err);
+                                        res.status(500).send("Internal server error");
+                                    });
+                                }
+                            });
+                        } else {
+                            res.status(402).send("We are not supporting this file format.");
+                        }
                     } else {
-                        res.status(402).send("We are not supporting this file format.");
-                    }
+                        res.status(401).send("Please select a file.");
+                    }                    
                 }            
             } else {
                 res.status(401).send("You are not authorized user to perform this action");
