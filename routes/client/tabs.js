@@ -137,6 +137,85 @@ route.get("/:tabID/companies/:companyID", [authJWT.verifyToken, clientDBConnecti
     }
 });
 
+route.get("/:tabID/customers", [authJWT.verifyToken, clientDBConnection.connect], async(req, res, next) => {
+
+    try {
+        const tabID = req.params.tabID, companies = JSON.parse(req.query.companiesIds), customerList = [];
+        let limit = req.query.limit, offset = req.query.offset;
+
+        if(typeof req.connection_db != "undefined" && req.connection_db != null ) {
+            limit = limit > 0 ? parseInt(limit) : 100;
+            offset = offset > 0 ? parseInt(offset) : 0;
+
+            const whereConstraint = {
+                attributes:[['assignor_and_assignee_id', 'customer_id'], ['representative_id', 'company_id'], 'name'],
+                where: {representative_id: companies, tab_id: tabID}
+            };
+
+            if(limit != undefined && limit != null) {
+                limit = limit > 0 ? parseInt(limit) : 100;
+                offset = offset > 0 ? parseInt(offset) : 0;
+
+                whereConstraint.limit = limit;
+                whereConstraint.offset = offset;
+            }
+
+            const list = await TreeParties.findAll(whereConstraint);
+
+            if(list.length > 0) {
+                const promises = list.map(async customer => {
+                    const getTransactionCount = await TreePartiesCollections.count({
+                        where: {representative_id: customer.get('company_id'), assignor_and_assignee_id: customer.get('customer_id'), tab_id: tabID}
+                    });
+
+                    /*const getAssetsCount = await TreePartiesCollections.findAll({
+                        subQuery: false,
+                        attributes: { 
+                            include: [[connection.Sequelize.fn('COUNT', connection.Sequelize.col('assets.appno_doc_num')), 'totalAssets']] 
+                        }, 
+                        where:{representative_id: customer.get('company_id'), assignor_and_assignee_id: customer.get('customer_id'), tab_id: tabID},
+                        include: [{
+                            model: DocumentIds, 
+                            as: 'assets',
+                            attributes: []
+                        }],
+                        group: ['assets.rf_id']
+                    });*/
+
+                    const queryAssetsCount = 'SELECT count(distinct(appno_doc_num)) as assetsCount FROM documentid WHERE rf_id IN (SELECT rf_id FROM tree_parties_collection WHERE representative_id = :companyID AND assignor_and_assignee_id = :customerID AND tab_id = :tabID)';
+
+                    const getAssetsCount =  await connection.application.query(queryAssetsCount,{
+                        type: connection.Sequelize.QueryTypes.SELECT,
+                        raw: true,
+                        logging: console.log,
+                        plain: true,
+                        replacements: { tabID: tabID,  companyID: customer.get('company_id'), customerID: customer.get('customer_id')},
+                    }
+                    );
+
+                    let assetsCount = 0;
+
+                    if(getAssetsCount != null) {
+                        assetsCount = getAssetsCount.assetsCount;
+                    }
+
+                    const customerJSON = customer.toJSON();
+                    customerJSON.transactionCount = getTransactionCount;
+                    customerJSON.assetsCount = assetsCount;
+                    customerList.push(customerJSON);
+
+                    return customer;
+                });
+                await Promise.all(promises);
+            }
+        }
+        res.status(200).json(customerList);
+    } catch( err ) {
+        console.log(err);
+        res.status(500).send("Internal server error.");
+    }
+});
+
 
 route.get("/:tabID/companies/:companyID/customers/:customerID", [authJWT.verifyToken, clientDBConnection.connect], async(req, res, next) => {
     try {

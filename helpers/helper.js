@@ -806,7 +806,7 @@ let getCompaniesWithChildren = async (DBConnection, organisationID) => {
             }
         }
 
-        const queryCustomer = "SELECT tab_id, assignor_and_assignee_id as customer_id, name, representative_id as company_id FROM tree_parties WHERE organisation_id = :organisationID AND representative_id IN (:representativeID) GROUP BY organisation_id, representative_id, assignor_and_assignee_id, tab_id";
+        /*const queryCustomer = "SELECT tab_id, assignor_and_assignee_id as customer_id, name, representative_id as company_id FROM tree_parties WHERE organisation_id = :organisationID AND representative_id IN (:representativeID) GROUP BY organisation_id, representative_id, assignor_and_assignee_id, tab_id";
 
         let allCustomers = await connection.application.query(queryCustomer,{
             type: connection.Sequelize.QueryTypes.SELECT,
@@ -818,7 +818,7 @@ let getCompaniesWithChildren = async (DBConnection, organisationID) => {
         if(allCustomers.length > 0) {
             const promises = companies.map((c, index) => {
                 let allTabs = {};
-                /**Tabs from 0 to 10 */
+                
                 for(let i = 0; i <= 10; i++){
                     
                     const customers = allCustomers.filter( company => {
@@ -831,7 +831,7 @@ let getCompaniesWithChildren = async (DBConnection, organisationID) => {
             });
 
             await Promise.all(promises);
-        }
+        }*/
     }
     return companies;
 }
