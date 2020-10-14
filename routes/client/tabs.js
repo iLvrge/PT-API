@@ -144,15 +144,14 @@ route.get("/:tabID/customers", [authJWT.verifyToken, clientDBConnection.connect]
         let limit = req.query.limit, offset = req.query.offset;
 
         if(typeof req.connection_db != "undefined" && req.connection_db != null ) {
-            limit = limit > 0 ? parseInt(limit) : 100;
-            offset = offset > 0 ? parseInt(offset) : 0;
+            
 
             const whereConstraint = {
                 attributes:[['assignor_and_assignee_id', 'customer_id'], ['representative_id', 'company_id'], 'name'],
-                where: {representative_id: companies, tab_id: tabID}
+                where: {representative_id: companies, tab_id: tabID, organisation_id: req.orgId}
             };
 
-            if(limit != undefined && limit != null) {
+            if(limit != undefined && limit != null ) {
                 limit = limit > 0 ? parseInt(limit) : 100;
                 offset = offset > 0 ? parseInt(offset) : 0;
 
@@ -165,7 +164,7 @@ route.get("/:tabID/customers", [authJWT.verifyToken, clientDBConnection.connect]
             if(list.length > 0) {
                 const promises = list.map(async customer => {
                     const getTransactionCount = await TreePartiesCollections.count({
-                        where: {representative_id: customer.get('company_id'), assignor_and_assignee_id: customer.get('customer_id'), tab_id: tabID}
+                        where: {organisation_id: req.orgId, representative_id: customer.get('company_id'), assignor_and_assignee_id: customer.get('customer_id'), tab_id: tabID}
                     });
 
                     /*const getAssetsCount = await TreePartiesCollections.findAll({
@@ -182,14 +181,14 @@ route.get("/:tabID/customers", [authJWT.verifyToken, clientDBConnection.connect]
                         group: ['assets.rf_id']
                     });*/
 
-                    const queryAssetsCount = 'SELECT count(distinct(appno_doc_num)) as assetsCount FROM documentid WHERE rf_id IN (SELECT rf_id FROM tree_parties_collection WHERE representative_id = :companyID AND assignor_and_assignee_id = :customerID AND tab_id = :tabID)';
+                    const queryAssetsCount = 'SELECT count(distinct(appno_doc_num)) as assetsCount FROM documentid WHERE rf_id IN (SELECT rf_id FROM tree_parties_collection WHERE representative_id = :companyID AND assignor_and_assignee_id = :customerID AND tab_id = :tabID AND organisation_id = :organisationID)';
 
                     const getAssetsCount =  await connection.application.query(queryAssetsCount,{
                         type: connection.Sequelize.QueryTypes.SELECT,
                         raw: true,
                         logging: console.log,
                         plain: true,
-                        replacements: { tabID: tabID,  companyID: customer.get('company_id'), customerID: customer.get('customer_id')},
+                        replacements: { organisationID: req.orgId, tabID: tabID,  companyID: customer.get('company_id'), customerID: customer.get('customer_id')},
                     }
                     );
 
