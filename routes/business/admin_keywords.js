@@ -239,7 +239,7 @@ route.post("/state", [authJWT.verifyToken, authJWT.isAdmin], async(req, res, nex
         if(name != undefined && name != '') {
             const addRecord = await State.create({name: name});
 
-            if(addRecord != null && addRecord.keyword_id > 0) {
+            if(addRecord != null && addRecord.state_id > 0) {
                 res.status(200).json(addRecord);
             } else {
                 res.status(402).send("Error while adding new record.");
