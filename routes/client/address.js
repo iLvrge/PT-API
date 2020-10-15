@@ -22,7 +22,7 @@ route.post("/address", [authJWT.verifyToken, clientDBConnection.connect], async(
         let add = {};
         if(typeof req.connection_db != "undefined" && req.connection_db != null ) {
 
-            if(req.body.address != null && req.body.representative_id > 0) {
+            if(req.body.street_address != null && req.body.representative_id > 0) {
                 
                 const postData = req.body;
 
@@ -67,7 +67,7 @@ route.get("/address", [authJWT.verifyToken, clientDBConnection.connect], async(r
                     {
                         model: Addresses,
                         as: 'address',
-                        attributes: ['address_id', 'address','created_at','updated_at']
+                        attributes: ['address_id', 'street_address','suite','city','state','zip_code', 'telephone', 'telephone_2', 'telephone_3','created_at','updated_at']
                     }
                 ]
             });
@@ -76,6 +76,47 @@ route.get("/address", [authJWT.verifyToken, clientDBConnection.connect], async(r
     } catch (err) {
         console.log(err);
         res.status(500).send("Internal error");
+    }
+});
+
+
+/**
+ * Get Address
+ */
+route.put("/address/:addressID", [authJWT.verifyToken, clientDBConnection.connect], async(req, res, next) => {
+    try{
+        if(typeof req.connection_db != "undefined" && req.connection_db != null ) {
+
+            const addressID = req.params.addressID;
+
+            const Addresses = req.connection_db.define('Address', Address.mainStructure, Address.options);
+
+            const findAddress = Addresses.findByPk(addressID);
+
+            if(findAddress != null && findAddress.address_id > 0) {
+                const update = findAddress.update({
+                    street_address: req.body.street_address,
+                    suite: req.body.suite,
+                    city: req.body.city,
+                    state: req.body.state,
+                    zip_code: req.body.zip_code,
+                    telephone: req.body.telephone,
+                    telephone_2: req.body.telephone_2,
+                    telephone_3: req.body.telephone_3,
+                });
+
+                if(update) {
+                    res.status(200).json(findAddress);
+                } else {
+                    res.status(500).send("Internal server error");
+                }
+            } else {
+                res.status(402).send("Invalid input");
+            }            
+        }
+    } catch (err) {
+        console.log(err);
+        res.status(500).send("Internal server error");
     }
 });
 

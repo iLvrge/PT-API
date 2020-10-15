@@ -1,15 +1,12 @@
 const Sequelize = require("sequelize");
 
-const Lawyer = {
+
+const Lawfirm = {
     mainStructure: {
-        lawyer_id: {
+        lawfirm_id: {
             type: Sequelize.INTEGER,
             primaryKey: true,
             autoIncrement: true
-        },  
-		representative_id:{
-            type: Sequelize.INTEGER,
-			allowNull: false,
         },		
         name:{
             type: Sequelize.STRING,
@@ -28,10 +25,10 @@ const Lawyer = {
         underscored: true,
         timestamps: true,
         freezeTableName: true,
-        tableName: 'lawyer'
+        tableName: 'lawfirm'
     }
 }
 
 
 
-module.exports = Lawyer;
+module.exports = Lawfirm;
