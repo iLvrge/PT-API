@@ -69,7 +69,11 @@ route.get("/transactions/:companyName", [authJWT.verifyToken, clientDBConnection
                     group: ["organisation_id"]
                 })
                 .then((list)=>{
-                    res.status(200).json(list);
+                    if(list != null) {
+                        res.status(200).json(list);
+                    } else {
+                        res.status(200).json({buy: 0, sale: 0, security: 0, release: 0, license_in: 0, license_out: 0});
+                    } 
                 }).catch((err)=>{
                     console.log(err);
                     res.status(500).json({message: "Unable to retrieve transactions"})
