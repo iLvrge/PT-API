@@ -1721,8 +1721,8 @@ const findAssetsTimeSpan = async(portfolioList, tabID, customerID, rfID, orgID) 
 
         await Promise.all(promises);
 
-        const min = Math.min(...timelineSpan.map(item => item.year)), max = Math.max(...timelineSpan.map(item => item.year));
-
+        const {max, min} = await minMax2DArray(timelineSpan, 'year');
+        
         for(let i = min; i < max; i++) {
             let getList = await timelineSpan.filter( item => {
                 return i == item.year ? item : undefined;
@@ -1734,6 +1734,21 @@ const findAssetsTimeSpan = async(portfolioList, tabID, customerID, rfID, orgID) 
         }
     }
     return assetsLifeSpan;
+}
+
+const minMax2DArray = async(arr, idx) => {
+    console.log(arr.length);
+    var max = -Number.MAX_VALUE,
+        min = Number.MAX_VALUE;
+    arr.forEach(function(e) {
+        if (max < e[idx]) {
+            max = e[idx];
+        }
+        if (min > e[idx]) {
+           min = e[idx];
+       }
+    });
+    return {max: max, min: min};
 }
 
 const helper = {};
