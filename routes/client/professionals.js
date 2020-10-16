@@ -7,6 +7,8 @@ const Professionals = require("../../model/client/Professionals");
 
 const Firms = require("../../model/client/Firms");
 
+const Lawfirm = require("../../model/client/Lawfirm");
+
 const authJWT = require("../../helpers/verifyJwtToken");
 
 
@@ -17,16 +19,16 @@ route.get("/", [authJWT.verifyToken, clientDBConnection.connect], async(req, res
         if(typeof req.connection_db != "undefined" && req.connection_db != null ) {
             const Professional = req.connection_db.define('Professionals', Professionals.mainStructure, Professionals.options);
             
-            const Firm = req.connection_db.define('Firms', Firms.mainStructure, Firms.options);
-            Professional.belongsTo(Firm, { foreignKey: 'firm_id', as: 'firms' });
+            const Lawfirms = req.connection_db.define('Lawfirm', Lawfirm.mainStructure, Lawfirm.options);
+            Professional.belongsTo(Lawfirms, { foreignKey: 'firm_id', as: 'lawfirm', otherKey: 'lawfirm_id' });
 
             Professional.findAll({
                 where: {type: 1},
                 include:[
                     {
-                        model: Firm,
-                        as: 'firms',
-                        attributes:['firm_name', ['firm_id', 'id']]
+                        model: Lawfirms,
+                        as: 'lawfirm',
+                        attributes:['name', ['lawfirm_id', 'id']]
                     }
                 ]
             })
@@ -51,7 +53,7 @@ route.post("/", [authJWT.verifyToken, clientDBConnection.connect], async(req, re
         if(typeof req.connection_db != "undefined" && req.connection_db != null ) {
             const Professional = req.connection_db.define('Professionals', Professionals.mainStructure, Professionals.options);
             
-            const Firm = req.connection_db.define('Firms', Firms.mainStructure, Firms.options);
+            /*const Firm = req.connection_db.define('Firms', Firms.mainStructure, Firms.options);
 
             const firmName = req.body.firm_name;
 
@@ -67,9 +69,9 @@ route.post("/", [authJWT.verifyToken, clientDBConnection.connect], async(req, re
                 if(findFirm != null && findFirm.firm_id > 0) {
                     firmID = findFirm.firm_id;
                 }
-            }   
+            } */  
 
-            if(firmID > 0) {
+            if(req.body.firm_id > 0) {
                 let logo = '';
                 const professionalData = {
                     first_name: req.body.first_name,
@@ -78,7 +80,7 @@ route.post("/", [authJWT.verifyToken, clientDBConnection.connect], async(req, re
                     telephone: req.body.telephone,						
                     telephone1: req.body.telephone1,	
                     linkedin_url: req.body.linkedin_url,				
-                    firm_id: firmID,
+                    firm_id: req.body.firm_id,
                     profile_logo: logo,
                     type: 1
                 }
@@ -93,7 +95,7 @@ route.post("/", [authJWT.verifyToken, clientDBConnection.connect], async(req, re
                 }
             } else {
                 console.log("Error while creating new firm");
-                res.status(402).send("Bad inputs.");
+                res.status(402).send("Please select lawfirm");
             }            
         } else {
             console.log("Unable to connect to professional table");
@@ -125,7 +127,7 @@ route.put("/:professional_id", [authJWT.verifyToken, clientDBConnection.connect]
                         //console.log(data);
                         
                     (async () => {	
-                        const Firm = req.connection_db.define('Firms', Firms.mainStructure, Firms.options);
+                        /*const Firm = req.connection_db.define('Firms', Firms.mainStructure, Firms.options);
 
                         const firmName = req.body.firm_name;
             
@@ -145,8 +147,12 @@ route.put("/:professional_id", [authJWT.verifyToken, clientDBConnection.connect]
 
                         if(firmID != data.firm_id) {
                             data.firm_id = firmID;
+                        }*/
+
+                        if(req.body.firm_id  != professional.firm_id) {
+                            data.firm_id = req.body.firm_id;
                         }
-                        								
+
                         const u = await Professional.update(data,{where: {professional_id: data.professional_id}});
                         if(u) {
                             res.status(200).send("Updated successfully");

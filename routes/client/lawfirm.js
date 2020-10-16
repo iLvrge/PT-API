@@ -86,7 +86,7 @@ route.get("/lawfirm", [authJWT.verifyToken, clientDBConnection.connect], async(r
 
             const Representative = req.connection_db.define('Representatives', Representatives.mainStructure, Representatives.options);
 
-            Lawfirms.hasMany(LawfirmAddre, { foreignKey: 'lawfirm_id', as: 'lawfirm' });
+            Lawfirms.hasMany(LawfirmAddre, { foreignKey: 'lawfirm_id', as: 'lawfirm_address' });
 
             Lawfirms.hasMany(RepresentativeLawfirms, { foreignKey: 'lawfirm_id', as: 'companylawfirm' });
             
@@ -104,14 +104,15 @@ route.get("/lawfirm", [authJWT.verifyToken, clientDBConnection.connect], async(r
                 include: [
                     {
                         model: LawfirmAddre,
-                        as: 'lawfirm',
-                        
+                        as: 'lawfirm_address',
+                        required:false
                     },
                     {
                         model: RepresentativeLawfirms,
                         as: 'companylawfirm',
                         attributes: ['representative_id','lawfirm_id', 'company_lawfirm_id'],
                         where: where,
+                        required:false,
                         include:[
                             {
                                 model: Representative,
