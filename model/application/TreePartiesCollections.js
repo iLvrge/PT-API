@@ -9,7 +9,19 @@ const TreePartiesCollections = connection.application.define('tree_parties_colle
         type: Sequelize.INTEGER,
         allowNull: false,
         primaryKey: true,
-    },    
+    },   
+    assignor_and_assignee_id:{
+        type: Sequelize.INTEGER,
+        allowNull: false,
+    },
+    assets_count:{
+        type: Sequelize.INTEGER,
+        allowNull: false,
+    },
+    tab_id:{
+        type: Sequelize.INTEGER,
+        allowNull: false,
+    },
     exec_dt: {
         type: Sequelize.DATE,
         allowNull: true,
@@ -19,14 +31,11 @@ const TreePartiesCollections = connection.application.define('tree_parties_colle
         allowNull: false,
         primaryKey: true,
     },     
-    assignor_and_assignee_id:{
+    organisation_id:{
         type: Sequelize.INTEGER,
         allowNull: false,
-    },
-    tab_id:{
-        type: Sequelize.INTEGER,
-        allowNull: false,
-    }
+        primaryKey: true,
+    }    
 },
 {
     underscored: true,

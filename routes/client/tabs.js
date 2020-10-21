@@ -10,7 +10,7 @@ const helpers = require("../../helpers/helper");
 const TreeParties = require("../../model/application/TreeParties");
 const TreePartiesCollections = require("../../model/application/TreePartiesCollections");
 const DocumentIds = require("../../model/application/DocumentIds");
-const Errors = require("../../model/application/Errors");
+
 
 
 const authJWT = require("../../helpers/verifyJwtToken");
@@ -32,7 +32,16 @@ route.get("/:tabID", [authJWT.verifyToken, clientDBConnection.connect], async(re
                     const resultParties = await TreeParties.findAll({
                         attributes:[['representative_id','id'], ['representative_name','name'], [connection.Sequelize.fn('COUNT', 'assignor_and_assignee_id'), 'totalCustomers']],
                         where: {representative_id: allPortfolioList, organisation_id: req.orgId, tab_id: tabID},
-                        group: ['organisation_id', 'representative_id'],                       
+                        group: ['organisation_id', 'representative_id'],  
+                        /*include:[
+                            {
+                                model: TreePartiesCollections,
+                                as: 'collections',
+                                attributes:[[connection.Sequelize.fn('sum', 'assets_count'), 'totalAssets']],
+                                where: {organisation_id: req.orgId, tab_id: tabID},
+                                group:['organisation_id', 'representative_id', 'tab_id']
+                            }
+                        ], */                    
                         order: [
                             ['representative_name', 'ASC']
                         ]
@@ -42,6 +51,9 @@ route.get("/:tabID", [authJWT.verifyToken, clientDBConnection.connect], async(re
                             /**
                              * Get Count of all the Application number from all the rf_id from the parties collection table
                              */
+                            //const findTotalAssets = 
+
+
                             const queryFindTotalAssets = "SELECT COUNT('appno_doc_num') as totalAssets FROM documentid WHERE rf_id IN (SELECT rf_id FROM tree_parties_collection WHERE representative_id = :representative_id AND tab_id = :tab_id AND organisation_id = :organisationID GROUP BY rf_id)";
 
                             const findCounter =  await connection.application.query(queryFindTotalAssets,{
@@ -84,9 +96,10 @@ route.get("/:tabID/companies/:companyID", [authJWT.verifyToken, clientDBConnecti
         let limit = req.query.limit, offset = req.query.offset, customerList = [];
         if(typeof req.connection_db != "undefined" && req.connection_db != null ) {
             const whereConstraint = {
-                    attributes:[['assignor_and_assignee_id', 'id'], 'name'],
-                    where: {representative_id: representativeID, organisation_id: req.orgId, tab_id: tabID},
-                    };
+                attributes:[['assignor_and_assignee_id', 'id'], 'name', [connection.Sequelize.fn('sum', connection.Sequelize.col('tree_parties.transaction_count')), 'totalTransactions'], [connection.Sequelize.fn('sum', connection.Sequelize.col('tree_parties.assets_count')), 'totalAssets']],
+                where: {representative_id: representativeID, organisation_id: req.orgId, tab_id: tabID},
+                group:['organisation_id', 'representative_id', 'tab_id']
+            };
 
             if(limit != undefined && limit != null) {
                 limit = limit > 0 ? parseInt(limit) : 100;
@@ -97,14 +110,14 @@ route.get("/:tabID/companies/:companyID", [authJWT.verifyToken, clientDBConnecti
             }
 
             whereConstraint.order = [['name', 'ASC']];
+            customerList = await TreeParties.findAll(whereConstraint);
             
-            const list = await TreeParties.findAll(whereConstraint);
+            /*const list = await TreeParties.findAll(whereConstraint);
             console.log(list);
             if(list.length > 0) {
                 const promises = list.map(async customer => {
-                    /**
-                     * Get Count of all the Application number from all the rf_id from the parties collection table for particular customer
-                     */
+                    // Get Count of all the Application number from all the rf_id from the parties collection table for particular customer
+                    
                     const queryFindTotalAssets = "SELECT COUNT(rf_id) as totalTransactions, (SELECT COUNT('appno_doc_num') as totalAssets FROM documentid as d WHERE rf_id IN (SELECT rf_id FROM tree_parties_collection WHERE representative_id = :representative_id AND tab_id = :tab_id AND assignor_and_assignee_id = :customer_id GROUP BY rf_id)) as totalAssets FROM tree_parties_collection WHERE representative_id = :representative_id AND tab_id = :tab_id AND assignor_and_assignee_id = :customer_id AND organisation_id = :organisation_id  ";
 
                     const findCounter =  await connection.application.query(queryFindTotalAssets,{
@@ -128,7 +141,7 @@ route.get("/:tabID/companies/:companyID", [authJWT.verifyToken, clientDBConnecti
                     return findCounter;
                 });
                 await Promise.all(promises);
-            }
+            }*/
         }
         res.status(200).json(customerList);
     } catch( err ) {
@@ -137,18 +150,24 @@ route.get("/:tabID/companies/:companyID", [authJWT.verifyToken, clientDBConnecti
     }
 });
 
+/**
+ * List of all customers of selected tab i.e acquistions, security etc
+ */
+
 route.get("/:tabID/customers", [authJWT.verifyToken, clientDBConnection.connect], async(req, res, next) => {
 
     try {
-        const tabID = req.params.tabID, companies = JSON.parse(req.query.companiesIds), customerList = [];
+        const tabID = req.params.tabID, companies = JSON.parse(req.query.companiesIds);
+        let customerList = [];
         let limit = req.query.limit, offset = req.query.offset;
 
         if(typeof req.connection_db != "undefined" && req.connection_db != null ) {
             
 
             const whereConstraint = {
-                attributes:[['assignor_and_assignee_id', 'customer_id'], ['representative_id', 'company_id'], 'name'],
-                where: {representative_id: companies, tab_id: tabID, organisation_id: req.orgId}
+                attributes:[['assignor_and_assignee_id', 'customer_id'], ['representative_id', 'company_id'], 'name', [connection.Sequelize.fn('sum', connection.Sequelize.col('tree_parties.transaction_count')), 'transactionCount'], [connection.Sequelize.fn('sum', connection.Sequelize.col('tree_parties.assets_count')), 'assetsCount']],
+                where: {representative_id: companies, tab_id: tabID, organisation_id: req.orgId},
+                group: ['organisation_id', 'representative_id', 'tab_id', 'assignor_and_assignee_id']
             };
 
             if(limit != undefined && limit != null ) {
@@ -159,7 +178,9 @@ route.get("/:tabID/customers", [authJWT.verifyToken, clientDBConnection.connect]
                 whereConstraint.offset = offset;
             }
 
-            const list = await TreeParties.findAll(whereConstraint);
+            customerList = await TreeParties.findAll(whereConstraint);
+
+            /* const list = await TreeParties.findAll(whereConstraint);
 
             if(list.length > 0) {
                 const promises = list.map(async customer => {
@@ -167,19 +188,19 @@ route.get("/:tabID/customers", [authJWT.verifyToken, clientDBConnection.connect]
                         where: {organisation_id: req.orgId, representative_id: customer.get('company_id'), assignor_and_assignee_id: customer.get('customer_id'), tab_id: tabID}
                     });
 
-                    /*const getAssetsCount = await TreePartiesCollections.findAll({
-                        subQuery: false,
-                        attributes: { 
-                            include: [[connection.Sequelize.fn('COUNT', connection.Sequelize.col('assets.appno_doc_num')), 'totalAssets']] 
-                        }, 
-                        where:{representative_id: customer.get('company_id'), assignor_and_assignee_id: customer.get('customer_id'), tab_id: tabID},
-                        include: [{
-                            model: DocumentIds, 
-                            as: 'assets',
-                            attributes: []
-                        }],
-                        group: ['assets.rf_id']
-                    });*/
+                    // const getAssetsCount = await TreePartiesCollections.findAll({
+                    //     subQuery: false,
+                    //     attributes: { 
+                    //         include: [[connection.Sequelize.fn('COUNT', connection.Sequelize.col('assets.appno_doc_num')), 'totalAssets']] 
+                    //     }, 
+                    //     where:{representative_id: customer.get('company_id'), assignor_and_assignee_id: customer.get('customer_id'), tab_id: tabID},
+                    //     include: [{
+                    //         model: DocumentIds, 
+                    //         as: 'assets',
+                    //         attributes: []
+                    //     }],
+                    //     group: ['assets.rf_id']
+                    // });
 
                     const queryAssetsCount = 'SELECT count(distinct(appno_doc_num)) as assetsCount FROM documentid WHERE rf_id IN (SELECT rf_id FROM tree_parties_collection WHERE representative_id = :companyID AND assignor_and_assignee_id = :customerID AND tab_id = :tabID AND organisation_id = :organisationID)';
 
@@ -206,7 +227,7 @@ route.get("/:tabID/customers", [authJWT.verifyToken, clientDBConnection.connect]
                     return customer;
                 });
                 await Promise.all(promises);
-            }
+            } */
         }
         res.status(200).json(customerList);
     } catch( err ) {
@@ -215,6 +236,9 @@ route.get("/:tabID/customers", [authJWT.verifyToken, clientDBConnection.connect]
     }
 });
 
+/**
+ * List of all transaction of selected customer
+ */
 
 route.get("/:tabID/companies/:companyID/customers/:customerID", [authJWT.verifyToken, clientDBConnection.connect], async(req, res, next) => {
     try {
@@ -224,8 +248,8 @@ route.get("/:tabID/companies/:companyID/customers/:customerID", [authJWT.verifyT
             limit = limit > 0 ? parseInt(limit) : 100;
             offset = offset > 0 ? parseInt(offset) : 0;
             const whereConstraint = {
-                attributes:[['rf_id', 'id'], 'exec_dt'],
-                where: {representative_id: representativeID, assignor_and_assignee_id: customerID, tab_id: tabID}
+                attributes:[['rf_id', 'id'], 'exec_dt', ['assets_count','totalAssets']],
+                where: {organisation_id: req.orgId, representative_id: representativeID, assignor_and_assignee_id: customerID, tab_id: tabID}
             };
 
             if(limit != undefined && limit != null) {
@@ -237,14 +261,16 @@ route.get("/:tabID/companies/:companyID/customers/:customerID", [authJWT.verifyT
             }
 
             whereConstraint.order = [['exec_dt', 'DESC']];
+
+            transactionList = await TreePartiesCollections.findAll(whereConstraint);
             
-            const list = await TreePartiesCollections.findAll(whereConstraint);
+            /* const list = await TreePartiesCollections.findAll(whereConstraint);
             if(list.length > 0) {
                 const promises = list.map(async transaction => {
 
-                    /**
-                     * Get Count of all the Application number from all the rf_id from the parties collection table for particular customer
-                     */
+                    
+                    //Get Count of all the Application number from all the rf_id from the parties collection table for particular customer
+                    
                     const queryFindTotalAssets = "SELECT COUNT('appno_doc_num') as totalAssets FROM documentid WHERE rf_id = :rf_id";
 
                     const findCounter =  await connection.application.query(queryFindTotalAssets,{
@@ -267,7 +293,7 @@ route.get("/:tabID/companies/:companyID/customers/:customerID", [authJWT.verifyT
                     return findCounter;
                 });
                 await Promise.all(promises);
-            }
+            } */
         }
         res.status(200).json(transactionList);
     } catch( err ) {
@@ -275,6 +301,10 @@ route.get("/:tabID/companies/:companyID/customers/:customerID", [authJWT.verifyT
         res.status(500).send("Internal server error.");
     }
 });
+
+/**
+ * Get list of patent with inthe transaction.
+ */
 
 route.get("/:tabID/companies/:companyID/customers/:customerID/transactions/:rfID", [authJWT.verifyToken, clientDBConnection.connect], async(req, res, next) => {
     try {

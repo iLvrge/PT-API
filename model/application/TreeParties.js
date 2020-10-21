@@ -14,6 +14,14 @@ const TreeParties = connection.application.define('tree_parties',{
         type: Sequelize.STRING,
         allowNull: false,
     },
+    transaction_count:{
+        type: Sequelize.INTEGER,
+        allowNull: false,
+    },
+    assets_count:{
+        type: Sequelize.INTEGER,
+        allowNull: false,
+    },
     representative_id:{
         type: Sequelize.INTEGER,
         allowNull: false,

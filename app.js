@@ -40,6 +40,7 @@ const timelines = require("./routes/application/timelines");
  */
 const customers = require("./routes/client/customers");
 const tabs = require("./routes/client/tabs");
+const tree = require("./routes/client/tree");
 const activities = require("./routes/client/activities");
 const comments = require("./routes/client/comments");
 const professionals = require("./routes/client/professionals");
@@ -102,6 +103,8 @@ app.use("/", events);
 app.use("/charts", charts);
 
 app.use("/tabs", tabs);
+
+app.use("/tree", tree);
 
 app.use("/customers", customers);
 
