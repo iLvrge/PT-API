@@ -9,6 +9,10 @@ const Representatives = require("../../model/client/Representatives");
 
 const ApplicationRepresentative = require("../../model/application/Representatives");
 
+const Lawfirm = require("../../model/client/Lawfirm");
+
+const CompanyLawfirm = require("../../model/client/CompanyLawfirm");
+
 const helpers = require("../../helpers/helper");
 
 const authJWT = require("../../helpers/verifyJwtToken");
@@ -22,6 +26,57 @@ route.get("/", [authJWT.verifyToken, clientDBConnection.connect], async(req, res
         if(typeof req.connection_db != "undefined" && req.connection_db != null ) {
             const getCompaniesList = await helpers.getCompaniesWithChildren(req.connection_db, req.orgId);
             res.status(200).json(getCompaniesList);
+        } else {
+            res.status(401).send("Unable to retrieve companies");
+        }
+    } catch (err) {
+        console.log(err);
+        res.status(500).json({message: "Unable to retrieve companies"})
+    }
+});
+
+route.get("/lawfirm", [authJWT.verifyToken, clientDBConnection.connect], async(req, res, next) => {
+    try{
+        if(typeof req.connection_db != "undefined" && req.connection_db != null ) {
+            
+            const Representative = req.connection_db.define('Representatives', Representatives.mainStructure, Representatives.options);
+
+            const Lawfirms = req.connection_db.define('Lawfirm', Lawfirm.mainStructure, Lawfirm.options);
+
+            const RepresentativeLawfirms = req.connection_db.define('CompanyLawfirm', CompanyLawfirm.mainStructure, CompanyLawfirm.options);
+
+            Representative.hasMany(RepresentativeLawfirms, { foreignKey: 'representative_id', as: 'mapping_company_law_firms' });
+
+            RepresentativeLawfirms.belongsTo(Lawfirms, { foreignKey: 'lawfirm_id', as: 'lawfirm', otherKey: 'lawfirm_id' });
+
+            let where = {};
+
+            if(req.query.companies != undefined && req.query.companies != null) {
+                const representativeIDs = JSON.parse(req.query.companies);
+                where = {representative_id: representativeIDs};
+            }
+
+            const list = await Representative.findAll({
+                attributes: ['representative_id', 'original_name', 'representative_name'],
+                where: where,
+                include: [
+                    {
+                        model: RepresentativeLawfirms,
+                        as: 'mapping_company_law_firms',
+                        attributes: ['representative_id', 'lawfirm_id'],
+                        required:false,
+                        include: [
+                            {
+                                model: Lawfirms,
+                                as: 'lawfirm',
+                                attributes: ['lawfirm_id', 'name']
+                            }
+                        ]
+                    }
+                ]
+            });
+
+            res.status(200).json(list);
         } else {
             res.status(401).send("Unable to retrieve companies");
         }
