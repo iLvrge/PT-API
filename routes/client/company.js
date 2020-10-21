@@ -38,7 +38,7 @@ route.get("/", [authJWT.verifyToken, clientDBConnection.connect], async(req, res
 route.get("/lawfirm", [authJWT.verifyToken, clientDBConnection.connect], async(req, res, next) => {
     try{
         if(typeof req.connection_db != "undefined" && req.connection_db != null ) {
-            
+
             const Representative = req.connection_db.define('Representatives', Representatives.mainStructure, Representatives.options);
 
             const Lawfirms = req.connection_db.define('Lawfirm', Lawfirm.mainStructure, Lawfirm.options);
@@ -63,7 +63,7 @@ route.get("/lawfirm", [authJWT.verifyToken, clientDBConnection.connect], async(r
                     {
                         model: RepresentativeLawfirms,
                         as: 'mapping_company_law_firms',
-                        attributes: ['representative_id', 'lawfirm_id'],
+                        attributes: ['lawfirm_id'],
                         required:false,
                         include: [
                             {
