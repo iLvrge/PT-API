@@ -104,7 +104,7 @@ route.get("/portfolios/", [authJWT.verifyToken, clientDBConnection.connect], asy
 
                 if(allPortfolioList.length > 0){
 
-                    /*result = await TreeParties.findAll({
+                    result = await TreeParties.findAll({
                         attributes:['representative_id', 'representative_name','tab_id', [connection.Sequelize.fn('sum', connection.Sequelize.col('tree_parties.transaction_count')), 'transaction_count']],
                         where: {representative_id: allPortfolioList, organisation_id: req.orgId},
                         group: ['organisation_id', 'representative_id', 'tab_id'],                       
@@ -112,8 +112,8 @@ route.get("/portfolios/", [authJWT.verifyToken, clientDBConnection.connect], asy
                             ['tab_id', 'ASC'],
                             ['representative_name', 'ASC']
                         ]
-                    }); */
-                     const resultParties = await TreeParties.findAll({
+                    }); 
+                    /*const resultParties = await TreeParties.findAll({
                         attributes:['representative_id', 'representative_name','tab_id', ['transaction_count','transactionCount']],
                         where: {representative_id: allPortfolioList, organisation_id: req.orgId},
                         group: ['organisation_id', 'representative_id', 'tab_id'],                       
@@ -140,7 +140,7 @@ route.get("/portfolios/", [authJWT.verifyToken, clientDBConnection.connect], asy
                             return findCounter;
                         });
                         await Promise.all(promises);
-                    } 
+                    }*/ 
                 }
             }
         }
