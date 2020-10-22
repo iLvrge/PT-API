@@ -10,7 +10,7 @@ const express = require("express"),
 //require the Model
 const PatentFamilyMember = require("../../model/resources/PatentFamilyMember");
 const PatentFamilyRelation = require("../../model/resources/PatentFamilyRelation");
-const Documentid = require("../../model/resources/Documentids");
+const Documentid = require("../../model/resources/DocumentIds");
 
 route.get("/family/:applicationNumber", [authJWT.verifyToken], async (req, res) =>{  
 
