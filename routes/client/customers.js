@@ -113,34 +113,34 @@ route.get("/portfolios/", [authJWT.verifyToken, clientDBConnection.connect], asy
                             ['representative_name', 'ASC']
                         ]
                     }); 
-                    /*const resultParties = await TreeParties.findAll({
-                        attributes:['representative_id', 'representative_name','tab_id', ['transaction_count','transactionCount']],
-                        where: {representative_id: allPortfolioList, organisation_id: req.orgId},
-                        group: ['organisation_id', 'representative_id', 'tab_id'],                       
-                        order: [
-                            ['tab_id', 'ASC'],
-                            ['representative_name', 'ASC']
-                        ]
-                    });
+                    // const resultParties = await TreeParties.findAll({
+                    //     attributes:['representative_id', 'representative_name','tab_id', ['transaction_count','transactionCount']],
+                    //     where: {representative_id: allPortfolioList, organisation_id: req.orgId},
+                    //     group: ['organisation_id', 'representative_id', 'tab_id'],                       
+                    //     order: [
+                    //         ['tab_id', 'ASC'],
+                    //         ['representative_name', 'ASC']
+                    //     ]
+                    // });
 
-                    if(resultParties.length > 0) {
-                        const promises = resultParties.map(async portfolio => {
-                            const findCounter = await TreePartiesCollections.findOne({
-                                attributes: [[connection.Sequelize.fn('COUNT', 'rf_id'), 'transaction_count']],
-                                where: {organisation_id: req.orgId, representative_id: portfolio.representative_id, tab_id: portfolio.tab_id},
-                                group: ['representative_id', 'tab_id']                      
-                            });
-                            const portfolioJSON = portfolio.toJSON();
-                            if(findCounter != null && findCounter.get('transaction_count') > 0) {                                
-                                portfolioJSON.transaction_count = findCounter.get('transaction_count');                               
-                            } else {
-                                portfolioJSON.transaction_count = 0;        
-                            }
-                            result.push(portfolioJSON);
-                            return findCounter;
-                        });
-                        await Promise.all(promises);
-                    }*/ 
+                    // if(resultParties.length > 0) {
+                    //     const promises = resultParties.map(async portfolio => {
+                    //         const findCounter = await TreePartiesCollections.findOne({
+                    //             attributes: [[connection.Sequelize.fn('COUNT', 'rf_id'), 'transaction_count']],
+                    //             where: {organisation_id: req.orgId, representative_id: portfolio.representative_id, tab_id: portfolio.tab_id},
+                    //             group: ['representative_id', 'tab_id']                      
+                    //         });
+                    //         const portfolioJSON = portfolio.toJSON();
+                    //         if(findCounter != null && findCounter.get('transaction_count') > 0) {                                
+                    //             portfolioJSON.transaction_count = findCounter.get('transaction_count');                               
+                    //         } else {
+                    //             portfolioJSON.transaction_count = 0;        
+                    //         }
+                    //         result.push(portfolioJSON);
+                    //         return findCounter;
+                    //     });
+                    //     await Promise.all(promises);
+                    // }
                 }
             }
         }

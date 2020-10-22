@@ -44,9 +44,9 @@ route.get("/", [authJWT.verifyToken, clientDBConnection.connect], async(req, res
             }
 
            const whereConstraint = {
-                    attributes:[['rf_id', 'id'], 'exec_dt', ['original_name', 'customerName'], ['tab', 'tab_id']],
-                    where: where,
-                };
+                attributes:[['rf_id', 'id'], 'exec_dt', ['original_name', 'customerName'], ['tab', 'tab_id'], ['assets_count', 'totalAssets']],
+                where: where,
+            };
 
             if(limit != undefined && limit != null) {
                 limit = limit > 0 ? parseInt(limit) : 100;
@@ -57,34 +57,35 @@ route.get("/", [authJWT.verifyToken, clientDBConnection.connect], async(req, res
             }
 
             whereConstraint.order = [['exec_dt', 'DESC']];
-            const result = await Timelines.findAll(whereConstraint);
+            timelineList = await Timelines.findAll(whereConstraint);
+            // const result = await Timelines.findAll(whereConstraint);
 
-            if(result.length > 0) {
-                const promises = result.map(async timeline => {
-                    /**
-                     * Get Count of all the Application number from all the rf_id from the parties collection table
-                     */
-                    const queryFindTotalAssets = "SELECT COUNT('appno_doc_num') as totalAssets FROM documentid WHERE rf_id = :rf_id";
+            // if(result.length > 0) {
+            //     const promises = result.map(async timeline => {
+            //         /**
+            //          * Get Count of all the Application number from all the rf_id from the parties collection table
+            //          */
+            //         const queryFindTotalAssets = "SELECT COUNT('appno_doc_num') as totalAssets FROM documentid WHERE rf_id = :rf_id";
 
-                    const findCounter =  await connection.application.query(queryFindTotalAssets,{
-                        type: connection.Sequelize.QueryTypes.SELECT,
-                        raw: true,
-                        logging: console.log,
-                        plain: true,
-                        replacements: { rf_id: timeline.get('id')},
-                      }
-                    );
-                    const timelineJSON = timeline.toJSON();
+            //         const findCounter =  await connection.application.query(queryFindTotalAssets,{
+            //             type: connection.Sequelize.QueryTypes.SELECT,
+            //             raw: true,
+            //             logging: console.log,
+            //             plain: true,
+            //             replacements: { rf_id: timeline.get('id')},
+            //           }
+            //         );
+            //         const timelineJSON = timeline.toJSON();
                     
-                    timelineJSON.totalAssets = 0; 
-                    if(findCounter != null && findCounter.totalAssets > 0) {                                
-                        timelineJSON.totalAssets = findCounter.totalAssets;                               
-                    }
-                    timelineList.push(timelineJSON);
-                    return findCounter;
-                });
-                await Promise.all(promises);
-            }
+            //         timelineJSON.totalAssets = 0; 
+            //         if(findCounter != null && findCounter.totalAssets > 0) {                                
+            //             timelineJSON.totalAssets = findCounter.totalAssets;                               
+            //         }
+            //         timelineList.push(timelineJSON);
+            //         return findCounter;
+            //     });
+            //     await Promise.all(promises);
+            // }
         }
         res.status(200).json(timelineList);
     } catch ( err ) {

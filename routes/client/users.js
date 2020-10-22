@@ -10,6 +10,8 @@ const connection = require("../../config/db.config");
 
 const Users = require("../../model/client/Users");
 
+const Activities = require("../../model/client/Activities");
+
 const LoginUsers = require("../../model/business/Users");
 
 const Organisation = require("../../model/business/Organisations");
@@ -301,38 +303,64 @@ route.delete("/:user_id", [authJWT.verifyToken, clientDBConnection.connect], asy
     try{
         if(typeof req.connection_db != "undefined" && req.connection_db != null ) {
             const User = req.connection_db.define('Users', Users.mainStructure, Users.options);  
-
+            const Activity = req.connection_db.define('Activities', Activities.mainStructure, Activities.options);  
+            
                 const userDetail = await User.findOne({
                                     where: {user_id: req.userId, role_id: 1},
                                     attributes: ['user_id'],
                                 });
                 if( userDetail != null && userDetail.user_id > 0 ) {
                     const updateUserID = req.params.user_id;
-                    const findUser = await User.findOne({
-                                        where: {user_id: updateUserID}
-                                    });
-                    if(findUser != null && findUser.user_id > 0) {                        
-                        const loggedUser = await LoginUsers.destroy({where: {user_id: findUser.user_id}});
-                        if(loggedUser) {
-                            //const Professional = req.connection_db.define('Professionals', ProfessionalUsers.mainStructure, ProfessionalUsers.options); 
-                            User.destroy({
-                                where: {user_id: findUser.user_id},
+                    if(userDetail.user_id != updateUserID) {
+                        const findUser = await User.findOne({
+                            where: {user_id: updateUserID}
+                        });
+                        if(findUser != null && findUser.user_id > 0) { 
+
+                            const checkActivities = await Activity.count({
+                                where: {user_id: updateUserID}
                             })
-                            .then(u => {
-                                if(u) {
-                                    res.status(200).send("User deleted.");
+
+                            if(checkActivities == 0) {
+                                /** Add transaction so that it will roll back incase if any error comes */
+                                User.destroy({
+                                    where: {user_id: findUser.user_id},
+                                })
+                                .then(u => {
+                                    if(u) {
+                                        (async () => {
+                                            await LoginUsers.destroy({where: {user_id: findUser.user_id}});
+                                            res.status(200).send("User deleted.");
+                                        })();
+                                        
+                                        /*
+                                        if(loggedUser) {
+                                            //const Professional = req.connection_db.define('Professionals', ProfessionalUsers.mainStructure, ProfessionalUsers.options); 
+                                            
+                                        } else {
+                                            res.status(401).send("Not found");
+                                        } 
+                                        */
+                                    }
+                                })
+                                .catch(err => {
+                                    console.log(err);
+                                    res.status(401).send("Not found");
+                                })  
+                            } else {
+                                const updateUser =  await LoginUsers.update({status: 1},{where: {user_id: findUser.user_id}});
+                                if(updateUser){
+                                    await User.update({status: 1},{where: {user_id: findUser.user_id}});
+
+                                    res.status(200).send("User blocked successfully");
                                 }
-                            })
-                            .catch(err => {
-                                console.log(err);
-                                res.status(401).send("Not found");
-                            })
+                            }                      
                         } else {
-                            res.status(401).send("Not found");
-                        }                        
+                            res.status(400).send("Invalid inputs");
+                        }
                     } else {
-                        res.status(400).send("Invalid inputs");
-                    }
+                        res.status(400).send("You cannot delete your own account");  
+                    } 
                 } else {
                     res.status(400).send("You are not authorized user to perform this action.");  
                 } 
