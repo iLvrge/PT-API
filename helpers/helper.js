@@ -48,7 +48,7 @@ let searchCompany = async(query, t) => {
 
     let searchTerm, queryCompany, searchResult = [], queryResult = [];
 
-    const stringWithNewLineSplit = query.toString().split(/\r\n|\r|\n/), regex = /[.,]/g; 
+    const stringWithNewLineSplit = query.toString().split(/\r\n|\r|\n/), regex = /[.,]/g, regexFindAmp = /[&]/gm;
 
     if(stringWithNewLineSplit.length > 0) {
         const promises = stringWithNewLineSplit.map(async searchText => {
@@ -66,38 +66,42 @@ let searchCompany = async(query, t) => {
                 search = search.substr(0, search.length - 2);
             }*/
             //search = search.replace(/\b(?:inc|llc|corp|llp|gmbh|lp|agent|sas|na|bank|co|states|ltd|kk|a\/s)\b/g,'').replace(/^\s+/,"");
-            
-            if(splitSearch.length > 1){				
-                if(splitSearch.length == 2) {
-                    if(splitSearch[1] == '') {
-                        searchTerm = `${search} *`;
+            if(regexFindAmp.exec(originalSearch) === null){
+                if(splitSearch.length > 1){				
+                    if(splitSearch.length == 2) {
+                        if(splitSearch[1] == '') {
+                            searchTerm = `${search} *`;
+                        } else {
+                            const ftsQuery = new FtsQuery(true);			
+                            searchTerm = ftsQuery.transform(search);
+                            //searchTerm = `${searchTerm}*`;
+                            searchTerm = searchTerm.replace(" AND ", " ");
+                            searchTerm = searchTerm.replace(" OR ", " ");
+                            searchTerm = searchTerm.replace(" NEAR ", " ");
+                            searchTerm = searchTerm.split(' ');
+                            searchTerm = searchTerm.join('* ')
+                            searchTerm = searchTerm+'*';
+                        }
                     } else {
                         const ftsQuery = new FtsQuery(true);			
                         searchTerm = ftsQuery.transform(search);
-                        //searchTerm = `${searchTerm}*`;
+                        /*if(!!searchTerm.indexOf('"')){
+                            searchTerm = `${searchTerm}*`;
+                        }*/
                         searchTerm = searchTerm.replace(" AND ", " ");
                         searchTerm = searchTerm.replace(" OR ", " ");
                         searchTerm = searchTerm.replace(" NEAR ", " ");
                         searchTerm = searchTerm.split(' ');
                         searchTerm = searchTerm.join('* ')
                         searchTerm = searchTerm+'*';
-                    }
+                    }				
                 } else {
-                    const ftsQuery = new FtsQuery(true);			
-                    searchTerm = ftsQuery.transform(search);
-                    /*if(!!searchTerm.indexOf('"')){
-                        searchTerm = `${searchTerm}*`;
-                    }*/
-                    searchTerm = searchTerm.replace(" AND ", " ");
-                    searchTerm = searchTerm.replace(" OR ", " ");
-                    searchTerm = searchTerm.replace(" NEAR ", " ");
-                    searchTerm = searchTerm.split(' ');
-                    searchTerm = searchTerm.join('* ')
-                    searchTerm = searchTerm+'*';
-                }				
+                    searchTerm = `${search}*`;
+                }
             } else {
-                searchTerm = `${search}*`;
+                searchTerm = `"${search}"`;
             }
+            
             console.log("SEARCH:",search);
             queryCompany = "SELECT a.assignor_and_assignee_id as id, a.assignor_and_assignee_id, a.name, a.instances as counter, c.representative_name as normalize_name, (select rr.representative_name FROM representative as rr WHERE rr.representative_name = a.name GROUP BY rr.representative_name) as representative_company  FROM assignor_and_assignee as a LEFT JOIN representative as c ON c.representative_id = a.representative_id WHERE MATCH(a.name) AGAINST (:search IN BOOLEAN MODE) GROUP BY a.name";
 
@@ -131,12 +135,12 @@ let searchCompany = async(query, t) => {
             }
             if(querySearchResult.length > 0) {
                 queryResult = [...queryResult, ...querySearchResult];
-                console.log(queryResult);
+                /*console.log(queryResult);*/
             }
             return querySearchResult;
         });
-        const finalResultOfAllPromises = await Promise.all(promises);
-        console.log(finalResultOfAllPromises);
+        await Promise.all(promises);
+        /*console.log(finalResultOfAllPromises);*/
     }
 
     /*if(getCompanyData.length > 0) {

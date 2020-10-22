@@ -27,6 +27,7 @@ const port = process.env.PORT || 3600;
  */
 const transactions = require("./routes/application/transactions");
 const illustration = require("./routes/application/illustration");
+const family = require("./routes/application/family");
 const share = require("./routes/application/share");
 const assets = require("./routes/application/assets");
 const updates = require("./routes/application/updates");
@@ -83,6 +84,8 @@ app.use("/", validity);
 app.use("/", transactions);
 
 app.use("/", illustration);
+
+app.use("/", family);
 
 app.use("/", share);
 
