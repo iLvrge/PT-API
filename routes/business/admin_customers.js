@@ -853,9 +853,10 @@ route.get("/customers/:organisation_id/find_inventor", [authJWT.verifyToken, aut
             let org = await helpers.findOrganisationbyID( organisationID );
             if(org != null && org.organisation_id > 0) {
                 console.log(`php -f /var/www/html/trash/missing_inventor_from_api_2000_2004.php "${organisationID}"`);
-                await exec(`php -f /var/www/html/trash/missing_inventor_from_api_2000_2004.php "${organisationID}"`, (error, stdout, stderr) => {  
-                    res.status(200).send("Find the inventor from 2000-2004 successfully completed");
+                exec(`php -f /var/www/html/trash/missing_inventor_from_api_2000_2004.php "${organisationID}"`, (error, stdout, stderr) => {  
+                    console.log(error, stdout, stderr);
                 });
+                res.status(200).send("Find the inventor from 2000-2004 in process");
             } else {
                 res.status(402).send("Customer not exist.");
             }
