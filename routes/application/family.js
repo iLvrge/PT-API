@@ -15,7 +15,9 @@ const Documentid = require("../../model/resources/DocumentIds");
 route.get("/family/:applicationNumber", [authJWT.verifyToken], async (req, res) =>{  
 
     try{
-        const applicationNumber = req.params.applicationNumber;
+        /*const applicationNumber = req.params.applicationNumber;*/
+
+        const applicationNumber = '09775636';
 
         let getFamily = [];
     

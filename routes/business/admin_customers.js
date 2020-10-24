@@ -809,9 +809,10 @@ route.get("/customers/:organisation_id/flag_automatic", [authJWT.verifyToken, au
             let org = await helpers.findOrganisationbyID( organisationID );
             if(org != null && org.organisation_id > 0) {
                 console.log(`php -f /var/www/html/trash/update_flag.php "${organisationID}"`);
-                await exec(`php -f /var/www/html/trash/update_flag.php "${organisationID}"`, (error, stdout, stderr) => {  
-                    res.status(200).send("Flag fixing completed");
+                exec(`php -f /var/www/html/trash/update_flag.php "${organisationID}"`, (error, stdout, stderr) => {  
+                    console.log(error, stdout, stderr);
                 });
+                res.status(200).send("Fixing flag in process");
             } else {
                 res.status(402).send("Customer not exist.");
             }
@@ -831,9 +832,10 @@ route.get("/customers/:organisation_id/missing_inventor", [authJWT.verifyToken, 
             let org = await helpers.findOrganisationbyID( organisationID );
             if(org != null && org.organisation_id > 0) {
                 console.log(`php -f /var/www/html/trash/find_missing_from_api_inventor_xml.php "${organisationID}"`);
-                await exec(`php -f /var/www/html/trash/find_missing_from_api_inventor_xml.php "${organisationID}"`, (error, stdout, stderr) => {  
-                    res.status(200).send("Finding the missing inventor successfully completed");
+                exec(`php -f /var/www/html/trash/find_missing_from_api_inventor_xml.php "${organisationID}"`, (error, stdout, stderr) => {  
+                    console.log(error, stdout, stderr);
                 });
+                res.status(200).send("Finding the missing inventor in process");
             } else {
                 res.status(402).send("Customer not exist.");
             }
