@@ -37,7 +37,7 @@ const moment = require('moment');
 
 const ASSETS_LIFE_SPAN_DATE_FORMAT = 'YYYY';
 
-
+const fs = require('fs');
 /**
  * 
  * @param {SearchCompanies} search 
@@ -1696,42 +1696,75 @@ const findAssetsTimeSpan = async(portfolioList, tabID, customerID, rfID, orgID) 
     if(parseInt(rfID) > 0) {
         where.rf_id = parseInt(rfID);
     }
+
+    
+
     const getAssetList = await TreePartiesCollections.findAll({
         attributes:[],
         where: where,
-        group:['rf_id'],
         include:[
             {                       
                 model: DocumentIds,
                 as: 'assets',
                 attributes: [['appno_doc_num','application'], ['grant_doc_num', 'patent'], 'status', 'appno_date'],
-                where:{appno_doc_num: {[connection.Op.ne]: ''},grant_doc_num: {[connection.Op.ne] : ''}},
-                order: [['appno_date', 'ASC']],
-                group:['appno_doc_num']
+                where:{
+                    [connection.Op.and]: [
+                        connection.Sequelize.where(
+                            connection.Sequelize.fn(
+                                'DATE_FORMAT',
+                                connection.Sequelize.col('assets.appno_date'),
+                                '%Y'
+                            ),
+                            connection.Sequelize.Op.gte,
+                            2000
+                        ),
+                        {appno_doc_num: {[connection.Op.ne]: ''}},
+                        {grant_doc_num: {[connection.Op.ne] : ''}}
+                    ]
+                },
             }
-        ]                    
+        ],
+        group:['assets.appno_doc_num']             
     });
-
+    const applicationNumberAdded = [], dateAdded = [];
+    console.log("TOTALITEMS",getAssetList.length);
+    
     if(getAssetList.length > 0) {                
         const timelineSpan = [];
-        const promises = getAssetList.map( application => {
-            const startYear = moment(new Date(application.assets[0].appno_date)).format(ASSETS_LIFE_SPAN_DATE_FORMAT);
-            let endYear = moment(new Date(application.assets[0].appno_date)).add(20, 'years').format(ASSETS_LIFE_SPAN_DATE_FORMAT);
-            for(let i = startYear; i <= endYear; i++) {
-                timelineSpan.push({year: i, count: 1});
+        const promises = getAssetList.map( async item => {
+            if(item.assets.length > 0) {
+                const assetPromise = item.assets.map(application => {
+                    if(!applicationNumberAdded.includes(application.get('application'))){
+                        const startYear = moment(new Date(application.appno_date)).format(ASSETS_LIFE_SPAN_DATE_FORMAT);
+                        let endYear = moment(new Date(application.appno_date)).add(20, 'years').format(ASSETS_LIFE_SPAN_DATE_FORMAT);
+                        for(let i = parseInt(startYear); i <= parseInt(endYear); i++) {
+                            timelineSpan.push({year: i, count: 1, application: application.get('application')});
+                        }
+                        applicationNumberAdded.push(application.get('application'));
+                        dateAdded.push(application.appno_date);
+                    }            
+                    return application;
+                });
+                await Promise.all(assetPromise);
             }
-            return application;
+            return item;
         });
 
         await Promise.all(promises);
-
+        console.log("TOTALAPPLICATIONS",JSON.stringify(dateAdded));
+        fs.writeFile("abc.log", JSON.stringify(timelineSpan), function (err) {
+            if (err) return console.log(err);
+            console.log('DONE');
+        });
+        
         const {max, min} = await minMax2DArray(timelineSpan, 'year');
         
         for(let i = min; i < max; i++) {
             let getList = await timelineSpan.filter( item => {
-                return i == item.year ? item : undefined;
+                return i == parseInt(item.year) ? item : undefined;
             });
             if(getList != undefined && getList.length > 0){
+                //console.log(i,getList);
                 let Counter = await getList.reduce((a, b) => +a + +b.count, 0);
                 assetsLifeSpan.push({year: i, count: Counter});
             }
