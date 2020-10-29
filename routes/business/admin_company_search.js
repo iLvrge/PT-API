@@ -113,73 +113,39 @@ route.put("/company/search/all/", [authJWT.verifyToken, authJWT.isAdmin], async 
             /**
              * This check is to find company is already normalised with other representative company
              */
-            let oldRepresentativeCompanyID = 0, oldRepresentativeCompanyName = "";
-            let findIsNormalized  = await AssignorAndAssignee.findOne({
+            let oldRepresentativeCompanyID = 0, oldRepresentativeCompanyName = "", findIsNormalized = null;
+            let findRow  = await AssignorAndAssignee.findOne({
                                         where:{name: name}
                                     });
-            if(findIsNormalized != null && findIsNormalized.representative_id > 0) {
+            if(findRow != null ) { 
                 findIsNormalized  = await Representatives.findOne({
-                    where:{representative_id: findIsNormalized.representative_id}
+                    where:{representative_name: findRow.name}
                 });
-            } else {
-                findIsNormalized  = await Representatives.findOne({
-                    where:{representative_name: name}
-                });
-            }
+            } 
 
-            if(findIsNormalized != null && findIsNormalized.representative_id > 0) {
-                /** 
-                 * Find old representative company
-                */
-                oldRepresentativeCompanyID = findIsNormalized.representative_id;
-                oldRepresentativeCompanyName = findIsNormalized.representative_name;
-            }
-
-            let  representativeCompany = await helpers.checkRepresentativeCompany(normalize_name);
-
-            /**
-             * Check normalize company is normalize with  another company
-             * 
-             */
-            let findNormalizedCompany  = await AssignorAndAssignee.findOne({
-                where:{name: normalize_name}
-            });
-
-            console.log(findNormalizedCompany);
-
-            if(findNormalizedCompany != null && findNormalizedCompany.representative_id > 0) {
-                representativeCompany  = await Representatives.findOne({
-                    where:{representative_id: findNormalizedCompany.representative_id}
-                });
-
-                if(representativeCompany != null && representativeCompany.representative_id > 0){
+            if(findRow != null && findIsNormalized != null) {
+                if(findRow.name == findIsNormalized.representative_name) {
                     await Representatives.update({
                         representative_name: normalize_name
                     }, {where: {representative_id: representativeCompany.representative_id} });
+                    /**
+                     * update old normalize company with new company
+                     * 
+                     */
+                    await AssignorAndAssignee.update({representative_id: representativeCompany.representative_id}, {where: {name: normalize_name}}); 
                 }
             }
 
             
+            let  representativeCompany = await helpers.checkRepresentativeCompany(normalize_name);
+
             if(representativeCompany == null) {
                 /**
-                 * If Old representative found
-                 */                    
-                if(oldRepresentativeCompanyID > 0) {
-                    /**
-                     * Update old representative company name with new representative name i.e normalize name
-                     */
-                    await Representatives.update({
-                        representative_name: normalize_name
-                    }, {where: {representative_id: oldRepresentativeCompanyID} });
-                    representativeCompany = await helpers.checkRepresentativeCompany(normalize_name);
-                } else {
-                    /**
-                     * Insert new representative company in the representative table
-                     */                        
-                    representativeCompany = await Representatives.create({
-                        representative_name: normalize_name
-                    });
-                }                    
+                 * Insert new representative company in the representative table
+                 */                        
+                representativeCompany = await Representatives.create({
+                    representative_name: normalize_name
+                });                   
             }
 
             
@@ -189,29 +155,10 @@ route.put("/company/search/all/", [authJWT.verifyToken, authJWT.isAdmin], async 
                 * Update representative ID in the AssignorAndAssignee table
                 */
                 const item = {representative_id: representativeCompany.representative_id};
+
+                await AssignorAndAssignee.update(item, {where: {name: name}});   
                 
-                if(oldRepresentativeCompanyID == 0) {
-                    /**
-                     * Update representative ID
-                     */
-                    await AssignorAndAssignee.update(item, {where: {name: name}});                                             
-                } else {                        
-                    await AssignorAndAssignee.update(item, {where: {name: oldRepresentativeCompanyName}});
-                    await AssignorAndAssignee.update(item, {where: {representative_id: oldRepresentativeCompanyID}});
-
-                    /**
-                     * Checking Client name with same old Company name
-                     */
-                    const findCustomerWithOldName = await Organisations.findOne({
-                        attributes:['name'],
-                        where:{type: 0, name: oldRepresentativeCompanyName}
-                    });
-
-                    if(findCustomerWithOldName != null) {
-                        await findCustomerWithOldName.update({name: representativeCompany.representative_name});
-                    }
-                }
-
+                
                 
 
 
