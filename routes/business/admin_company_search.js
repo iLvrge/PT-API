@@ -127,16 +127,16 @@ route.put("/company/search/all/", [authJWT.verifyToken, authJWT.isAdmin], async 
                 if(findRow.name == findIsNormalized.representative_name) {
                     await Representatives.update({
                         representative_name: normalize_name
-                    }, {where: {representative_id: representativeCompany.representative_id} });
+                    }, {where: {representative_id: findIsNormalized.representative_id} });
                     /**
                      * update old normalize company with new company
                      * 
-                     */
-                    await AssignorAndAssignee.update({representative_id: representativeCompany.representative_id}, {where: {name: normalize_name}}); 
+                    */
+                    await AssignorAndAssignee.update({representative_id: findIsNormalized.representative_id}, {where: {name: normalize_name}}); 
                 }
             }
 
-            
+
             let  representativeCompany = await helpers.checkRepresentativeCompany(normalize_name);
 
             if(representativeCompany == null) {
