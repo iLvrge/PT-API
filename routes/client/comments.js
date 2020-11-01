@@ -42,7 +42,7 @@ route.get("/comments/:subjectType", [authJWT.verifyToken, clientDBConnection.con
 
             include.push({
                 model: Comment,
-                as: 'comments',
+                as: 'comments',                
                 include:[{
                     model: User,
                     as: 'user',           
@@ -77,7 +77,11 @@ route.get("/comments/:subjectType", [authJWT.verifyToken, clientDBConnection.con
                     
                     const findAllActivities = await Activity.findAll({
                         where: {type: type},
-                        include:include
+                        include:include,
+                        order: [
+                            [ { model: Comment, as: 'comments' }, 'createdAt', 'ASC'], 
+                        ],
+                        
                     });
                     res.status(200).json(findAllActivities);
                 }
@@ -153,8 +157,11 @@ route.get("/comments/:subjectType/:subject", [authJWT.verifyToken, clientDBConne
             }
             
             const findActivity = await Activity.findOne({
-                where: where,
-                include:include
+                where: where,               
+                include:include,
+                order: [
+                    [ { model: Comment, as: 'comments' }, 'createdAt', 'ASC'], 
+                ],
             });
             res.status(200).json(findActivity);
         }
@@ -167,9 +174,21 @@ route.get("/comments/:subjectType/:subject", [authJWT.verifyToken, clientDBConne
 route.post("/comments/:subjectType", [authJWT.verifyToken, clientDBConnection.connect], async(req, res, next) => {
     try{
         if(typeof req.connection_db != "undefined" && req.connection_db != null ) {
-            const subjectType = req.params.subjectType;
+            const subjectType = [req.params.subjectType];
 
             const Type = req.connection_db.define('Types', Types.mainStructure, Types.options);
+
+            if(subjectType[0] == 'error' || subjectType[0] == 'fix'){
+                subjectType.push('asset');
+                if(!subjectType.includes('error')){
+                    subjectType.push('error');
+                } else if(!subjectType.includes('fix')){
+                    subjectType.push('fix');
+                }
+            } else if(subjectType[0] == 'asset'){
+                subjectType.push('error');
+                subjectType.push('fix');
+            }
 
             const findTypeID = await Type.findOne({
                 where: {name: subjectType}

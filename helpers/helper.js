@@ -1424,9 +1424,12 @@ let findActivityByID = async (activityID, Activity, Comment) => {
         include:[
             {
                 model: Comment,
-                as: 'comments',
+                as: 'comments'
             }
-        ]
+        ],
+        order: [
+            [ { model: Comment, as: 'comments' }, 'createdAt', 'ASC'], 
+        ],
     });
     return findActivity;
 }
