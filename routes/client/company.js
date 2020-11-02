@@ -88,6 +88,41 @@ route.get("/lawfirm", [authJWT.verifyToken, clientDBConnection.connect], async(r
     }
 });
 
+
+route.post("/lawfirm", [authJWT.verifyToken, clientDBConnection.connect], async(req, res, next) => {
+    try{
+        let add = [];
+        if(typeof req.connection_db != "undefined" && req.connection_db != null ) {
+            if(req.body.representative_id != null && req.body.representative_id != undefined && req.body.representative_id > 0 && req.body.lawfirms != undefined ) {
+                
+                const lawFirmList = JSON.parse(req.body.lawfirms);
+
+                const postData = [];
+                if(lawFirmList.length > 0) {
+                    const promise = lawFirmList.map(lawFirm => {
+                        postData.push({representative_id: req.body.representative_id, lawfirm_id: lawFirm})   
+                        return lawFirm
+                    })
+
+                    await Promise.all(promise);
+
+                    const RepresentativeLawfirm = req.connection_db.define('RepresentativeLawfirm', CompanyLawfirm.mainStructure, CompanyLawfirm.options);
+
+                    add = await RepresentativeLawfirm.bulkCreate(postData, {returning: true});
+                } else {
+                    res.status(402).send("Please select law firm IDs.");        
+                }
+            } else {
+                res.status(402).send("Invalid inputs");        
+            } 
+        }
+        res.status(200).json(add);
+    } catch (e) {
+        console.log(e);
+        res.status(500).send("Internal error");
+    }
+});
+
 route.get("/search/:searchName", [authJWT.verifyToken], async(req, res, next) => {
     const search = req.params.searchName;
     searchCompanies  = await helpers.searchCompany(search, 0);
@@ -627,6 +662,39 @@ route.delete("/subcompanies/:ids", [authJWT.verifyToken, clientDBConnection.conn
         console.log(err);
         res.status(500).json({message: "Error while deleting company"})
     }    
+});
+
+
+route.delete("/lawfirm/companyLawfirmID", [authJWT.verifyToken, clientDBConnection.connect], async(req, res, next) => {
+    try{
+        if(typeof req.connection_db != "undefined" && req.connection_db != null ) {
+            if(req.params.companyLawfirmID != null && req.params.companyLawfirmID != undefined && req.params.companyLawfirmID > 0) {
+                
+                const RepresentativeLawfirm = req.connection_db.define('RepresentativeLawfirm', CompanyLawfirm.mainStructure, CompanyLawfirm.options);
+
+                const findData = RepresentativeLawfirm.findByPk(req.params.companyLawfirmID);
+
+                if(findData != null && findData.company_lawfirm_id > 0) {
+                    const deleteData = await RepresentativeLawfirm.destroy({
+                        where:{company_lawfirm_id: req.params.companyLawfirmID}
+                    })
+
+                    if(deleteData) {
+                        res.status(200).send("Record delete successfully");    
+                    } else {
+                        res.status(500).send("Deleting data failed.");    
+                    } 
+                }
+            } else {
+                res.status(402).send("Invalid inputs");        
+            } 
+        } else {
+            res.status(402).send("Invalid inputs");        
+        } 
+    } catch (e) {
+        console.log(e);
+        res.status(500).send("Internal error");
+    }
 });
 
 module.exports = route;
