@@ -109,6 +109,25 @@ route.post("/lawfirm", [authJWT.verifyToken, clientDBConnection.connect], async(
                     const RepresentativeLawfirm = req.connection_db.define('RepresentativeLawfirm', CompanyLawfirm.mainStructure, CompanyLawfirm.options);
 
                     add = await RepresentativeLawfirm.bulkCreate(postData, {returning: true});
+
+                    if(add) {
+                        const Lawfirms = req.connection_db.define('Lawfirm', Lawfirm.mainStructure, Lawfirm.options);
+
+                        RepresentativeLawfirms.belongsTo(Lawfirms, { foreignKey: 'lawfirm_id', as: 'lawfirm', otherKey: 'lawfirm_id' });
+
+                        
+                        add = await RepresentativeLawfirms.findAll({
+                            attributes: ['lawfirm_id'],
+                            where: {representative_id: req.body.representative_id},
+                            include: [
+                                {                                    
+                                    model: Lawfirms,
+                                    as: 'lawfirm',
+                                    attributes: ['lawfirm_id', 'name']
+                                }
+                            ]
+                        });
+                    }
                 } else {
                     res.status(402).send("Please select law firm IDs.");        
                 }
