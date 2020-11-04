@@ -32,7 +32,9 @@ route.get("/validity_counter", [authJWT.verifyToken, clientDBConnection.connect]
 
             if(companyList != undefined && companyList != '') {
                 const companies = JSON.parse(companyList);
-                whereCondition.representative_id = companies;
+                if(companies.length > 0) {
+                    whereCondition.representative_id = companies;
+                }
             }
 
             Validity.findOne({
