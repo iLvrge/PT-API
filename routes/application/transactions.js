@@ -14,16 +14,8 @@ const connection = require("../../config/db.config");
 
 const clientDBConnection = require("../../helpers/clientDBConnection");
 
-route.get("/transactions/:companyName", [authJWT.verifyToken, clientDBConnection.connect], async(req, res, next) => {
+route.get("/transactions", [authJWT.verifyToken, clientDBConnection.connect], async(req, res, next) => {
 
-    let companyName = req.params.companyName;
-
-    if(companyName == 'undefined') {
-        const findMainCompany = await helpers.findOrganisationbyID(req.orgId);
-        if(findMainCompany != null) {
-            companyName = findMainCompany.name;
-        }
-    }
     const resultS = {buy: 0, buy_patent: 0, diff_buy_patent: 0, sale: 0, sale_patent: 0, diff_sale_patent: 0, security: 0, security_patent: 0, diff_security_patent: 0, release: 0, release_patent: 0, diff_release_patent: 0, license_in: 0, license_in_patent: 0, diff_license_in_patent: 0, license_out: 0, license_out_patent: 0, diff_license_out_patent: 0};
     if(companyName != 'undefined' || companyName == 0) {
         if(typeof req.connection_db != "undefined" && req.connection_db != null ) {
