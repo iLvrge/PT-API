@@ -96,7 +96,7 @@ let searchCompany = async(query, t) => {
                         searchTerm = searchTerm+'*';
                     }				
                 } else {
-                    searchTerm = `${search}*`;
+                    searchTerm = `"${search}"*`;
                 }
             } else {
                 searchTerm = `"${search}"`;
