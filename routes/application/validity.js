@@ -16,41 +16,28 @@ const clientDBConnection = require("../../helpers/clientDBConnection");
 
 route.get("/validity_counter", [authJWT.verifyToken, clientDBConnection.connect], async(req, res, next) => {
 
-    let companyName = req.params.companyName;
+    if(typeof req.connection_db != "undefined" && req.connection_db != null ) {
 
-    if(companyName == 'undefined') {
-        const findMainCompany = await helpers.findOrganisationbyID(req.orgId);
-        if(findMainCompany != null) {
-            companyName = findMainCompany.name;
-        }
-    }
-    const rest = {application: 0, patent: 0, encumbered: 0, current: 0, difference: 0};
-    if(companyName != 'undefined' || companyName == 0) {
-        if(typeof req.connection_db != "undefined" && req.connection_db != null ) {
+        const whereCondition = {organisation_id: req.orgId}, companyList = req.query.companies;
 
-            const whereCondition = {organisation_id: req.orgId}, companyList = req.query.companies;
-
-            if(companyList != undefined && companyList != '') {
-                const companies = JSON.parse(companyList);
-                if(companies.length > 0) {
-                    whereCondition.representative_id = companies;
-                }
+        if(companyList != undefined && companyList != '') {
+            const companies = JSON.parse(companyList);
+            if(companies.length > 0) {
+                whereCondition.representative_id = companies;
             }
-
-            Validity.findOne({
-                attributes:[[connection.application.fn('sum', connection.application.col('application')), 'application'], [connection.application.fn('sum', connection.application.col('patent')), 'patent'], [connection.application.fn('sum', connection.application.col('encumbered')), 'encumbered'], [connection.application.fn('sum', connection.application.col('current_year')), 'current'], [connection.application.fn('sum', connection.application.col('difference')), 'difference']],
-                where: whereCondition,
-                group: ["organisation_id"]
-            })
-            .then((list)=>{
-                res.status(200).json(list);
-            }).catch((err)=>{
-                console.log(err);
-                res.status(200).json(rest);
-            });
-        } else {
-            res.status(200).json(rest);
         }
+
+        Validity.findOne({
+            attributes:[[connection.application.fn('sum', connection.application.col('application')), 'application'], [connection.application.fn('sum', connection.application.col('patent')), 'patent'], [connection.application.fn('sum', connection.application.col('encumbered')), 'encumbered'], [connection.application.fn('sum', connection.application.col('current_year')), 'current'], [connection.application.fn('sum', connection.application.col('difference')), 'difference']],
+            where: whereCondition,
+            group: ["organisation_id"]
+        })
+        .then((list)=>{
+            res.status(200).json(list);
+        }).catch((err)=>{
+            console.log(err);
+            res.status(200).json(rest);
+        });
     } else {
         res.status(200).json(rest);
     }
