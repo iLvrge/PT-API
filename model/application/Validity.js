@@ -29,6 +29,18 @@ const Validity = connection.application.define('validity',{
         type: Sequelize.INTEGER,
         allowNull: false,
     },
+    current_year:{
+        type: Sequelize.INTEGER,
+        allowNull: false,
+    },
+    previous_year:{
+        type: Sequelize.INTEGER,
+        allowNull: false,
+    },
+    difference:{
+        type: Sequelize.DECIMAL,
+        allowNull: false,
+    },
     list:{
         type: Sequelize.STRING,
         allowNull: false,

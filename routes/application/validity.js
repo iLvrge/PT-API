@@ -41,7 +41,7 @@ route.get("/validity_counter/:companyName", [authJWT.verifyToken, clientDBConnec
 
                 if(findParent != null && findParent.representative_id > 0) {
                     Validity.findOne({
-                        attributes:['application', 'patent', 'encumbered'],
+                        attributes:['application', 'patent', 'encumbered', ['current_year', 'current'], 'difference'],
                         where: {organisation_id: req.orgId, representative_id: findParent.representative_id}
                     })
                     .then((list)=>{
@@ -55,7 +55,7 @@ route.get("/validity_counter/:companyName", [authJWT.verifyToken, clientDBConnec
                 }
             } else {
                 Validity.findOne({
-                    attributes:[[connection.application.fn('sum', connection.application.col('application')), 'application'], [connection.application.fn('sum', connection.application.col('patent')), 'patent'], [connection.application.fn('sum', connection.application.col('encumbered')), 'encumbered']],
+                    attributes:[[connection.application.fn('sum', connection.application.col('application')), 'application'], [connection.application.fn('sum', connection.application.col('patent')), 'patent'], [connection.application.fn('sum', connection.application.col('encumbered')), 'encumbered'], [connection.application.fn('sum', connection.application.col('current_year')), 'current'], [connection.application.fn('sum', connection.application.col('difference')), 'difference']],
                     where: {organisation_id: req.orgId},
                     group: ["organisation_id"]
                 })

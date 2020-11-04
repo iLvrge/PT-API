@@ -21,7 +21,23 @@ const Transactions = connection.application.define('transaction',{
         type: Sequelize.INTEGER,
         allowNull: false,
     },
+    buy_patent:{
+        type: Sequelize.INTEGER,
+        allowNull: false,
+    },
+    diff_buy_patent:{
+        type: Sequelize.INTEGER,
+        allowNull: false,
+    },
     sale:{
+        type: Sequelize.INTEGER,
+        allowNull: false,
+    },
+    sale_patent:{
+        type: Sequelize.INTEGER,
+        allowNull: false,
+    },
+    diff_sale_patent:{
         type: Sequelize.INTEGER,
         allowNull: false,
     },
@@ -29,7 +45,23 @@ const Transactions = connection.application.define('transaction',{
         type: Sequelize.INTEGER,
         allowNull: false,
     },
+    security_patent:{
+        type: Sequelize.INTEGER,
+        allowNull: false,
+    },
+    diff_security_patent:{
+        type: Sequelize.INTEGER,
+        allowNull: false,
+    },
     release:{
+        type: Sequelize.INTEGER,
+        allowNull: false,
+    },
+    release_patent:{
+        type: Sequelize.INTEGER,
+        allowNull: false,
+    },
+    diff_release_patent:{
         type: Sequelize.INTEGER,
         allowNull: false,
     },
@@ -37,7 +69,23 @@ const Transactions = connection.application.define('transaction',{
         type: Sequelize.INTEGER,
         allowNull: false,
     },
+    license_in_patent:{
+        type: Sequelize.INTEGER,
+        allowNull: false,
+    },
+    diff_license_in_patent:{
+        type: Sequelize.INTEGER,
+        allowNull: false,
+    },
     license_out:{
+        type: Sequelize.INTEGER,
+        allowNull: false,
+    },
+    license_out_patent:{
+        type: Sequelize.INTEGER,
+        allowNull: false,
+    },
+    diff_license_out_patent:{
         type: Sequelize.INTEGER,
         allowNull: false,
     },
