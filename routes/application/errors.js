@@ -33,15 +33,22 @@ route.get("/errors", [authJWT.verifyToken, clientDBConnection.connect], async(re
             }
             
             let applicationNumber = [];
-            if((customerList != undefined && customerList != '')  || (transactionList != undefined && transactionList != '') || (patentList != undefined && patentList != '')) {
-                let queryFindApplication = "SELECT d.appno_doc_num FROM documentid as d WHERE d.rf_id IN (SELECT rf_id FROM tree_parties_collection as tpc INNER JOIN tree_parties as tp ON tp.assignor_and_assignee_id = tpc.assignor_and_assignee_id WHERE tpc.organisation_id = :organisation_id ";
+            if((tabList != undefined && tabList != '')  || (customerList != undefined && customerList != '')  || (transactionList != undefined && transactionList != '') || (patentList != undefined && patentList != '')) {
+                let queryFindApplication = "SELECT d.appno_doc_num FROM documentid as d WHERE d.rf_id IN (SELECT rf_id FROM tree_parties_collection as tpc WHERE tpc.organisation_id = :organisation_id ";
 
-                let representatives = [], rfIDS = [], customers = [], patents = [];
+                let representatives = [], rfIDS = [], customers = [], patents = [], tabs = [];
 
                 if(companyList != undefined && companyList != '') {
                     representatives = JSON.parse(companyList);
                     if(representatives.length > 0) {
                         queryFindApplication += " AND tpc.representative_id IN (:companyList)";
+                    }                    
+                }
+
+                if(tabList != undefined && tabList != '') {
+                    tabs = JSON.parse(tabList);
+                    if(tabs.length > 0) {
+                        queryFindApplication += "  AND tpc.tab_id IN (:tabList)";
                     }                    
                 }
 
@@ -58,6 +65,9 @@ route.get("/errors", [authJWT.verifyToken, clientDBConnection.connect], async(re
                         queryFindApplication += " AND tpc.rf_id IN (:rfIDList)";
                     }                    
                 }
+               
+
+                queryFindApplication += " GROUP BY rf_id ) ";
 
                 if(patentList != undefined && patentList != '') {
                     patents = JSON.parse(patentList);
@@ -65,14 +75,18 @@ route.get("/errors", [authJWT.verifyToken, clientDBConnection.connect], async(re
                         queryFindApplication += " AND (d.grant_doc_num IN (:patList) OR d.appno_doc_num IN (:patList))";
                     }                    
                 }
-                
 
-                queryFindApplication += " ) GROUP BY d.appno_doc_num";
+                queryFindApplication += "  GROUP BY d.appno_doc_num";
+
 
                 const applicationWhere = {organisation_id: req.orgId};
 
                 if(representatives.length > 0) {
                     applicationWhere.companyList = representatives;
+                }
+
+                if(tabs.length > 0) {
+                    applicationWhere.tabList = tabs;
                 }
 
                 if(customers.length > 0) {
@@ -108,12 +122,12 @@ route.get("/errors", [authJWT.verifyToken, clientDBConnection.connect], async(re
                 where.appno_doc_num = applicationNumber;
             }
             
-            if(tabList != undefined && tabList != ''){
+            /*if(tabList != undefined && tabList != ''){
                 let tabs = JSON.parse(tabList);
                 if(tabs.length > 0) {
                     where.type = tabs;
                 }                
-            }
+            }*/
 
 
             const conditionInError = { where: where};
