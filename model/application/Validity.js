@@ -29,15 +29,27 @@ const Validity = connection.application.define('validity',{
         type: Sequelize.INTEGER,
         allowNull: false,
     },
-    current_year:{
+    current_patent_year:{
         type: Sequelize.INTEGER,
         allowNull: false,
     },
-    previous_year:{
+    previous_patent_year:{
         type: Sequelize.INTEGER,
         allowNull: false,
     },
-    difference:{
+    current_application_year:{
+        type: Sequelize.INTEGER,
+        allowNull: false,
+    },
+    previous_application_year:{
+        type: Sequelize.INTEGER,
+        allowNull: false,
+    },
+    difference_patent:{
+        type: Sequelize.DECIMAL,
+        allowNull: false,
+    },
+    difference_application:{
         type: Sequelize.DECIMAL,
         allowNull: false,
     },
