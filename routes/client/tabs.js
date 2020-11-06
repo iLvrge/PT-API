@@ -10,8 +10,8 @@ const helpers = require("../../helpers/helper");
 const TreeParties = require("../../model/application/TreeParties");
 const TreePartiesCollections = require("../../model/application/TreePartiesCollections");
 const DocumentIds = require("../../model/application/DocumentIds");
-
-
+const AssignorAndAssignee = require("../../model/application/AssignorAndAssignee");
+const Representatives = require("../../model/application/Representatives");
 
 const authJWT = require("../../helpers/verifyJwtToken");
 
@@ -163,6 +163,7 @@ route.get("/:tabID/customers", [authJWT.verifyToken, clientDBConnection.connect]
 
         if(typeof req.connection_db != "undefined" && req.connection_db != null ) {
             
+            
 
             const whereConstraint = {
                 attributes:[['assignor_and_assignee_id', 'customer_id'], ['representative_id', 'company_id'], 'name', [connection.Sequelize.fn('sum', connection.Sequelize.col('tree_parties.transaction_count')), 'transactionCount'], [connection.Sequelize.fn('sum', connection.Sequelize.col('tree_parties.assets_count')), 'assetsCount']],
@@ -243,9 +244,59 @@ route.get("/:tabID/customers", [authJWT.verifyToken, clientDBConnection.connect]
 
 route.get("/:tabID/companies/:companyID/customers/:customerID", [authJWT.verifyToken, clientDBConnection.connect], async(req, res, next) => {
     try {
-        const tabID = req.params.tabID, representativeID = req.params.companyID, customerID = req.params.customerID;
+        const tabID = req.params.tabID, representativeID = JSON.parse(req.params.companyID);
+        let customerID = req.params.customerID;
         let limit = req.query.limit, offset = req.query.offset, transactionList = [];
         if(typeof req.connection_db != "undefined" && req.connection_db != null ) {
+
+
+            const findNames = await AssignorAndAssignee.findAll({
+                attributes: ['name'],
+                where:{assignor_and_assignee_id: customerID},
+                include:[
+                    {
+                        model: Representatives,
+                        as: 'representative',
+                        attributes: ['representative_id', 'representative_name']
+                    }
+                ],
+                group: ['name']
+            });
+
+            if(findNames != null) {
+                const allNames = [], representativeIDs = [];
+                const promises = findNames.map(item => {
+                    allNames.push(item.name);
+                    if(item.representative != null && item.representative.representative_id > 0) {
+                        representativeIDs.push(item.representative.representative_id);
+                        if(!allNames.includes(item.representative.representative_name)){
+                            allNames.push(item.representative.representative_name)
+                        }
+                    }
+                    return item;
+                })
+                await Promise.all(promises);
+                let  where = {name: allNames};
+                if(representativeIDs.length > 0) {
+                    where = {};
+                    where[connection.Op.or] = [
+                        {representative_id: representativeIDs},
+                        {name: allNames}
+                    ]
+                }
+                const allCustomerIDS = await AssignorAndAssignee.findAll({
+                    attributes: ['assignor_and_assignee_id'],
+                    where: where,
+                    group: ['assignor_and_assignee_id']
+                });
+
+                if(allCustomerIDS != null) {
+                    customerID = [];
+                    const promises = allCustomerIDS.map(item => customerID.push(item.assignor_and_assignee_id))
+                    await Promise.all(promises);
+                }
+            }
+
             limit = limit > 0 ? parseInt(limit) : 100;
             offset = offset > 0 ? parseInt(offset) : 0;
             const whereConstraint = {
@@ -262,6 +313,7 @@ route.get("/:tabID/companies/:companyID/customers/:customerID", [authJWT.verifyT
             }
 
             whereConstraint.order = [['exec_dt', 'DESC']];
+            whereConstraint.group = ['rf_id'];
 
             transactionList = await TreePartiesCollections.findAll(whereConstraint);
             

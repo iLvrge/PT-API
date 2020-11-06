@@ -120,18 +120,9 @@ route.get("/errors", [authJWT.verifyToken, clientDBConnection.connect], async(re
 
             if(applicationNumber.length > 0) {
                 where.appno_doc_num = applicationNumber;
-            }
-            
-            /*if(tabList != undefined && tabList != ''){
-                let tabs = JSON.parse(tabList);
-                if(tabs.length > 0) {
-                    where.type = tabs;
-                }                
-            }*/
-
+            }            
 
             const conditionInError = { where: where};
-
 
             if(count == true || count == 'true') {
                 console.log(conditionInError);
@@ -146,87 +137,9 @@ route.get("/errors", [authJWT.verifyToken, clientDBConnection.connect], async(re
                         conditionInError.offset = offset;
                     }
                 }
-                conditionInError.attributes = ['appno_doc_num', 'type'];
+                conditionInError.attributes = [['appno_doc_num', 'assetId'],['cname','name'],['caddress_1','lawyer_name'],[connection.application.fn('date_format', connection.application.col('record_dt'), '%m/%d/%Y'), 'date'], 'type'];
                 conditionInError.group = ['appno_doc_num'];
-                const list = await Errors.findAll(conditionInError);
-
-                if(list != null && list.length > 0) {
-                    const getList = [];
-                    list.map(e => getList.push(e.appno_doc_num));
-
-                    const queryErrorList = "SELECT d.appno_doc_num as assetId, date_format(ass.record_dt,'%m/%d/%Y') as date, date_format(ass.last_update_dt,'%m/%d/%Y') as updatedAt, ass.cname as name, ass.caddress_1 as lawyer_name FROM documentid as d LEFT JOIN assignment as ass ON ass.rf_id = d.rf_id WHERE d.appno_doc_num IN(:appNo) GROUP BY d.appno_doc_num ORDER BY ass.record_dt DESC";
-
-                    const getErrorDetails = await connection.application.query(queryErrorList,{
-                        type: connection.Sequelize.QueryTypes.SELECT,
-                        raw: true,
-                        replacements: { appNo: getList },
-                        logging: console.log,
-                        }
-                    );
-
-                    if(getErrorDetails != null && getErrorDetails.length > 0) {
-                        /**Notes */
-    /*                    const Activity = req.connection_db.define('Activities', Activities.mainStructure, Activities.options);
-                        const Professional = req.connection_db.define('Professionals', Professionals.mainStructure, Professionals.options);
-        
-                        Activity.belongsTo(Professional, { foreignKey: 'professional_id', as: 'creator' });
-
-                        const getApplicationPatentList = [];
-                        const mapAppPatentPromises = getErrorDetails.map(e => {
-                            getApplicationPatentList.push(e.assetId);
-                            if(e.grant_doc_num != 'patent') {
-                                getApplicationPatentList.push(e.grant_doc_num);
-                            }                        
-                            return e;
-                        });
-
-                        await Promise.all(mapAppPatentPromises);
-
-                        const notes = await Activity.findAll({
-                            where: {subject: getApplicationPatentList, subject_type: [4, 5]},
-                            attributes: [['comment', 'message'], ['created_at', 'date'], 'professional_id'],
-                            include:[
-                                {
-                                    model: Professional,
-                                    as: 'creator',    
-                                    attributes: [[connection.Sequelize.fn('concat', connection.Sequelize.col('first_name'), ' ', connection.Sequelize.col('last_name')), 'createdBy']]                          
-                                }
-                            ],
-                            order: [
-                                ['created_at', 'DESC'],
-                            ],
-                        });
-    */
-                        const promises = list.map( async e => {       
-                            let error = {};                
-                            getErrorDetails.forEach(d => {
-                                if(e.appno_doc_num == d.assetId){
-                                    error = {...d};
-                                    error.type = e.type;                                
-                                    return false;
-                                }
-                            });
-                            
-                            if(error.hasOwnProperty('type')) {
-                                /*let notesList = [];                            
-                                if(notes != null) {
-                                    const promise = notes.map( n => {                                   
-                                        if(n.subject == e.appno_doc_num || n.subject == error.grant_doc_num){
-                                            notesList.push(notes);
-                                        }
-                                        return n;
-                                    });
-                                    await Promise.all(promise);
-                                }
-                                error.notes = notesList*/
-                                errorList.push(error);
-                            }
-
-                            return e;
-                        });
-                        await Promise.all(promises);    
-                    }                
-                }
+                errorList = await Errors.findAll(conditionInError);
             }
         }
         res.status(200).json(errorList);
