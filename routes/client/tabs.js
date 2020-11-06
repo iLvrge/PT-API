@@ -167,7 +167,7 @@ route.get("/:tabID/customers", [authJWT.verifyToken, clientDBConnection.connect]
             const whereConstraint = {
                 attributes:[['assignor_and_assignee_id', 'customer_id'], ['representative_id', 'company_id'], 'name', [connection.Sequelize.fn('sum', connection.Sequelize.col('tree_parties.transaction_count')), 'transactionCount'], [connection.Sequelize.fn('sum', connection.Sequelize.col('tree_parties.assets_count')), 'assetsCount']],
                 where: {representative_id: companies, tab_id: tabID, organisation_id: req.orgId},
-                group: ['organisation_id', 'representative_id', 'tab_id', 'assignor_and_assignee_id']
+                group: ['name']
             };
 
             if(limit != undefined && limit != null ) {
