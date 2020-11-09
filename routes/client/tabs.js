@@ -162,11 +162,9 @@ route.get("/:tabID/customers", [authJWT.verifyToken, clientDBConnection.connect]
         let limit = req.query.limit, offset = req.query.offset;
 
         if(typeof req.connection_db != "undefined" && req.connection_db != null ) {
-            
-            
 
             const whereConstraint = {
-                attributes:[['assignor_and_assignee_id', 'customer_id'], ['representative_id', 'company_id'], 'name', [connection.Sequelize.fn('sum', connection.Sequelize.col('tree_parties.transaction_count')), 'transactionCount'], [connection.Sequelize.fn('sum', connection.Sequelize.col('tree_parties.assets_count')), 'assetsCount']],
+                attributes:[['assignor_and_assignee_id', 'customer_id'], ['representative_id', 'company_id'], 'name', ['transaction_count', 'transactionCount'], ['assets_count', 'assetsCount']],
                 where: {representative_id: companies, tab_id: tabID, organisation_id: req.orgId},
                 /* group: ['organisation_id', 'representative_id', 'tab_id', 'assignor_and_assignee_id'] */
                 group: ['organisation_id', 'tab_id', 'name']
@@ -180,56 +178,46 @@ route.get("/:tabID/customers", [authJWT.verifyToken, clientDBConnection.connect]
                 whereConstraint.offset = offset;
             }
 
-            customerList = await TreeParties.findAll(whereConstraint);
-
-            /* const list = await TreeParties.findAll(whereConstraint);
+            const list = await TreeParties.findAll(whereConstraint);
 
             if(list.length > 0) {
                 const promises = list.map(async customer => {
-                    const getTransactionCount = await TreePartiesCollections.count({
-                        where: {organisation_id: req.orgId, representative_id: customer.get('company_id'), assignor_and_assignee_id: customer.get('customer_id'), tab_id: tabID}
-                    });
+                    const customerNormalizeList = await TreeParties.findAll({
+                        attributes:['assignor_and_assignee_id'],
+                        where:{name: customer.name, representative_id: companies, tab_id: tabID, organisation_id: req.orgId},
+                        order:[['name','ASC']]
+                    })
+                    if(customerNormalizeList != null) {
+                        let IDs = [];
+                        customerNormalizeList.forEach( async c => {
+                            if(!IDs.includes(c.assignor_and_assignee_id)){
+                                await IDs.push(c.assignor_and_assignee_id);
+                            }
+                        })
 
-                    // const getAssetsCount = await TreePartiesCollections.findAll({
-                    //     subQuery: false,
-                    //     attributes: { 
-                    //         include: [[connection.Sequelize.fn('COUNT', connection.Sequelize.col('assets.appno_doc_num')), 'totalAssets']] 
-                    //     }, 
-                    //     where:{representative_id: customer.get('company_id'), assignor_and_assignee_id: customer.get('customer_id'), tab_id: tabID},
-                    //     include: [{
-                    //         model: DocumentIds, 
-                    //         as: 'assets',
-                    //         attributes: []
-                    //     }],
-                    //     group: ['assets.rf_id']
-                    // });
+                        const customQuery = "SELECT count(*) as transactionCount FROM (SELECT rf_id FROM tree_parties_collection WHERE organisation_id = :organisationID AND representative_id IN (:companiesID) AND tab_id = :tabID AND assignor_and_assignee_id IN (:assignorAndAssigneeIDs) GROUP BY rf_id) as temp";
 
-                    const queryAssetsCount = 'SELECT count(distinct(appno_doc_num)) as assetsCount FROM documentid WHERE rf_id IN (SELECT rf_id FROM tree_parties_collection WHERE representative_id = :companyID AND assignor_and_assignee_id = :customerID AND tab_id = :tabID AND organisation_id = :organisationID)';
+                        const getTransaction = await connection.application.query(customQuery,{
+                            type: connection.Sequelize.QueryTypes.SELECT,
+                            raw: true,
+                            replacements: { organisationID: req.orgId, companiesID: companies, tabID: tabID, assignorAndAssigneeIDs: IDs},
+                            logging: console.log,
+                            plain: true
+                            }
+                        );
 
-                    const getAssetsCount =  await connection.application.query(queryAssetsCount,{
-                        type: connection.Sequelize.QueryTypes.SELECT,
-                        raw: true,
-                        logging: console.log,
-                        plain: true,
-                        replacements: { organisationID: req.orgId, tabID: tabID,  companyID: customer.get('company_id'), customerID: customer.get('customer_id')},
+                        if(getTransaction != null) {                            
+                            const customerJSON = customer.toJSON();
+                            customerJSON.transactionCount = getTransaction.transactionCount;
+                            customerJSON.assetsCount = 0;
+                            console.log(customerJSON);
+                            customerList.push(customerJSON);
+                        }
                     }
-                    );
-
-                    let assetsCount = 0;
-
-                    if(getAssetsCount != null) {
-                        assetsCount = getAssetsCount.assetsCount;
-                    }
-
-                    const customerJSON = customer.toJSON();
-                    customerJSON.transactionCount = getTransactionCount;
-                    customerJSON.assetsCount = assetsCount;
-                    customerList.push(customerJSON);
-
                     return customer;
                 });
                 await Promise.all(promises);
-            } */
+            }
         }
         res.status(200).json(customerList);
     } catch( err ) {

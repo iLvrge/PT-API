@@ -81,7 +81,8 @@ route.get("/portfolios/", [authJWT.verifyToken, clientDBConnection.connect], asy
                                 as: 'assets',
                                 attributes: [['appno_doc_num','application'], ['grant_doc_num', 'patent']],
                             }
-                        ]
+                        ],
+                        group: ['rf_id']
                     }
                 ],
                 limit: limit,
@@ -103,44 +104,82 @@ route.get("/portfolios/", [authJWT.verifyToken, clientDBConnection.connect], asy
                 }
 
                 if(allPortfolioList.length > 0){
-
-                    result = await TreeParties.findAll({
-                        attributes:['representative_id', 'representative_name','tab_id', [connection.Sequelize.fn('sum', connection.Sequelize.col('tree_parties.transaction_count')), 'transaction_count']],
+                    const resultParties = await TreeParties.findAll({
+                        attributes:['representative_id', 'representative_name','tab_id'],
                         where: {representative_id: allPortfolioList, organisation_id: req.orgId},
                         group: ['organisation_id', 'representative_id', 'tab_id'],                       
                         order: [
                             ['tab_id', 'ASC'],
                             ['representative_name', 'ASC']
                         ]
-                    }); 
-                    // const resultParties = await TreeParties.findAll({
-                    //     attributes:['representative_id', 'representative_name','tab_id', ['transaction_count','transactionCount']],
-                    //     where: {representative_id: allPortfolioList, organisation_id: req.orgId},
-                    //     group: ['organisation_id', 'representative_id', 'tab_id'],                       
-                    //     order: [
-                    //         ['tab_id', 'ASC'],
-                    //         ['representative_name', 'ASC']
-                    //     ]
-                    // });
+                    });
 
-                    // if(resultParties.length > 0) {
-                    //     const promises = resultParties.map(async portfolio => {
-                    //         const findCounter = await TreePartiesCollections.findOne({
-                    //             attributes: [[connection.Sequelize.fn('COUNT', 'rf_id'), 'transaction_count']],
-                    //             where: {organisation_id: req.orgId, representative_id: portfolio.representative_id, tab_id: portfolio.tab_id},
-                    //             group: ['representative_id', 'tab_id']                      
-                    //         });
-                    //         const portfolioJSON = portfolio.toJSON();
-                    //         if(findCounter != null && findCounter.get('transaction_count') > 0) {                                
-                    //             portfolioJSON.transaction_count = findCounter.get('transaction_count');                               
-                    //         } else {
-                    //             portfolioJSON.transaction_count = 0;        
-                    //         }
-                    //         result.push(portfolioJSON);
-                    //         return findCounter;
-                    //     });
-                    //     await Promise.all(promises);
-                    // }
+                    if(resultParties.length > 0) {
+                        
+                        /*const tabsWithRepresentatives = [], tabs = [];
+
+                        const promises = resultParties.map(async portfolio => {
+                            let tabIndex = -1;
+                            if(!tabs.includes(portfolio.tab_id)){
+                                tabs.push(portfolio.tab_id);
+                                tabIndex = tabs[tabs.length - 1];
+                            } else {
+                                tabIndex = tabs.findIndex(portfolio.tab_id);
+                            }
+
+                            if(tabIndex >= 0) {
+                                if(tabsWithRepresentatives.length == 0) {
+                                    tabsWithRepresentatives.push({tab_id: tabIndex, representative_ids:[portfolio.representative_id]});
+                                } else {
+                                    const list =  [...tabsWithRepresentatives[tabIndex].representative_ids];
+                                    list.push(portfolio.representative_id);
+                                    tabsWithRepresentatives[tabIndex].representative_ids = list;
+                                }
+                            }
+                            return portfolio;
+                        });
+
+                        await Promise.all(promises);
+
+                        if(tabsWithRepresentatives.length > 0) {
+                            const portfolioPromises = tabsWithRepresentatives.map(async tab => {
+                                const customQuery = "SELECT count(*) as transaction_count FROM (SELECT rf_id FROM tree_parties_collection WHERE organisation_id = :organisationID AND representative_id IN (:companiesID) AND tab_id = :tabID GROUP BY rf_id) as temp";
+
+                                const getTransaction = await connection.application.query(customQuery,{
+                                    type: connection.Sequelize.QueryTypes.SELECT,
+                                    raw: true,
+                                    replacements: { organisationID: req.orgId, companiesID: tab.representative_id, tabID: tab.tab_id},
+                                    logging: console.log,
+                                    plain: true
+                                    }
+                                );
+                            });
+                        }*/
+
+
+                        const promises = resultParties.map(async portfolio => {
+
+                            const customQuery = "SELECT count(*) as transaction_count FROM (SELECT rf_id FROM tree_parties_collection WHERE organisation_id = :organisationID AND representative_id IN (:companiesID) AND tab_id = :tabID GROUP BY rf_id) as temp";
+
+                            const getTransaction = await connection.application.query(customQuery,{
+                                type: connection.Sequelize.QueryTypes.SELECT,
+                                raw: true,
+                                replacements: { organisationID: req.orgId, companiesID: portfolio.representative_id, tabID: portfolio.tab_id},
+                                logging: console.log,
+                                plain: true
+                                }
+                            );
+                            const portfolioJSON = portfolio.toJSON();
+                            if(getTransaction != null) {                                
+                                portfolioJSON.transaction_count = getTransaction.transaction_count;                          
+                            } else {
+                                portfolioJSON.transaction_count = 0;        
+                            }
+                            result.push(portfolioJSON);
+                            return portfolio;
+                        });
+                        await Promise.all(promises);
+                    }
                 }
             }
         }
