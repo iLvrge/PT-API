@@ -53,7 +53,8 @@ route.get("/activities/", [authJWT.verifyToken, clientDBConnection.connect], asy
 
                 const where = {};
                 if(type == 'fix' || type == 'record') {
-                    where.type = type == 'fix' ? 1 :  2;
+                    // where.type = type == 'fix' ? 1 :  2;
+                    where.type = [1,2]
                     where.complete = 0;
                 } else {
                     where.complete = 1;

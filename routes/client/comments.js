@@ -201,15 +201,15 @@ route.post("/comments/:subjectType", [authJWT.verifyToken, clientDBConnection.co
 
                 let findActivity = null;
 
-                if(subjectType != 'record' ) {
+                if(!subjectType.includes('record') ) {
                     const where = {subject: subject};
-                    if(subjectType != 'asset' || subjectType != 'error' ||  subjectType != 'fix') {
+                    if(!subjectType.includes('asset') || !subjectType.includes('error') ||  !subjectType.includes('fix')) {
                         where.type = type;
                     }
                     findActivity = await Activity.findOne({
                         where: where
                     });
-                } else if ( subject > 0 && subjectType == 'record' ) {
+                } else if ( subject > 0 && subjectType.includes('record') ) {
                     findActivity = await Activity.findOne({
                         where: {activity_id: subject}
                     });
@@ -228,7 +228,7 @@ route.post("/comments/:subjectType", [authJWT.verifyToken, clientDBConnection.co
                         document_id: '1'
                     };
                     let professional, documentData;
-                    if((subjectType == 'fix' || subjectType == 'record') && req.body.professional_id > 0) {
+                    if((subjectType.includes('fix') || subjectType.includes('record')) && req.body.professional_id > 0) {
                         /**
                          * Find Professional
                          */
@@ -255,7 +255,7 @@ route.post("/comments/:subjectType", [authJWT.verifyToken, clientDBConnection.co
                         }
                     }
     
-                    if(subjectType == 'record' && req.body.document_id > 0) {
+                    if(subjectType.includes('record') && req.body.document_id > 0) {
                         const Document = req.connection_db.define('Documents', Documents.mainStructure, Documents.options);
                         documentData = await Document.findOne({
                             where: {document_id: req.body.document_id},
@@ -263,7 +263,7 @@ route.post("/comments/:subjectType", [authJWT.verifyToken, clientDBConnection.co
                         })
                         postData.document_id = req.body.document_id;
                     } 
-                    if(subjectType == 'fix') {
+                    if(subjectType[0]=='fix') {
                         /**
                          * create sharing code
                          */
