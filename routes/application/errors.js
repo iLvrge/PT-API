@@ -137,7 +137,7 @@ route.get("/errors", [authJWT.verifyToken, clientDBConnection.connect], async(re
                         conditionInError.offset = offset;
                     }
                 }
-                conditionInError.attributes = [['appno_doc_num', 'assetId'],['cname','name'],['caddress_1','lawyer_name'],[connection.application.fn('date_format', connection.application.col('record_dt'), '%m/%d/%Y'), 'date'], 'type'];
+                conditionInError.attributes = ['error_id',['appno_doc_num', 'assetId'],['cname','name'],['caddress_1','lawyer_name'],[connection.application.fn('date_format', connection.application.col('record_dt'), '%m/%d/%Y'), 'date'], 'type'];
                 conditionInError.group = ['appno_doc_num'];
                 errorList = await Errors.findAll(conditionInError);
             }

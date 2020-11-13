@@ -33,7 +33,7 @@ route.get("/collections/:rf_id/illustration", [authJWT.verifyToken], async (req,
             {id:8,name:'License End',tooltip:'License End',color:'#E38B4F',line_type:0,segment:1,order_no:6,explanation:''}
         ];
 
-        let url = "https://patentrack.com/", sourceID =  "/var/www/html/beta/", mainDocument = "", document_form = "", document_agreement = "", path="resources/shared/data/", rfIDno = "";
+        let cdnURL = "https://s3-us-west-1.amazonaws.com/static.patentrack.com/assignments/var/www/html/beta/resources/shared/data/"; url = "https://patentrack.com/", sourceID =  "/var/www/html/beta/", mainDocument = "", document_form = "", document_agreement = "", path="resources/shared/data/", rfIDno = "";
 
         if(itemDetails !== undefined && itemDetails.assignor.length > 0) {
             rfIDno = "assignment-pat-" + itemDetails.assignment.reel_no + "-" + itemDetails.assignment.frame_no, ext = ".pdf"
@@ -80,8 +80,11 @@ route.get("/collections/:rf_id/illustration", [authJWT.verifyToken], async (req,
                 }
 
                 assignors.push(boxName);
+                mainDocument = cdnURL + rfIDno + ext;
+                document_form = cdnURL + rfIDno + "_form" + ext;
+                document_agreement = cdnURL + rfIDno + "_agreement" + ext
                 
-                if (fs.existsSync(sourceID + path + rfIDno + ext)) {
+                /*if (fs.existsSync(sourceID + path + rfIDno + ext)) {
                     mainDocument = url + path + rfIDno + ext;
 
                     if (fs.existsSync(sourceID + path + rfIDno + "_form" + ext)) {
@@ -91,7 +94,7 @@ route.get("/collections/:rf_id/illustration", [authJWT.verifyToken], async (req,
                     if (fs.existsSync(sourceID + path + rfIDno + "_agreement" + ext)) {
                         document_agreement = url + path + rfIDno + "_agreement" + ext
                     }
-                }
+                }*/
                 
                 let boxObj = {
                     id: assignorID.toString(),
