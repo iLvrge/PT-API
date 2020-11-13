@@ -121,7 +121,7 @@ route.get("/errors", [authJWT.verifyToken, clientDBConnection.connect], async(re
             if(applicationNumber.length > 0) {
                 where.appno_doc_num = applicationNumber;
             }            
-
+            where.status = 0;
             const conditionInError = { where: where};
 
             if(count == true || count == 'true') {

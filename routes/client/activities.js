@@ -12,6 +12,8 @@ const Comments = require("../../model/client/Comments");
 const Types = require("../../model/client/Types");
 const ShareLink = require("../../model/business/ShareLinks");
 
+const Errors = require("../../model/application/Errors");
+
 const authJWT = require("../../helpers/verifyJwtToken");
 const clientDBConnection = require("../../helpers/clientDBConnection");
 
@@ -395,6 +397,9 @@ route.post("/activities/:type", [authJWT.verifyToken, clientDBConnection.connect
                             
 
                             if(activityID > 0){
+                                if(req.body.entity_id != undefined && req.body.entity_id > 0){
+                                    await Errors.update({status: 1},{error_id: req.body.entity_id});
+                                }
                                 const postComment = {
                                     activity_id: activityID,
                                     user_id: req.userId,
@@ -428,6 +433,9 @@ route.post("/activities/:type", [authJWT.verifyToken, clientDBConnection.connect
                     
 
                     if(activityID > 0){
+                        if(req.body.entity_id != undefined && req.body.entity_id > 0){
+                            await Errors.update({status: 1},{error_id: req.body.entity_id});
+                        }
                         const postComment = {
                             activity_id: activityID,
                             user_id: req.userId,
