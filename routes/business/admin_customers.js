@@ -167,6 +167,7 @@ route.get("/customers/:id/users", [authJWT.verifyToken, authJWT.isAdmin, authJWT
                     /* const list = await helpers.getAllUsers(organisation.organisation_id);
                     res.status(200).json(list); */
                     if(typeof req.connection_db != "undefined" && req.connection_db != null ) {
+                        const dbUser = await req.connection_db.define('Users', ClientUsers.mainStructure, ClientUsers.options);
                         const list = await dbUser.findAll();
                         res.status(200).json(list);
                     }
