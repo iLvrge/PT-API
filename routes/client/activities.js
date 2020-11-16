@@ -30,7 +30,8 @@ route.get("/activities/", [authJWT.verifyToken, clientDBConnection.connect], asy
             if(option == "true" || option == true){
                 const where = {};
                 if(type == 'fix' || type == 'record') {
-                    where.type = type == 'fix' ? 1 :  2;
+                    // where.type = type == 'fix' ? 1 :  2;
+                    where.type = [1,2]
                     where.complete = 0;
                 } else {
                     where.complete = 1;
@@ -63,7 +64,7 @@ route.get("/activities/", [authJWT.verifyToken, clientDBConnection.connect], asy
                 } 
 
                 const itemListToDO = await Activity.findAll({
-					attributes: [['activity_id','id'],'subject', 'subject_type', 'complete', 'comment', 'share_url','created_at'],
+					attributes: [['activity_id','id'], 'type','subject', 'subject_type', 'complete', 'comment', 'share_url','created_at'],
 					where: where,
 					include:[
 						{
@@ -434,7 +435,7 @@ route.post("/activities/:type", [authJWT.verifyToken, clientDBConnection.connect
 
                     if(activityID > 0){
                         if(req.body.entity_id != undefined && req.body.entity_id > 0){
-                            await Errors.update({status: 1},{error_id: req.body.entity_id});
+                            await Errors.update({status: 1},{where: {error_id: req.body.entity_id}});
                         }
                         const postComment = {
                             activity_id: activityID,
