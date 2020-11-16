@@ -157,15 +157,19 @@ route.get("/customers/:id/companies", [authJWT.verifyToken, authJWT.isAdmin, aut
     } 
 });
 
-route.get("/customers/:id/users", [authJWT.verifyToken, authJWT.isAdmin], (req, res, next) => {
+route.get("/customers/:id/users", [authJWT.verifyToken, authJWT.isAdmin, authJWT.addClientID, clientDBConnection.connect], (req, res, next) => {
     (async () => {
         try{
             let organisationID = req.params.id;
             if(organisationID > 0){
                 const organisation  = await helpers.findOrganisationbyID(organisationID);
                 if(organisation != null && organisation.organisation_id > 0){
-                    const list = await helpers.getAllUsers(organisation.organisation_id);
-                    res.status(200).json(list);
+                    /* const list = await helpers.getAllUsers(organisation.organisation_id);
+                    res.status(200).json(list); */
+                    if(typeof req.connection_db != "undefined" && req.connection_db != null ) {
+                        const list = await dbUser.findAll();
+                        res.status(200).json(list);
+                    }
                 } else {
                     res.status(200).json([]);
                 }

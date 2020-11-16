@@ -117,6 +117,7 @@ route.put("/company/search/all/", [authJWT.verifyToken, authJWT.isAdmin], async 
             let findRow  = await AssignorAndAssignee.findOne({
                                         where:{name: name}
                                     });
+            
             /*if(findRow != null && findRow.representative_id > 0) {
                 findIsNormalized  = await Representatives.findOne({
                     where:{representative_id: findRow.representative_id}
@@ -181,7 +182,7 @@ route.put("/company/search/all/", [authJWT.verifyToken, authJWT.isAdmin], async 
                     /**
                      * Insert new representative company in the representative table
                      */                        
-                    representativeCompany = await Representatives.create({
+                    representativeCompany = await Representatives.findOrCreate({
                         representative_name: normalize_name
                     });
                 }                    
@@ -217,7 +218,25 @@ route.put("/company/search/all/", [authJWT.verifyToken, authJWT.isAdmin], async 
                     }
                 }
 
-                
+                /**/
+
+                if(findRow != null && findRow.representative_id > 0) {
+                    const findData = await Representatives.findOne({
+                        where: {representative_name: name}
+                    })
+
+                    if(findData != null) {
+                        const findCount = await AssignorAndAssignee.count({
+                            where: {representative_id: findData.representative_id}
+                        });
+    
+                        if(findCount == 0) {
+                            await Representatives.destroy({
+                                where: {representative_id: findData.representative_id}
+                            })
+                        }
+                    }                    
+                }
 
 
                 /**
