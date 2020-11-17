@@ -183,7 +183,7 @@ route.put("/company/search/all/", [authJWT.verifyToken, authJWT.isAdmin], async 
                      * Insert new representative company in the representative table
                      */                        
                     representativeCompany = await Representatives.findOrCreate({
-                        representative_name: normalize_name
+                        where: {representative_name: normalize_name}
                     });
                 }                    
             }
