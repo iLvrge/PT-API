@@ -399,8 +399,8 @@ route.put("/company/transactions/:customerID", [authJWT.verifyToken, authJWT.isA
 route.get("/company/law_firms", [authJWT.verifyToken, authJWT.isAdmin, authJWT.addClientID, clientDBConnection.connect], async (req, res, next) => {
     try {        
         const query = req.query.search;
-        const where = {};
-
+        const where = {law_firm_id:{[connection.Op.gt]: 0}};
+        
         if(query != undefined && query != null) {
             where.name = {[connection.Op.like]: '%' + query + '%'};
         }
@@ -484,7 +484,8 @@ route.get("/company/law_firms/:id", [authJWT.verifyToken, authJWT.isAdmin, authJ
 
             const list = await Assignments.findAll({
                 attributes: ['law_firm_id'], 
-                group: ['law_firm_id'],                  
+                group: ['law_firm_id'], 
+                where: {law_firm_id:{[connection.Op.gt]: 0}},                
                 include: [
                     {
                         model: RepresentativeTransactions,
