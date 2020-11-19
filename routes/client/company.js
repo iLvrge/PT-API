@@ -11,9 +11,23 @@ const Representatives = require("../../model/client/Representatives");
 
 const ActivityLogs = require("../../model/resources/ActivityLog");
 
+const RepresentativeTransactions = require("../../model/resources/RepresentativeTransactions");
+
 const Lawfirm = require("../../model/client/Lawfirm");
 
 const CompanyLawfirm = require("../../model/client/CompanyLawfirm");
+
+const Validity = require("../../model/application/Validity");
+
+const Transactions = require("../../model/application/Transactions");
+
+const TreeParties = require("../../model/application/TreeParties");
+
+const TreePartiesCollections = require("../../model/application/TreePartiesCollections");
+
+const Errors = require("../../model/application/Errors");
+
+const Timelines = require("../../model/application/Timelines");
 
 const helpers = require("../../helpers/helper");
 
@@ -115,7 +129,7 @@ route.post("/lawfirm", [authJWT.verifyToken, clientDBConnection.connect], async(
 
                         RepresentativeLawfirms.belongsTo(Lawfirms, { foreignKey: 'lawfirm_id', as: 'lawfirm', otherKey: 'lawfirm_id' });
 
-                        
+
                         add = await RepresentativeLawfirms.findAll({
                             attributes: ['lawfirm_id'],
                             where: {representative_id: req.body.representative_id},
@@ -504,84 +518,147 @@ route.post("/", [authJWT.verifyToken, clientDBConnection.connect], async(req, re
 /**
  * Delete Parent Companies
  */
-route.delete("/:ids", [authJWT.verifyToken, clientDBConnection.connect], async(req, res, next) => {
+route.delete("/", [authJWT.verifyToken, clientDBConnection.connect], async(req, res, next) => {
     try{
-        let IDs = req.params.ids;
+        let IDs = req.query.companies;
         if(IDs.length > 0) {
-            IDs = IDs.toString().split(',');
+            IDs = JSON.parse(IDs)
             const Representative = req.connection_db.define('Representatives', Representatives.mainStructure, Representatives.options);
-            const findParentCompanies = await Representative.findAll({
+            const findCompanies = await Representative.findAll({
                 attributes:['representative_id', 'parent_id', 'original_name'],
                 where:{representative_id: IDs},
                 group:['representative_id','parent_id']
             });
-            const deleteParentCompanies = [], activityLogs = [], currentDate = moment(new Date()).format('YYYY-MM-DD hh:mm:ss');
-            if(findParentCompanies.length > 0) {
-                findParentCompanies.map(c => {
-                    deleteParentCompanies.push(c.representative_id);
+            const updateKPICompanies=[],  deleteParentCompanies = [], reUpdateCompanies = [], deleteCompanies = [], activityLogs = [], currentDate = moment(new Date()).format('YYYY-MM-DD hh:mm:ss');
+            if(findCompanies.length > 0) {
+                const promise = findCompanies.map(c => {
+                    if(c.parent_id == 0) {
+                        deleteParentCompanies.push(c.representative_id);
+                        updateKPICompanies.push(c.representative_id);
+                    } else {
+                        if(!updateKPICompanies.includes(c.parent_id)){
+                            updateKPICompanies.push(c.parent_id); 
+                            reUpdateCompanies(c.parent_id);
+                        }
+                    }
+                    deleteCompanies.push(c.representative_id);
+                   
+                    
                      /**
                      *  For inserting bulk entries for activity log
                      */
                     activityLogs.push({organistaion_id: req.orgId, user_id: req.userId, type: 1, company_name: c.original_name, representative_company_name: c.original_name, activity_date: currentDate});
+                    return c;
                 });
-               
-                Representative.destroy({
-                    where: {[connection.Op.or]: [{representative_id: deleteParentCompanies},{parent_id: deleteParentCompanies}]},
-                })
-                .then( deleted => {
-                    ActivityLogs.bulkCreate(activityLogs);
-                    (async () => {
-                        const parentCompanies = [];
-                        const promise = findParentCompanies.map(c => {
-                            parentCompanies.push(c.parent_id == 0 ? c.representative_id : c.parent_id);
+
+                await Promise.all(promise);
+
+                if(deleteParentCompanies.length > 0) {
+                    const findParentSubCompanies = await Representative.findAll({
+                        attributes:['representative_id'],
+                        where:{parent_id: deleteParentCompanies}                        
+                    });
+
+                    if(findParentSubCompanies.length) {
+                        const promise = findParentSubCompanies.map(c => {
+                            deleteCompanies.push(c.representative_id);
                             return c;
                         });
-
                         await Promise.all(promise);
-                        const mainCompanies = await Representative.findAll({
-                            attributes:['representative_id', 'original_name'],
-                            where:{representative_id: parentCompanies, parent_id: 0}
-                        });
+                    }
+                }
 
-                        if(mainCompanies.length > 0) {
-                            mainCompanies.map(async company => {
-                                console.log(`php -f /var/www/html/trash/add_representative_rfids.php "${req.orgId}" "${company.original_name}"`);
-                                await exec(`php -f /var/www/html/trash/add_representative_rfids.php "${req.orgId}" "${company.original_name}"`, async (error, stdout, stderr) => {
-                                    console.log(error);
-                                    console.log(stdout);
-                                    console.log(stderr);
-                                    console.log(`php -f /var/www/html/trash/tree_script_client.php "${req.orgId}"  "${company.original_name}"`);
-                                    await exec(`php -f /var/www/html/trash/tree_script_client.php "${req.orgId}"  "${company.original_name}"`, async (error, stdout, stderr) => {
-                                        console.log(error);
-                                        console.log(stdout);
-                                        console.log(stderr);
-                                        console.log(`php -f /var/www/html/trash/fix_inventor_timeline_tree_transaction_assests_updates.php "${req.orgId}" "${company.representative_id}"`);
-                                        await exec(`php -f /var/www/html/trash/fix_inventor_timeline_tree_transaction_assests_updates.php "${req.orgId}" "${company.representative_id}"`, async (error, std, stderr) => {
-                                            console.log(error);
-                                            console.log(std);
-                                            console.log(stderr);
-                                            console.log("DONE>>>>>>>>>>>");
-                                            console.log(`php -f /var/www/html/trash/download_all_pdf.php "${company.original_name}"`);
-                                            exec(`php -f /var/www/html/trash/download_all_pdf.php "${company.original_name}"`, (error, stdout, stderr)=> {
-                                                console.log("download_all_pdf....")
-                                                console.log(error);
-                                                console.log(stderr);
-                                                console.log(stdout);
-                                                console.log("DONE");
-                                            });
-                                        });
-                                    })
-                                });
+
+                if(deleteCompanies.length > 0) {
+                    
+                    const destroyAllCompanies = await  Representative.destroy({
+                        where: {representative_id: deleteCompanies},
+                    })
+
+                    if(destroyAllCompanies != null) {
+                        ActivityLogs.bulkCreate(activityLogs);
+                        if(deleteParentCompanies.length > 0) {
+                            const destroyAllTransactions = await RepresentativeTransactions.destroy({
+                                where: {representative_id: deleteParentCompanies, organistaion_id: req.orgId},
                             });
+
+                            if(destroyAllTransactions) {
+                                /**
+                                 * Delete KPI counter, Tree, Timeline, Error
+                                 */
+
+                                await Validity.destroy({
+                                    where: {representative_id: deleteParentCompanies, organistaion_id: req.orgId},
+                                });
+                                await Transactions.destroy({
+                                    where: {representative_id: deleteParentCompanies, organistaion_id: req.orgId},
+                                });
+                                await TreeParties.destroy({
+                                    where: {representative_id: deleteParentCompanies, organistaion_id: req.orgId},
+                                });
+                                await TreePartiesCollections.destroy({
+                                    where: {representative_id: deleteParentCompanies, organistaion_id: req.orgId},
+                                });
+                                await Errors.destroy({
+                                    where: {representative_id: deleteParentCompanies, organistaion_id: req.orgId},
+                                });
+
+                                await Timelines.destroy({
+                                    where: {representative_id: deleteParentCompanies, organistaion_id: req.orgId},
+                                });
+                            }
                         }
-                    })();
-                    console.log("DELETE COMPANIES: " + deleted);
-                    res.status(200).send("Companies deleted.");
-                })
-                .catch(err => {
-                    console.log(err);
-                    res.status(500).send("Unable to delete companies");
-                })
+
+
+                        if(reUpdateCompanies.length > 0) {
+                            /**
+                             * Delete from Representative Transaction and add transactions again
+                             */
+                            const destroyAllTransactions = await RepresentativeTransactions.destroy({
+                                where: {representative_id: reUpdateCompanies, organistaion_id: req.orgId},
+                            });
+
+                            if(destroyAllTransactions) {
+                                const findPCompanies = await Representative.findAll({
+                                    attributes:['original_name'],
+                                    where:{representative_id: reUpdateCompanies, parent_id: 0}                        
+                                });
+
+                                if(findPCompanies.length > 0) {
+                                    const promiseAddRFIDs = findPCompanies.map(async (company, index) => {
+                                        console.log(`php -f /var/www/html/trash/add_representative_rfids.php "${req.orgId}" "${company.original_name}"`);
+                                        await exec(`php -f /var/www/html/trash/add_representative_rfids.php "${req.orgId}" "${company.original_name}"`, async (error, stdout, stderr) => {
+                                            /*await exec(`php -f /var/www/html/trash/tree_script_client.php "${company.original_name}"`, async (error, stdout, stderr) => {
+
+                                            });*/
+                                        });
+                                        return company;
+                                    });
+                                    await Promise.all(promiseAddRFIDs);
+
+                                    /**
+                                     * Recreate KPI and Tree
+                                     */
+                                    exec(`php -f /var/www/html/trash/fix_inventor_timeline_tree_transaction_assests_updates.php "${req.orgId}" ""`, async (error, std, stderr) => {
+
+                                    });
+                                    res.status(200).send("Companies deleted.");
+                                }
+                            }
+                        } else {
+                            /**
+                             * Recreate KPI and Tree
+                             */
+                            exec(`php -f /var/www/html/trash/fix_inventor_timeline_tree_transaction_assests_updates.php "${req.orgId}" ""`, async (error, std, stderr) => {
+
+                            });
+                            res.status(200).send("Companies deleted.");
+                        }
+                    }
+                    
+                } else {
+                    res.status(402).send("No company found");
+                }
             } else {
                 res.status(402).send("No company found");
             }
@@ -598,9 +675,9 @@ route.delete("/:ids", [authJWT.verifyToken, clientDBConnection.connect], async(r
      
 route.delete("/subcompanies/:ids", [authJWT.verifyToken, clientDBConnection.connect], async(req, res, next) => {
     try{
-        let IDs = req.params.ids;
+        let IDs = req.query.companies;
         if(IDs.length > 0) {
-            IDs = IDs.toString().split(',');
+            IDs = JSON.parse(IDs)
             const Representative = req.connection_db.define('Representatives', Representatives.mainStructure, Representatives.options);
             const findParentCompanies = await Representative.findAll({
                 attributes:['representative_id','original_name', 'parent_id'],
@@ -620,7 +697,7 @@ route.delete("/subcompanies/:ids", [authJWT.verifyToken, clientDBConnection.conn
                 })
                 .then( u => {
                     ActivityLogs.bulkCreate(activityLogs);
-                    res.status(200).send("Companies deleted.");
+                   
                     (async () => {
                         const parentCompanies = [];
                         const promise = findParentCompanies.map(c => {
@@ -635,38 +712,33 @@ route.delete("/subcompanies/:ids", [authJWT.verifyToken, clientDBConnection.conn
                         });
 
                         if(mainCompanies.length > 0) {
-                            mainCompanies.map(async company => {
-                                console.log(`php -f /var/www/html/trash/add_representative_rfids.php "${req.orgId}" "${company.original_name}"`);
-                                await exec(`php -f /var/www/html/trash/add_representative_rfids.php "${req.orgId}" "${company.original_name}"`, async (error, stdout, stderr) => {
-                                    console.log(error);
-                                    console.log(stdout);
-                                    console.log(stderr);
-                                    console.log(`php -f /var/www/html/trash/tree_script_client.php "${req.orgId}"  "${company.original_name}"`);
-                                    await exec(`php -f /var/www/html/trash/tree_script_client.php "${req.orgId}"  "${company.original_name}"`, async (error, stdout, stderr) => {
+                            const destroyAllTransactions = await RepresentativeTransactions.destroy({
+                                where: {representative_id: parentCompanies, organistaion_id: req.orgId},
+                            });
+                            if(destroyAllTransactions) {
+                                const promise = mainCompanies.map(async company => {
+                                    console.log(`php -f /var/www/html/trash/add_representative_rfids.php "${req.orgId}" "${company.original_name}"`);
+                                    await exec(`php -f /var/www/html/trash/add_representative_rfids.php "${req.orgId}" "${company.original_name}"`, async (error, stdout, stderr) => {
                                         console.log(error);
                                         console.log(stdout);
                                         console.log(stderr);
-                                        console.log(`php -f /var/www/html/trash/fix_inventor_timeline_tree_transaction_assests_updates.php "${req.orgId}" "${company.representative_id}"`);
-                                        await exec(`php -f /var/www/html/trash/fix_inventor_timeline_tree_transaction_assests_updates.php "${req.orgId}" "${company.representative_id}"`, async (error, std, stderr) => {
-                                            console.log(error);
-                                            console.log(std);
-                                            console.log(stderr);
-                                            console.log("DONE>>>>>>>>>>>");
-                                            console.log(`php -f /var/www/html/trash/download_all_pdf.php "${company.original_name}"`);
-                                            exec(`php -f /var/www/html/trash/download_all_pdf.php "${company.original_name}"`, (error, stdout, stderr)=> {
-                                                console.log("download_all_pdf....")
-                                                console.log(error);
-                                                console.log(stderr);
-                                                console.log(stdout);
-                                                console.log("DONE");
-                                            });
-                                        });
-                                    })
+                                        //console.log(`php -f /var/www/html/trash/tree_script_client.php "${req.orgId}"  "${company.original_name}"`);
+                                        
+                                    });
+                                    return company;
                                 });
+                                await Promise.all(promise);
+                            }
+                            /**
+                             * Recreate KPI and Tree
+                             */
+                            exec(`php -f /var/www/html/trash/fix_inventor_timeline_tree_transaction_assests_updates.php "${req.orgId}" ""`, async (error, std, stderr) => {
+
                             });
+                            res.status(200).send("Companies deleted.");
                         }
                     })();
-
+                    res.status(200).send("Companies deleted.");
 
                 })
                 .catch(err => {
