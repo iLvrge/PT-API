@@ -673,7 +673,7 @@ route.delete("/", [authJWT.verifyToken, clientDBConnection.connect], async(req, 
  * Delete Child Companies
  */
      
-route.delete("/subcompanies/:ids", [authJWT.verifyToken, clientDBConnection.connect], async(req, res, next) => {
+route.delete("/subcompanies", [authJWT.verifyToken, clientDBConnection.connect], async(req, res, next) => {
     try{
         let IDs = req.query.companies;
         if(IDs.length > 0) {
