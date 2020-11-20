@@ -282,8 +282,25 @@ route.put("/company/search/all/", [authJWT.verifyToken, authJWT.isAdmin], async 
                 res.status(200).send("Company not created");	
             }	
         }  else {
-            if(name != "" && normalize_name == ""){                           
+            if(name != "" && normalize_name == ""){ 
+                let findRow  = await AssignorAndAssignee.findOne({
+                    where:{name: name}
+                });                          
                 await AssignorAndAssignee.update({representative_id: 0}, {where: {name: name}});
+
+                if(findRow != null && findRow.representative_id > 0) {
+                    const count = AssignorAndAssignee.count({
+                        where:{representative_id: findRow.representative_id}
+                    })
+
+                    if(count == 0) {
+                        await Representatives.destroy({
+                            where: {representative_id: findRow.representative_id}
+                        })
+                    }
+                }
+
+
                 const queryCompany = `SELECT a.assignor_and_assignee_id as id, a.assignor_and_assignee_id, a.name, a.instances as counter, c.representative_name as normalize_name, (select rr.representative_name FROM representative as rr WHERE rr.representative_name = a.name GROUP BY rr.representative_name) as representative_company, (SELECT concat(ass.reel_no,'-', ass.frame_no) FROM assignee as ee INNER JOIN assignment as ass ON ass.rf_id = ee.rf_id WHERE ee.assignor_and_assignee_id = a.assignor_and_assignee_id LIMIT 1) as assigneeRFID, (SELECT concat(asss.reel_no,'-', asss.frame_no) FROM assignor as assi INNER JOIN assignment as asss ON asss.rf_id = assi.rf_id WHERE assi.assignor_and_assignee_id = a.assignor_and_assignee_id LIMIT 1) as assignorRFID  FROM assignor_and_assignee as a LEFT JOIN representative as c ON c.representative_id = a.representative_id WHERE a.name = :name `;
 
                 findRow = await connection.resources.query(queryCompany,{
