@@ -547,7 +547,7 @@ route.delete("/", [authJWT.verifyToken, clientDBConnection.connect], async(req, 
                      /**
                      *  For inserting bulk entries for activity log
                      */
-                    activityLogs.push({organistaion_id: req.orgId, user_id: req.userId, type: 1, company_name: c.original_name, representative_company_name: c.original_name, activity_date: currentDate});
+                    activityLogs.push({organisation_id: req.orgId, user_id: req.userId, type: 1, company_name: c.original_name, representative_company_name: c.original_name, activity_date: currentDate});
                     return c;
                 });
 
@@ -579,32 +579,32 @@ route.delete("/", [authJWT.verifyToken, clientDBConnection.connect], async(req, 
                         ActivityLogs.bulkCreate(activityLogs);
                         if(deleteParentCompanies.length > 0) {
                             const destroyAllTransactions = await RepresentativeTransactions.destroy({
-                                where: {representative_id: deleteParentCompanies, organistaion_id: req.orgId},
+                                where: {representative_id: deleteParentCompanies, organisation_id: req.orgId},
                             });
-
+                            console.log("destroyAllTransactions", destroyAllTransactions);
                             if(destroyAllTransactions) {
                                 /**
                                  * Delete KPI counter, Tree, Timeline, Error
                                  */
 
                                 await Validity.destroy({
-                                    where: {representative_id: deleteParentCompanies, organistaion_id: req.orgId},
+                                    where: {representative_id: deleteParentCompanies, organisation_id: req.orgId},
                                 });
                                 await Transactions.destroy({
-                                    where: {representative_id: deleteParentCompanies, organistaion_id: req.orgId},
+                                    where: {representative_id: deleteParentCompanies, organisation_id: req.orgId},
                                 });
                                 await TreeParties.destroy({
-                                    where: {representative_id: deleteParentCompanies, organistaion_id: req.orgId},
+                                    where: {representative_id: deleteParentCompanies, organisation_id: req.orgId},
                                 });
                                 await TreePartiesCollections.destroy({
-                                    where: {representative_id: deleteParentCompanies, organistaion_id: req.orgId},
+                                    where: {representative_id: deleteParentCompanies, organisation_id: req.orgId},
                                 });
                                 await Errors.destroy({
-                                    where: {representative_id: deleteParentCompanies, organistaion_id: req.orgId},
+                                    where: {representative_id: deleteParentCompanies, organisation_id: req.orgId},
                                 });
 
                                 await Timelines.destroy({
-                                    where: {representative_id: deleteParentCompanies, organistaion_id: req.orgId},
+                                    where: {representative_id: deleteParentCompanies, organisation_id: req.orgId},
                                 });
                             }
                         }
@@ -615,7 +615,7 @@ route.delete("/", [authJWT.verifyToken, clientDBConnection.connect], async(req, 
                              * Delete from Representative Transaction and add transactions again
                              */
                             const destroyAllTransactions = await RepresentativeTransactions.destroy({
-                                where: {representative_id: reUpdateCompanies, organistaion_id: req.orgId},
+                                where: {representative_id: reUpdateCompanies, organisation_id: req.orgId},
                             });
 
                             if(destroyAllTransactions) {
@@ -627,10 +627,13 @@ route.delete("/", [authJWT.verifyToken, clientDBConnection.connect], async(req, 
                                 if(findPCompanies.length > 0) {
                                     const promiseAddRFIDs = findPCompanies.map(async (company, index) => {
                                         console.log(`php -f /var/www/html/trash/add_representative_rfids.php "${req.orgId}" "${company.original_name}"`);
-                                        await exec(`php -f /var/www/html/trash/add_representative_rfids.php "${req.orgId}" "${company.original_name}"`, async (error, stdout, stderr) => {
+                                        await exec(`php -f /var/www/html/trash/add_representative_rfids.php "${req.orgId}" "${company.original_name}"`, async (error, std, stderr) => {
                                             /*await exec(`php -f /var/www/html/trash/tree_script_client.php "${company.original_name}"`, async (error, stdout, stderr) => {
 
                                             });*/
+                                            console.log(error);
+                                            console.log(std);
+                                            console.log(stderr);
                                         });
                                         return company;
                                     });
@@ -640,7 +643,9 @@ route.delete("/", [authJWT.verifyToken, clientDBConnection.connect], async(req, 
                                      * Recreate KPI and Tree
                                      */
                                     exec(`php -f /var/www/html/trash/fix_inventor_timeline_tree_transaction_assests_updates.php "${req.orgId}" ""`, async (error, std, stderr) => {
-
+                                        console.log(error);
+                                        console.log(std);
+                                        console.log(stderr);
                                     });
                                     res.status(200).send("Companies deleted.");
                                 }
@@ -649,13 +654,17 @@ route.delete("/", [authJWT.verifyToken, clientDBConnection.connect], async(req, 
                             /**
                              * Recreate KPI and Tree
                              */
+                            console.log("DELETE");
                             exec(`php -f /var/www/html/trash/fix_inventor_timeline_tree_transaction_assests_updates.php "${req.orgId}" ""`, async (error, std, stderr) => {
-
+                                console.log(error);
+                                console.log(std);
+                                console.log(stderr);
                             });
                             res.status(200).send("Companies deleted.");
                         }
-                    }
-                    
+                    } else {
+                        res.status(500).send("Error while deleting companies.");
+                    }                    
                 } else {
                     res.status(402).send("No company found");
                 }
@@ -665,7 +674,7 @@ route.delete("/", [authJWT.verifyToken, clientDBConnection.connect], async(req, 
         }
     } catch( err ) {
         console.log(err);
-        res.status(500).json({message: "Error while deleting company"})
+        res.status(500).json({message: "Error while deleting companies."})
     }    
 });
 
@@ -690,7 +699,7 @@ route.delete("/subcompanies", [authJWT.verifyToken, clientDBConnection.connect],
                      /**
                      *  For inserting bulk entries for activity log
                      */
-                    activityLogs.push({organistaion_id: req.orgId, user_id: req.userId, type: 1, company_name: c.original_name, representative_company_name: '', activity_date: currentDate});
+                    activityLogs.push({organisation_id: req.orgId, user_id: req.userId, type: 1, company_name: c.original_name, representative_company_name: '', activity_date: currentDate});
                 });
                 Representative.destroy({
                     where: {representative_id: deleteParentCompanies},
@@ -713,7 +722,7 @@ route.delete("/subcompanies", [authJWT.verifyToken, clientDBConnection.connect],
 
                         if(mainCompanies.length > 0) {
                             const destroyAllTransactions = await RepresentativeTransactions.destroy({
-                                where: {representative_id: parentCompanies, organistaion_id: req.orgId},
+                                where: {representative_id: parentCompanies, organisation_id: req.orgId},
                             });
                             if(destroyAllTransactions) {
                                 const promise = mainCompanies.map(async company => {
@@ -728,18 +737,23 @@ route.delete("/subcompanies", [authJWT.verifyToken, clientDBConnection.connect],
                                     return company;
                                 });
                                 await Promise.all(promise);
+                                /**
+                                 * Recreate KPI and Tree
+                                 */
+                                exec(`php -f /var/www/html/trash/fix_inventor_timeline_tree_transaction_assests_updates.php "${req.orgId}" ""`, async (error, std, stderr) => {
+
+                                });
                             }
+                        } else {
                             /**
                              * Recreate KPI and Tree
                              */
                             exec(`php -f /var/www/html/trash/fix_inventor_timeline_tree_transaction_assests_updates.php "${req.orgId}" ""`, async (error, std, stderr) => {
 
                             });
-                            res.status(200).send("Companies deleted.");
                         }
                     })();
                     res.status(200).send("Companies deleted.");
-
                 })
                 .catch(err => {
                     console.log(err);
