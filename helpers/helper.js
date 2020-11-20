@@ -253,6 +253,23 @@ let searchCompany = async(query, t) => {
     }
 }
 
+let searchCompanyByAddress = async( address ) => {
+    let searchResult = [];
+    if(address.length > 1) {
+        const queryCompany = `SELECT a.assignor_and_assignee_id as id, a.assignor_and_assignee_id, a.name, a.instances as counter, c.representative_name as normalize_name, (select rr.representative_name FROM representative as rr WHERE rr.representative_name = a.name GROUP BY rr.representative_name) as representative_company, ass.rf_id as assigneeRFID, (SELECT concat(asss.reel_no,'-', asss.frame_no) FROM assignor as assi INNER JOIN assignment as asss ON asss.rf_id = assi.rf_id WHERE assi.assignor_and_assignee_id = a.assignor_and_assignee_id LIMIT 1) as assignorRFID  FROM assignor_and_assignee as a LEFT JOIN representative as c ON c.representative_id = a.representative_id INNER JOIN assignee as ass ON ass.assignor_and_assignee_id = a.assignor_and_assignee_id WHERE ass.ee_address_1 = :address GROUP BY a.name`;
+
+        searchResult = await connection.resources.query(queryCompany,{
+            type: connection.Sequelize.QueryTypes.SELECT,
+            raw: true,
+            replacements: { address: address },
+            logging: console.log,
+          }
+        );
+    }
+
+    return searchResult;
+}
+
 let getDifference = (arrayA, arrayB, result) =>{
     return arrayB.filter(function(item) {
             return arrayA.indexOf(item) === -1;    
@@ -1803,6 +1820,7 @@ helper.getCompanyListByOwnership = getCompanyListByOwnership;
 helper.getCompanyListBySecurity = getCompanyListBySecurity;
 helper.getCompanyListByOther = getCompanyListByOther;
 helper.searchCompany = searchCompany;
+helper.searchCompanyByAddress = searchCompanyByAddress;
 helper.checkRepresentativeCompany = checkRepresentativeCompany;
 helper.checkCustomerCompany = checkCustomerCompany;
 helper.getAllUsers = getAllUsers;

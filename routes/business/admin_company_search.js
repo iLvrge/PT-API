@@ -101,6 +101,21 @@ route.get("/company/search/:search", [authJWT.verifyToken, authJWT.isAdmin], asy
     }
 });
 
+route.get("/company/search/address/:address", [authJWT.verifyToken, authJWT.isAdmin], async (req, res, next) => {
+    try {
+        let searchCompanies = [];
+        const searchItem = req.params.address;	
+
+        if(searchItem != null && searchItem != undefined && searchItem.length > 0) {            
+            searchCompanies  = await helpers.searchCompanyByAddress(searchItem, 1);
+        }
+        res.status(200).json(searchCompanies);           
+    } catch(e) {
+        console.log(e);
+        res.status(402).send("Not found ");
+    }
+});
+
 /**
  * Update normalize name of the Entity
  */
