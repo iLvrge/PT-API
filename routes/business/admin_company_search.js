@@ -253,42 +253,31 @@ route.put("/company/search/all/", [authJWT.verifyToken, authJWT.isAdmin], async 
                     }                    
                 }
 
+                const queryCompany = `SELECT a.assignor_and_assignee_id as id, a.assignor_and_assignee_id, a.name, a.instances as counter, c.representative_name as normalize_name, (select rr.representative_name FROM representative as rr WHERE rr.representative_name = a.name GROUP BY rr.representative_name) as representative_company, (SELECT concat(ass.reel_no,'-', ass.frame_no) FROM assignee as ee INNER JOIN assignment as ass ON ass.rf_id = ee.rf_id WHERE ee.assignor_and_assignee_id = a.assignor_and_assignee_id LIMIT 1) as assigneeRFID, (SELECT concat(asss.reel_no,'-', asss.frame_no) FROM assignor as assi INNER JOIN assignment as asss ON asss.rf_id = assi.rf_id WHERE assi.assignor_and_assignee_id = a.assignor_and_assignee_id LIMIT 1) as assignorRFID  FROM assignor_and_assignee as a LEFT JOIN representative as c ON c.representative_id = a.representative_id WHERE a.name = :name `;
 
-                /**
-                 * Check Representative company is the Customer
-                 */
-                const findCustomer = await Organisations.findOne({
-                    attributes:['name'],
-                    where:{type: 0, name: representativeCompany.representative_name}
-                });
+                findRow = await connection.resources.query(queryCompany,{
+                    type: connection.Sequelize.QueryTypes.SELECT,
+                    raw: true,
+                    replacements: { name: name },
+                    plain: true,
+                    logging: console.log,
+                  }
+                );
 
-                if(findCustomer != null) {
-                    /**
-                     * Transfer all RFIDs for the new client
-                     */
-
-                    /*const queryInsertAssignors  = `INSERT IGNORE INTO db_uspto.representative_transactions(representative_id, rf_id) SELECT ${representativeCompany.representative_id} as representative_id, rf_id FROM db_uspto.assignor WHERE assignor_and_assignee_id IN (SELECT assignor_and_assignee_id FROM db_uspto.assignor_and_assignee WHERE name = :name)`;
-
-                    await connection.resources.query(queryInsertAssignors,{
-                        type: connection.Sequelize.QueryTypes.INSERT,
-                        replacements: { name:  name},
-                        raw: true,
-                        logging: console.log,
+                /*findRow  = await AssignorAndAssignee.findOne({
+                    attributes: ['name', 'representative_id'],
+                    where:{name: name},
+                    include:[
+                        {
+                            model: Representatives,
+                            as: 'representative',
+                            attributes: ['representative_name']
                         }
-                    );	
-
-                    const queryInsertAssignees  = `INSERT IGNORE INTO db_uspto.representative_transactions(representative_id, rf_id) SELECT ${representativeCompany.representative_id} as representative_id, rf_id FROM db_uspto.assignee WHERE assignor_and_assignee_id IN (SELECT assignor_and_assignee_id FROM db_uspto.assignor_and_assignee WHERE name = :name)`;
-
-                    await connection.resources.query(queryInsertAssignees,{
-                        type: connection.Sequelize.QueryTypes.INSERT,
-                        replacements: { name:  name},
-                        raw: true,
-                        logging: console.log,
-                        }
-                    );*/
-                }
+                    ]
+                });*/
+                
                     
-                res.status(200).send("Updated successfully");	
+                res.status(200).json(findRow);	
             } else {
                 res.status(200).send("Company not created");	
             }	
