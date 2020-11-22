@@ -18,7 +18,7 @@ const helpers = require("../../helpers/helper");
 
 const config = require("../../config/db.config");
 
-const {S3} = require('aws-s3');
+const AWS  = require('aws-sdk');
 
 route.get("/comments/:subjectType", [authJWT.verifyToken, clientDBConnection.connect], async(req, res, next) => {
     try{
@@ -315,16 +315,23 @@ route.post("/comments/:subjectType", [authJWT.verifyToken, clientDBConnection.co
                     }
 
                     if(mimeType != null && mimeType != '' && mimeType.toLowerCase().indexOf('.exe') < 0){
-                        let fileObject = req.files.file;
-                        const bucketConfig = config.bucketConfig;                        
-                        bucketConfig.dirName = bucketConfig.documentDir;
+                        const bucketConfig = config.bucketConfig;  
+                        let s3 = new AWS.S3({
+                            credentials: {
+                                accessKeyId: bucketConfig.accessKeyId,
+                                secretAccessKey: bucketConfig.secretAccessKey,
+                            },
+                            region: bucketConfig.region
+                        })
 
-                        const S3Client = new S3(config);
-
-                        S3Client
-                            .uploadFile(fileObject.data, fileObject.name)
-                            .then(async data => {
-                                console.log(data);
+                        const params = {
+                            Key: `${bucketConfig.documentDir}/${name}`,
+                            Bucket: bucketConfig.bucketName,
+                            Body: fileObject.data,
+                            ACL: 'public-read'
+                        }
+                        s3.upload(params, async function(err, data) {
+                            if(err == null) {
                                 postData.upload_file = data.location
                                 const newActivity = await Activity.create(postData);
                                 if(newActivity != null && newActivity.activity_id > 0){
@@ -340,11 +347,9 @@ route.post("/comments/:subjectType", [authJWT.verifyToken, clientDBConnection.co
                                 } else {
                                     res.status(500).send("Internal server error.");
                                 }
-                            })
-                            .catch(err => {
-                                console.error(err)
-                                res.status(500).send("Internal server error.");
-                            })
+                            }
+                        });
+                        
                     } else {
                         const newActivity = await Activity.create(postData);
                         if(newActivity != null && newActivity.activity_id > 0){

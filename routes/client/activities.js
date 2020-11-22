@@ -19,6 +19,12 @@ const clientDBConnection = require("../../helpers/clientDBConnection");
 
 const helpers = require("../../helpers/helper");
 
+const config = require("../../config/db.config");
+
+const AWS  = require('aws-sdk');
+
+
+
 /**Get activities list */
 
 route.get("/activities/", [authJWT.verifyToken, clientDBConnection.connect], async(req, res, next) => {
@@ -381,25 +387,39 @@ route.post("/activities/:type", [authJWT.verifyToken, clientDBConnection.connect
                 }
                 
                 if(mimeType != null && mimeType != '' && mimeType.toLowerCase().indexOf('.exe') < 0){
+
                     let fileObject = req.files.file;
-                    await fileObject.mv('/var/www/html/beta/resources/shared/data/'+fileObject.name, async function(err) {
-                        if (!err){
-                            postData.upload_file = "https://patentrack.com/resources/shared/data/"+fileObject.name;
-                            
+                    const name = fileObject.name.replace(/\s+/g, '-');
+                    const bucketConfig = config.bucketConfig;  
+                    let s3 = new AWS.S3({
+                        credentials: {
+                            accessKeyId: bucketConfig.accessKeyId,
+                            secretAccessKey: bucketConfig.secretAccessKey,
+                        },
+                        region: bucketConfig.region
+                      })
+
+                      const params = {
+                        Key: `${bucketConfig.documentDir}/${name}`,
+                        Bucket: bucketConfig.bucketName,
+                        Body: fileObject.data,
+                        ACL: 'public-read'
+                      }
+                      s3.upload(params, async function(err, data) {
+                        if(err == null) {
+                            postData.upload_file = `${bucketConfig.s3Url}${data.key}`;
+                            console.log(postData);
                             if(activityID == 0){
                                 const newActivity = await Activity.create(postData);
                                 if(newActivity != null && newActivity.activity_id > 0){
                                     activityID = newActivity.activity_id;
                                 }
                             } else {
-                               await Activity.update(postData,{where:{activity_id: activityID}});
+                                await Activity.update(postData,{where:{activity_id: activityID}});
                             }
-
-                            
-
                             if(activityID > 0){
                                 if(req.body.entity_id != undefined && req.body.entity_id > 0){
-                                    await Errors.update({status: 1},{error_id: req.body.entity_id});
+                                    await Errors.update({status: 1},{where: {error_id: req.body.entity_id}});
                                 }
                                 const postComment = {
                                     activity_id: activityID,
@@ -416,10 +436,9 @@ route.post("/activities/:type", [authJWT.verifyToken, clientDBConnection.connect
                             } else {
                                 res.status(500).send("Internal server error.");
                             }
-                        } else {
-                            res.status(500).send("Error while uploading file.");
                         }
-                    })
+                        
+                      }); 
                 } else {
 
                     if(activityID == 0){

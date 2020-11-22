@@ -44,6 +44,10 @@ const ProfessionalUsers = require("../../model/client/Professionals");
 
 const Firms = require("../../model/client/Firms");
 
+const config = require("../../config/db.config");
+
+const AWS  = require('aws-sdk');
+
 /**
  * List all customers
  */
@@ -361,12 +365,34 @@ let downloadImageToUrl = async (org, res, url, filename, callback) => {
             data.push(chunk);                                                         
         });                                                                         
 
-        response.on('end', async () => {                                             
-            fs.writeFileSync(filename, data.read());  
-            await org.update({
-                logo: filename.replace('/var/www/html/beta/', 'https://patentrack.com/')
+        response.on('end', async () => {                
+            const bucketConfig = config.bucketConfig;  
+            filename = filename.name.replace(/\s+/g, '-');
+            let s3 = new AWS.S3({
+                credentials: {
+                    accessKeyId: bucketConfig.accessKeyId,
+                    secretAccessKey: bucketConfig.secretAccessKey,
+                },
+                region: bucketConfig.region
             })
-            res.status(200).json({name: org.name, logo: org.logo});                         
+
+            const params = {
+                Key: `${bucketConfig.documentDir}/${filename}`,
+                Bucket: bucketConfig.bucketName,
+                Body: data.read(),
+                ACL: 'public-read'
+            }
+
+            s3.upload(params, async function(err, data) {
+                if(err == null) {
+                    await org.update({
+                        logo: `${bucketConfig.s3Url}${data.key}`
+                    })
+                    res.status(200).json({name: org.name, logo: org.logo});    
+                } else {
+                    res.status(200).json({name: org.name, logo: ''});    
+                }
+            });
         });                                                                         
     }).end();
 };
@@ -390,19 +416,32 @@ route.put("/customers/:id/logo", [authJWT.verifyToken, authJWT.isAdmin], async (
                         console.log(mimeType);
                         if(mimeType.toLowerCase().indexOf('.exe') < 0){
                             let fileObject = req.files.file;
-                            await fileObject.mv('/var/www/html/beta/resources/shared/data/'+fileObject.name,function(err) {
-                                if (err){
-                                    return res.status(500).send("ERROR: "+err);	
+                            const bucketConfig = config.bucketConfig;  
+                            let s3 = new AWS.S3({
+                                credentials: {
+                                    accessKeyId: bucketConfig.accessKeyId,
+                                    secretAccessKey: bucketConfig.secretAccessKey,
+                                },
+                                region: bucketConfig.region
+                            })
+                            let name = fileObject.name;
+                                name = name.replace(/\s+/g, '-');
+                            const params = {
+                                Key: `${bucketConfig.documentDir}/${name}`,
+                                Bucket: bucketConfig.bucketName,
+                                Body: fileObject.data,
+                                ACL: 'public-read'
+                            }
+                            
+                            s3.upload(params, async function(err, data) {
+                                if(err == null) {
+                                    org.logo = `${bucketConfig.s3Url}${data.key}`;
+                                    await org.update({
+                                        logo: org.logo
+                                    });
+                                    res.status(200).json({name: org.name, logo: org.logo});
                                 } else {
-                                    let uploadedFileName = fileObject.name;
-                                    (async () => {
-                                        org.logo =  "https://patentrack.com/resources/shared/data/"+uploadedFileName;
-                                        await org.update({
-                                            logo: "https://patentrack.com/resources/shared/data/"+uploadedFileName
-                                        })
-                                       
-                                        res.status(200).json({name: org.name, logo: org.logo});
-                                    })();
+                                    return res.status(500).send("ERROR: "+err);	
                                 }
                             })
                         } else {

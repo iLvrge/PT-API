@@ -8,6 +8,9 @@ const Users = require("../../model/client/Users");
 
 const authJWT = require("../../helpers/verifyJwtToken");
 
+const config = require("../../config/db.config");
+
+const AWS  = require('aws-sdk');
 
 const clientDBConnection = require("../../helpers/clientDBConnection");
 /**Get all documents */
@@ -76,16 +79,29 @@ route.post("/", [authJWT.verifyToken, clientDBConnection.connect], async(req, re
                         console.log(mimeType);
                         if( mimeType.toLowerCase().indexOf('.exe') < 0){
                             let fileObject = req.files.file;
-                            await fileObject.mv('/var/www/html/beta/resources/shared/data/'+fileObject.name,function(err) {
-                                if (err){
-                                    return res.status(500).send("ERROR: "+err);	
-                                } else {
-                                    let uploadedFileName = fileObject.name;
+                            const name = fileObject.name.replace(/\s+/g, '-');
+                            const bucketConfig = config.bucketConfig;  
+                            let s3 = new AWS.S3({
+                                credentials: {
+                                    accessKeyId: bucketConfig.accessKeyId,
+                                    secretAccessKey: bucketConfig.secretAccessKey,
+                                },
+                                region: bucketConfig.region
+                            })
+
+                            const params = {
+                                Key: `${bucketConfig.documentDir}/${name}`,
+                                Bucket: bucketConfig.bucketName,
+                                Body: fileObject.data,
+                                ACL: 'public-read'
+                            }
+                            s3.upload(params, async function(err, data) {
+                                if(err == null) {
                                     Document.create({	
                                         user_id: req.userId,
                                         title: req.body.name,
                                         description: req.body.description,
-                                        file: "https://patentrack.com/resources/shared/data/"+uploadedFileName
+                                        file: `${bucketConfig.s3Url}${data.key}`
                                     }).then(addRecord => {
                                         if(addRecord != null && addRecord.document_id > 0){
                                             console.log("Record Item added"+addRecord.document_id);
@@ -98,6 +114,8 @@ route.post("/", [authJWT.verifyToken, clientDBConnection.connect], async(req, re
                                         console.log(err);
                                         res.status(500).send("Internal server error");
                                     });
+                                } else {    
+                                    return res.status(500).send("ERROR: "+err);	
                                 }
                             });
                         } else {
