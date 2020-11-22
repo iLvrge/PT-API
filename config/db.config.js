@@ -64,6 +64,17 @@ const config = {
   'pusher_channel': 'patentrack-channel',
   'pusher_event': 'patentrack-event',
 }
-const db = {Sequelize, Op, application, resources, business, maintainence, config};
+
+const bucketConfig = {
+  bucketName: process.env.BUCKET_NAME,
+  dirName: process.env.BUCKET_PHOTO_DIR, /* optional */
+  region: process.env.BUCKET_REGION,
+  accessKeyId: process.env.BUCKET_ACCESS_KEY,
+  secretAccessKey: process.env.BUCKET_SECRET_KEY,
+  s3Url: process.env.BUCKET_URL, /* optional */
+  documentDir: process.env.BUCKET_DOCUMENT_DIR
+}
+
+const db = {Sequelize, Op, application, resources, business, maintainence, config, bucketConfig};
  
 module.exports = db;

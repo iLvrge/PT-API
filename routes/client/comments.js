@@ -16,7 +16,9 @@ const clientDBConnection = require("../../helpers/clientDBConnection");
 
 const helpers = require("../../helpers/helper");
 
+const config = require("../../config/db.config");
 
+const {S3} = require('aws-s3');
 
 route.get("/comments/:subjectType", [authJWT.verifyToken, clientDBConnection.connect], async(req, res, next) => {
     try{
@@ -314,9 +316,16 @@ route.post("/comments/:subjectType", [authJWT.verifyToken, clientDBConnection.co
 
                     if(mimeType != null && mimeType != '' && mimeType.toLowerCase().indexOf('.exe') < 0){
                         let fileObject = req.files.file;
-                        await fileObject.mv('/var/www/html/beta/resources/shared/data/'+fileObject.name, async function(err) {
-                            if (!err){
-                                postData.upload_file = "https://patentrack.com/resources/shared/data/"+fileObject.name;
+                        const bucketConfig = config.bucketConfig;                        
+                        bucketConfig.dirName = bucketConfig.documentDir;
+
+                        const S3Client = new S3(config);
+
+                        S3Client
+                            .uploadFile(fileObject.data, fileObject.name)
+                            .then(async data => {
+                                console.log(data);
+                                postData.upload_file = data.location
                                 const newActivity = await Activity.create(postData);
                                 if(newActivity != null && newActivity.activity_id > 0){
                                     activityID = newActivity.activity_id;
@@ -331,10 +340,11 @@ route.post("/comments/:subjectType", [authJWT.verifyToken, clientDBConnection.co
                                 } else {
                                     res.status(500).send("Internal server error.");
                                 }
-                            } else {
-                                res.status(500).send("Error while uploading file.");
-                            }
-                        })
+                            })
+                            .catch(err => {
+                                console.error(err)
+                                res.status(500).send("Internal server error.");
+                            })
                     } else {
                         const newActivity = await Activity.create(postData);
                         if(newActivity != null && newActivity.activity_id > 0){
