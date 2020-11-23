@@ -116,6 +116,48 @@ route.get("/company/search/address/:address", [authJWT.verifyToken, authJWT.isAd
     }
 });
 
+let updateDataAndShowData = async (representativeCompany, name, oldRepresentativeCompanyID, oldRepresentativeCompanyName, findRow, res) => {
+    const item = {representative_id: representativeCompany.representative_id};
+                
+    if(oldRepresentativeCompanyID == 0) {
+        /**
+         * Update representative ID
+         */
+        await AssignorAndAssignee.update(item, {where: {name: name}});                                             
+    } else {                        
+        await AssignorAndAssignee.update(item, {where: {name: oldRepresentativeCompanyName}});
+        await AssignorAndAssignee.update(item, {where: {representative_id: oldRepresentativeCompanyID}});
+    }
+
+    if(findRow != null && findRow.representative_id > 0) {
+        const findData = await helpers.checkRepresentativeCompany(name);
+
+        if(findData != null) {
+            const findCount = await AssignorAndAssignee.count({
+                where: {representative_id: findData.representative_id}
+            });
+
+            if(findCount == 0) {
+                await Representatives.destroy({
+                    where: {representative_id: findData.representative_id}
+                })
+            }
+        }                    
+    }
+
+    const queryCompany = `SELECT a.assignor_and_assignee_id as id, a.assignor_and_assignee_id, a.name, a.instances as counter, c.representative_name as normalize_name, (select rr.representative_name FROM representative as rr WHERE rr.representative_name = a.name GROUP BY rr.representative_name) as representative_company, (SELECT concat(ass.reel_no,'-', ass.frame_no) FROM assignee as ee INNER JOIN assignment as ass ON ass.rf_id = ee.rf_id WHERE ee.assignor_and_assignee_id = a.assignor_and_assignee_id LIMIT 1) as assigneeRFID, (SELECT concat(asss.reel_no,'-', asss.frame_no) FROM assignor as assi INNER JOIN assignment as asss ON asss.rf_id = assi.rf_id WHERE assi.assignor_and_assignee_id = a.assignor_and_assignee_id LIMIT 1) as assignorRFID  FROM assignor_and_assignee as a LEFT JOIN representative as c ON c.representative_id = a.representative_id WHERE a.name = :name `;
+
+    findRow = await connection.resources.query(queryCompany,{
+        type: connection.Sequelize.QueryTypes.SELECT,
+        raw: true,
+        replacements: { name: name },
+        plain: true,
+        logging: console.log,
+        }
+    );
+    res.status(200).json(findRow);	
+}
+
 /**
  * Update normalize name of the Entity
  */
@@ -154,9 +196,7 @@ route.put("/company/search/all/", [authJWT.verifyToken, authJWT.isAdmin], async 
                 oldRepresentativeCompanyName = findIsNormalized.representative_name;
             }
 
-            let  representativeCompany = await Representatives.findOne({
-                where:{representative_name: normalize_name}
-            });
+            let  representativeCompany = await helpers.checkRepresentativeCompany(normalize_name);
 
             /**
              * Check normalize company is normalize with  another company
@@ -193,6 +233,9 @@ route.put("/company/search/all/", [authJWT.verifyToken, authJWT.isAdmin], async 
                         representative_name: normalize_name
                     }, {where: {representative_id: oldRepresentativeCompanyID} });
                     representativeCompany = await helpers.checkRepresentativeCompany(normalize_name);
+                    if(representativeCompany != null && representativeCompany.representative_id > 0) {
+                        await updateDataAndShowData(representativeCompany, name, oldRepresentativeCompanyID, oldRepresentativeCompanyName, findRow, res);
+                    }
                 } else {
                     /**
                      * Insert new representative company in the representative table
@@ -200,87 +243,15 @@ route.put("/company/search/all/", [authJWT.verifyToken, authJWT.isAdmin], async 
                     representativeCompany = await Representatives.findOrCreate({
                         where: {representative_name: normalize_name}
                     });
-                }                    
-            }
-
-            
-
-            if(representativeCompany != null && representativeCompany.representative_id > 0) {                    
-                /**
-                * Update representative ID in the AssignorAndAssignee table
-                */
-                const item = {representative_id: representativeCompany.representative_id};
-                
-                if(oldRepresentativeCompanyID == 0) {
-                    /**
-                     * Update representative ID
-                     */
-                    await AssignorAndAssignee.update(item, {where: {name: name}});                                             
-                } else {                        
-                    await AssignorAndAssignee.update(item, {where: {name: oldRepresentativeCompanyName}});
-                    await AssignorAndAssignee.update(item, {where: {representative_id: oldRepresentativeCompanyID}});
-
-                    /**
-                     * Checking Client name with same old Company name
-                     */
-                    const findCustomerWithOldName = await Organisations.findOne({
-                        attributes:['name'],
-                        where:{type: 0, name: oldRepresentativeCompanyName}
-                    });
-
-                    if(findCustomerWithOldName != null) {
-                        await findCustomerWithOldName.update({name: representativeCompany.representative_name});
+                    if(representativeCompany != null && representativeCompany.representative_id > 0) {
+                        await updateDataAndShowData(representativeCompany, name, oldRepresentativeCompanyID, oldRepresentativeCompanyName, findRow, res);
                     }
-                }
-
-                /**/
-
-                if(findRow != null && findRow.representative_id > 0) {
-                    const findData = await Representatives.findOne({
-                        where: {representative_name: name}
-                    })
-
-                    if(findData != null) {
-                        const findCount = await AssignorAndAssignee.count({
-                            where: {representative_id: findData.representative_id}
-                        });
-    
-                        if(findCount == 0) {
-                            await Representatives.destroy({
-                                where: {representative_id: findData.representative_id}
-                            })
-                        }
-                    }                    
-                }
-
-                const queryCompany = `SELECT a.assignor_and_assignee_id as id, a.assignor_and_assignee_id, a.name, a.instances as counter, c.representative_name as normalize_name, (select rr.representative_name FROM representative as rr WHERE rr.representative_name = a.name GROUP BY rr.representative_name) as representative_company, (SELECT concat(ass.reel_no,'-', ass.frame_no) FROM assignee as ee INNER JOIN assignment as ass ON ass.rf_id = ee.rf_id WHERE ee.assignor_and_assignee_id = a.assignor_and_assignee_id LIMIT 1) as assigneeRFID, (SELECT concat(asss.reel_no,'-', asss.frame_no) FROM assignor as assi INNER JOIN assignment as asss ON asss.rf_id = assi.rf_id WHERE assi.assignor_and_assignee_id = a.assignor_and_assignee_id LIMIT 1) as assignorRFID  FROM assignor_and_assignee as a LEFT JOIN representative as c ON c.representative_id = a.representative_id WHERE a.name = :name `;
-
-                findRow = await connection.resources.query(queryCompany,{
-                    type: connection.Sequelize.QueryTypes.SELECT,
-                    raw: true,
-                    replacements: { name: name },
-                    plain: true,
-                    logging: console.log,
-                  }
-                );
-
-                /*findRow  = await AssignorAndAssignee.findOne({
-                    attributes: ['name', 'representative_id'],
-                    where:{name: name},
-                    include:[
-                        {
-                            model: Representatives,
-                            as: 'representative',
-                            attributes: ['representative_name']
-                        }
-                    ]
-                });*/
-                
-                    
-                res.status(200).json(findRow);	
+                }                    
             } else {
-                res.status(200).send("Company not created");	
-            }	
+                if(representativeCompany != null && representativeCompany.representative_id > 0) {
+                    await updateDataAndShowData(representativeCompany, name, oldRepresentativeCompanyID, oldRepresentativeCompanyName, findRow, res);
+                }
+            }
         }  else {
             if(name != "" && normalize_name == ""){ 
                 let findRow  = await AssignorAndAssignee.findOne({
