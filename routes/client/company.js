@@ -71,7 +71,7 @@ route.get("/lawfirm", [authJWT.verifyToken, clientDBConnection.connect], async(r
                 const representativeIDs = JSON.parse(req.query.companies);
                 where = {representative_id: representativeIDs};
             }
-
+            where.parent_id = 0;
             const list = await Representative.findAll({
                 attributes: ['representative_id', 'original_name', 'representative_name'],
                 where: where,

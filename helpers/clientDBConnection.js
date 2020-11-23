@@ -54,6 +54,8 @@ let connect = async(req, res, next) => {
 
 const clientDBConnection = {};
 
-clientDBConnection.connect = connect;  
+clientDBConnection.connect = connect; 
+clientDBConnection.Sequelize = Sequelize;
+clientDBConnection.Op = Op;
   
 module.exports = clientDBConnection;
