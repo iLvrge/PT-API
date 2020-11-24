@@ -158,135 +158,152 @@ let updateDataAndShowData = async (representativeCompany, name, oldRepresentativ
     res.status(200).json(findRow);	
 }
 
+let allRepresentativesCheckAndDelete = async (allRepresentatives) => {
+    const findRepresentativeCount = await AssignorAndAssignee.findAll({
+        attributes: ['representative_id', [connection.Sequelize.fn('COUNT', 'assignor_and_assignee_id'), 'counter']],
+        where: {representative_id: allRepresentatives},
+        group:['representative_id']
+    });
+
+    if(findRepresentativeCount.length > 0) {
+        const destroyRepresentatives = [];
+        const promise = findRepresentativeCount.map(r => {
+            if(r.representative_id > 0 && r.get('counter') == 0) {
+                destroyRepresentatives.push(r.representative_id);
+            }
+            return r;
+        })
+        await Promise.all(promise);
+
+        if(destroyRepresentatives.length > 0) {
+            await Representatives.destroy({
+                where: {representative_id: destroyRepresentatives}
+            })
+        }
+    }
+}
+
 /**
  * Update normalize name of the Entity
  */
 route.put("/company/search/all/", [authJWT.verifyToken, authJWT.isAdmin], async (req, res, next) => {
     try {
 
-        let name = req.body.name, normalize_name = req.body.normalize_name;
-        if(name != "" && normalize_name != ""){
+        let normalize_name = req.body.normalize_name, IDs = JSON.parse(req.body.IDs);
 
-            /**
-             * This check is to find company is already normalised with other representative company
-             */
-            let oldRepresentativeCompanyID = 0, oldRepresentativeCompanyName = "", findIsNormalized = null;
-            let findRow  = await AssignorAndAssignee.findOne({
-                                        where:{name: name}
-                                    });
-            
-            /*if(findRow != null && findRow.representative_id > 0) {
-                findIsNormalized  = await Representatives.findOne({
-                    where:{representative_id: findRow.representative_id}
-                });
-            } else {
-                findIsNormalized  = await Representatives.findOne({
-                    where:{representative_name: name}
-                });
-            }*/
-            findIsNormalized  = await Representatives.findOne({
-                where:{representative_name: name}
-            });
-
-            if(findIsNormalized != null && findIsNormalized.representative_id > 0) {
-                /** 
-                 * Find old representative company
-                */
-                oldRepresentativeCompanyID = findIsNormalized.representative_id;
-                oldRepresentativeCompanyName = findIsNormalized.representative_name;
-            }
-
-            let  representativeCompany = await helpers.checkRepresentativeCompany(normalize_name);
-
-            /**
-             * Check normalize company is normalize with  another company
-             * 
-             */
-            let findNormalizedCompany  = await AssignorAndAssignee.findOne({
-                where:{name: normalize_name}
-            });
-
-            console.log(findNormalizedCompany);
-
-            if(findNormalizedCompany != null && findNormalizedCompany.representative_id > 0) {
-                representativeCompany  = await Representatives.findOne({
-                    where:{representative_id: findNormalizedCompany.representative_id}
+        if(IDs.length > 0) {
+            if(normalize_name != "") {
+                let getList = await AssignorAndAssignee.findAll({
+                    where:{assignor_and_assignee_id: IDs}
                 });
 
-                if(representativeCompany != null && representativeCompany.representative_id > 0){
-                    await Representatives.update({
-                        representative_name: normalize_name
-                    }, {where: {representative_id: representativeCompany.representative_id} });
-                }
-            }
+                let  representativeCompany = await helpers.checkRepresentativeCompany(normalize_name);
 
-            
-            if(representativeCompany == null) {
                 /**
-                 * If Old representative found
-                 */                    
-                if(oldRepresentativeCompanyID > 0) {
-                    /**
-                     * Update old representative company name with new representative name i.e normalize name
-                     */
-                    await Representatives.update({
-                        representative_name: normalize_name
-                    }, {where: {representative_id: oldRepresentativeCompanyID} });
-                    representativeCompany = await helpers.checkRepresentativeCompany(normalize_name);
-                    if(representativeCompany != null && representativeCompany.representative_id > 0) {
-                        await updateDataAndShowData(representativeCompany, name, oldRepresentativeCompanyID, oldRepresentativeCompanyName, findRow, res);
-                    }
-                } else {
-                    /**
-                     * Insert new representative company in the representative table
-                     */                        
-                    representativeCompany = await Representatives.findOrCreate({
-                        where: {representative_name: normalize_name}
+                 * Check normalize company is normalize with  another company
+                 * 
+                 */
+                let findNormalizedCompany  = await AssignorAndAssignee.findOne({
+                    where:{name: normalize_name}
+                });
+                console.log(findNormalizedCompany);
+                if(findNormalizedCompany != null && findNormalizedCompany.representative_id > 0) {
+                    representativeCompany  = await Representatives.findOne({
+                        where:{representative_id: findNormalizedCompany.representative_id}
                     });
-                    if(representativeCompany != null && representativeCompany.representative_id > 0) {
-                        await updateDataAndShowData(representativeCompany, name, oldRepresentativeCompanyID, oldRepresentativeCompanyName, findRow, res);
+    
+                    if(representativeCompany != null && representativeCompany.representative_id > 0){
+                        await Representatives.update({
+                            representative_name: normalize_name
+                        }, {where: {representative_id: representativeCompany.representative_id} });
                     }
-                }                    
-            } else {
-                if(representativeCompany != null && representativeCompany.representative_id > 0) {
-                    await updateDataAndShowData(representativeCompany, name, oldRepresentativeCompanyID, oldRepresentativeCompanyName, findRow, res);
                 }
-            }
-        }  else {
-            if(name != "" && normalize_name == ""){ 
-                let findRow  = await AssignorAndAssignee.findOne({
-                    where:{name: name}
-                });                          
-                await AssignorAndAssignee.update({representative_id: 0}, {where: {name: name}});
-
-                if(findRow != null && findRow.representative_id > 0) {
-                    const count = AssignorAndAssignee.count({
-                        where:{representative_id: findRow.representative_id}
+                let findIsNormalized = null, allRepresentatives = [], oldRepresentativeCompanyID = 0, check = true;
+                
+                if(representativeCompany == null) {
+                    
+                    const promise = getList.map(r => {
+                        if(r.representative_id > 0 && !allRepresentatives.includes(r.representative_id)) {
+                            allRepresentatives.push(r.representative_id);
+                        }
+                        if(((oldRepresentativeCompanyID == 0 && r.representative_id > 0) || (r.representative_id > 0 && oldRepresentativeCompanyID == r.representative_id)) && check === true){
+                            oldRepresentativeCompanyID = r.representative_id;
+                        } else if(oldRepresentativeCompanyID > 0 && oldRepresentativeCompanyID != r.representative_id){
+                            oldRepresentativeCompanyID = 0;
+                            check = false;
+                        }
+                        return r;
                     })
 
-                    if(count == 0) {
-                        await Representatives.destroy({
-                            where: {representative_id: findRow.representative_id}
-                        })
+                    await Promise.all(promise);
+
+                    if(oldRepresentativeCompanyID > 0) {
+                        /* findIsNormalized  = await Representatives.findOne({
+                            where:{representative_id: oldRepresentativeCompanyID}
+                        }); */
+                        /**
+                         * Update old representative company name with new representative name i.e normalize name
+                         */
+                        await Representatives.update({
+                            representative_name: normalize_name
+                        }, {where: {representative_id: oldRepresentativeCompanyID} });
+
+                        representativeCompany = await helpers.checkRepresentativeCompany(normalize_name);
+                    } else {
+                        representativeCompany = await Representatives.create({
+                            representative_name: normalize_name
+                        });
                     }
                 }
 
+                const item = {representative_id: representativeCompany.representative_id};
+                if(oldRepresentativeCompanyID == 0) {
+                    /**
+                     * Update representative ID
+                     */
+                    await AssignorAndAssignee.update(item, {where: {assignor_and_assignee_id: IDs}});                                             
+                } else if(oldRepresentativeCompanyID > 0){   
+                    await AssignorAndAssignee.update(item, {where: {representative_id: oldRepresentativeCompanyID}});
+                }
 
-                const queryCompany = `SELECT a.assignor_and_assignee_id as id, a.assignor_and_assignee_id, a.name, a.instances as counter, c.representative_name as normalize_name, (select rr.representative_name FROM representative as rr WHERE rr.representative_name = a.name GROUP BY rr.representative_name) as representative_company, (SELECT concat(ass.reel_no,'-', ass.frame_no) FROM assignee as ee INNER JOIN assignment as ass ON ass.rf_id = ee.rf_id WHERE ee.assignor_and_assignee_id = a.assignor_and_assignee_id LIMIT 1) as assigneeRFID, (SELECT concat(asss.reel_no,'-', asss.frame_no) FROM assignor as assi INNER JOIN assignment as asss ON asss.rf_id = assi.rf_id WHERE assi.assignor_and_assignee_id = a.assignor_and_assignee_id LIMIT 1) as assignorRFID  FROM assignor_and_assignee as a LEFT JOIN representative as c ON c.representative_id = a.representative_id WHERE a.name = :name `;
-
-                findRow = await connection.resources.query(queryCompany,{
-                    type: connection.Sequelize.QueryTypes.SELECT,
-                    raw: true,
-                    replacements: { name: name },
-                    plain: true,
-                    logging: console.log,
-                  }
-                );	
-                res.status(200).json(findRow);		
+                if(allRepresentatives > 0) {
+                    await allRepresentativesCheckAndDelete(allRepresentatives);
+                }	
             } else {
-                res.status(402).send("Bad inputs");
+                let getList = await AssignorAndAssignee.findAll({
+                    attributes:['assignor_and_assignee_id', 'representative_id'],
+                    where:{assignor_and_assignee_id: IDs}
+                });
+
+                if(getList.length > 0) {
+                    const assignorAssigneeIDs = [], allRepresentatives = [];
+                    const promise = getList.map(r => {
+                        assignorAssigneeIDs.push(r.assignor_and_assignee_id)
+                        if(r.representative_id > 0) {
+                            allRepresentatives.push(r.representative_id)
+                        }
+                        return r;
+                    })
+                    await Promise.all(promise);
+
+                    await AssignorAndAssignee.update({representative_id: 0}, {where: {assignor_and_assignee_id: assignorAssigneeIDs}});
+
+                    if(allRepresentatives > 0) {
+                        await allRepresentativesCheckAndDelete(allRepresentatives);
+                    }
+                }   
             }
-        }      
+            const queryCompany = `SELECT a.assignor_and_assignee_id as id, a.assignor_and_assignee_id, a.name, a.instances as counter, c.representative_name as normalize_name, (select rr.representative_name FROM representative as rr WHERE rr.representative_name = a.name GROUP BY rr.representative_name) as representative_company, (SELECT concat(ass.reel_no,'-', ass.frame_no) FROM assignee as ee INNER JOIN assignment as ass ON ass.rf_id = ee.rf_id WHERE ee.assignor_and_assignee_id = a.assignor_and_assignee_id LIMIT 1) as assigneeRFID, (SELECT concat(asss.reel_no,'-', asss.frame_no) FROM assignor as assi INNER JOIN assignment as asss ON asss.rf_id = assi.rf_id WHERE assi.assignor_and_assignee_id = a.assignor_and_assignee_id LIMIT 1) as assignorRFID  FROM assignor_and_assignee as a LEFT JOIN representative as c ON c.representative_id = a.representative_id WHERE a.assignor_and_assignee_id IN (:IDs) `;
+
+            getList = await connection.resources.query(queryCompany,{
+                type: connection.Sequelize.QueryTypes.SELECT,
+                raw: true,
+                replacements: { IDs: IDs },
+                logging: console.log,
+                }
+            );
+            res.status(200).json(getList);
+        }     
     } catch(e) {
         console.log(e);
         res.status(402).send("Bad inputs");
