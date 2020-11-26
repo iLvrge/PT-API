@@ -55,6 +55,7 @@ route.get("/events/", [authJWT.verifyToken, clientDBConnection.connect], async(r
 /**
  * List of all portfolio from new table
  */
+const TABS = [0,1,2,3,4,5,6,7,8,9,10];
 
 route.get("/portfolios/", [authJWT.verifyToken, clientDBConnection.connect], async(req, res, next) => {
     try{
@@ -93,7 +94,7 @@ route.get("/portfolios/", [authJWT.verifyToken, clientDBConnection.connect], asy
             });     
             tabs = await TreeParties.findAll({
                 attributes:['tab_id', [connection.Sequelize.literal('COUNT(DISTINCT(name))', 'assignor_and_assignee_id'), 'customer_count']],
-                where: {representative_id: portfolioList, organisation_id: req.orgId, tab_id: [1,2,3,4,5,6,7,8,9,10]},
+                where: {representative_id: portfolioList, organisation_id: req.orgId, tab_id: TABS},
                 group:['tab_id']
             });       
         } else {
@@ -125,7 +126,7 @@ route.get("/portfolios/", [authJWT.verifyToken, clientDBConnection.connect], asy
 
                     tabs = await TreeParties.findAll({
                         attributes:['tab_id', [connection.Sequelize.literal('COUNT(DISTINCT(name))', 'assignor_and_assignee_id'), 'customer_count']],
-                        where: {representative_id: allPortfolioList, organisation_id: req.orgId, tab_id: [1,2,3,4,5,6,7,8,9,10]},
+                        where: {representative_id: allPortfolioList, organisation_id: req.orgId, tab_id: TABS},
                         group:['tab_id']
                     });
                     //if(resultParties.length > 0) {
