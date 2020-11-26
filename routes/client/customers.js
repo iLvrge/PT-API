@@ -59,9 +59,9 @@ route.get("/events/", [authJWT.verifyToken, clientDBConnection.connect], async(r
 route.get("/portfolios/", [authJWT.verifyToken, clientDBConnection.connect], async(req, res, next) => {
     try{
         const tabID = req.query.tab_id, portfolioID = req.query.portfolio;
-        let result = [],  limit = req.query.limit, offset = req.query.offset;
-        console.log("tabID", tabID);
-        console.log("portfolioID", portfolioID);
+        let result = [],  limit = req.query.limit, offset = req.query.offset, tabs = [];
+        //console.log("tabID", tabID);
+        //console.log("portfolioID", portfolioID);
         if(portfolioID != '' && portfolioID != null && portfolioID != 'undefined' && parseInt(tabID) >= 0) {            
             limit = limit > 0 ? parseInt(limit) : 1000;
             offset = offset > 0 ? parseInt(offset) : 0;
@@ -90,7 +90,12 @@ route.get("/portfolios/", [authJWT.verifyToken, clientDBConnection.connect], asy
                 order: [
                     ['name', 'ASC']
                 ]                    
-            });            
+            });     
+            tabs = await TreeParties.findAll({
+                attributes:['tab_id', [connection.Sequelize.literal('COUNT(DISTINCT(name))', 'assignor_and_assignee_id'), 'customer_count']],
+                where: {representative_id: portfolioList, organisation_id: req.orgId, tab_id: [1,2,3,4,5,6,7,8,9,10]},
+                group:['tab_id']
+            });       
         } else {
             if(typeof req.connection_db != "undefined" && req.connection_db != null ) {                
                 let allPortfolioList = [];
@@ -104,7 +109,7 @@ route.get("/portfolios/", [authJWT.verifyToken, clientDBConnection.connect], asy
                 }
 
                 if(allPortfolioList.length > 0){
-                    const resultParties = await TreeParties.findAll({
+                    result = await TreeParties.findAll({
                         attributes:['representative_id', 'representative_name','tab_id'],
                         where: {representative_id: allPortfolioList, organisation_id: req.orgId},
                         group: ['organisation_id', 'representative_id', 'tab_id'],                       
@@ -113,8 +118,17 @@ route.get("/portfolios/", [authJWT.verifyToken, clientDBConnection.connect], asy
                             ['representative_name', 'ASC']
                         ]
                     });
+                    /**
+                     * Customer Count
+                     */ 
+                    
 
-                    if(resultParties.length > 0) {
+                    tabs = await TreeParties.findAll({
+                        attributes:['tab_id', [connection.Sequelize.literal('COUNT(DISTINCT(name))', 'assignor_and_assignee_id'), 'customer_count']],
+                        where: {representative_id: allPortfolioList, organisation_id: req.orgId, tab_id: [1,2,3,4,5,6,7,8,9,10]},
+                        group:['tab_id']
+                    });
+                    //if(resultParties.length > 0) {
                         
                         /*const tabsWithRepresentatives = [], tabs = [];
 
@@ -156,8 +170,10 @@ route.get("/portfolios/", [authJWT.verifyToken, clientDBConnection.connect], asy
                             });
                         }*/
 
-
-                        const promises = resultParties.map(async portfolio => {
+                        /**
+                         * Transactions Count
+                         */    
+                        /* const promises = resultParties.map(async portfolio => {
 
                             const customQuery = "SELECT count(*) as transaction_count FROM (SELECT rf_id FROM tree_parties_collection WHERE organisation_id = :organisationID AND representative_id IN (:companiesID) AND tab_id = :tabID GROUP BY rf_id) as temp";
 
@@ -178,12 +194,14 @@ route.get("/portfolios/", [authJWT.verifyToken, clientDBConnection.connect], asy
                             result.push(portfolioJSON);
                             return portfolio;
                         });
-                        await Promise.all(promises);
-                    }
+                        await Promise.all(promises); */
+
+                        
+                    //}
                 }
             }
         }
-        res.status(200).json({portfolios: result});
+        res.status(200).json({portfolios: result, tabs: tabs});
     }catch( err ) {
         console.log(err);
         res.status(500).send("Internal server error.");
