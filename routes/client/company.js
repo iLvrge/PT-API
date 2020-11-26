@@ -107,41 +107,26 @@ route.post("/lawfirm", [authJWT.verifyToken, clientDBConnection.connect], async(
     try{
         let add = [];
         if(typeof req.connection_db != "undefined" && req.connection_db != null ) {
-            if(req.body.representative_id != null && req.body.representative_id != undefined && req.body.representative_id > 0 && req.body.lawfirms != undefined ) {
+            if(req.body.companies != null && req.body.companies != undefined  && req.body.lawfirms != undefined ) {
                 
                 const lawFirmList = JSON.parse(req.body.lawfirms);
+                const companiesList = JSON.parse(req.body.companies);
 
                 const postData = [];
                 if(lawFirmList.length > 0) {
-                    const promise = lawFirmList.map(lawFirm => {
-                        postData.push({representative_id: req.body.representative_id, lawfirm_id: lawFirm})   
-                        return lawFirm
+                    const promises = companiesList.map(async company => {
+                        const promise = lawFirmList.map(lawFirm => {
+                            postData.push({representative_id: company, lawfirm_id: lawFirm})   
+                            return lawFirm
+                        })
+                        await Promise.all(promise);
+                        return company
                     })
-
-                    await Promise.all(promise);
+                    await Promise.all(promises);
 
                     const RepresentativeLawfirm = req.connection_db.define('RepresentativeLawfirm', CompanyLawfirm.mainStructure, CompanyLawfirm.options);
 
                     add = await RepresentativeLawfirm.bulkCreate(postData, {returning: true});
-
-                    if(add) {
-                        const Lawfirms = req.connection_db.define('Lawfirm', Lawfirm.mainStructure, Lawfirm.options);
-
-                        RepresentativeLawfirms.belongsTo(Lawfirms, { foreignKey: 'lawfirm_id', as: 'lawfirm', otherKey: 'lawfirm_id' });
-
-
-                        add = await RepresentativeLawfirms.findAll({
-                            attributes: ['lawfirm_id'],
-                            where: {representative_id: req.body.representative_id},
-                            include: [
-                                {                                    
-                                    model: Lawfirms,
-                                    as: 'lawfirm',
-                                    attributes: ['lawfirm_id', 'name']
-                                }
-                            ]
-                        });
-                    }
                 } else {
                     res.status(402).send("Please select law firm IDs.");        
                 }
