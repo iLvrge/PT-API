@@ -21,6 +21,7 @@ route.get("/", [authJWT.verifyToken, clientDBConnection.connect], async(req, res
 
             Document.findAll({
                 attributes:[['title','name'],'document_id','file','description'],
+                where: {status: 0},
                 order: [
                     ['title', 'ASC'],
                 ],
