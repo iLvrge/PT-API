@@ -369,9 +369,9 @@ let downloadImageToUrl = async (org, res, url, filename, contentType, callback) 
 
         response.on('end', async () => {                
             const bucketConfig = config.bucketConfig;  
-            console.log(bucketConfig);
+            
             filename = filename.replace(/\s+/g, '-');
-            console.log(bucketConfig);
+           
             let s3 = new AWS.S3({
                 credentials: {
                     accessKeyId: bucketConfig.accessKeyId,
@@ -379,7 +379,7 @@ let downloadImageToUrl = async (org, res, url, filename, contentType, callback) 
                 },
                 region: bucketConfig.region
             })
-            console.log(s3);
+           
             const params = {
                 Key: `${bucketConfig.dirName}/${filename}`,
                 Bucket: bucketConfig.bucketName,
@@ -388,9 +388,9 @@ let downloadImageToUrl = async (org, res, url, filename, contentType, callback) 
                 ContentType: contentType,
                 ContentDisposition: 'inline'
             }
-            console.log(bucketConfig);
+           
             s3.putObject(params, async function(err, data) {
-                console.log(err);
+                console.log(err, data);
                 if(err == null) {
                     filename = `https://s3-${bucketConfig.region}.amazonaws.com/${bucketConfig.bucketName}/${bucketConfig.dirName}/${filename}`;
                     await org.update({
