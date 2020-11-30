@@ -351,23 +351,26 @@ route.put("/customers/:id/users/:user_id", [authJWT.verifyToken, authJWT.isAdmin
     })();    
 });
 
-let downloadImageToUrl = async (org, res, url, filename, callback) => {
+let downloadImageToUrl = async (org, res, url, filename, contentType, callback) => {
 
     var client = http;
     if (url.toString().indexOf("https") === 0){
       client = https;
-     }
-
-    client.request(url, async (response)=> {                                        
+    }
+    
+    client.request(url, async (response)=> {  
+                                      
        const data = new Stream();                                                    
 
-        response.on('data', function(chunk) {                                       
+        response.on('data', function(chunk) {  
+
             data.push(chunk);                                                         
         });                                                                         
 
         response.on('end', async () => {                
             const bucketConfig = config.bucketConfig;  
-            filename = filename.name.replace(/\s+/g, '-');
+            filename = filename.replace(/\s+/g, '-');
+            //console.log(filename);
             let s3 = new AWS.S3({
                 credentials: {
                     accessKeyId: bucketConfig.accessKeyId,
@@ -377,13 +380,16 @@ let downloadImageToUrl = async (org, res, url, filename, callback) => {
             })
 
             const params = {
-                Key: `${bucketConfig.documentDir}/${filename}`,
+                Key: `${bucketConfig.dirName}/${filename}`,
                 Bucket: bucketConfig.bucketName,
                 Body: data.read(),
-                ACL: 'public-read'
+                ACL: 'public-read',
+                ContentType: contentType,
+                ContentDisposition: 'inline'
             }
-
-            s3.upload(params, async function(err, data) {
+            //console.log(params);
+            s3.putObject(params, async function(err, data) {
+                console.log(data);
                 if(err == null) {
                     await org.update({
                         logo: `${bucketConfig.s3Url}${data.key}`
@@ -409,8 +415,20 @@ route.put("/customers/:id/logo", [authJWT.verifyToken, authJWT.isAdmin], async (
                     const logoURL = req.body.url_customer_logo;
                     if(logoURL != "" && logoURL != 'null' && logoURL != "undefined") {
                         /**Download file from URL */
-                        const extension = logoURL.toString().split('.').pop();
-                        await downloadImageToUrl(org, res, logoURL, '/var/www/html/beta/resources/shared/data/'+org.name+'.'+extension);
+                        console.log("DOWNLOAD URL");
+                        const extension = logoURL.toString().split('.').pop().toLowerCase();
+                        let contentType = "";
+                        if(extension.indexOf('jpg') >= 0){
+                            contentType = "image/jpeg";
+                        } else if(extension.indexOf('svg') >= 0) {
+                            contentType = "image/svg+xml";
+                        } else if(extension.indexOf('bmp') >= 0){
+                            contentType = "image/bmp";
+                        } else {
+                            contentType = "image/png";
+                        }
+                        console.log("contentType", contentType);
+                        await downloadImageToUrl(org, res, logoURL, org.name+'.'+extension, contentType);
                     } else if(req.files != null && req.files.file != null && req.files.file != undefined) {
                         let mimeType = req.files.file.mimetype;
                         console.log(mimeType);

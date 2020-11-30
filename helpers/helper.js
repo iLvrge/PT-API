@@ -1205,6 +1205,9 @@ let findAssignorAndAssigneeListFromRFIDs = async(rfIDs, type) => {
             }
         }
     }
+    if(list.length > 0){
+        list.sort((a,b) => (a.name > b.name) ? 1 : ((b.name > a.name) ? -1 : 0)); 
+    }
     console.log(list.length);
     return list;
 }
