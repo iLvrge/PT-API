@@ -371,7 +371,7 @@ let downloadImageToUrl = async (org, res, url, filename, contentType, callback) 
             const bucketConfig = config.bucketConfig;  
             console.log(bucketConfig);
             filename = filename.replace(/\s+/g, '-');
-            //console.log(filename);
+            console.log(bucketConfig);
             let s3 = new AWS.S3({
                 credentials: {
                     accessKeyId: bucketConfig.accessKeyId,
