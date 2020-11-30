@@ -391,8 +391,9 @@ let downloadImageToUrl = async (org, res, url, filename, contentType, callback) 
             s3.putObject(params, async function(err, data) {
                 console.log(data);
                 if(err == null) {
+                    filename = `https://s3-${bucketConfig.region}.amazonaws.com/${bucketConfig.bucketName}/${bucketConfig.dirName}/${filename}`;
                     await org.update({
-                        logo: `${bucketConfig.s3Url}${data.key}`
+                        logo: filename
                     })
                     res.status(200).json({name: org.name, logo: org.logo});    
                 } else {
