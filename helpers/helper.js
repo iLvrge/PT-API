@@ -391,8 +391,20 @@ let allAssignments = async (customerID, req) => {
             if(findRepresentative != null && findRepresentative.length > 0) {
                 let representativeID = [];
                 findRepresentative.map(e => representativeID.push(e.representative_id));
+
+                queryAllAssignments = "Select a.rf_id as id, a.convey_text as text, CONCAT(a.reel_no, '/', a.frame_no) as reel_frame, a.frame_no, a.reel_no , ac.convey_ty, rac.convey_ty as updated_convey_ty,  CASE  WHEN rac.convey_ty = 'assignment' THEN 0 WHEN rac.convey_ty = 'addresschg' THEN 1	 WHEN rac.convey_ty = 'correct' THEN 2	 WHEN rac.convey_ty = 'courtappointment' THEN 3	 WHEN rac.convey_ty = 'courtorder' THEN 4	 WHEN rac.convey_ty = 'employee' THEN 5	 WHEN rac.convey_ty = 'govern' THEN 6	 WHEN rac.convey_ty = 'license' THEN 7	 WHEN rac.convey_ty = 'licenseend' THEN 8	 WHEN rac.convey_ty = 'missing' THEN 9	 WHEN rac.convey_ty = 'merger' THEN 10	 WHEN rac.convey_ty = 'namechg' THEN 11	 WHEN rac.convey_ty = 'option' THEN 12	 WHEN rac.convey_ty = 'other' THEN 13	 WHEN rac.convey_ty = 'partialassignment' THEN 14	 WHEN rac.convey_ty = 'release' THEN 15	 WHEN rac.convey_ty = 'restatedsecurity' THEN 16	 WHEN rac.convey_ty = 'security' THEN 17	 ELSE '' END as assignment_convey_ty FROM db_application.assignment as a INNER JOIN db_application.assignment_conveyance as ac ON ac.rf_id = a.rf_id LEFT JOIN db_uspto.representative_assignment_conveyance as rac ON rac.rf_id = a.rf_id WHERE a.convey_text <> '' AND a.convey_text IS NOT NULL AND a.rf_id IN (SELECT d.rf_id FROM db_application.documentid as d WHERE appno_doc_num <> '' AND  d.rf_id IN (SELECT rf_id FROM db_uspto.representative_transactions WHERE organisation_id = :organisationID AND representative_id IN (:representativeID)) GROUP BY d.rf_id)"; 
+
+                /* queryAllAssignments = "SELECT a.rf_id as id, a.convey_text as text, CONCAT(a.reel_no, '/', a.frame_no) as reel_frame, a.frame_no, a.reel_no , ac.convey_ty, rac.convey_ty as updated_convey_ty, CASE WHEN rac.convey_ty = 'assignment' THEN 0 WHEN rac.convey_ty = 'addresschg' THEN 1 WHEN rac.convey_ty = 'correct' THEN 2 WHEN rac.convey_ty = 'courtappointment' THEN 3 WHEN rac.convey_ty = 'courtorder' THEN 4 WHEN rac.convey_ty = 'employee' THEN 5 WHEN rac.convey_ty = 'govern' THEN 6 WHEN rac.convey_ty = 'license' THEN 7 WHEN rac.convey_ty = 'licenseend' THEN 8 WHEN rac.convey_ty = 'missing' THEN 9 WHEN rac.convey_ty = 'merger' THEN 10 WHEN rac.convey_ty = 'namechg' THEN 11 WHEN rac.convey_ty = 'option' THEN 12 WHEN rac.convey_ty = 'other' THEN 13 WHEN rac.convey_ty = 'partialassignment' THEN 14 WHEN rac.convey_ty = 'release' THEN 15  WHEN rac.convey_ty = 'restatedsecurity' THEN 16 WHEN rac.convey_ty = 'security' THEN 17 ELSE '' END as assignment_convey_ty FROM db_application.assignment as a INNER JOIN db_application.assignment_conveyance as ac ON ac.rf_id = a.rf_id LEFT JOIN db_uspto.representative_assignment_conveyance as rac ON rac.rf_id = a.rf_id WHERE a.convey_text <> '' AND a.convey_text IS NOT NULL AND a.rf_id IN (SELECT d.rf_id FROM db_application.documentid as d WHERE appno_doc_num <> '' AND d.rf_id IN (SELECT rf_id FROM assignee WHERE rf_id IN (SELECT rf_id FROM db_uspto.representative_transactions WHERE organisation_id = :organisationID AND representative_id IN (:representativeID))) OR d.rf_id IN(SELECT rf_id FROM assignor WHERE rf_id IN (SELECT rf_id FROM db_uspto.representative_transactions WHERE organisation_id = :organisationID AND representative_id IN (:representativeID))) GROUP BY d.rf_id)"; */
+
+                assignmentsList =  await connection.resources.query(queryAllAssignments,{
+                    type: connection.Sequelize.QueryTypes.SELECT,
+                    replacements: { organisationID: org.organisation_id, representativeID: representativeID },
+                    raw: true,
+                    logging: console.log,
+                    }
+                );
                 
-                let queryFindMainCompany = "SELECT rf_id FROM representative_transactions WHERE organisation_id = :organisationID AND representative_id IN (:representativeID) ";
+                /* let queryFindMainCompany = "SELECT rf_id FROM representative_transactions WHERE organisation_id = :organisationID AND representative_id IN (:representativeID) ";
 
                 let listIDs = await connection.resources.query(queryFindMainCompany,{
                     type: connection.Sequelize.QueryTypes.SELECT,
@@ -400,11 +412,12 @@ let allAssignments = async (customerID, req) => {
                     raw: true,
                     logging: console.log,
                     }
-                );
-                if(listIDs != null && listIDs.length > 0) {
+                ); */
+                //if(listIDs != null && listIDs.length > 0) {
                     /*let assgnorAssigneeIDS = [], names = [];*/
-                    let rawRfIDs = [];
-                    listIDs.map(e => rawRfIDs.push(e.rf_id));
+                    //let rawRfIDs = [];
+                    //listIDs.map(e => rawRfIDs.push(e.rf_id));
+                    
                     /*let queryAssigneeRFIDs = "SELECT rf_id FROM assignee as ac WHERE ac.rf_id IN (:IDs)";
             
                     assigneeRFIDs = await connection.application.query(queryAssigneeRFIDs,{
@@ -431,7 +444,7 @@ let allAssignments = async (customerID, req) => {
                     //let rfIDs = [];
                     //rfIDsList.map( r => rfIDs.push(r.rf_id));
 
-                    if(rawRfIDs.length > 0) {
+                    /* if(rawRfIDs.length > 0) {
                         queryAllAssignments = "Select a.rf_id as id, a.convey_text as text, CONCAT(a.reel_no, '/', a.frame_no) as reel_frame, a.frame_no, a.reel_no , ac.convey_ty, rac.convey_ty as updated_convey_ty,  CASE  WHEN rac.convey_ty = 'assignment' THEN 0 WHEN rac.convey_ty = 'addresschg' THEN 1	 WHEN rac.convey_ty = 'correct' THEN 2	 WHEN rac.convey_ty = 'courtappointment' THEN 3	 WHEN rac.convey_ty = 'courtorder' THEN 4	 WHEN rac.convey_ty = 'employee' THEN 5	 WHEN rac.convey_ty = 'govern' THEN 6	 WHEN rac.convey_ty = 'license' THEN 7	 WHEN rac.convey_ty = 'licenseend' THEN 8	 WHEN rac.convey_ty = 'missing' THEN 9	 WHEN rac.convey_ty = 'merger' THEN 10	 WHEN rac.convey_ty = 'namechg' THEN 11	 WHEN rac.convey_ty = 'option' THEN 12	 WHEN rac.convey_ty = 'other' THEN 13	 WHEN rac.convey_ty = 'partialassignment' THEN 14	 WHEN rac.convey_ty = 'release' THEN 15	 WHEN rac.convey_ty = 'restatedsecurity' THEN 16	 WHEN rac.convey_ty = 'security' THEN 17	 ELSE '' END as assignment_convey_ty from assignment as a INNER JOIN assignment_conveyance as ac ON ac.rf_id = a.rf_id LEFT JOIN representative_assignment_conveyance as rac ON rac.rf_id = a.rf_id WHERE a.convey_text <> '' AND a.convey_text IS NOT NULL AND a.rf_id IN (SELECT d.rf_id FROM documentid as d WHERE appno_doc_num <> '' AND  d.rf_id IN (:rfIDs) GROUP BY d.rf_id) ";
     
                         assignmentsList =  await connection.resources.query(queryAllAssignments,{
@@ -441,8 +454,8 @@ let allAssignments = async (customerID, req) => {
                             logging: console.log,
                             }
                         );
-                    }
-                }
+                    } */
+                //}
             }
         }
     } else {
@@ -872,7 +885,34 @@ let checkCustomerCompany = async(DBConnection, companyName) => {
 };
 
 let updateAllCustomerInventor = async(organisationID, inventors, flag, DBConnection ) => {
-    const list = await getCompaniesList(DBConnection);
+    const inventorsList = JSON.parse(inventors);
+    let added = 0;
+    if(inventorsList.length > 0) {
+        const queryResourceUpdate = "UPDATE representative_assignment_conveyance SET employer_assign = :flag WHERE rf_id IN (SELECT rf_id FROM assignor WHERE assignor_and_assignee_id IN (:list))";
+        const queryApplicationUpdate = "UPDATE assignment_conveyance SET employer_assign = :flag WHERE rf_id IN (SELECT rf_id FROM assignor WHERE assignor_and_assignee_id IN (:list))";
+
+        added = await connection.resources.query(queryResourceUpdate,{
+            type: connection.Sequelize.QueryTypes.UPDATE,
+            replacements: { flag: flag, list: inventorsList},
+            raw: true,
+            logging: console.log,
+        }
+        );
+        added = await connection.application.query(queryApplicationUpdate,{
+            type: connection.Sequelize.QueryTypes.UPDATE,
+            replacements: { flag: flag, list: inventorsList},
+            raw: true,
+            logging: console.log,
+        }
+        );
+    }
+
+
+
+
+
+
+    /* const list = await getCompaniesList(DBConnection);
     let added = 0;
     if(list.length > 0) {
         const representativeNames = [];
@@ -957,18 +997,10 @@ let updateAllCustomerInventor = async(organisationID, inventors, flag, DBConnect
                     
                     added = await AssignmentConveyance.update({employer_assign: flag},{where: {rf_id: rfIDs}});
                     added = await RepresentativeAssignmentConveyance.update({employer_assign: flag},{where: {rf_id: rfIDs}});
-                    /*const queryInsertConveyance = `INSERT IGNORE INTO representative_assignment_conveyance (rf_id, convey_ty, employer_assign) SELECT rf_id, convey_ty, ${flag} as employer_assign FROM assignment_conveyance WHERE rf_id IN (:rfIDs)`;
-                    added = await connection.resources.query(queryInsertConveyance,{
-                        type: connection.Sequelize.QueryTypes.INSERT,
-                        replacements: { rfIDs:  rfIDs},
-                        raw: true,
-                        logging: console.log,
-                        }
-                    );*/
                 }
             }
         }
-    }
+    } */
     return added;
 }
 

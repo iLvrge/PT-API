@@ -374,7 +374,13 @@ route.put("/company/transactions/:customerID", [authJWT.verifyToken, authJWT.isA
                 /**
                  * Update RFIDs already exists in USPTO 
                  */
-                update = await RepresentativeAssignmentConveyance.update({convey_ty: updateConveyType},{where: {rf_id: uniqueRFIDs}});
+                const updateFields = {convey_ty: updateConveyType};
+
+                if(updateConveyType == 'employee') {
+                    updateFields.flag = 1;
+                }
+
+                update = await RepresentativeAssignmentConveyance.update(updateFields,{where: {rf_id: uniqueRFIDs}});
 
                 /**INSERT Faster than using bulkCreate function of Sequelize because first have to reteive data from assignment_conveyance table 
                  * Create array and then use bulkCreate option to insert multiple records and also this query will ignore if the record already exists.
@@ -397,7 +403,7 @@ route.put("/company/transactions/:customerID", [authJWT.verifyToken, authJWT.isA
                  * Update in Application database
                  */
 
-                await AssignmentConveyance.update({convey_ty: updateConveyType},{where: {rf_id: uniqueRFIDs}});
+                await AssignmentConveyance.update(updateFields,{where: {rf_id: uniqueRFIDs}});
 
                 /**
                  * Update Assignment GROUP
