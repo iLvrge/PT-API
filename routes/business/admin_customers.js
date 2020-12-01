@@ -921,6 +921,41 @@ route.get("/customers/:organisation_id/:representative_id/missing_inventor", [au
     }
 })
 
+route.get("/customers/:organisation_id/:representative_id/missing_inventor/stop", [authJWT.verifyToken, authJWT.isAdmin], async(req, res, next) => {
+    try{
+        let organisationID = req.params.organisation_id;
+        if(organisationID > 0){
+            let org = await helpers.findOrganisationbyID( organisationID );
+            if(org != null && org.organisation_id > 0) {
+                const where = {organisation_id: org.organisation_id};
+                const representativeID = req.params.representative_id;
+                if(representativeID > 0) {
+                    where['representative_id'] = representativeID;
+                }
+                const data = await MissingInventorProcess.findOne({where: where});
+
+                if(data != null && data.process_id > 0) {
+                   const updateData =  await MissingInventorProcess.update({status: 1}, {where: where});
+                    if(updateData) {
+                        res.status(200).send("Process stopped");
+                    } else {
+                        res.status(200).send("Error while stopping process.");
+                    }
+                } else {
+                    res.status(200).send("Error while stopping process.");
+                }
+            } else {
+                res.status(200).send("AccountID missing.");
+            }
+        } else {
+            res.status(200).send("AccountID missing.");
+        }
+    }catch(e) {
+        console.log(e);
+        res.status(402).send("Error while stopping process");
+    }
+})
+
 route.get("/customers/:organisation_id/:representative_id/find_inventor", [authJWT.verifyToken, authJWT.isAdmin], async(req, res, next) => {
     try{
         let organisationID = req.params.organisation_id;

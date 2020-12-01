@@ -7,6 +7,7 @@ const MissingInventorProcess = connection.resources.define('missing_inventor_pro
         type: Sequelize.INTEGER,
         allowNull: false,
         primaryKey: true,
+        autoIncrement: true
     },   
     organisation_id:{
         type: Sequelize.INTEGER,
