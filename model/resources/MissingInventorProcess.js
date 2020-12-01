@@ -19,7 +19,7 @@ const MissingInventorProcess = connection.resources.define('missing_inventor_pro
     },
     status:{
         type: Sequelize.INTEGER,
-        allowNull: false,
+        allowNull: true,
     },
 },
 {
