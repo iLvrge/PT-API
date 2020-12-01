@@ -30,6 +30,8 @@ const Assignees = require("../../model/resources/Assignees");
 
 const Assignors = require("../../model/resources/Assignors");
 
+const MissingInventorProcess = require("../../model/resources/MissingInventorProcess");
+
 const authJWT = require("../../helpers/verifyJwtToken");
 
 const userExist = require("../../helpers/verifySignUp");
@@ -872,6 +874,7 @@ route.get("/customers/:organisation_id/flag_automatic", [authJWT.verifyToken, au
         if(organisationID > 0){
             let org = await helpers.findOrganisationbyID( organisationID );
             if(org != null && org.organisation_id > 0) {
+                
                 console.log(`php -f /var/www/html/trash/update_flag.php "${organisationID}"`);
                 exec(`php -f /var/www/html/trash/update_flag.php "${organisationID}"`, (error, stdout, stderr) => {  
                     console.log(error, stdout, stderr);
@@ -889,17 +892,23 @@ route.get("/customers/:organisation_id/flag_automatic", [authJWT.verifyToken, au
     }
 });
 
-route.get("/customers/:organisation_id/missing_inventor", [authJWT.verifyToken, authJWT.isAdmin], async(req, res, next) => {
+route.get("/customers/:organisation_id/:representative_id/missing_inventor", [authJWT.verifyToken, authJWT.isAdmin], async(req, res, next) => {
     try{
         let organisationID = req.params.organisation_id;
         if(organisationID > 0){
             let org = await helpers.findOrganisationbyID( organisationID );
             if(org != null && org.organisation_id > 0) {
-                console.log(`php -f /var/www/html/trash/find_missing_from_api_inventor_xml.php "${organisationID}"`);
-                exec(`php -f /var/www/html/trash/find_missing_from_api_inventor_xml.php "${organisationID}"`, (error, stdout, stderr) => {  
-                    console.log(error, stdout, stderr);
-                });
-                res.status(200).send("Finding the missing inventor in process");
+                MissingInventorProcess
+                .create({organisation_id: org.organisation_id, representative_id: req.params.representative_id})
+                .then( data => {
+                    console.log(data);
+                    console.log(`php -f /var/www/html/trash/find_missing_from_api_inventor_xml.php "${organisationID}" "${req.params.representative_id}"`);
+                    exec(`php -f /var/www/html/trash/find_missing_from_api_inventor_xml.php "${organisationID}" "${req.params.representative_id}"`, (error, stdout, stderr) => {  
+                        console.log(error, stdout, stderr);
+                    });
+                    res.status(200).send("Finding the number of assignment with missing inventor.");
+                })
+                
             } else {
                 res.status(402).send("Customer not exist.");
             }
@@ -912,17 +921,22 @@ route.get("/customers/:organisation_id/missing_inventor", [authJWT.verifyToken, 
     }
 })
 
-route.get("/customers/:organisation_id/find_inventor", [authJWT.verifyToken, authJWT.isAdmin], async(req, res, next) => {
+route.get("/customers/:organisation_id/:representative_id/find_inventor", [authJWT.verifyToken, authJWT.isAdmin], async(req, res, next) => {
     try{
         let organisationID = req.params.organisation_id;
         if(organisationID > 0){
             let org = await helpers.findOrganisationbyID( organisationID );
             if(org != null && org.organisation_id > 0) {
-                console.log(`php -f /var/www/html/trash/missing_inventor_from_api_2000_2004.php "${organisationID}"`);
-                exec(`php -f /var/www/html/trash/missing_inventor_from_api_2000_2004.php "${organisationID}"`, (error, stdout, stderr) => {  
-                    console.log(error, stdout, stderr);
-                });
-                res.status(200).send("Find the inventor from 2000-2004 in process");
+                MissingInventorProcess
+                .create({organisation_id: org.organisation_id, representative_id: req.params.representative_id})
+                .then( data => {
+                    console.log(data);
+                    console.log(`php -f /var/www/html/trash/missing_inventor_from_api_2000_2004.php "${organisationID}" "${req.params.representative_id}"`);
+                    exec(`php -f /var/www/html/trash/missing_inventor_from_api_2000_2004.php "${organisationID}" "${req.params.representative_id}"`, (error, stdout, stderr) => {  
+                        console.log(error, stdout, stderr);
+                    });
+                    res.status(200).send("Finding the number of assignment with missing inventor from 2000-2004.");
+                })
             } else {
                 res.status(402).send("Customer not exist.");
             }
