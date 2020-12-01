@@ -405,7 +405,7 @@ let allAssignments = async (customerID, req) => {
                     /*let assgnorAssigneeIDS = [], names = [];*/
                     let rawRfIDs = [];
                     listIDs.map(e => rawRfIDs.push(e.rf_id));
-                    let queryAssigneeRFIDs = "SELECT rf_id FROM assignee as ac WHERE ac.rf_id IN (:IDs)";
+                    /*let queryAssigneeRFIDs = "SELECT rf_id FROM assignee as ac WHERE ac.rf_id IN (:IDs)";
             
                     assigneeRFIDs = await connection.application.query(queryAssigneeRFIDs,{
                         type: connection.Sequelize.QueryTypes.SELECT,
@@ -425,18 +425,18 @@ let allAssignments = async (customerID, req) => {
                         }
                     );
         
-                    rfIDsList = [...assigneeRFIDs, ...assignorRFIDs];    
+                    rfIDsList = [...assigneeRFIDs, ...assignorRFIDs];    */
                         
         
-                    let rfIDs = [];
-                    rfIDsList.map( r => rfIDs.push(r.rf_id));
+                    //let rfIDs = [];
+                    //rfIDsList.map( r => rfIDs.push(r.rf_id));
 
-                    if(rfIDsList.length > 0) {
+                    if(rawRfIDs.length > 0) {
                         queryAllAssignments = "Select a.rf_id as id, a.convey_text as text, CONCAT(a.reel_no, '/', a.frame_no) as reel_frame, a.frame_no, a.reel_no , ac.convey_ty, rac.convey_ty as updated_convey_ty,  CASE  WHEN rac.convey_ty = 'assignment' THEN 0 WHEN rac.convey_ty = 'addresschg' THEN 1	 WHEN rac.convey_ty = 'correct' THEN 2	 WHEN rac.convey_ty = 'courtappointment' THEN 3	 WHEN rac.convey_ty = 'courtorder' THEN 4	 WHEN rac.convey_ty = 'employee' THEN 5	 WHEN rac.convey_ty = 'govern' THEN 6	 WHEN rac.convey_ty = 'license' THEN 7	 WHEN rac.convey_ty = 'licenseend' THEN 8	 WHEN rac.convey_ty = 'missing' THEN 9	 WHEN rac.convey_ty = 'merger' THEN 10	 WHEN rac.convey_ty = 'namechg' THEN 11	 WHEN rac.convey_ty = 'option' THEN 12	 WHEN rac.convey_ty = 'other' THEN 13	 WHEN rac.convey_ty = 'partialassignment' THEN 14	 WHEN rac.convey_ty = 'release' THEN 15	 WHEN rac.convey_ty = 'restatedsecurity' THEN 16	 WHEN rac.convey_ty = 'security' THEN 17	 ELSE '' END as assignment_convey_ty from assignment as a INNER JOIN assignment_conveyance as ac ON ac.rf_id = a.rf_id LEFT JOIN representative_assignment_conveyance as rac ON rac.rf_id = a.rf_id WHERE a.convey_text <> '' AND a.convey_text IS NOT NULL AND a.rf_id IN (SELECT d.rf_id FROM documentid as d WHERE appno_doc_num <> '' AND  d.rf_id IN (:rfIDs) GROUP BY d.rf_id) ";
     
                         assignmentsList =  await connection.resources.query(queryAllAssignments,{
                             type: connection.Sequelize.QueryTypes.SELECT,
-                            replacements: { rfIDs: rfIDs },
+                            replacements: { rfIDs: rawRfIDs },
                             raw: true,
                             logging: console.log,
                             }
