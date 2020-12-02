@@ -33,7 +33,11 @@ route.get("/validity_counter", [authJWT.verifyToken, clientDBConnection.connect]
             group: ["organisation_id"]
         })
         .then((list)=>{
-            res.status(200).json(list);
+            if(list != null) {
+                res.status(200).json(list);
+            } else {
+                res.status(200).json(rest);
+            }
         }).catch((err)=>{
             console.log(err);
             res.status(200).json(rest);
