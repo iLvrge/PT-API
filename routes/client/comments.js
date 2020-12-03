@@ -381,5 +381,37 @@ route.post("/comments/:subjectType", [authJWT.verifyToken, clientDBConnection.co
     }
 });
 
+route.put("/comments/:ID", [authJWT.verifyToken, clientDBConnection.connect], async(req, res, next) => {
+    try{
+        if(typeof req.connection_db != "undefined" && req.connection_db != null ) {
+            const commentID = req.params.ID;
+            const Comment = req.connection_db.define('Comments', Comments.mainStructure, Comments.options);
 
+            const findComment = Comment.findOne({
+                where: {comment_id: commentID}
+            });
+
+            if(findComment != null){
+                if(findComment.user_id == req.userId) {
+                    const update = await Comment.update({comment: req.body.comment}, {where: {comment_id: commentID}});
+
+                    if(update) {
+                        res.status(200).json(update);
+                    } else {
+                        res.status(500).send("Error while updating record.");
+                    }
+                } else {
+                    res.status(403).send("You are not the author of this comment.");
+                }
+            } else {
+                res.status(402).send("No record found");
+            }
+        } else {
+            res.status(401).send("Bad inputs.");
+        }
+    } catch (err) {
+        console.log( err );
+        res.status(500).send("Error while updating record.");
+    }
+})
 module.exports = route;
