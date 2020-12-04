@@ -325,7 +325,17 @@ route.post("/comments/:subjectType", [authJWT.verifyToken, clientDBConnection.co
                             },
                             region: bucketConfig.region
                         })
-
+                        const extension = name.toString().split('.').pop().toLowerCase();
+                        let contentType = "";
+                        if(extension.indexOf('jpg') >= 0){
+                            contentType = "image/jpeg";
+                        } else if(extension.indexOf('svg') >= 0) {
+                            contentType = "image/svg+xml";
+                        } else if(extension.indexOf('bmp') >= 0){
+                            contentType = "image/bmp";
+                        } else {
+                            contentType = "image/png";
+                        }
                         
                         const params = {
                             Key: `${bucketConfig.documentDir}/${name}`,
