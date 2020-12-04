@@ -22,7 +22,7 @@ const Firms = require("../../model/client/Firms");
 
 const authJWT = require("../../helpers/verifyJwtToken");
 
-
+const AWS  = require('aws-sdk');
 const clientDBConnection = require("../../helpers/clientDBConnection");
 
 
