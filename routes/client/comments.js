@@ -330,7 +330,7 @@ route.post("/comments/:subjectType", [authJWT.verifyToken, clientDBConnection.co
                         const params = {
                             Key: `${bucketConfig.documentDir}/${name}`,
                             Bucket: bucketConfig.bucketName,
-                            Body: data.read(),
+                            Body: fileObject.data,
                             ACL: 'public-read',
                             ContentType: contentType,
                             ContentDisposition: 'inline'

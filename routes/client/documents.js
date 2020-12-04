@@ -89,11 +89,11 @@ route.post("/", [authJWT.verifyToken, clientDBConnection.connect], async(req, re
                                 },
                                 region: bucketConfig.region
                             })
-                            
+
                             const params = {
                                 Key: `${bucketConfig.documentDir}/${name}`,
                                 Bucket: bucketConfig.bucketName,
-                                Body: data.read(),
+                                Body: fileObject.data,
                                 ACL: 'public-read',
                                 ContentType: contentType,
                                 ContentDisposition: 'inline'
@@ -165,6 +165,36 @@ route.put("/:document_id", [authJWT.verifyToken, clientDBConnection.connect], as
                         console.log(mimeType);
                         if(mimeType.toLowerCase().indexOf('.exe') < 0){
                             let fileObject = req.files.file;
+                            const name = fileObject.name.replace(/\s+/g, '-');
+                            const bucketConfig = config.bucketConfig;  
+                            let s3 = new AWS.S3({
+                                credentials: {
+                                    accessKeyId: bucketConfig.accessKeyId,
+                                    secretAccessKey: bucketConfig.secretAccessKey,
+                                },
+                                region: bucketConfig.region
+                            })
+
+                            const params = {
+                                Key: `${bucketConfig.documentDir}/${name}`,
+                                Bucket: bucketConfig.bucketName,
+                                Body: fileObject.data,
+                                ACL: 'public-read',
+                                ContentType: contentType,
+                                ContentDisposition: 'inline'
+                            }
+                            s3.putObject(params, async function(err, data) {
+                                if(err == null) {
+                                   
+                                    doc.file =  `https://s3-${bucketConfig.region}.amazonaws.com/${bucketConfig.bucketName}/${bucketConfig.documentDir}/${name}`
+                                    (async () =>{
+                                        await Document.update(doc,{where: {document_id: doc.document_id}});
+                                        res.status(200).json(doc);
+                                    })();
+                                } else {
+                                    return res.status(500).send("ERROR: "+err);	
+                                }
+                            })
                             await fileObject.mv('/var/www/html/PatenTrack/resources/shared/data/'+fileObject.name,function(err) {
                                 if (err){
                                     return res.status(500).send("ERROR: "+err);	

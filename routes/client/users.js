@@ -158,7 +158,7 @@ route.post("/", [authJWT.verifyToken, clientDBConnection.connect], async(req, re
                                         const params = {
                                             Key: `${bucketConfig.dirName}/${name}`,
                                             Bucket: bucketConfig.bucketName,
-                                            Body: data.read(),
+                                            Body: fileObject.data,
                                             ACL: 'public-read',
                                             ContentType: contentType,
                                             ContentDisposition: 'inline'
