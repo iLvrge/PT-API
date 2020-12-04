@@ -164,10 +164,12 @@ route.post("/", [authJWT.verifyToken, clientDBConnection.connect], async(req, re
                                             ContentDisposition: 'inline'
                                         }
                                         s3.putObject(params, async function(err, data) {
+                                            console.log(err, data)
                                             if(err == null) {
                                                 const upload_file = `https://s3-${bucketConfig.region}.amazonaws.com/${bucketConfig.bucketName}/${bucketConfig.dirName}/${name}`
                                                 await User.update({logo: upload_file}, {where: {user_id: addClientUser.user_id}})
                                                 await LoginUsers.update({logo: upload_file}, {where: {user_id: addUser.user_id}})
+                                                addClientUser.logo = upload_file;
                                             }
                                         });
                                     }
