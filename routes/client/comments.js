@@ -315,6 +315,8 @@ route.post("/comments/:subjectType", [authJWT.verifyToken, clientDBConnection.co
                     }
 
                     if(mimeType != null && mimeType != '' && mimeType.toLowerCase().indexOf('.exe') < 0){
+                        let fileObject = req.files.file;
+                        const name = fileObject.name.replace(/\s+/g, '-');
                         const bucketConfig = config.bucketConfig;  
                         let s3 = new AWS.S3({
                             credentials: {
@@ -324,15 +326,18 @@ route.post("/comments/:subjectType", [authJWT.verifyToken, clientDBConnection.co
                             region: bucketConfig.region
                         })
 
+                        
                         const params = {
                             Key: `${bucketConfig.documentDir}/${name}`,
                             Bucket: bucketConfig.bucketName,
-                            Body: fileObject.data,
-                            ACL: 'public-read'
+                            Body: data.read(),
+                            ACL: 'public-read',
+                            ContentType: contentType,
+                            ContentDisposition: 'inline'
                         }
-                        s3.upload(params, async function(err, data) {
+                        s3.putObject(params, async function(err, data) {
                             if(err == null) {
-                                postData.upload_file = data.location
+                                postData.upload_file = `https://s3-${bucketConfig.region}.amazonaws.com/${bucketConfig.bucketName}/${bucketConfig.documentDir}/${name}`
                                 const newActivity = await Activity.create(postData);
                                 if(newActivity != null && newActivity.activity_id > 0){
                                     activityID = newActivity.activity_id;

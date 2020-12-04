@@ -392,53 +392,55 @@ route.post("/activities/:type", [authJWT.verifyToken, clientDBConnection.connect
                     const name = fileObject.name.replace(/\s+/g, '-');
                     const bucketConfig = config.bucketConfig;  
                     let s3 = new AWS.S3({
-                        credentials: {
-                            accessKeyId: bucketConfig.accessKeyId,
-                            secretAccessKey: bucketConfig.secretAccessKey,
-                        },
-                        region: bucketConfig.region
-                      })
+                            credentials: {
+                                accessKeyId: bucketConfig.accessKeyId,
+                                secretAccessKey: bucketConfig.secretAccessKey,
+                            },
+                            region: bucketConfig.region
+                        })
 
-                      const params = {
-                        Key: `${bucketConfig.documentDir}/${name}`,
-                        Bucket: bucketConfig.bucketName,
-                        Body: fileObject.data,
-                        ACL: 'public-read'
-                      }
-                      s3.upload(params, async function(err, data) {
-                        if(err == null) {
-                            postData.upload_file = `${bucketConfig.s3Url}${data.key}`;
-                            console.log(postData);
-                            if(activityID == 0){
-                                const newActivity = await Activity.create(postData);
-                                if(newActivity != null && newActivity.activity_id > 0){
-                                    activityID = newActivity.activity_id;
-                                }
-                            } else {
-                                await Activity.update(postData,{where:{activity_id: activityID}});
-                            }
-                            if(activityID > 0){
-                                if(req.body.entity_id != undefined && req.body.entity_id > 0){
-                                    await Errors.update({status: 1},{where: {error_id: req.body.entity_id}});
-                                }
-                                const postComment = {
-                                    activity_id: activityID,
-                                    user_id: req.userId,
-                                    comment: req.body.comment,
-                                }
-            
-                                await Comment.create(postComment);
-
-                                const activityData = await helpers.findActivityByID(activityID, Activity, Comment);
-
-                                res.status(200).json(activityData);
-
-                            } else {
-                                res.status(500).send("Internal server error.");
-                            }
-                        }
                         
-                      }); 
+                        const params = {
+                            Key: `${bucketConfig.documentDir}/${name}`,
+                            Bucket: bucketConfig.bucketName,
+                            Body: data.read(),
+                            ACL: 'public-read',
+                            ContentType: contentType,
+                            ContentDisposition: 'inline'
+                        }
+                        s3.putObject(params, async function(err, data) {
+                            if(err == null) {
+                                postData.upload_file = `https://s3-${bucketConfig.region}.amazonaws.com/${bucketConfig.bucketName}/${bucketConfig.documentDir}/${name}`;
+                                console.log(postData);
+                                if(activityID == 0){
+                                    const newActivity = await Activity.create(postData);
+                                    if(newActivity != null && newActivity.activity_id > 0){
+                                        activityID = newActivity.activity_id;
+                                    }
+                                } else {
+                                    await Activity.update(postData,{where:{activity_id: activityID}});
+                                }
+                                if(activityID > 0){
+                                    if(req.body.entity_id != undefined && req.body.entity_id > 0){
+                                        await Errors.update({status: 1},{where: {error_id: req.body.entity_id}});
+                                    }
+                                    const postComment = {
+                                        activity_id: activityID,
+                                        user_id: req.userId,
+                                        comment: req.body.comment,
+                                    }
+                
+                                    await Comment.create(postComment);
+
+                                    const activityData = await helpers.findActivityByID(activityID, Activity, Comment);
+
+                                    res.status(200).json(activityData);
+
+                                } else {
+                                    res.status(500).send("Internal server error.");
+                                }
+                            }
+                        }); 
                 } else {
 
                     if(activityID == 0){
@@ -449,8 +451,6 @@ route.post("/activities/:type", [authJWT.verifyToken, clientDBConnection.connect
                     } else {
                        await Activity.update(postData,{where:{activity_id: activityID}});
                     }
-
-                    
 
                     if(activityID > 0){
                         if(req.body.entity_id != undefined && req.body.entity_id > 0){

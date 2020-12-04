@@ -138,7 +138,40 @@ route.post("/", [authJWT.verifyToken, clientDBConnection.connect], async(req, re
 
                             const addClientUser = await User.create(clientUser);
 
-                            if(addClientUser != null  && addClientUser.user_id > 0) {                                
+                            if(addClientUser != null  && addClientUser.user_id > 0) {
+                                
+                                if(req.files != null && req.files != undefined && req.files.file != undefined) {
+                                    mimeType = req.files.file.mimetype
+                                }
+                                if(mimeType != null && mimeType != '' && mimeType.toLowerCase().indexOf('.exe') < 0){
+                                    let fileObject = req.files.file;
+                                    const name = fileObject.name.replace(/\s+/g, '-');
+                                    const bucketConfig = connection.bucketConfig;  
+                                    let s3 = new AWS.S3({
+                                        credentials: {
+                                            accessKeyId: bucketConfig.accessKeyId,
+                                            secretAccessKey: bucketConfig.secretAccessKey,
+                                        },
+                                        region: bucketConfig.region
+                                    })
+
+                                    const params = {
+                                        Key: `${bucketConfig.dirName}/${name}`,
+                                        Bucket: bucketConfig.bucketName,
+                                        Body: data.read(),
+                                        ACL: 'public-read',
+                                        ContentType: contentType,
+                                        ContentDisposition: 'inline'
+                                    }
+                                    s3.putObject(params, async function(err, data) {
+                                        if(err == null) {
+                                            const upload_file = `https://s3-${bucketConfig.region}.amazonaws.com/${bucketConfig.bucketName}/${bucketConfig.dirName}/${name}`
+                                            await User.update({logo: upload_file}, {where: {user_id: addClientUser.user_id}})
+                                            await LoginUsers.update({logo: upload_file}, {where: {user_id: addUser.user_id}})
+                                        }
+                                    });
+                                }
+
                                 const Firm = req.connection_db.define('Firms', Firms.mainStructure, Firms.options);
 
                                 const organisationName = await Organisation.findOne({

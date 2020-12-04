@@ -89,20 +89,22 @@ route.post("/", [authJWT.verifyToken, clientDBConnection.connect], async(req, re
                                 },
                                 region: bucketConfig.region
                             })
-
+                            
                             const params = {
                                 Key: `${bucketConfig.documentDir}/${name}`,
                                 Bucket: bucketConfig.bucketName,
-                                Body: fileObject.data,
-                                ACL: 'public-read'
+                                Body: data.read(),
+                                ACL: 'public-read',
+                                ContentType: contentType,
+                                ContentDisposition: 'inline'
                             }
-                            s3.upload(params, async function(err, data) {
+                            s3.putObject(params, async function(err, data) {
                                 if(err == null) {
                                     Document.create({	
                                         user_id: req.userId,
                                         title: req.body.name,
                                         description: req.body.description,
-                                        file: `${bucketConfig.s3Url}${data.key}`
+                                        file: `https://s3-${bucketConfig.region}.amazonaws.com/${bucketConfig.bucketName}/${bucketConfig.documentDir}/${name}`
                                     }).then(addRecord => {
                                         if(addRecord != null && addRecord.document_id > 0){
                                             console.log("Record Item added"+addRecord.document_id);
