@@ -387,16 +387,50 @@ route.put("/comments/:ID", [authJWT.verifyToken, clientDBConnection.connect], as
             const commentID = req.params.ID;
             const Comment = req.connection_db.define('Comments', Comments.mainStructure, Comments.options);
 
-            const findComment = Comment.findOne({
+            const findComment = await Comment.findOne({
                 where: {comment_id: commentID}
             });
 
             if(findComment != null){
                 if(findComment.user_id == req.userId) {
-                    const update = await Comment.update({comment: req.body.comment}, {where: {comment_id: commentID}});
+                    const updateComment = await Comment.update({comment: req.body.comment}, {where: {comment_id: commentID}});
 
-                    if(update) {
-                        res.status(200).json(update);
+                    if(updateComment) {
+                        res.status(200).send("Comment updated!");
+                    } else {
+                        res.status(500).send("Error while updating record.");
+                    }
+                } else {
+                    res.status(403).send("You are not the author of this comment.");
+                }
+            } else {
+                res.status(402).send("No record found");
+            }
+        } else {
+            res.status(401).send("Bad inputs.");
+        }
+    } catch (err) {
+        console.log( err );
+        res.status(500).send("Error while updating record.");
+    }
+})
+
+route.delete("/comments/:ID", [authJWT.verifyToken, clientDBConnection.connect], async(req, res, next) => {
+    try{
+        if(typeof req.connection_db != "undefined" && req.connection_db != null ) {
+            const commentID = req.params.ID;
+            const Comment = req.connection_db.define('Comments', Comments.mainStructure, Comments.options);
+
+            const findComment = await Comment.findOne({
+                where: {comment_id: commentID}
+            });
+
+            if(findComment != null){
+                if(findComment.user_id == req.userId) {
+                    const deleteComment = await Comment.destroy({where: {comment_id: commentID}});
+
+                    if(deleteComment) {
+                        res.status(200).send("Comment deleted!");
                     } else {
                         res.status(500).send("Error while updating record.");
                     }
