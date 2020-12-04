@@ -142,10 +142,11 @@ route.post("/", [authJWT.verifyToken, clientDBConnection.connect], async(req, re
                                 
                                 if(req.files != null && req.files != undefined && req.files.file != undefined) {
                                     const mimeType = req.files.file.mimetype
-                                
+                                    let upload_file = ''
                                     if(mimeType != null && mimeType != '' && mimeType.toLowerCase().indexOf('.exe') < 0){
                                         let fileObject = req.files.file;
                                         const name = fileObject.name.replace(/\s+/g, '-');
+                                        upload_file = `https://s3-${bucketConfig.region}.amazonaws.com/${bucketConfig.bucketName}/${bucketConfig.dirName}/${name}`
                                         const bucketConfig = connection.bucketConfig;  
                                         let s3 = new AWS.S3({
                                             credentials: {
@@ -176,7 +177,6 @@ route.post("/", [authJWT.verifyToken, clientDBConnection.connect], async(req, re
                                         s3.putObject(params, async function(err, data) {
                                             console.log(err, data)
                                             if(err == null) {
-                                                const upload_file = `https://s3-${bucketConfig.region}.amazonaws.com/${bucketConfig.bucketName}/${bucketConfig.dirName}/${name}`
                                                 await User.update({logo: upload_file}, {where: {user_id: addClientUser.user_id}})
                                                 await LoginUsers.update({logo: upload_file}, {where: {user_id: addUser.user_id}})
                                                 addClientUser.logo = upload_file;
@@ -184,7 +184,7 @@ route.post("/", [authJWT.verifyToken, clientDBConnection.connect], async(req, re
                                         });
                                     }
                                 }
-
+                                addClientUser.logo = upload_file;
                                 const Firm = req.connection_db.define('Firms', Firms.mainStructure, Firms.options);
 
                                 const organisationName = await Organisation.findOne({
@@ -237,6 +237,7 @@ route.post("/", [authJWT.verifyToken, clientDBConnection.connect], async(req, re
                                 } else {
                                     console.log("Organisation not found.");
                                     addClientUser.password = '';
+
                                     console.log("User"+professionalUser.professional_id);
                                     console.log("User created successfully");
                                     res.status(200).json(addClientUser);
