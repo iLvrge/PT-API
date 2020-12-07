@@ -5,9 +5,32 @@ const cors = require("cors");
 
 const bodyParser = require("body-parser");
 
-const app = express();
+const Sentry = require('@sentry/node');
+
+const Tracing = require("@sentry/tracing");
 
 const upload = require("express-fileupload");
+
+
+const app = express();
+
+Sentry.init({
+    dsn: "https://9dbb99721e484a939592c18830855a52@o487723.ingest.sentry.io/5547034",
+    integrations: [
+      // enable HTTP calls tracing
+      new Sentry.Integrations.Http({ tracing: true }),
+      // enable Express.js middleware tracing
+      new Tracing.Integrations.Express({ app }),
+    ],
+  
+    // We recommend adjusting this value in production, or using tracesSampler
+    // for finer control
+    tracesSampleRate: 1.0,
+  });
+
+  app.use(Sentry.Handlers.requestHandler());
+  app.use(Sentry.Handlers.tracingHandler());
+  app.use(Sentry.Handlers.errorHandler());
 
 app.use(express.json({limit: '100mb', type:'application/json'}));
 app.use(express.urlencoded({limit: '100mb', extended:false, parameterLimit:100000, type:'application/x-www-form-urlencoded'}));

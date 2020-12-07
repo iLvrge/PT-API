@@ -889,29 +889,32 @@ let updateAllCustomerInventor = async(organisationID, inventors, flag, DBConnect
     const inventorsList = JSON.parse(inventors);
     let added = 0;
     if(inventorsList.length > 0) {
-        const queryResourceUpdate = "UPDATE representative_assignment_conveyance SET employer_assign = :flag WHERE rf_id IN (SELECT rf_id FROM assignor WHERE assignor_and_assignee_id IN (:list))";
-        const queryApplicationUpdate = "UPDATE assignment_conveyance SET employer_assign = :flag WHERE rf_id IN (SELECT rf_id FROM assignor WHERE assignor_and_assignee_id IN (:list))";
+        let queryResourceUpdate, queryApplicationUpdate, where = { flag: flag, list: inventorsList};
+        if( flag == 1) {
+            queryResourceUpdate = "UPDATE representative_assignment_conveyance SET employer_assign = :flag, convey_ty = :conveyType WHERE rf_id IN (SELECT rf_id FROM assignor WHERE assignor_and_assignee_id IN (:list))";
+            queryApplicationUpdate = "UPDATE assignment_conveyance SET employer_assign = :flag, convey_ty = :conveyType WHERE rf_id IN (SELECT rf_id FROM assignor WHERE assignor_and_assignee_id IN (:list))";
+
+            where.conveyType = 'employee';
+        } else {
+            queryResourceUpdate = "UPDATE representative_assignment_conveyance SET employer_assign = :flag WHERE rf_id IN (SELECT rf_id FROM assignor WHERE assignor_and_assignee_id IN (:list))";
+            queryApplicationUpdate = "UPDATE assignment_conveyance SET employer_assign = :flag WHERE rf_id IN (SELECT rf_id FROM assignor WHERE assignor_and_assignee_id IN (:list))";
+        }
 
         added = await connection.resources.query(queryResourceUpdate,{
-            type: connection.Sequelize.QueryTypes.UPDATE,
-            replacements: { flag: flag, list: inventorsList},
-            raw: true,
-            logging: console.log,
-        }
+                type: connection.Sequelize.QueryTypes.UPDATE,
+                replacements: where,
+                raw: true,
+                logging: console.log,
+            }
         );
         added = await connection.application.query(queryApplicationUpdate,{
-            type: connection.Sequelize.QueryTypes.UPDATE,
-            replacements: { flag: flag, list: inventorsList},
-            raw: true,
-            logging: console.log,
-        }
+                type: connection.Sequelize.QueryTypes.UPDATE,
+                replacements: where,
+                raw: true,
+                logging: console.log,
+            }
         );
     }
-
-
-
-
-
 
     /* const list = await getCompaniesList(DBConnection);
     let added = 0;
