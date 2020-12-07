@@ -350,15 +350,25 @@ route.get("/:tabID/companies/:companyID/customers/:customerID", [authJWT.verifyT
 route.get("/:tabID/companies/:companyID/customers/:customerID/transactions/:rfID", [authJWT.verifyToken, clientDBConnection.connect], async(req, res, next) => {
     try {
         const tabID = req.params.tabID, representativeID = req.params.companyID, customerID = req.params.customerID, rfID = req.params.rfID;
+        let limit = req.query.limit, offset = req.query.offset;
         let assetList = [];
         if(typeof req.connection_db != "undefined" && req.connection_db != null ) {
-            assetList = await DocumentIds.findAll({
+            const whereConstraint = {
                 attributes: [['appno_doc_num', 'application'], ['grant_doc_num', 'patent']],
                 where:{rf_id: rfID},
                 order: [
                     ['appno_date', 'ASC']
                 ]
-            });
+            };
+
+            if(limit != undefined && limit != null) {
+                limit = limit > 0 ? parseInt(limit) : 100;
+                offset = offset > 0 ? parseInt(offset) : 0;
+
+                whereConstraint.limit = limit;
+                whereConstraint.offset = offset;
+            }
+            assetList = await DocumentIds.findAll(whereConstraint);
         }
         res.status(200).json(assetList);
     } catch( err ) {
