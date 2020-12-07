@@ -356,9 +356,9 @@ route.get("/:tabID/companies/:companyID/customers/:customerID/transactions/:rfID
             const whereConstraint = {
                 attributes: [['appno_doc_num', 'application'], ['grant_doc_num', 'patent']],
                 where:{rf_id: rfID},
-                order: [
+                /*order: [
                     ['appno_date', 'ASC']
-                ]
+                ]*/
             };
 
             if(limit != undefined && limit != null) {
