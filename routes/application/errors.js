@@ -308,6 +308,7 @@ route.get("/errors/filters", [authJWT.verifyToken, clientDBConnection.connect], 
 
 
 route.get("/errors/:type/:companyName", [authJWT.verifyToken, clientDBConnection.connect], async(req, res, next) => {
+    const type = req.params.type;
     if(type == 'count') {  
         res.status(200).json({title: 0, address: 0, other: 0});        
     } else if(type == 'list') {        

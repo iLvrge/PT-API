@@ -205,18 +205,6 @@ route.put("/:document_id", [authJWT.verifyToken, clientDBConnection.connect], as
                                     return res.status(500).send("ERROR: "+err);	
                                 }
                             })
-                            await fileObject.mv('/var/www/html/PatenTrack/resources/shared/data/'+fileObject.name,function(err) {
-                                if (err){
-                                    return res.status(500).send("ERROR: "+err);	
-                                } else {
-                                    let uploadedFileName = fileObject.name;
-                                    doc.file =  "https://patentrack.com/resources/shared/data/"+uploadedFileName;
-                                    (async () =>{
-                                        await Document.update(doc,{where: {document_id: doc.document_id}});
-                                        res.status(200).json(doc);
-                                    })();
-                                }
-                            })
                         } else {
                             res.status(402).send("We are not supporting this file format.");
                         }
