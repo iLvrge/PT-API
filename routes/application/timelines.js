@@ -18,7 +18,7 @@ const clientDBConnection = require("../../helpers/clientDBConnection");
 
 
 route.get("/", [authJWT.verifyToken, clientDBConnection.connect], async(req, res, next) => {
-    const from = req.query.from, to = req.query.to, companyList = req.query.companies, tabList = req.query.tabs; 
+    const from = req.query.from, to = req.query.to, companyList = req.query.companies, tabList = req.query.tabs, customerList = req.query.customers; 
     let timelineList = [], limit = req.query.limit, offset = req.query.offset;
     try {                
         const organisationData = await helpers.findOrganisationbyID(req.orgId);
@@ -26,6 +26,7 @@ route.get("/", [authJWT.verifyToken, clientDBConnection.connect], async(req, res
         if(organisationData != null && organisationData.organisation_id > 0 && typeof req.connection_db != "undefined" && req.connection_db != null){
             
             const where = {organisation_id: req.orgId}, DATE_FORMAT = 'YYYY-MM-DD';
+
             if(from != undefined && to != undefined) {
                 console.log(to);
                 where.exec_dt = {[connection.Op.between]: [moment(new Date(from)).format(DATE_FORMAT), moment(new Date(to)).add(1, 'days').format(DATE_FORMAT)]}
@@ -34,13 +35,20 @@ route.get("/", [authJWT.verifyToken, clientDBConnection.connect], async(req, res
             } else if(to != undefined) {
                 where.exec_dt = {[connection.Op.lte]: moment(new Date(to)).add(1, 'days').format(DATE_FORMAT)}
             }
+
             if(companyList != undefined && companyList != '') {
                 const companies = JSON.parse(companyList);
                 where.representative_id = companies;
             }
+
             if(tabList != undefined && tabList != '') {
                 const tabs = JSON.parse(tabList);
                 where.tab = tabs;
+            }
+
+            if(customerList != undefined && customerList != '') {
+                const customerIDs = JSON.parse(customerList);
+                where.assignor_and_assignee_id = customerIDs;
             }
 
            const whereConstraint = {
