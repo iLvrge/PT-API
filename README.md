@@ -1,4 +1,4 @@
-# PatienTrack Admin Dashboard
+# PatienTrack API
 
 ## How to install
 
