@@ -136,22 +136,35 @@ route.get("/events/tabs/:tabID/companies/:companyID/customers/:customerID/transa
 });
 
 
-route.get("/events/:applicationNumber", [authJWT.verifyToken], async (req, res) =>{     
+route.get("/events/:applicationNumber/:patentNumber", [authJWT.verifyToken], async (req, res) =>{     
     try {
-        const applicationNumber = req.params.applicationNumber;
+        const { applicationNumber, patentNumber } = req.params;
         if(applicationNumber != undefined && applicationNumber != null){
-            const findData = await MaintainenceFees.findAll({
-                attributes:['grant_doc_num', 'appno_doc_num', [connection.Sequelize.fn('date_format', connection.Sequelize.col('event_date'), '%Y-%m-%d'), 'eventdate'], 'event_code'],
-                where: {appno_doc_num: applicationNumber},
-                group: ['eventdate','event_code'],
-                include: [
-                    {
-                        model: MaintainenceCode,
-                        as: 'maintainence_code',
-                        attributes:['event_description']
-                    }
-                ]
-            })
+            let where = {appno_doc_num: applicationNumber};
+            const attributes = ['grant_doc_num', 'appno_doc_num', [connection.Sequelize.fn('date_format', connection.Sequelize.col('event_date'), '%Y-%m-%d'), 'eventdate'], 'event_code'], group = ['eventdate','event_code'], include = [
+                {
+                    model: MaintainenceCode,
+                    as: 'maintainence_code',
+                    attributes:['event_description']
+                }
+            ];
+
+            let findData = await MaintainenceFees.findAll({
+                attributes: attributes,
+                where: where,
+                group: group,
+                include: include
+            });
+
+            if(findData.length == 0) {
+                where = {grant_doc_num: {[connection.Op.like]: `%${patentNumber}%`}};
+                findData = await MaintainenceFees.findAll({
+                    attributes: attributes,
+                    where: where,
+                    group: group,
+                    include: include
+                });
+            }
             res.status(200).json(findData);
         } else {
             res.status(402).send("Invalid application number.");
