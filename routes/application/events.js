@@ -141,7 +141,7 @@ route.get("/events/:applicationNumber/:patentNumber", [authJWT.verifyToken], asy
         const { applicationNumber, patentNumber } = req.params;
         if(applicationNumber != undefined && applicationNumber != null){
             let where = {appno_doc_num: applicationNumber};
-            const attributes = ['grant_doc_num', 'appno_doc_num', [connection.Sequelize.fn('date_format', connection.Sequelize.col('event_date'), '%Y-%m-%d'), 'eventdate'], 'event_code'], group = ['eventdate','event_code'], include = [
+            const attributes = ['grant_doc_num', 'appno_doc_num', [connection.Sequelize.fn('date_format', connection.Sequelize.col('event_date'), '%Y-%m-%d'), 'eventdate'], 'event_code', 'event_icon'], group = ['eventdate','event_code'], include = [
                 {
                     model: MaintainenceCode,
                     as: 'maintainence_code',

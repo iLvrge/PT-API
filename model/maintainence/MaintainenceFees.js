@@ -33,6 +33,10 @@ const EventMaintainenceFees = connection.maintainence.define('event_maintainence
     event_code: {
         type: Sequelize.STRING,
         allowNull: false,
+    },
+    event_icon: {
+        type: Sequelize.INTEGER,
+        allowNull: false,
     }
 },
 {
