@@ -1,0 +1,250 @@
+const express = require("express");
+const { WebClient } = require('@slack/web-api');
+const route = express.Router();
+const config = require("../../config/db.config");
+
+const authJWT = require("../../helpers/verifyJwtToken");
+const clientDBConnection = require("../../helpers/clientDBConnection");
+
+
+route.get("/conversations/auth/:code", async(req, res, next) => {
+    try{
+        const  code  = req.params.code;
+
+        const { slackConfig } = config;
+
+        const grantAccess = {access_token: '', id: '', team: ''} ;
+        console.log(req.params);
+        console.log({
+            client_id: slackConfig.clientID,
+            client_secret: slackConfig.clientSecret,
+            code
+        })
+        // Create a client instance just to make this single call, and use it for the exchange
+        const result = await (new WebClient()).oauth.v2.access({
+            client_id: slackConfig.clientID,
+            client_secret: slackConfig.clientSecret,
+            code
+        });
+        console.log(result)
+        if(result && result.ok === true) {
+            //GET TOKEN
+            grantAccess.access_token  = result.authed_user.access_token
+            grantAccess.id  = result.authed_user.id
+            grantAccess.team  = result.team.id
+        }
+        res.status(200).json(grantAccess);
+    } catch (e) {
+        console.log(e)
+        res.status(500).send("Error");
+    }
+})
+
+route.post("/conversations/create/:token" , async(req, res, next) => {
+    try{
+        const { token } = req.params;
+        const web = new WebClient(token);
+        console.log({
+            name: req.body.name,
+            is_private: true
+        })
+        // channel name without space and no special characters
+        const result = await web.conversations.create({
+            name: req.body.name,
+            is_private: true
+        })
+        console.log(result);
+
+        if(result && result.ok === true) {
+            const { channel } = result
+            res.status(200).json(channel);
+        }
+    } catch (e) {
+        console.log(e)
+        res.status(500).send("Error");
+    }
+})
+
+
+
+route.post("/conversations/message/:token/:channelID" , async(req, res, next) => {
+    try{
+        const { token, channelID } = req.params;
+        const web = new WebClient(token);
+        
+        // channel name without space and no special characters
+        const result = await web.chat.postMessage({
+            channel: channelID,
+            text: 'There is another message',
+            attachments: JSON.stringify([
+                {
+                    "fallback": "Plain-text summary of the attachment.",
+                    "color": "#2eb886",
+                    "pretext": "Optional text that appears above the attachment block",
+                    "author_name": "Bobby Tables",
+                    "author_link": "http://flickr.com/bobby/",
+                    "author_icon": "http://flickr.com/icons/bobby.jpg",
+                    "title": "Slack API Documentation",
+                    "title_link": "https://api.slack.com/",
+                    "text": "Optional text that appears within the attachment",
+                    "fields": [
+                        {
+                            "title": "Priority",
+                            "value": "High",
+                            "short": false
+                        }
+                    ],
+                    "image_url": "http://my-website.com/path/to/image.jpg",
+                    "thumb_url": "http://example.com/path/to/thumb.png",
+                    "footer": "Slack API",
+                    "footer_icon": "https://platform.slack-edge.com/img/default_application_icon.png",
+                    "ts": 123456789
+                }
+            ])
+        })
+        console.log(result);
+
+        if(result && result.ok === true) {
+            res.status(200).json(result);
+        }
+    } catch (e) {
+        console.log(e)
+        res.status(500).send("Error");
+    }
+})
+
+route.get("/conversations/message/:token/:channelID/:messageID" , async(req, res, next) => {
+    try{
+        const { token, channelID, messageID } = req.params;
+        const web = new WebClient(token);
+        
+        // channel name without space and no special characters
+        const result = await web.conversations.history ({
+            channel: channelID,
+            latest: messageID,
+            inclusive: true,
+            limit: 1
+        })
+        //console.log(result);
+
+        if(result && result.ok === true) {
+            const { messages } = result;
+            res.status(200).json(messages);
+        }
+    } catch (e) {
+        console.log(e)
+        res.status(500).send("Error");
+    }
+})
+
+route.put("/conversations/message/:token/:channelID/:messageID" , async(req, res, next) => {
+    try{
+        const { token, channelID, messageID } = req.params;
+        const web = new WebClient(token);
+        
+        // channel name without space and no special characters
+        const result = await web.chat.update({
+            channel: channelID,
+            text: 'There is another message edit',
+            ts: messageID,
+            attachments: JSON.stringify([
+                {
+                    "fallback": "Plain-text summary of the attachment.",
+                    "color": "#2eb886",
+                    "pretext": "Optional text that appears above the attachment block",
+                    "author_name": "Bobby Tables",
+                    "author_link": "http://flickr.com/bobby/",
+                    "author_icon": "http://flickr.com/icons/bobby.jpg",
+                    "title": "Slack API Documentation",
+                    "title_link": "https://api.slack.com/",
+                    "text": "Optional text that appears within the attachment",
+                    "fields": [
+                        {
+                            "title": "Priority",
+                            "value": "High",
+                            "short": false
+                        }
+                    ],
+                    "image_url": "http://my-website.com/path/to/image.jpg",
+                    "thumb_url": "http://example.com/path/to/thumb.png",
+                    "footer": "Slack API",
+                    "footer_icon": "https://platform.slack-edge.com/img/default_application_icon.png",
+                    "ts": 123456789
+                }
+            ])
+        })
+        console.log(result);
+
+        if(result && result.ok === true) {
+            res.status(200).json(result);
+        }
+    } catch (e) {
+        console.log(e)
+        res.status(500).send("Error");
+    }
+})
+
+route.delete("/conversations/message/:token/:channelID/:messageID" , async(req, res, next) => {
+    try{
+        const { token, channelID, messageID } = req.params;
+        const web = new WebClient(token);
+        
+        // channel name without space and no special characters
+        const result = await web.chat.delete({
+            channel: channelID,
+            ts: messageID,
+        })
+
+        if(result && result.ok === true) {
+            console.log(result);
+           
+        }
+    } catch (e) {
+        console.log(e)
+        res.status(500).send("Error");
+    }
+})
+
+route.get("/conversations/history/:token/:channelID" , async(req, res, next) => {
+    try{
+        const { token, channelID } = req.params;
+        const web = new WebClient(token);
+        
+        // channel name without space and no special characters
+        const result = await web.conversations.history ({
+            channel: channelID,
+        })
+        //console.log(result);
+
+        if(result && result.ok === true) {
+           const { messages } = result;
+           res.status(200).json(messages);
+        }   
+    } catch (e) {
+        console.log(e)
+        res.status(500).send("Error");
+    }
+})
+
+route.get("/conversations/users/:token" , async(req, res, next) => {
+    try{
+        const { token, channelID } = req.params;
+        const web = new WebClient(token);
+        
+        // channel name without space and no special characters
+        const result = await web.users.list ({
+            limit: 100,
+        })
+        //console.log(result);
+
+        if(result && result.ok === true) {
+           const { members } = result;
+           res.status(200).json(members);
+        }   
+    } catch (e) {
+        console.log(e)
+        res.status(500).send("Error");
+    }
+})
+
+module.exports = route;

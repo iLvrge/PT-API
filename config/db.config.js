@@ -75,6 +75,13 @@ const bucketConfig = {
   documentDir: process.env.BUCKET_DOCUMENT_DIR
 }
 
-const db = {Sequelize, Op, application, resources, business, maintainence, config, bucketConfig};
+const slackConfig = {
+  clientID: process.env.SLACK_CLIENT_ID,
+  clientSecret: process.env.SLACK_CLIENT_SECRET,
+}
+
+const DEFAULT_LIMIT = 100 
+
+const db = { Sequelize, Op, application, resources, business, maintainence, config, bucketConfig, slackConfig, DEFAULT_LIMIT };
  
 module.exports = db;

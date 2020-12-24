@@ -75,6 +75,7 @@ const address = require("./routes/client/address");
 const telephone = require("./routes/client/telephone");
 const lawfirm = require("./routes/client/lawfirm");
 const lawfirm_address = require("./routes/client/lawfirm_address");
+const slacks = require("./routes/client/slacks");
 
 const charts = require("./routes/client/charts");
 const collections = require("./routes/client/collections");
@@ -125,6 +126,8 @@ app.use("/", comments);
 app.use("/", collections);
 
 app.use("/", events);
+
+app.use("/slacks", slacks);
 
 app.use("/charts", charts);
 

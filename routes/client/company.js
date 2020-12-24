@@ -51,6 +51,37 @@ route.get("/", [authJWT.verifyToken, clientDBConnection.connect], async(req, res
     }
 });
 
+/**Get all companies */
+route.get("/list", [authJWT.verifyToken, clientDBConnection.connect], async(req, res, next) => {
+    try{
+        if(typeof req.connection_db != "undefined" && req.connection_db != null ) {
+            const { offset } = req.query;
+
+            const Representative = req.connection_db.define('Representatives', Representatives.mainStructure, Representatives.options);
+
+            const where = {where: {parent_id: 0}};
+
+            const total_records = await Representative.count( where );
+
+            where.limit = connection.DEFAULT_LIMIT;
+            where.offset = offset > 0 ? parseInt(offset) : 0;
+            where.order = [
+                ['original_name', 'ASC'],
+                ['representative_name', 'ASC']
+            ];
+            where.attributes = ['representative_id', 'original_name', 'representative_name'];
+
+            const list = await Representative.findAll( where );
+            res.status(200).json({list, total_records});
+        } else {
+            res.status(401).send("Unable to retrieve companies");
+        }
+    } catch (err) {
+        console.log(err);
+        res.status(500).json({message: "Unable to retrieve companies"})
+    }
+});
+
 route.get("/lawfirm", [authJWT.verifyToken, clientDBConnection.connect], async(req, res, next) => {
     try{
         if(typeof req.connection_db != "undefined" && req.connection_db != null ) {
