@@ -82,6 +82,84 @@ route.get("/list", [authJWT.verifyToken, clientDBConnection.connect], async(req,
     }
 });
 
+/**Get all maintaince assets */
+route.get("/maintainence_assets", [authJWT.verifyToken, clientDBConnection.connect], async(req, res, next) => {
+    try{
+        if(typeof req.connection_db != "undefined" && req.connection_db != null ) {
+            const Representative = req.connection_db.define('Representatives', Representatives.mainStructure, Representatives.options); 
+            const { representative_id, offset } = req.query
+
+            const queryParams = {}
+            queryParams.attributes = [ 'representative_id', 'original_name' ]
+
+            if(JSON.parse( representative_id ).length > 0 ) {
+                queryParams.representative_id = JSON.parse( representative_id ) 
+            }
+
+            const getAllNames = await Representative.findAll(queryParams);
+
+            if(getAllNames.length > 0) {
+                const allNames = [], representativeIDs = []
+
+                const promises = getAllNames.map( company => {
+                    allNames.push( company.original_name )
+                    if(!representativeIDs.includes( company.representative_id )) {
+                        representativeIDs.push( company.representative_id )
+                    }
+                    return company
+                })
+
+                Promise.all( promises )
+
+                if( allNames.length > 0 ) {
+                    const activityType = ['assignment','partialassignment','namechg','merger','employee','courtappointment', 'courtorder'], eventCode = ['F170', 'F173', 'F273', 'M170', 'M173', 'M183', 'M273', 'M283', 'M1551', 'M2551', 'M3551'];
+
+                    const currentDate = moment(new Date()).format('YYYY-MM-DD');
+                    const startDate = '2000-12-24', endDate =  '2020-12-24' ;
+
+                    const customQuery = "SELECT STRING_REPLACE FROM db_patent_maintainence_fee.event_maintainence_fees WHERE event_code NOT IN (:eventCode) AND appno_doc_num IN ( SELECT appno_doc_num FROM documentid WHERE grant_doc_num <> '' AND date_format(appno_date, '%Y') BETWEEN :startDate AND :endDate AND rf_id IN ( SELECT ee.rf_id  from assignee as ee INNER JOIN assignment_conveyance as ac ON ac.rf_id = ee.rf_id LEFT JOIN assignor_and_assignee as aaa ON aaa.assignor_and_assignee_id = ee.assignor_and_assignee_id LEFT JOIN representative as r ON r.representative_id = aaa.representative_id WHERE aaa.name IN (:representativeNames) AND ac.convey_ty IN (:activityType)  AND  ac.rf_id IN (SELECT rf_id FROM db_uspto.representative_transactions WHERE representative_id IN (:representativeIds) AND organisation_id = :organisationID ))  AND appno_doc_num NOT IN ( SELECT appno_doc_num FROM documentid WHERE rf_id IN (SELECT ass.rf_id FROM assignor as ass  INNER JOIN assignment_conveyance as ac ON ac.rf_id = ass.rf_id LEFT JOIN assignor_and_assignee as aaa ON aaa.assignor_and_assignee_id = ass.assignor_and_assignee_id LEFT JOIN representative as r ON r.representative_id = aaa.representative_id WHERE aaa.name IN (:representativeNames) AND ac.convey_ty IN (:activityType) AND ac.rf_id IN (SELECT rf_id FROM db_uspto.representative_transactions WHERE representative_id IN (:representativeIds) AND organisation_id = :organisationID )) GROUP BY appno_doc_num ) GROUP BY appno_doc_num ) AND appno_doc_num NOT IN (SELECT appno_doc_num FROM db_patent_maintainence_fee.event_maintainence_fees WHERE event_code IN (:eventCode) AND appno_doc_num IN ( SELECT appno_doc_num FROM documentid WHERE grant_doc_num <> '' AND date_format(appno_date, '%Y') BETWEEN :startDate AND :endDate AND rf_id IN ( SELECT ee.rf_id  from assignee as ee INNER JOIN assignment_conveyance as ac ON ac.rf_id = ee.rf_id LEFT JOIN assignor_and_assignee as aaa ON aaa.assignor_and_assignee_id = ee.assignor_and_assignee_id LEFT JOIN representative as r ON r.representative_id = aaa.representative_id WHERE aaa.name IN (:representativeNames) AND ac.convey_ty IN (:activityType)  AND  ac.rf_id IN (SELECT rf_id FROM db_uspto.representative_transactions WHERE representative_id IN (:representativeIds) AND organisation_id = :organisationID ))  AND appno_doc_num NOT IN ( SELECT appno_doc_num FROM documentid WHERE rf_id IN (SELECT ass.rf_id FROM assignor as ass  INNER JOIN assignment_conveyance as ac ON ac.rf_id = ass.rf_id LEFT JOIN assignor_and_assignee as aaa ON aaa.assignor_and_assignee_id = ass.assignor_and_assignee_id LEFT JOIN representative as r ON r.representative_id = aaa.representative_id WHERE aaa.name IN (:representativeNames) AND ac.convey_ty IN (:activityType) AND ac.rf_id IN (SELECT rf_id FROM db_uspto.representative_transactions WHERE representative_id IN (:representativeIds) AND organisation_id = :organisationID )) GROUP BY appno_doc_num ) GROUP BY appno_doc_num )  GROUP BY appno_doc_num)  GROUP BY appno_doc_num ";
+
+                    
+                    const replacements = { representativeIds: representativeIDs, organisationID: req.orgId, representativeNames: allNames, startDate, endDate, activityType, eventCode };
+
+                    let counterQuery = `SELECT count(*) as total_records FROM ( ${customQuery.replace('STRING_REPLACE', ' appno_doc_num ')} ) as temp`
+                    
+
+                    let getCounter = await connection.application.query(counterQuery,{
+                            type: connection.Sequelize.QueryTypes.SELECT,
+                            raw: true,
+                            logging: console.log,
+                            replacements: replacements,
+                            plain: true
+                        }
+                    ); 
+
+                    let list = [];
+
+                    if(getCounter.total_records > 0) {
+                        const listQuery = customQuery.replace('STRING_REPLACE', 'grant_doc_num, appno_doc_num')
+
+                        replacements.limit = connection.DEFAULT_LIMIT, 
+                        replacements.offset = offset > 0 ? parseInt(offset) : 0
+    
+                        list = await connection.application.query(listQuery,{
+                                type: connection.Sequelize.QueryTypes.SELECT,
+                                raw: true,
+                                logging: console.log,
+                                replacements: replacements,
+                            }
+                        ); 
+                    }
+                    res.status(200).json({total_records: getCounter.total_records, list})
+                }
+            }
+        }
+    }  catch (err) {
+        console.log(err);
+        res.status(500).json({message: "Unable to retrieve assets"})
+    }
+})
+
 route.get("/lawfirm", [authJWT.verifyToken, clientDBConnection.connect], async(req, res, next) => {
     try{
         if(typeof req.connection_db != "undefined" && req.connection_db != null ) {
