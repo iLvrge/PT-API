@@ -97,6 +97,7 @@ route.get("/maintainence_assets", [authJWT.verifyToken, clientDBConnection.conne
             }
             
             const getAllNames = await Representative.findAll(queryParams);
+            let list = [], counter = 0;
 
             /**
              * All Original names of the company
@@ -115,15 +116,23 @@ route.get("/maintainence_assets", [authJWT.verifyToken, clientDBConnection.conne
                 Promise.all( promises )
 
                 if( allNames.length > 0 ) {
-                    const activityType = ['assignment','partialassignment','namechg','merger','employee','courtappointment', 'courtorder'], eventCode = ['F170', 'F173', 'F273', 'M170', 'M173', 'M183', 'M273', 'M283', 'M1551', 'M2551', 'M3551'];
+                    const activityType = ['assignment','partialassignment','namechg','merger','employee','courtappointment', 'courtorder']
 
-                    const currentDate = moment(new Date()).format('YYYY-MM-DD');
-                    const startDate = '2016-12-24', endDate =  '2017-12-24' ;
+                    let currentDate = new Date()
 
-                    const customQuery = "SELECT STRING_REPLACE FROM db_patent_maintainence_fee.event_maintainence_fees WHERE event_code NOT IN (:eventCode) AND appno_doc_num IN ( SELECT appno_doc_num FROM documentid WHERE grant_doc_num <> '' AND date_format(appno_date, '%Y') BETWEEN :startDate AND :endDate AND rf_id IN ( SELECT ee.rf_id  from assignee as ee INNER JOIN assignment_conveyance as ac ON ac.rf_id = ee.rf_id LEFT JOIN assignor_and_assignee as aaa ON aaa.assignor_and_assignee_id = ee.assignor_and_assignee_id LEFT JOIN representative as r ON r.representative_id = aaa.representative_id WHERE aaa.name IN (:representativeNames) AND ac.convey_ty IN (:activityType)  AND  ac.rf_id IN (SELECT rf_id FROM db_uspto.representative_transactions WHERE representative_id IN (:representativeIds) AND organisation_id = :organisationID ))  AND appno_doc_num NOT IN ( SELECT appno_doc_num FROM documentid WHERE rf_id IN (SELECT ass.rf_id FROM assignor as ass  INNER JOIN assignment_conveyance as ac ON ac.rf_id = ass.rf_id LEFT JOIN assignor_and_assignee as aaa ON aaa.assignor_and_assignee_id = ass.assignor_and_assignee_id LEFT JOIN representative as r ON r.representative_id = aaa.representative_id WHERE aaa.name IN (:representativeNames) AND ac.convey_ty IN (:activityType) AND ac.rf_id IN (SELECT rf_id FROM db_uspto.representative_transactions WHERE representative_id IN (:representativeIds) AND organisation_id = :organisationID )) GROUP BY appno_doc_num ) GROUP BY appno_doc_num ) AND appno_doc_num NOT IN (SELECT appno_doc_num FROM db_patent_maintainence_fee.event_maintainence_fees WHERE event_code IN (:eventCode) AND appno_doc_num IN ( SELECT appno_doc_num FROM documentid WHERE grant_doc_num <> '' AND date_format(appno_date, '%Y') BETWEEN :startDate AND :endDate AND rf_id IN ( SELECT ee.rf_id  from assignee as ee INNER JOIN assignment_conveyance as ac ON ac.rf_id = ee.rf_id LEFT JOIN assignor_and_assignee as aaa ON aaa.assignor_and_assignee_id = ee.assignor_and_assignee_id LEFT JOIN representative as r ON r.representative_id = aaa.representative_id WHERE aaa.name IN (:representativeNames) AND ac.convey_ty IN (:activityType)  AND  ac.rf_id IN (SELECT rf_id FROM db_uspto.representative_transactions WHERE representative_id IN (:representativeIds) AND organisation_id = :organisationID ))  AND appno_doc_num NOT IN ( SELECT appno_doc_num FROM documentid WHERE rf_id IN (SELECT ass.rf_id FROM assignor as ass  INNER JOIN assignment_conveyance as ac ON ac.rf_id = ass.rf_id LEFT JOIN assignor_and_assignee as aaa ON aaa.assignor_and_assignee_id = ass.assignor_and_assignee_id LEFT JOIN representative as r ON r.representative_id = aaa.representative_id WHERE aaa.name IN (:representativeNames) AND ac.convey_ty IN (:activityType) AND ac.rf_id IN (SELECT rf_id FROM db_uspto.representative_transactions WHERE representative_id IN (:representativeIds) AND organisation_id = :organisationID )) GROUP BY appno_doc_num ) GROUP BY appno_doc_num )  GROUP BY appno_doc_num)  GROUP BY appno_doc_num ";
+                    const customQuery = "SELECT STRING_REPLACE FROM db_patent_maintainence_fee.event_maintainence_fees WHERE event_code NOT IN (:eventCode) AND appno_doc_num IN ( SELECT appno_doc_num FROM documentid WHERE grant_doc_num <> '' AND date_format(grant_date, '%Y') BETWEEN :startDate AND :endDate AND rf_id IN ( SELECT ee.rf_id  from assignee as ee INNER JOIN assignment_conveyance as ac ON ac.rf_id = ee.rf_id LEFT JOIN assignor_and_assignee as aaa ON aaa.assignor_and_assignee_id = ee.assignor_and_assignee_id LEFT JOIN representative as r ON r.representative_id = aaa.representative_id WHERE aaa.name IN (:representativeNames) AND ac.convey_ty IN (:activityType)  AND  ac.rf_id IN (SELECT rf_id FROM db_uspto.representative_transactions WHERE representative_id IN (:representativeIds) AND organisation_id = :organisationID ))  AND appno_doc_num NOT IN ( SELECT appno_doc_num FROM documentid WHERE rf_id IN (SELECT ass.rf_id FROM assignor as ass  INNER JOIN assignment_conveyance as ac ON ac.rf_id = ass.rf_id LEFT JOIN assignor_and_assignee as aaa ON aaa.assignor_and_assignee_id = ass.assignor_and_assignee_id LEFT JOIN representative as r ON r.representative_id = aaa.representative_id WHERE aaa.name IN (:representativeNames) AND ac.convey_ty IN (:activityType) AND ac.rf_id IN (SELECT rf_id FROM db_uspto.representative_transactions WHERE representative_id IN (:representativeIds) AND organisation_id = :organisationID )) GROUP BY appno_doc_num ) GROUP BY appno_doc_num ) AND appno_doc_num NOT IN (SELECT appno_doc_num FROM db_patent_maintainence_fee.event_maintainence_fees WHERE event_code IN (:eventCode) AND appno_doc_num IN ( SELECT appno_doc_num FROM documentid WHERE grant_doc_num <> '' AND date_format(grant_date, '%Y') BETWEEN :startDate AND :endDate AND rf_id IN ( SELECT ee.rf_id  from assignee as ee INNER JOIN assignment_conveyance as ac ON ac.rf_id = ee.rf_id LEFT JOIN assignor_and_assignee as aaa ON aaa.assignor_and_assignee_id = ee.assignor_and_assignee_id LEFT JOIN representative as r ON r.representative_id = aaa.representative_id WHERE aaa.name IN (:representativeNames) AND ac.convey_ty IN (:activityType)  AND  ac.rf_id IN (SELECT rf_id FROM db_uspto.representative_transactions WHERE representative_id IN (:representativeIds) AND organisation_id = :organisationID ))  AND appno_doc_num NOT IN ( SELECT appno_doc_num FROM documentid WHERE rf_id IN (SELECT ass.rf_id FROM assignor as ass  INNER JOIN assignment_conveyance as ac ON ac.rf_id = ass.rf_id LEFT JOIN assignor_and_assignee as aaa ON aaa.assignor_and_assignee_id = ass.assignor_and_assignee_id LEFT JOIN representative as r ON r.representative_id = aaa.representative_id WHERE aaa.name IN (:representativeNames) AND ac.convey_ty IN (:activityType) AND ac.rf_id IN (SELECT rf_id FROM db_uspto.representative_transactions WHERE representative_id IN (:representativeIds) AND organisation_id = :organisationID )) GROUP BY appno_doc_num ) GROUP BY appno_doc_num )  GROUP BY appno_doc_num)  GROUP BY appno_doc_num ";
 
-                    
-                    const replacements = { representativeIds: representativeIDs, organisationID: req.orgId, representativeNames: allNames, startDate, endDate, activityType, eventCode };
+                    /**
+                     * Earlier
+                     */
+                    /**
+                     * Momentjs substract not working 
+                     * 
+                    */
+                    /* const finalStartDate = moment( currentDate.setFullYear( currentDate.getFullYear() - 4 ) ).format('YYYY-MM-DD')
+                    currentDate = new Date()
+                    const finalEndDate = moment( currentDate.setFullYear( currentDate.getFullYear() - 3 )).format('YYYY-MM-DD'), finalEventCode = ['M1551', 'M2551', 'M3551']
+                    let replacements = { representativeIds: representativeIDs, organisationID: req.orgId, representativeNames: allNames, activityType };
 
                     let counterQuery = `SELECT count(*) as total_records FROM ( ${customQuery.replace('STRING_REPLACE', ' appno_doc_num ')} ) as temp`
                     
@@ -132,30 +141,166 @@ route.get("/maintainence_assets", [authJWT.verifyToken, clientDBConnection.conne
                             type: connection.Sequelize.QueryTypes.SELECT,
                             raw: true,
                             logging: console.log,
-                            replacements: replacements,
+                            replacements: {...replacements, eventCode: finalEventCode, startDate: finalStartDate, endDate: finalEndDate},
                             plain: true
                         }
                     ); 
 
-                    let list = [];
+                    if( getCounter != null && getCounter.total_records > 0 ) {
+                        counter += getCounter.total_records
+                    }
 
-                    if(getCounter.total_records > 0) {
-                        const listQuery = customQuery.replace('STRING_REPLACE', 'grant_doc_num, appno_doc_num')
+                    currentDate = new Date()
+                    const midStartDate = moment( currentDate.setFullYear( currentDate.getFullYear() - 8 ) ).format('YYYY-MM-DD')
+                    currentDate = new Date()
+                    const midEndDate =  moment( currentDate.setFullYear( currentDate.getFullYear() - 7 ) ).format('YYYY-MM-DD'), midEventCode = ['M1552', 'M2552', 'M3552']
 
-                        replacements.limit = connection.DEFAULT_LIMIT, 
-                        replacements.offset = offset > 0 ? parseInt(offset) : 0
-    
-                        list = await connection.application.query(listQuery,{
+                    counterQuery = `SELECT count(*) as total_records FROM ( ${customQuery.replace('STRING_REPLACE', ' appno_doc_num ')} ) as temp`
+                    
+
+                    getCounter = await connection.application.query(counterQuery,{
+                            type: connection.Sequelize.QueryTypes.SELECT,
+                            raw: true,
+                            logging: console.log,
+                            replacements: {...replacements, startDate: midStartDate, endDate: midEndDate, eventCode: midEventCode},
+                            plain: true
+                        }
+                    ); 
+
+                    if( getCounter != null && getCounter.total_records > 0 ) {
+                        counter += getCounter.total_records
+                    }
+                    currentDate = new Date()
+                    const earlierStartDate = moment( currentDate.setFullYear( currentDate.getFullYear() - 12 ) ).format('YYYY-MM-DD')
+                    currentDate = new Date()
+                    const earlierEndDate = moment( currentDate.setFullYear( currentDate.getFullYear() - 11 ) ).format('YYYY-MM-DD'), earlierEventCode = ['M1553', 'M2553', 'M3553']
+
+                    getCounter = await connection.application.query(counterQuery,{
+                            type: connection.Sequelize.QueryTypes.SELECT,
+                            raw: true,
+                            logging: console.log,
+                            replacements: {...replacements, startDate: earlierStartDate, endDate: earlierEndDate, eventCode: earlierEventCode},
+                            plain: true
+                        }
+                    ); 
+
+                    if( getCounter != null && getCounter.total_records > 0 ) {
+                        counter += getCounter.total_records
+                    }
+
+                    if(counter > 0) {
+                        
+
+                        const listQuery = customQuery.replace('STRING_REPLACE', 'grant_doc_num, appno_doc_num, 1 as type')
+
+                        const getList = await connection.application.query(listQuery,{
                                 type: connection.Sequelize.QueryTypes.SELECT,
                                 raw: true,
                                 logging: console.log,
-                                replacements: replacements,
+                                replacements: {...replacements, startDate: finalStartDate, endDate: finalEndDate, eventCode: finalEventCode, limit: connection.DEFAULT_LIMIT, offset: offset > 0 ? parseInt(offset) : 0},
                             }
                         ); 
+
+                        if( getList.length > 0 ) {
+                            list = [...list, getList]
+                        }
+                        
+
+                        if(  list.length < connection.DEFAULT_LIMIT ) {
+                            remaining = list.length > 0 ?  list.length - connection.DEFAULT_LIMIT : connection.DEFAULT_LIMIT
+                            getList = await connection.application.query(listQuery,{
+                                    type: connection.Sequelize.QueryTypes.SELECT,
+                                    raw: true,
+                                    logging: console.log,
+                                    replacements: {...replacements, startDate: midStartDate, endDate: midEndDate, eventCode: midEventCode, limit: remaining, offset: offset > 0 ? parseInt(offset) : 0},
+                                }
+                            );
+
+                            if( getList.length > 0 ) {
+                                list = [...list, getList]
+                            }
+
+                            if(list.length < connection.DEFAULT_LIMIT) {
+                                remaining = list.length > 0 ?  list.length - connection.DEFAULT_LIMIT : connection.DEFAULT_LIMIT
+
+                                getList = await connection.application.query(listQuery,{
+                                        type: connection.Sequelize.QueryTypes.SELECT,
+                                        raw: true,
+                                        logging: console.log,
+                                        replacements: {...replacements, startDate: earlierStartDate, endDate: earlierEndDate, eventCode: earlierEventCode, limit: remaining, offset: offset > 0 ? parseInt(offset) : 0},
+                                    }
+                                );
+
+                                if( getList.length > 0 ) {
+                                    list = [...list, getList]
+                                }
+                            }
+                        } else {
+                            list = [...getList]
+                        }
+                    } */          
+                    
+                    /* const listQuery = `SELECT grant_doc_num, appno_doc_num FROM documentid WHERE appno_doc_num IN (${customQuery.replace('STRING_REPLACE', 'appno_doc_num')}) GROUP BY appno_doc_num, grant_doc_num` */
+
+                    const earlierStartDate = moment( currentDate.setFullYear( currentDate.getFullYear() - 4 ) ).format('YYYY-MM-DD')
+                    currentDate = new Date()
+                    const earlierEndDate = moment( currentDate.setFullYear( currentDate.getFullYear() - 3 )).format('YYYY-MM-DD'), earlierEventCode = ['M1551', 'M2551', 'M3551']
+                    let replacements = { representativeIds: representativeIDs, organisationID: req.orgId, representativeNames: allNames, activityType };
+
+                    let listQuery = `SELECT appno_doc_num, grant_doc_num, grant_date, DATE_ADD(grant_date, INTERVAL 36 MONTH) as payment_due, DATE_ADD(grant_date, INTERVAL 42 MONTH) as payment_grace, 1 as type FROM documentid WHERE appno_doc_num IN (${customQuery.replace('STRING_REPLACE', ' appno_doc_num')}) GROUP BY grant_doc_num`
+
+                    let getList = await connection.application.query(listQuery,{
+                            type: connection.Sequelize.QueryTypes.SELECT,
+                            raw: true,
+                            logging: console.log,
+                            replacements: { ...replacements, startDate: earlierStartDate, endDate: earlierEndDate, eventCode: earlierEventCode },
+                        }
+                    ); 
+
+                    if( getList.length > 0 ) {
+                        list = [...list, ...getList]
                     }
-                    res.status(200).json({total_records: getCounter.total_records, list})
+
+                    currentDate = new Date()
+                    const midStartDate = moment( currentDate.setFullYear( currentDate.getFullYear() - 8 ) ).format('YYYY-MM-DD')
+                    currentDate = new Date()
+                    const midEndDate =  moment( currentDate.setFullYear( currentDate.getFullYear() - 7 ) ).format('YYYY-MM-DD'), midEventCode = ['M1552', 'M2552', 'M3552']
+
+                    listQuery = `SELECT appno_doc_num, grant_doc_num, grant_date, DATE_ADD(grant_date, INTERVAL 84 MONTH) as payment_due, DATE_ADD(grant_date, INTERVAL 90 MONTH) as payment_grace, 2 as type FROM documentid WHERE appno_doc_num IN (${customQuery.replace('STRING_REPLACE', ' appno_doc_num')}) GROUP BY grant_doc_num`
+                    getList = await connection.application.query(listQuery,{
+                            type: connection.Sequelize.QueryTypes.SELECT,
+                            raw: true,
+                            logging: console.log,
+                            replacements: { ...replacements, startDate: midStartDate, endDate: midEndDate, eventCode: midEventCode },
+                        }
+                    );
+
+                    if( getList.length > 0 ) {
+                        list = [...list, ...getList]
+                    }
+                    currentDate = new Date()
+                    const finalStartDate = moment( currentDate.setFullYear( currentDate.getFullYear() - 12 ) ).format('YYYY-MM-DD')
+                    currentDate = new Date()
+                    const finalEndDate = moment( currentDate.setFullYear( currentDate.getFullYear() - 11 )).format('YYYY-MM-DD'), finalEventCode = ['M1551', 'M2551', 'M3551']         
+
+                    listQuery = `SELECT appno_doc_num, grant_doc_num, grant_date, DATE_ADD(grant_date, INTERVAL 132 MONTH) as payment_due, DATE_ADD(grant_date, INTERVAL 138 MONTH) as payment_grace, 3 as type FROM documentid WHERE appno_doc_num IN (${customQuery.replace('STRING_REPLACE', ' appno_doc_num')}) GROUP BY grant_doc_num`
+
+                    getList = await connection.application.query(listQuery,{
+                            type: connection.Sequelize.QueryTypes.SELECT,
+                            raw: true,
+                            logging: console.log,
+                            replacements: { ...replacements, startDate: finalStartDate, endDate: finalEndDate, eventCode: finalEventCode },
+                        }
+                    );
+
+                    if( getList.length > 0 ) {
+                        list = [...list, ...getList]
+                    }
                 }
             }
+            res.status(200).json({total_records: list.length, list})
+        } else {
+            res.status(500).json({message: "Unable to retrieve assets"})
         }
     }  catch (err) {
         console.log(err);
