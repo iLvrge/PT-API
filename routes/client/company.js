@@ -93,10 +93,14 @@ route.get("/maintainence_assets", [authJWT.verifyToken, clientDBConnection.conne
             queryParams.attributes = [ 'representative_id', 'original_name' ]
 
             if(JSON.parse( representative_id ).length > 0 ) {
-                queryParams.representative_id = JSON.parse( representative_id ) 
+                queryParams.where = { representative_id: JSON.parse( representative_id ) } 
             }
-
+            
             const getAllNames = await Representative.findAll(queryParams);
+
+            /**
+             * All Original names of the company
+             */
 
             if(getAllNames.length > 0) {
                 const allNames = [], representativeIDs = []
@@ -108,7 +112,6 @@ route.get("/maintainence_assets", [authJWT.verifyToken, clientDBConnection.conne
                     }
                     return company
                 })
-
                 Promise.all( promises )
 
                 if( allNames.length > 0 ) {
