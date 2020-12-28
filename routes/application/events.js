@@ -201,14 +201,26 @@ route.get("/events/:applicationNumber/:patentNumber", [authJWT.verifyToken], asy
                         const nextDate = new Date( eventDate )
                         const startDate = eventDate.format('YYYY-MM-DD')
                         const endDate = moment( nextDate.setMonth( nextDate.getMonth() + 6 )).format('YYYY-MM-DD')
-
+                        /**Yellow */
                         other.push({
                             grant_doc_num: findData[0].grant_doc_num,
                             appno_doc_num: findData[0].grant_doc_num,
                             start: startDate, 
                             end: endDate,
                             event_code: event,
-                            event_desc: event
+                            event_desc: event,
+                            type: 'yellow'
+                        })
+                        /**Red */
+
+                        other.push({
+                            grant_doc_num: findData[0].grant_doc_num,
+                            appno_doc_num: findData[0].grant_doc_num,
+                            start: endDate, 
+                            end: moment( nextDate.setMonth( nextDate.getMonth() + 6 )).format('YYYY-MM-DD'),
+                            event_code: event,
+                            event_desc: event,
+                            type: 'red'
                         })
                     })
                     await Promise.all( eventPromise )
