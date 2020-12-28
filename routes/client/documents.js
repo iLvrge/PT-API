@@ -1,6 +1,9 @@
 const express = require("express");
 
 const route = express.Router();
+
+const {google} = require('googleapis');
+
 //require the Model
 
 const Documents = require("../../model/client/Documents");
@@ -14,6 +17,81 @@ const AWS  = require('aws-sdk');
 
 const clientDBConnection = require("../../helpers/clientDBConnection");
 /**Get all documents */
+
+let authenticateGoogleToken = async( code ) => {
+    let getTokens = {}
+
+    try{
+        const oauth2Client = new google.auth.OAuth2(
+            '27050530278-uu7ns2gdg0ibstde3gh1o6h40618k38n.apps.googleusercontent.com',
+            '9VuBSiz5LVedKXGRY37jtBrF',
+            'https://betapp.patentrack.com'
+        );
+        const {tokens} = await oauth2Client.getToken(code)
+        getTokens = tokens
+    } catch(e) {
+        console.log(e)
+    }
+    
+    return getTokens
+}
+
+route.get("/auth_token", authJWT.verifyToken, async(req, res, next) => {
+    const { code } = req.query
+    try{
+        if(code != '' && code != undefined) {
+            const token = await authenticateGoogleToken( code )
+            res.status(200).json(token);
+        } else {
+            res.status(401).send("Authentication code is missing");
+        }
+    } catch(e) {
+        console.log(e)
+        res.status(500).send("Unable to authenticate token");
+    }
+})
+
+route.get("/drive", authJWT.verifyToken, async(req, res, next) => {
+    
+    try{
+        let list = []
+        const oauth2Client = new google.auth.OAuth2(
+            '27050530278-uu7ns2gdg0ibstde3gh1o6h40618k38n.apps.googleusercontent.com',
+            '9VuBSiz5LVedKXGRY37jtBrF',
+            'https://betapp.patentrack.com'
+        );
+        const { access_token, refresh_token } = req.query
+
+        oauth2Client.setCredentials({ access_token, refresh_token})
+               
+        const drive = google.drive({version: 'v3', auth:oauth2Client});
+
+        if(drive != null && drive != undefined) {
+            drive.files.list({
+                pageSize: 50,
+                fields: 'nextPageToken, files(id, name, mimeType, webContentLink, webViewLink, iconLink, thumbnailLink, exportLinks)',
+            }, (err, response) => {
+                if (err) {
+                    res.status(500).send(err);
+                }
+                if(response.data != undefined) {
+                    list = response.data.files;
+                    res.status(200).json(response.data);
+                } else {
+                    res.status(500).send("Unable to retrive drive files");
+                }                
+            });
+        } else {
+            res.status(500).send("Unable to retrive drive files");
+        }
+    } catch(e) {
+        console.log("Drive error", e);
+        res.status(500).send("Unable to retrive drive files");
+    }
+})
+
+
+
 route.get("/", [authJWT.verifyToken, clientDBConnection.connect], async(req, res, next) => {
     try{
         if(typeof req.connection_db != "undefined" && req.connection_db != null ) {
