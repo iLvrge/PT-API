@@ -25,7 +25,7 @@ let authenticateGoogleToken = async( code ) => {
         const oauth2Client = new google.auth.OAuth2(
             '27050530278-uu7ns2gdg0ibstde3gh1o6h40618k38n.apps.googleusercontent.com',
             '9VuBSiz5LVedKXGRY37jtBrF',
-            'https://betapp.patentrack.com'
+            'http://localhost:3000'
         );
         const {tokens} = await oauth2Client.getToken(code)
         getTokens = tokens
@@ -58,7 +58,7 @@ route.get("/drive", authJWT.verifyToken, async(req, res, next) => {
         const oauth2Client = new google.auth.OAuth2(
             '27050530278-uu7ns2gdg0ibstde3gh1o6h40618k38n.apps.googleusercontent.com',
             '9VuBSiz5LVedKXGRY37jtBrF',
-            'https://betapp.patentrack.com'
+            'http://localhost:3000'
         );
         const { access_token, refresh_token } = req.query
 
