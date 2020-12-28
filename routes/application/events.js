@@ -1,5 +1,7 @@
 const express = require("express"),
 
+    moment = require('moment'),
+
     route = express.Router(),
 
     authJWT = require("../../helpers/verifyJwtToken"),
@@ -141,7 +143,7 @@ route.get("/events/:applicationNumber/:patentNumber", [authJWT.verifyToken], asy
         const { applicationNumber, patentNumber } = req.params;
         if(applicationNumber != undefined && applicationNumber != null){
             let where = {appno_doc_num: applicationNumber};
-            const attributes = ['grant_doc_num', 'appno_doc_num', [connection.Sequelize.fn('date_format', connection.Sequelize.col('event_date'), '%Y-%m-%d'), 'eventdate'], 'event_code', 'event_icon'], group = ['eventdate','event_code'], include = [
+            const event_code = ['M1551', 'M2551', 'M3551'], attributes = ['grant_doc_num', 'appno_doc_num', 'grant_date', [connection.Sequelize.fn('date_format', connection.Sequelize.col('event_date'), '%Y-%m-%d'), 'eventdate'], 'event_code', 'event_icon'], group = ['eventdate','event_code'], include = [
                 {
                     model: MaintainenceCode,
                     as: 'maintainence_code',
@@ -165,7 +167,55 @@ route.get("/events/:applicationNumber/:patentNumber", [authJWT.verifyToken], asy
                     include: include
                 });
             }
-            res.status(200).json(findData);
+
+            let other = []
+
+            if(findData.length > 0) { 
+                where.event_code = event_code
+                const findPaymentEvents = await MaintainenceFees.findAll({
+                    attributes: ['event_code'],
+                    where: where
+                });
+    
+                if( findPaymentEvents.length > 0 ) {
+                    const promise = findPaymentEvents.map( event => {
+                        const findIndex = event_code.findIndex(e => e === event.event_code)
+                        if( findIndex >= 0 ) {
+                            event_code.splice( findIndex, 1 )
+                        }
+                        return event
+                    })
+    
+                    await Promise.all( promise )
+                }
+                
+                if( event_code.length > 0 ) {
+                    const date = findData[0].grant_date;
+                    console.log("date", date)
+                    const grantDate = `${date.substring(0,4)}-${date.substring(4,6)}-${date.substring(6,8)} 00:00:00`
+                    console.log(grantDate)
+                    const eventPromise = event_code.map( event => {
+                        let months = event == 'M1551' ? 36 : event == 'M2551' ? 84 : 132;
+                        let currentDate = new Date( grantDate )
+                        const eventDate = moment( currentDate.setMonth( currentDate.getMonth() + months ));
+                        const nextDate = new Date( eventDate )
+                        const startDate = eventDate.format('YYYY-MM-DD')
+                        const endDate = moment( nextDate.setMonth( nextDate.getMonth() + 6 )).format('YYYY-MM-DD')
+
+                        other.push({
+                            grant_doc_num: findData[0].grant_doc_num,
+                            appno_doc_num: findData[0].grant_doc_num,
+                            start: startDate, 
+                            end: endDate,
+                            event_code: event,
+                            event_desc: event
+                        })
+                    })
+                    await Promise.all( eventPromise )
+                }
+            }
+
+            res.status(200).json({main: findData, other});
         } else {
             res.status(402).send("Invalid application number.");
         }
