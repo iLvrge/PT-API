@@ -3,6 +3,9 @@ const { WebClient } = require('@slack/web-api');
 const route = express.Router();
 const config = require("../../config/db.config");
 
+
+const AssetsChannel = require("../../model/client/AssetsChannel");
+
 const authJWT = require("../../helpers/verifyJwtToken");
 const clientDBConnection = require("../../helpers/clientDBConnection");
 
@@ -89,43 +92,59 @@ route.post("/conversations/create/:token" , async(req, res, next) => {
     }
 })
 
-route.post("/conversations/message/:token" , async(req, res, next) => {
+route.post("/conversations/message/:token", [authJWT.verifyToken, clientDBConnection.connect] , async(req, res, next) => {
     try{
-        const { token, channelID } = req.params;
-        let {channel_id, text, asset } = req.body
-        // channel name without space and no special characters
-        let result = {}
-        if(channel_id == '' || channel_id == undefined) {
-            const channelResult = await createChannelID(token, {name: asset, is_private: true})
+        if(typeof req.connection_db != "undefined" && req.connection_db != null ) {
+            const AssetChannel = req.connection_db.define('AssetsChannel', AssetsChannel.mainStructure, AssetsChannel.options);
 
-            if(channelResult != null ) {
-                if(channelResult && channelResult.ok === true) {
-                    const { channel } = channelResult
-                    channel_id = channel.id
+            const { token } = req.params;
+            let {channel_id, text, asset } = req.body
 
-                    /**
-                     * Save ChannelID
-                     */
-                    result = await sendMessage(token, {
-                        channel: channel_id,
-                        text: text
-                    })
+            // channel name without space and no special characters
+            let result = {}
+
+            if(channel_id == '' || channel_id == undefined) {
+
+                const findChannel = await AssetChannel.findOne({
+                    attributes: ['channel_id'],
+                    where: {asset: asset}
+                })
+
+                if( findChannel == null ) {
+                    const channelResult = await createChannelID(token, {name: asset, is_private: true})
+    
+                    if(channelResult != null ) {
+                        if(channelResult && channelResult.ok === true) {
+                            const { channel } = channelResult
+                            channel_id = channel.id
+                        }
+                    } else {
+                        res.status(500).send("Error while sending message");
+                    }
+                } else {
+                    channel_id = findChannel.channel_id
+                }                
+            }
+
+            if(channel_id != "") {
+                result = await sendMessage(token, {
+                    channel: channel_id,
+                    text: text
+                })
+    
+                if(result != null && Object.keys(result).length > 0) {
+                    if(result.ok === true) {
+                        res.status(200).json({status: 'Message sent', channel: result.channel});
+                    }
+                } else {
+                    res.status(500).send("Error while sending message");
                 }
             } else {
+                console.log("Error while creating or retreive channel_id")
                 res.status(500).send("Error while sending message");
-            }
+            }            
         } else {
-            result = await sendMessage(token, {
-                channel: channel_id,
-                text: text
-            })
-        }
-        if(result != null && Object.keys(result).length > 0) {
-            if(result.ok === true) {
-                res.status(200).json({status: 'Message sent', 'channel': result.channel});
-            }
-        } else {
-            res.status(500).send("Error while sending message");
+            res.status(500).send("Invalid params");
         }
     } catch (e) {
         console.log(e)
@@ -264,6 +283,30 @@ route.get("/conversations/users/:token" , async(req, res, next) => {
     } catch (e) {
         console.log(e)
         res.status(500).send("Error");
+    }
+})
+
+
+
+route.get("/asset/:asset", [authJWT.verifyToken, clientDBConnection.connect] , async(req, res, next) => {
+    try{
+        if(typeof req.connection_db != "undefined" && req.connection_db != null ) {
+            const AssetChannel = req.connection_db.define('AssetsChannel', AssetsChannel.mainStructure, AssetsChannel.options);
+
+            const { asset } = req.params;
+
+            const findChannel = await AssetChannel.findOne({
+                attributes: ['channel_id'],
+                where: {asset: asset}
+            })
+
+            res.status( 200 ).json( findChannel )
+        } else {
+            res.status( 200 ).json( {} )
+        }
+    } catch( e ) {
+        console.log( e )
+        res.status( 200 ).json( {} )
     }
 })
 
