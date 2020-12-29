@@ -39,7 +39,7 @@ const getUsersList = async( token ) => {
         const web = new WebClient(token);
             
         // channel name without space and no special characters
-        const result = await web.users.list ({
+        result = await web.users.list ({
             limit: 100,
         })
     } catch( err ) {
@@ -271,10 +271,10 @@ route.get("/conversations/history/:token/:channelID" , async(req, res, next) => 
         //console.log(result);
         
         const usersResult = await getUsersList( token )
-
+        console.log(usersResult)
         if(result && result.ok === true) {
            const { messages } = result;
-           if(usersResult.ok === true) {
+            if(usersResult.ok === true) {
                 res.status(200).json({messages, users: usersResult.members });
             } else {
                 res.status(200).json({messages, users: [] });
