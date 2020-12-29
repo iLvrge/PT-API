@@ -247,7 +247,7 @@ route.get("/maintainence_assets", [authJWT.verifyToken, clientDBConnection.conne
                     const earlierEndDate = moment( currentDate.setFullYear( currentDate.getFullYear() - 3 )).format('YYYY-MM-DD'), earlierEventCode = ['M1551', 'M2551', 'M3551']
                     let replacements = { representativeIds: representativeIDs, organisationID: req.orgId, representativeNames: allNames, activityType };
 
-                    let listQuery = `SELECT appno_doc_num, grant_doc_num, grant_date, DATE_ADD(grant_date, INTERVAL 36 MONTH) as payment_due, DATE_ADD(grant_date, INTERVAL 42 MONTH) as payment_grace, 1 as type, "1551" as fee_code, 2000 as fee_amount, 1554 as fee_code_surcharge, 500 as fee_surcharge, "" as remaining_year, "" as source, "" as fwd_citation, "" as technology FROM documentid WHERE appno_doc_num IN (${customQuery.replace('STRING_REPLACE', ' appno_doc_num')}) GROUP BY grant_doc_num`
+                    let listQuery = `SELECT appno_doc_num, grant_doc_num, grant_date,  date_format(DATE_ADD(grant_date, INTERVAL 36 MONTH), "%b %d, %Y") as payment_due, date_format(DATE_ADD(grant_date, INTERVAL 42 MONTH), "%b %d, %Y") as payment_grace, 1 as type, "1551" as fee_code, 2000 as fee_amount, 1554 as fee_code_surcharge, 500 as fee_surcharge, "" as remaining_year, "" as source, "" as fwd_citation, "" as technology FROM documentid WHERE appno_doc_num IN (${customQuery.replace('STRING_REPLACE', ' appno_doc_num')}) GROUP BY grant_doc_num`
 
                     let getList = await connection.application.query(listQuery,{
                             type: connection.Sequelize.QueryTypes.SELECT,
@@ -266,7 +266,7 @@ route.get("/maintainence_assets", [authJWT.verifyToken, clientDBConnection.conne
                     currentDate = new Date()
                     const midEndDate =  moment( currentDate.setFullYear( currentDate.getFullYear() - 7 ) ).format('YYYY-MM-DD'), midEventCode = ['M1552', 'M2552', 'M3552']
 
-                    listQuery = `SELECT appno_doc_num, grant_doc_num, grant_date, DATE_ADD(grant_date, INTERVAL 84 MONTH) as payment_due, DATE_ADD(grant_date, INTERVAL 90 MONTH) as payment_grace, 2 as type, "1552" as fee_code, 3760 as fee_amount, 1555 as fee_code_surcharge, 500 as fee_surcharge, "" as remaining_year, "" as source, "" as fwd_citation, "" as technology FROM documentid WHERE appno_doc_num IN (${customQuery.replace('STRING_REPLACE', ' appno_doc_num')}) GROUP BY grant_doc_num`
+                    listQuery = `SELECT appno_doc_num, grant_doc_num, grant_date,  date_format(DATE_ADD(grant_date, INTERVAL 84 MONTH), "%b %d, %Y") as payment_due, date_format(DATE_ADD(grant_date, INTERVAL 90 MONTH), "%b %d, %Y") as payment_grace, 2 as type, "1552" as fee_code, 3760 as fee_amount, 1555 as fee_code_surcharge, 500 as fee_surcharge, "" as remaining_year, "" as source, "" as fwd_citation, "" as technology FROM documentid WHERE appno_doc_num IN (${customQuery.replace('STRING_REPLACE', ' appno_doc_num')}) GROUP BY grant_doc_num`
                     getList = await connection.application.query(listQuery,{
                             type: connection.Sequelize.QueryTypes.SELECT,
                             raw: true,
@@ -283,7 +283,7 @@ route.get("/maintainence_assets", [authJWT.verifyToken, clientDBConnection.conne
                     currentDate = new Date()
                     const finalEndDate = moment( currentDate.setFullYear( currentDate.getFullYear() - 11 )).format('YYYY-MM-DD'), finalEventCode = ['M1551', 'M2551', 'M3551']         
 
-                    listQuery = `SELECT appno_doc_num, grant_doc_num, grant_date, DATE_ADD(grant_date, INTERVAL 132 MONTH) as payment_due, DATE_ADD(grant_date, INTERVAL 138 MONTH) as payment_grace, 3 as type, "1553" as fee_code, 7700 as fee_amount, 1556 as fee_code_surcharge, 500 as fee_surcharge, "" as remaining_year, "" as source, "" as fwd_citation, "" as technology FROM documentid WHERE appno_doc_num IN (${customQuery.replace('STRING_REPLACE', ' appno_doc_num')}) GROUP BY grant_doc_num`
+                    listQuery = `SELECT appno_doc_num, grant_doc_num, grant_date, date_format(DATE_ADD(grant_date, INTERVAL 132 MONTH), "%b %d, %Y") as payment_due, date_format(DATE_ADD(grant_date, INTERVAL 138 MONTH), "%b %d, %Y") as payment_grace, 3 as type, "1553" as fee_code, 7700 as fee_amount, 1556 as fee_code_surcharge, 500 as fee_surcharge, "" as remaining_year, "" as source, "" as fwd_citation, "" as technology FROM documentid WHERE appno_doc_num IN (${customQuery.replace('STRING_REPLACE', ' appno_doc_num')}) GROUP BY grant_doc_num`
 
                     getList = await connection.application.query(listQuery,{
                             type: connection.Sequelize.QueryTypes.SELECT,
