@@ -33,6 +33,21 @@ const sendMessage = async(token, params) => {
     return result
 }
 
+const getUsersList = async( token ) => {
+    let result = {}
+    try{
+        const web = new WebClient(token);
+            
+        // channel name without space and no special characters
+        const result = await web.users.list ({
+            limit: 100,
+        })
+    } catch( err ) {
+        console.log("getUsersList", err)
+    }
+    return result
+}
+
 
 route.get("/conversations/auth/:code", async(req, res, next) => {
     try{
@@ -254,10 +269,16 @@ route.get("/conversations/history/:token/:channelID" , async(req, res, next) => 
             channel: channelID,
         })
         //console.log(result);
+        
+        const usersResult = await getUsersList( token )
 
         if(result && result.ok === true) {
            const { messages } = result;
-           res.status(200).json(messages);
+           if(usersResult.ok === true) {
+                res.status(200).json({messages, users: usersResult.members });
+            } else {
+                res.status(200).json({messages, users: [] });
+            }
         }   
     } catch (e) {
         console.log(e)
@@ -267,19 +288,15 @@ route.get("/conversations/history/:token/:channelID" , async(req, res, next) => 
 
 route.get("/conversations/users/:token" , async(req, res, next) => {
     try{
-        const { token, channelID } = req.params;
-        const web = new WebClient(token);
-        
-        // channel name without space and no special characters
-        const result = await web.users.list ({
-            limit: 100,
-        })
-        //console.log(result);
+        const { token } = req.params;
 
+        const result = await getUsersList( token )
         if(result && result.ok === true) {
            const { members } = result;
            res.status(200).json(members);
-        }   
+        }   else {
+            res.status(200).json([]);
+        }
     } catch (e) {
         console.log(e)
         res.status(500).send("Error");
@@ -295,12 +312,15 @@ route.get("/asset/:asset", [authJWT.verifyToken, clientDBConnection.connect] , a
 
             const { asset } = req.params;
 
-            const findChannel = await AssetChannel.findOne({
-                attributes: ['channel_id'],
-                where: {asset: asset}
-            })
-
-            res.status( 200 ).json( findChannel )
+            if(asset != '') {
+                const findChannel = await AssetChannel.findOne({
+                    attributes: ['channel_id'],
+                    where: {asset: asset}
+                })
+                res.status( 200 ).json( findChannel )
+            } else {
+                res.status( 200 ).json( {} )
+            }
         } else {
             res.status( 200 ).json( {} )
         }
