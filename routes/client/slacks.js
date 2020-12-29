@@ -6,6 +6,30 @@ const config = require("../../config/db.config");
 const authJWT = require("../../helpers/verifyJwtToken");
 const clientDBConnection = require("../../helpers/clientDBConnection");
 
+const createChannelID = async(token, params) => {
+
+    let result = {}
+    try{
+        const web = new WebClient(token);
+
+        result = await web.conversations.create( params )
+    } catch( err ) {
+        console.log("createChannelID", err)
+    }
+    return result
+}
+
+const sendMessage = async(token, params) => {
+    let result = {}
+    try{
+        const web = new WebClient(token);
+        result = await web.chat.postMessage( params )
+    } catch( err ) {
+        console.log("sendMessage", err)
+    }
+    return result
+}
+
 
 route.get("/conversations/auth/:code", async(req, res, next) => {
     try{
@@ -65,47 +89,43 @@ route.post("/conversations/create/:token" , async(req, res, next) => {
     }
 })
 
-
-
-route.post("/conversations/message/:token/:channelID" , async(req, res, next) => {
+route.post("/conversations/message/:token" , async(req, res, next) => {
     try{
         const { token, channelID } = req.params;
-        const web = new WebClient(token);
-        
+        let {channel_id, text, asset } = req.body
         // channel name without space and no special characters
-        const result = await web.chat.postMessage({
-            channel: channelID,
-            text: 'There is another message',
-            attachments: JSON.stringify([
-                {
-                    "fallback": "Plain-text summary of the attachment.",
-                    "color": "#2eb886",
-                    "pretext": "Optional text that appears above the attachment block",
-                    "author_name": "Bobby Tables",
-                    "author_link": "http://flickr.com/bobby/",
-                    "author_icon": "http://flickr.com/icons/bobby.jpg",
-                    "title": "Slack API Documentation",
-                    "title_link": "https://api.slack.com/",
-                    "text": "Optional text that appears within the attachment",
-                    "fields": [
-                        {
-                            "title": "Priority",
-                            "value": "High",
-                            "short": false
-                        }
-                    ],
-                    "image_url": "http://my-website.com/path/to/image.jpg",
-                    "thumb_url": "http://example.com/path/to/thumb.png",
-                    "footer": "Slack API",
-                    "footer_icon": "https://platform.slack-edge.com/img/default_application_icon.png",
-                    "ts": 123456789
-                }
-            ])
-        })
-        console.log(result);
+        let result = {}
+        if(channel_id == '' || channel_id == undefined) {
+            const channelResult = await createChannelID(token, {name: asset, is_private: true})
 
-        if(result && result.ok === true) {
-            res.status(200).json(result);
+            if(channelResult != null ) {
+                if(channelResult && channelResult.ok === true) {
+                    const { channel } = channelResult
+                    channel_id = channel.id
+
+                    /**
+                     * Save ChannelID
+                     */
+                    result = await sendMessage(token, {
+                        channel: channel_id,
+                        text: text
+                    })
+                }
+            } else {
+                res.status(500).send("Error while sending message");
+            }
+        } else {
+            result = await sendMessage(token, {
+                channel: channel_id,
+                text: text
+            })
+        }
+        if(result != null && Object.keys(result).length > 0) {
+            if(result.ok === true) {
+                res.status(200).json({status: 'Message sent', 'channel': result.channel});
+            }
+        } else {
+            res.status(500).send("Error while sending message");
         }
     } catch (e) {
         console.log(e)
