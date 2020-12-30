@@ -199,8 +199,9 @@ route.get("/events/:applicationNumber/:patentNumber", [authJWT.verifyToken], asy
                         let currentDate = new Date( grantDate )
                         const eventDate = moment( currentDate.setMonth( currentDate.getMonth() + months ));
                         const nextDate = new Date( eventDate )
-                        nextDate.setDate(nextDate.setDate() + 1)
+                        nextDate.setDate(nextDate.getDate() + 1)
                         const startDate = eventDate.format('YYYY-MM-DD')
+                        
                         const endDate = moment( nextDate.setMonth( nextDate.getMonth() + 6 )).format('YYYY-MM-DD')
                         /**Yellow */
                         other.push({
