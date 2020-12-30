@@ -62,7 +62,14 @@ route.post("/create_maintainence_file", [authJWT.verifyToken], async(req, res, n
         );
         const { access_token, refresh_token, file_name, file_data } = req.body
 
-        oauth2Client.setCredentials({ access_token, refresh_token})
+        /**
+         * If refresh token is undefined just pass access token only
+         */
+        if(refresh_token != undefined) {
+            oauth2Client.setCredentials({ access_token, refresh_token})
+        } else {
+            oauth2Client.setCredentials({ access_token})
+        }
 
         const drive = google.drive({version: 'v3', auth:oauth2Client});
 
@@ -123,7 +130,14 @@ route.get("/drive", authJWT.verifyToken, async(req, res, next) => {
         );
         const { access_token, refresh_token } = req.query
 
-        oauth2Client.setCredentials({ access_token, refresh_token})
+        /**
+         * If refresh token is undefined just pass access token only
+         */
+        if(refresh_token != undefined) {
+            oauth2Client.setCredentials({ access_token, refresh_token})
+        } else {
+            oauth2Client.setCredentials({ access_token})
+        }
                
         const drive = google.drive({version: 'v3', auth:oauth2Client});
 
