@@ -2,6 +2,8 @@ const express = require("express");
 
 const route = express.Router();
 
+const stringify = require('csv-stringify');
+
 const {google} = require('googleapis');
 
 //require the Model
@@ -48,6 +50,65 @@ route.get("/auth_token", authJWT.verifyToken, async(req, res, next) => {
     } catch(e) {
         console.log(e)
         res.status(500).send("Unable to authenticate token");
+    }
+})
+
+route.post("/create_maintainence_file", [authJWT.verifyToken], async(req, res, next) => {
+    try{
+        const oauth2Client = new google.auth.OAuth2(
+            '27050530278-uu7ns2gdg0ibstde3gh1o6h40618k38n.apps.googleusercontent.com',
+            '9VuBSiz5LVedKXGRY37jtBrF',
+            'http://localhost:3000'
+        );
+        const { access_token, refresh_token, file_name, file_data } = req.body
+
+        oauth2Client.setCredentials({ access_token, refresh_token})
+
+        const drive = google.drive({version: 'v3', auth:oauth2Client});
+
+        if(drive != null && drive != undefined) {
+            if(file_data != '') {
+                const fileData = JSON.parse( file_data )
+                const columns = {
+                    id: 'Patent #',
+                    name: 'Application #',
+                    attorney: 'Attorney Docket #',
+                    fee_code: 'Fee Code',
+                    fee_amount: 'Fee Amount'
+                }
+                stringify(fileData, { header: true, columns}, (err, output) => {
+                    if(err) {
+                        console.log("dasdsad", err);
+                        res.status(400).send("Not able to create file")
+                    } else {
+                        console.log("output", output)
+                        const fileMetadata = {
+                            'name': file_name
+                        };
+                        const fileMedia = {
+                            mimeType: 'text/csv',
+                            body: output
+                        };
+                        drive.files.create({
+                            resource: fileMetadata,
+                            media: fileMedia,
+                            fields: 'id, name, mimeType, webContentLink, webViewLink, iconLink, thumbnailLink, exportLinks '
+                        }, function (error, response) {
+                            if (error) {
+                              // Handle error
+                              console.error(error);
+                              res.status(400).send(error)
+                            } else {
+                                res.status(200).json(response.data)
+                            }
+                        });
+                    }                    
+                })
+            }
+        }
+    } catch( e ) {
+        console.log(e)
+        res.status(500).send("Unable to create maintainence file");
     }
 })
 
