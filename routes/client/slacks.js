@@ -33,6 +33,17 @@ const sendMessage = async(token, params) => {
     return result
 }
 
+const updateMessage = async(token, params) => {
+    let result = {}
+    try{
+        const web = new WebClient(token);
+        result = await web.chat.update( params )
+    } catch( err ) {
+        console.log("sendMessage", err)
+    }
+    return result
+}
+
 const getUsersList = async( token ) => {
     let result = {}
     try{
@@ -48,6 +59,34 @@ const getUsersList = async( token ) => {
     return result
 }
 
+const uploadFileToChannel = async(token, params) => {
+    const mimeType = params.file.mimetype
+    let result = {}
+    if(mimeType != null && mimeType != '' && mimeType.toLowerCase().indexOf('.exe') < 0){
+        const web = new WebClient(token);
+        result = await web.files.upload({
+            // channels can be a list of one to many strings
+            channels: params.channel,
+            file: params.file.data,
+            filename: params.file.name.replace(/\s+/g, '-')
+        });
+    }
+    return result
+}
+
+const inviteUserToChannel = async(token, params)=> {
+    let result = {}
+    try{
+        const web = new WebClient(token);
+            
+        // channel name without space and no special characters
+        result = await web.conversations.invite( params )
+        console.log(result)
+    } catch( err ) {
+        console.log("inviteUserToChannel", err)
+    }
+    return result
+}
 
 route.get("/conversations/auth/:code", async(req, res, next) => {
     try{
@@ -113,7 +152,7 @@ route.post("/conversations/message/:token", [authJWT.verifyToken, clientDBConnec
             const AssetChannel = req.connection_db.define('AssetsChannel', AssetsChannel.mainStructure, AssetsChannel.options);
 
             const { token } = req.params;
-            let {channel_id, text, asset } = req.body
+            let {channel_id, text, asset, reply, user, edit } = req.body
 
             // channel name without space and no special characters
             let result = {}
@@ -144,13 +183,47 @@ route.post("/conversations/message/:token", [authJWT.verifyToken, clientDBConnec
             }
 
             if(channel_id != "") {
-                result = await sendMessage(token, {
+                console.log(text);
+                const messageParams = {
                     channel: channel_id,
                     text: text
-                })
+                }
+
+
+                if((edit != null && edit === true) || reply != null) {
+                    console.log("12")
+                    messageParams.ts = reply
+                } 
+
+                if((edit != null && edit === true) && reply != null) {
+                    console.log("21")
+                    result = await updateMessage(token, messageParams)
+                } else {
+                    console.log("12")
+                    result = await sendMessage(token, messageParams)
+                }
+                
     
                 if(result != null && Object.keys(result).length > 0) {
                     if(result.ok === true) {
+                        
+                        
+                        if(req.files != null && req.files != undefined && req.files.file != undefined) {
+                            const fileUploaded = uploadFileToChannel(token, {
+                                channel: channel_id,
+                                file: req.files.file
+                            })
+                            console.log("fileUploaded", fileUploaded)
+                        }
+
+                        if(user != null && user != '') {
+                            const inviteUser = inviteUserToChannel(token, {
+                                channel: channel_id,
+                                users: user
+                            })
+                            console.log("inviteUser", inviteUser)
+                        } 
+
                         res.status(200).json({status: 'Message sent', channel: result.channel});
                     }
                 } else {
@@ -186,53 +259,6 @@ route.get("/conversations/message/:token/:channelID/:messageID" , async(req, res
         if(result && result.ok === true) {
             const { messages } = result;
             res.status(200).json(messages);
-        }
-    } catch (e) {
-        console.log(e)
-        res.status(500).send("Error");
-    }
-})
-
-route.put("/conversations/message/:token/:channelID/:messageID" , async(req, res, next) => {
-    try{
-        const { token, channelID, messageID } = req.params;
-        const web = new WebClient(token);
-        
-        // channel name without space and no special characters
-        const result = await web.chat.update({
-            channel: channelID,
-            text: 'There is another message edit',
-            ts: messageID,
-            attachments: JSON.stringify([
-                {
-                    "fallback": "Plain-text summary of the attachment.",
-                    "color": "#2eb886",
-                    "pretext": "Optional text that appears above the attachment block",
-                    "author_name": "Bobby Tables",
-                    "author_link": "http://flickr.com/bobby/",
-                    "author_icon": "http://flickr.com/icons/bobby.jpg",
-                    "title": "Slack API Documentation",
-                    "title_link": "https://api.slack.com/",
-                    "text": "Optional text that appears within the attachment",
-                    "fields": [
-                        {
-                            "title": "Priority",
-                            "value": "High",
-                            "short": false
-                        }
-                    ],
-                    "image_url": "http://my-website.com/path/to/image.jpg",
-                    "thumb_url": "http://example.com/path/to/thumb.png",
-                    "footer": "Slack API",
-                    "footer_icon": "https://platform.slack-edge.com/img/default_application_icon.png",
-                    "ts": 123456789
-                }
-            ])
-        })
-        console.log(result);
-
-        if(result && result.ok === true) {
-            res.status(200).json(result);
         }
     } catch (e) {
         console.log(e)
