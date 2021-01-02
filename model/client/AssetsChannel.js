@@ -2,7 +2,7 @@ const Sequelize = require("sequelize");
 
 const AssetsChannel = {
     mainStructure: {
-        address_id: {
+        id: {
             type: Sequelize.INTEGER,
             primaryKey: true,
             autoIncrement: true

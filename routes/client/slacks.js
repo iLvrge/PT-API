@@ -137,9 +137,7 @@ route.post("/conversations/message/:token", [authJWT.verifyToken, clientDBConnec
                                 asset: asset
                             })
                         }
-                    } else {
-                        res.status(500).send("Error while sending message");
-                    }
+                    } 
                 } else {
                     channel_id = findChannel.channel_id
                 }                
