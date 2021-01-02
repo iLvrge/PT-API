@@ -278,7 +278,7 @@ route.delete("/conversations/message/:token/:channelID/:messageID" , async(req, 
         })
 
         if(result && result.ok === true) {
-            res.status(200).json(messages);
+            res.status(200).json(result);
         } else {
             res.status(500).send("Error");
         }
