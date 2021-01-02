@@ -132,6 +132,10 @@ route.post("/conversations/message/:token", [authJWT.verifyToken, clientDBConnec
                         if(channelResult && channelResult.ok === true) {
                             const { channel } = channelResult
                             channel_id = channel.id
+                            AssetChannel.create({
+                                channel_id: channel_id,
+                                asset: asset
+                            })
                         }
                     } else {
                         res.status(500).send("Error while sending message");
