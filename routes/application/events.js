@@ -143,7 +143,7 @@ route.get("/events/:applicationNumber/:patentNumber", [authJWT.verifyToken], asy
         const { applicationNumber, patentNumber } = req.params;
         if(applicationNumber != undefined && applicationNumber != null){
             let where = {appno_doc_num: applicationNumber};
-            const event_code = ['M1551', 'M2551', 'M3551'], attributes = ['grant_doc_num', 'appno_doc_num', 'grant_date', [connection.Sequelize.fn('date_format', connection.Sequelize.col('event_date'), '%Y-%m-%d'), 'eventdate'], 'event_code', 'event_icon'], group = ['eventdate','event_code'], include = [
+            const event_code = ['M1551', 'M2551', 'M3551', 'M1552', 'M2552', 'M3552', 'M1553', 'M2553', 'M3553'], attributes = ['grant_doc_num', 'appno_doc_num', 'grant_date', [connection.Sequelize.fn('date_format', connection.Sequelize.col('event_date'), '%Y-%m-%d'), 'eventdate'], 'event_code', 'event_icon'], group = ['eventdate','event_code'], include = [
                 {
                     model: MaintainenceCode,
                     as: 'maintainence_code',
@@ -193,12 +193,12 @@ route.get("/events/:applicationNumber/:patentNumber", [authJWT.verifyToken], asy
                     const date = findData[0].grant_date;
                     const grantDate = `${date.substring(0,4)}-${date.substring(4,6)}-${date.substring(6,8)} 00:00:00`
                     const eventPromise = event_code.map( event => {
-                        let months = event == 'M1551' ? 36 : event == 'M2551' ? 84 : 132;
+                        let months = (event == 'M1551' || event == 'M2551' || event == 'M3551') ? 36 : (event == 'M1552' || event == 'M2552' || event == 'M3552') ? 84 : 132;
                         let currentDate = new Date( grantDate )
-                        const eventDate = moment( currentDate.setMonth( currentDate.getMonth() + months ));
+                        const eventDate = moment( currentDate.setMonth( currentDate.getMonth() + months ) );
                         const nextDate = new Date( eventDate )
                         const startDate = eventDate.format('YYYY-MM-DD')
-                        const endDate = moment( nextDate.setMonth( nextDate.getMonth() + 6 )).format('YYYY-MM-DD')
+                        const endDate = moment( nextDate.setMonth( nextDate.getMonth() + 6 ) ).format('YYYY-MM-DD')
                         
                         /**Yellow */
                         other.push({
@@ -211,9 +211,9 @@ route.get("/events/:applicationNumber/:patentNumber", [authJWT.verifyToken], asy
                             type: 'yellow'
                         })
                         /**Red */
-                        let followingDay = new Date(endDate + ' 00:00:00');
-                        const redStartDate = moment(new Date(followingDay.setTime(followingDay.getTime() + 86400000))).format('YYYY-MM-DD')
-                        const redEndDate = moment(new Date(redStartDate).setMonth(new Date(redStartDate).getMonth() + 6)).format('YYYY-MM-DD')
+                        let followingDay = new Date( endDate + ' 00:00:00' );
+                        const redStartDate = moment( new Date(followingDay.setTime(followingDay.getTime() + 86400000)) ).format('YYYY-MM-DD')
+                        const redEndDate = moment( new Date(redStartDate).setMonth( new Date(redStartDate).getMonth() + 6) ).format('YYYY-MM-DD')
                         /**SetDate + 1 not working */
                         other.push({
                             grant_doc_num: findData[0].grant_doc_num,
