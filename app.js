@@ -58,7 +58,7 @@ const errors = require("./routes/application/errors");
 const validity = require("./routes/application/validity");
 const events = require("./routes/application/events");
 const timelines = require("./routes/application/timelines");
-
+const search = require("./routes/application/search");
 /**
  * Route for Client database
  */
@@ -126,6 +126,8 @@ app.use("/", comments);
 app.use("/", collections);
 
 app.use("/", events);
+
+app.use('/search', search);
 
 app.use("/slacks", slacks);
 
