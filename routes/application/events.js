@@ -179,9 +179,41 @@ route.get("/events/:applicationNumber/:patentNumber", [authJWT.verifyToken], asy
     
                 if( findPaymentEvents.length > 0 ) {
                     const promise = findPaymentEvents.map( event => {
-                        const findIndex = event_code.findIndex(e => e === event.event_code)
+                        let findIndex = event_code.findIndex(e => e === event.event_code)
                         if( findIndex >= 0 ) {
-                            event_code.splice( findIndex, 1 )
+                            if(event.event_code == 'M1551' || event.event_code == 'M2551' || event.event_code == 'M3551' ) {
+                                findIndex = event_code.findIndex(e => e === 'M1551')
+                                if( findIndex >= 0 ) event_code.splice( findIndex, 1 )
+                                
+                                findIndex = event_code.findIndex(e => e === 'M2551')
+                                if( findIndex >= 0 ) event_code.splice( findIndex, 1 )
+
+                                findIndex = event_code.findIndex(e => e === 'M3551')
+                                if( findIndex >= 0 ) event_code.splice( findIndex, 1 )
+                            }
+
+                            if(event.event_code == 'M1552' || event.event_code == 'M2552' || event.event_code == 'M3552' ) {
+                                findIndex = event_code.findIndex(e => e === 'M1552')
+                                if( findIndex >= 0 ) event_code.splice( findIndex, 1 )
+                                
+                                findIndex = event_code.findIndex(e => e === 'M2552')
+                                if( findIndex >= 0 ) event_code.splice( findIndex, 1 )
+
+                                findIndex = event_code.findIndex(e => e === 'M3551')
+                                if( findIndex >= 0 ) event_code.splice( findIndex, 1 )
+                            }
+
+                            if(event.event_code == 'M1553' || event.event_code == 'M2553' || event.event_code == 'M3553' ) {
+                                findIndex = event_code.findIndex(e => e === 'M1553')
+                                if( findIndex >= 0 ) event_code.splice( findIndex, 1 )
+                                
+                                findIndex = event_code.findIndex(e => e === 'M2553')
+                                if( findIndex >= 0 ) event_code.splice( findIndex, 1 )
+
+                                findIndex = event_code.findIndex(e => e === 'M3553')
+                                if( findIndex >= 0 ) event_code.splice( findIndex, 1 )
+                            }
+                            
                         }
                         return event
                     })
@@ -193,66 +225,69 @@ route.get("/events/:applicationNumber/:patentNumber", [authJWT.verifyToken], asy
                     const date = findData[0].grant_date;
                     const grantDate = `${date.substring(0,4)}-${date.substring(4,6)}-${date.substring(6,8)} 00:00:00`
                     const eventAddedWithCode = [];
-                    const eventPromise = event_code.map( event => {
-                        let enter = true;
-                        if( (event == 'M1551' || event == 'M2551' || event == 'M3551') ) {
-                            if( eventAddedWithCode.includes('M1551') || eventAddedWithCode.includes('M2551') || eventAddedWithCode.includes('M3551') ) {
-                                enter = false
+                    const eventPromise = event_code.map( (event, index) => {
+                        if(index === 0) {
+                            let enter = true;
+                            if( (event == 'M1551' || event == 'M2551' || event == 'M3551') ) {
+                                if( eventAddedWithCode.includes('M1551') || eventAddedWithCode.includes('M2551') || eventAddedWithCode.includes('M3551') ) {
+                                    enter = false
+                                }
+                            } else if( (event == 'M1552' || event == 'M2552' || event == 'M3552') ) {
+                                if( eventAddedWithCode.includes('M1552') || eventAddedWithCode.includes('M2552') || eventAddedWithCode.includes('M3552') ) {
+                                    enter = false
+                                }
+                            } else if( (event == 'M1553' || event == 'M2553' || event == 'M3553') ) {
+                                if( eventAddedWithCode.includes('M1553') || eventAddedWithCode.includes('M2553') || eventAddedWithCode.includes('M3553') ) {
+                                    enter = false
+                                }
                             }
-                        } else if( (event == 'M1552' || event == 'M2552' || event == 'M3552') ) {
-                            if( eventAddedWithCode.includes('M1552') || eventAddedWithCode.includes('M2552') || eventAddedWithCode.includes('M3552') ) {
-                                enter = false
+                            if(enter === true) {
+                                let months = (event == 'M1551' || event == 'M2551' || event == 'M3551') ? 36 : (event == 'M1552' || event == 'M2552' || event == 'M3552') ? 84 : 132;
+                                /**Yellow */
+                                let currentDate = new Date( grantDate )
+                                const eventDate = moment( currentDate.setMonth( currentDate.getMonth() + months ) );
+                                const nextDate = new Date( eventDate )
+                                const startDate = eventDate.format('YYYY-MM-DD')
+                                const endDate = moment( nextDate.setMonth( nextDate.getMonth() + 6 ) ).format('YYYY-MM-DD')
+                                /**Red */
+                                let followingDay = new Date( endDate + ' 00:00:00' );
+                                const redStartDate = moment( new Date(followingDay.setTime(followingDay.getTime() + 86400000)) ).format('YYYY-MM-DD')
+                                const redEndDate = moment( new Date(redStartDate).setMonth( new Date(redStartDate).getMonth() + 6) ).format('YYYY-MM-DD')
+                                
+                                other.push({
+                                    grant_doc_num: findData[0].grant_doc_num,
+                                    appno_doc_num: findData[0].appno_doc_num,
+                                    start: startDate, 
+                                    end: redEndDate,
+                                    event_code: event,
+                                    event_desc: event,
+                                    type: 'yellow'
+                                })
+                                
+                                /**SetDate + 1 not working */
+                                /* if( event == 'M1551' || event == 'M2551' || event == 'M3551' ) {
+                                    eventAddedWithCode.push('M1551');
+                                    eventAddedWithCode.push('M2551');
+                                    eventAddedWithCode.push('M3551');
+                                } else if( event == 'M1552' || event == 'M2552' || event == 'M3552' ) {
+                                    eventAddedWithCode.push('M1552');
+                                    eventAddedWithCode.push('M2552');
+                                    eventAddedWithCode.push('M3552');
+                                } else if( event == 'M1553' || event == 'M2553' || event == 'M3553' ) {
+                                    eventAddedWithCode.push('M1553');
+                                    eventAddedWithCode.push('M2553');
+                                    eventAddedWithCode.push('M3553');
+                                }
+                                other.push({
+                                    grant_doc_num: findData[0].grant_doc_num,
+                                    appno_doc_num: findData[0].grant_doc_num,
+                                    start: redStartDate, 
+                                    end: redEndDate,
+                                    event_code: event,
+                                    event_desc: event,
+                                    type: 'red'
+                                }) */
                             }
-                        } else if( (event == 'M1553' || event == 'M2553' || event == 'M3553') ) {
-                            if( eventAddedWithCode.includes('M1553') || eventAddedWithCode.includes('M2553') || eventAddedWithCode.includes('M3553') ) {
-                                enter = false
-                            }
-                        }
-                        if(enter === true) {
-                            let months = (event == 'M1551' || event == 'M2551' || event == 'M3551') ? 36 : (event == 'M1552' || event == 'M2552' || event == 'M3552') ? 84 : 132;
-                            let currentDate = new Date( grantDate )
-                            const eventDate = moment( currentDate.setMonth( currentDate.getMonth() + months ) );
-                            const nextDate = new Date( eventDate )
-                            const startDate = eventDate.format('YYYY-MM-DD')
-                            const endDate = moment( nextDate.setMonth( nextDate.getMonth() + 6 ) ).format('YYYY-MM-DD')
-                            
-                            /**Yellow */
-                            other.push({
-                                grant_doc_num: findData[0].grant_doc_num,
-                                appno_doc_num: findData[0].grant_doc_num,
-                                start: startDate, 
-                                end: endDate,
-                                event_code: event,
-                                event_desc: event,
-                                type: 'yellow'
-                            })
-                            /**Red */
-                            let followingDay = new Date( endDate + ' 00:00:00' );
-                            const redStartDate = moment( new Date(followingDay.setTime(followingDay.getTime() + 86400000)) ).format('YYYY-MM-DD')
-                            const redEndDate = moment( new Date(redStartDate).setMonth( new Date(redStartDate).getMonth() + 6) ).format('YYYY-MM-DD')
-                            /**SetDate + 1 not working */
-                            if( event == 'M1551' || event == 'M2551' || event == 'M3551' ) {
-                                eventAddedWithCode.push('M1551');
-                                eventAddedWithCode.push('M2551');
-                                eventAddedWithCode.push('M3551');
-                            } else if( event == 'M1552' || event == 'M2552' || event == 'M3552' ) {
-                                eventAddedWithCode.push('M1552');
-                                eventAddedWithCode.push('M2552');
-                                eventAddedWithCode.push('M3552');
-                            } else if( event == 'M1553' || event == 'M2553' || event == 'M3553' ) {
-                                eventAddedWithCode.push('M1553');
-                                eventAddedWithCode.push('M2553');
-                                eventAddedWithCode.push('M3553');
-                            }
-                            other.push({
-                                grant_doc_num: findData[0].grant_doc_num,
-                                appno_doc_num: findData[0].grant_doc_num,
-                                start: redStartDate, 
-                                end: redEndDate,
-                                event_code: event,
-                                event_desc: event,
-                                type: 'red'
-                            })
                         }
                     })
                     await Promise.all( eventPromise )
