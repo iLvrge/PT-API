@@ -5928,7 +5928,7 @@ route.get("/events/:applicationNumber/:patentNumber", [authJWT.verifyToken], asy
                 });
             }
 
-            let other = [], icons = []
+            let other = [], icons = {}
 
             if(findData.length > 0) { 
                 where.event_code = event_code
@@ -5938,9 +5938,7 @@ route.get("/events/:applicationNumber/:patentNumber", [authJWT.verifyToken], asy
                 });
 
                 const promise = findData.map( event => {
-                    const content = {};
-                    content[event.event_icon] = SvgIconsContent[event.event_icon]
-                    icons.push(content)
+                    icons[event.event_icon] = SvgIconsContent[event.event_icon]
                     return event
                 })
                 Promise.all(promise)
