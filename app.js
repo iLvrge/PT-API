@@ -96,7 +96,7 @@ const companySearch = require("./routes/business/admin_company_search");
 const companyTree = require("./routes/business/admin_tree");
 const keywords = require("./routes/business/admin_keywords");
 
-
+const svgFlagIcons = require('./routes/application/svg_flag_icon');
 
 //routes for application / client
 app.use("/", appLogin);
@@ -126,6 +126,8 @@ app.use("/", comments);
 app.use("/", collections);
 
 app.use("/", events);
+
+app.use('/events_icons', svgFlagIcons);
 
 app.use('/search', search);
 
