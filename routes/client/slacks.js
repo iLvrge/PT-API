@@ -117,10 +117,12 @@ route.get("/conversations/auth/:code", async(req, res, next) => {
         res.status(200).json(grantAccess);
     } catch (e) {
         console.log(e)
-        res.status(500).send("Error");
+        res.status(401).send(`Error: ${e.data.error}`);
     }
 })
-
+/**
+ * Create Channel
+ */
 route.post("/conversations/create/:token" , async(req, res, next) => {
     try{
         const { token } = req.params;
@@ -191,15 +193,12 @@ route.post("/conversations/message/:token", [authJWT.verifyToken, clientDBConnec
 
 
                 if((edit != null && edit === true) || reply != null) {
-                    console.log("12")
                     messageParams.ts = reply
                 } 
 
                 if((edit != null && edit === true) && reply != null) {
-                    console.log("21")
                     result = await updateMessage(token, messageParams)
                 } else {
-                    console.log("12")
                     result = await sendMessage(token, messageParams)
                 }
                 
@@ -238,7 +237,7 @@ route.post("/conversations/message/:token", [authJWT.verifyToken, clientDBConnec
         }
     } catch (e) {
         console.log(e)
-        res.status(500).send("Error");
+        res.status(401).send(`Error: ${e.data.error}`);
     }
 })
 
@@ -262,7 +261,7 @@ route.get("/conversations/message/:token/:channelID/:messageID" , async(req, res
         }
     } catch (e) {
         console.log(e)
-        res.status(500).send("Error");
+        res.status(401).send(`Error: ${e.data.error}`);
     }
 })
 
@@ -279,12 +278,10 @@ route.delete("/conversations/message/:token/:channelID/:messageID" , async(req, 
 
         if(result && result.ok === true) {
             res.status(200).json(result);
-        } else {
-            res.status(500).send("Error");
         }
     } catch (e) {
         console.log(e)
-        res.status(500).send("Error");
+        res.status(401).send(`Error: ${e.data.error}`);
     }
 })
 
@@ -297,7 +294,6 @@ route.get("/conversations/history/:token/:channelID" , async(req, res, next) => 
         const result = await web.conversations.history ({
             channel: channelID,
         })
-        //console.log(result);
         
         const usersResult = await getUsersList( token )
         console.log(usersResult)
@@ -311,7 +307,7 @@ route.get("/conversations/history/:token/:channelID" , async(req, res, next) => 
         }   
     } catch (e) {
         console.log(e)
-        res.status(500).send("Error");
+        res.status(401).send(`Error: ${e.data.error}`);
     }
 })
 
@@ -328,7 +324,7 @@ route.get("/conversations/users/:token" , async(req, res, next) => {
         }
     } catch (e) {
         console.log(e)
-        res.status(500).send("Error");
+        res.status(401).send(`Error: ${e.data.error}`);
     }
 })
 
