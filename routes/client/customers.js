@@ -17,7 +17,9 @@ const TreeParties = require("../../model/application/TreeParties");
 const TreePartiesCollections = require("../../model/application/TreePartiesCollections");
 const DocumentIds = require("../../model/application/DocumentIds");
 //const Errors = require("../../model/application/Errors");
-
+const TABS = [0,1,2,3,4,5,6,7,8,9,10];
+const RECORD_LIMIT = 1000
+const OFFSET = 0
 
 /**
  * Find lifespan for all the company assets
@@ -52,10 +54,136 @@ route.get("/events/", [authJWT.verifyToken, clientDBConnection.connect], async(r
     }
 });
 
+route.get("/asset_types", [authJWT.verifyToken, clientDBConnection.connect], async(req, res, next) => {
+    try {
+        let {companies} = req.query, tabs = [];
+        if(companies && companies != '') {
+            companies = JSON.parse( companies )
+        }
+
+        if( !companies || companies.length == 0 ) {
+            const getCompaniesList = await helpers.getCompaniesList(req.connection_db);
+            companies = []
+            if(getCompaniesList.length > 0) {                   
+                getCompaniesList.forEach(p =>  companies.push(p.representative_id));
+            }
+        }
+
+        if( companies.length > 0) {
+            tabs = await TreeParties.findAll({
+                attributes:['tab_id', [connection.Sequelize.literal('COUNT(DISTINCT(name))', 'assignor_and_assignee_id'), 'customer_count']],
+                where: {representative_id: companies, organisation_id: req.orgId},
+                group:['tab_id']
+            });
+        }
+        res.status(200).json(tabs);
+    } catch ( err ) {
+        console.log(err);
+        res.status(500).send("Internal server error.");
+    }
+})
+
+route.get("/asset_types/:tab_id/companies", [authJWT.verifyToken, clientDBConnection.connect], async(req, res, next) => {
+    try {
+        let {companies, limit, offset } = req.query, result = []
+        const {tab_id} = req.params;
+
+        if(companies && companies != '') {
+            companies = JSON.parse( companies )
+        } 
+
+        if( !companies || companies.length == 0 ) {
+            const getCompaniesList = await helpers.getCompaniesList(req.connection_db);
+            companies = []
+            if(getCompaniesList.length > 0) {                   
+                getCompaniesList.forEach(p =>  companies.push(p.representative_id));
+            }
+        }
+        let total_records = 0;
+        if( tab_id >= 0 ) {
+            limit = limit > 0 ? parseInt(limit) : RECORD_LIMIT;
+            offset = offset > 0 ? parseInt(offset) : OFFSET;
+    
+            total_records = await TreeParties.count({
+                distinct: 'name',
+                where: {representative_id: companies, organisation_id: req.orgId, tab_id: tab_id}
+            })
+            
+            if( total_records > 0 ) {
+                result = await TreeParties.findAll({
+                    attributes:[['assignor_and_assignee_id', 'id'], 'name', ],
+                    where: {representative_id: companies, organisation_id: req.orgId, tab_id: tab_id},
+                    limit: limit,
+                    offset: offset,
+                    order: [
+                        ['name', 'ASC']
+                    ],
+                    group: ['name']                  
+                });
+            }
+        }
+        res.status(200).json({list: result, tab_id, total_records });
+    } catch ( err ) {
+        console.log(err);
+        res.status(500).send("Internal server error.");
+    }
+})
+
+route.get("/asset_types/companies", [authJWT.verifyToken, clientDBConnection.connect], async(req, res, next) => {
+    try {
+        let {companies, tabs, limit, offset } = req.query, result = []
+
+        if(companies && companies != '') {
+            companies = JSON.parse( companies )
+        } 
+
+        if( !companies || companies.length == 0 ) {
+            const getCompaniesList = await helpers.getCompaniesList(req.connection_db);
+            companies = []
+            if(getCompaniesList.length > 0) {                   
+                getCompaniesList.forEach(p =>  companies.push(p.representative_id));
+            }
+        }
+
+        if(tabs && tabs != '') {
+            tabs = JSON.parse( tabs )
+        }
+
+        if( !tabs || tabs.length == 0 ) {
+            tabs = [...TABS]
+        }
+
+        limit = limit > 0 ? parseInt(limit) : RECORD_LIMIT;
+        offset = offset > 0 ? parseInt(offset) : OFFSET;
+
+        const total_records = await TreeParties.count({
+            distinct: 'name',
+            where: {representative_id: companies, organisation_id: req.orgId, tab_id: tabs}
+        })
+        
+        if( total_records > 0 ) {
+            result = await TreeParties.findAll({
+                attributes:[['assignor_and_assignee_id', 'id'], 'name', ],
+                where: {representative_id: companies, organisation_id: req.orgId, tab_id: tabs},
+                limit: limit,
+                offset: offset,
+                order: [
+                    ['name', 'ASC']
+                ],
+                group: ['name']                  
+            });
+        }
+        res.status(200).json({list: result, total_records });
+    } catch ( err ) {
+        console.log(err);
+        res.status(500).send("Internal server error.");
+    }
+})
+
 /**
  * List of all portfolio from new table
  */
-const TABS = [0,1,2,3,4,5,6,7,8,9,10];
+
 
 route.get("/portfolios/", [authJWT.verifyToken, clientDBConnection.connect], async(req, res, next) => {
     try{
