@@ -206,7 +206,7 @@ route.get("/asset_types/assignments", [authJWT.verifyToken, clientDBConnection.c
         }
 
         if(customers && customers!= '') {
-            let customers = JSON.parse(customers)
+            customers = JSON.parse(customers)
             const findOtherNormaliseCustomers = await AssignorAndAssignee.findAll({
                 attributes: ['assignor_and_assignee_id'],
                 where: { assignor_and_assignee_id: customers, representative_id: {[connection.Op.gt]: 0}}
