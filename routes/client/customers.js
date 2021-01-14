@@ -16,6 +16,8 @@ const express = require("express"),
 const TreeParties = require("../../model/application/TreeParties");
 const TreePartiesCollections = require("../../model/application/TreePartiesCollections");
 const DocumentIds = require("../../model/application/DocumentIds");
+const Representatives = require("../../model/application/Representatives");
+const AssignorAndAssignee = require("../../model/application/AssignorAndAssignee");
 //const Errors = require("../../model/application/Errors");
 const TABS = [0,1,2,3,4,5,6,7,8,9,10];
 const RECORD_LIMIT = 1000
@@ -172,6 +174,222 @@ route.get("/asset_types/companies", [authJWT.verifyToken, clientDBConnection.con
                 ],
                 group: ['name']                  
             });
+        }
+        res.status(200).json({list: result, total_records });
+    } catch ( err ) {
+        console.log(err);
+        res.status(500).send("Internal server error.");
+    }
+})
+
+
+route.get("/asset_types/assignments", [authJWT.verifyToken, clientDBConnection.connect], async(req, res, next) => {
+    try {
+        let {companies, tabs, customers, limit, offset } = req.query, result = []
+
+        if(companies && companies != '') {
+            companies = JSON.parse( companies )
+        } 
+
+        if( !companies || companies.length == 0 ) {
+            const getCompaniesList = await helpers.getCompaniesList(req.connection_db);
+            companies = []
+            if(getCompaniesList.length > 0) {                   
+                getCompaniesList.forEach(p =>  companies.push(p.representative_id));
+            }
+        }
+
+        if(tabs && tabs != '') {
+            tabs = JSON.parse( tabs )
+        } else {
+            tabs = []
+        }
+
+        if(customers && customers!= '') {
+            let customers = JSON.parse(customers)
+            const findOtherNormaliseCustomers = await AssignorAndAssignee.findAll({
+                attributes: ['assignor_and_assignee_id'],
+                where: { assignor_and_assignee_id: customers, representative_id: {[connection.Op.gt]: 0}}
+            })
+
+            if( findOtherNormaliseCustomers.length > 0 ) {
+                const promise = findOtherNormaliseCustomers.map( customer => {
+                    if( !customers.includes(customer.assignor_and_assignee_id) ) {
+                        customers.push( customer.assignor_and_assignee_id )
+                    }
+                })
+                Promise.all(promise)
+            }
+        } else {
+            customers = []
+        }
+
+        
+        const where  = {representative_id: companies, organisation_id: req.orgId}
+
+        if( tabs.length > 0 ) {
+            where.tab_id = tabs
+        }
+
+        if( customers.length > 0 ) {
+            where.assignor_and_assignee_id = customers
+        }
+
+        const total_records = await TreePartiesCollections.count({
+            distinct: 'name',
+            where: where
+        })
+        
+        if( total_records > 0 ) {
+            limit = limit > 0 ? parseInt(limit) : RECORD_LIMIT;
+            offset = offset > 0 ? parseInt(offset) : OFFSET;
+            result = await TreePartiesCollections.findAll({
+                attributes:['rf_id', ['exec_dt','date']],
+                where: where,
+                limit: limit,
+                offset: offset,
+                group: ['rf_id']                  
+            });
+        }
+        res.status(200).json({list: result, total_records });
+    } catch ( err ) {
+        console.log(err);
+        res.status(500).send("Internal server error.");
+    }
+})
+
+
+route.get("/asset_types/assignments/:rfID", [authJWT.verifyToken, clientDBConnection.connect], async(req, res, next) => {
+    try {
+        let {rfID} = req.params, result = [], total_records = 0
+        let {limit, offset} = req.query
+        if(rfID > 0) {
+            total_records = await DocumentIds.count({
+                distinct: ['grant_doc_num'],
+                where: {rf_id: rfID}
+            })
+            
+            if( total_records > 0 ) {
+                limit = limit > 0 ? parseInt(limit) : RECORD_LIMIT;
+                offset = offset > 0 ? parseInt(offset) : OFFSET;
+                result = await DocumentIds.findAll({
+                    attributes:['appno_doc_num', 'grant_doc_num'],
+                    where: {rf_id: rfID},
+                    limit: limit,
+                    offset: offset,
+                    group: ['appno_doc_num', 'grant_doc_num']         
+                });
+            } 
+        }
+        res.status(200).json({list: result, total_records });
+    } catch ( err ) {
+        console.log(err);
+        res.status(500).send("Internal server error.");
+    }
+})
+
+route.get("/asset_types/assets", [authJWT.verifyToken, clientDBConnection.connect], async(req, res, next) => {
+    try {
+        let {companies, tabs, customers, assignments, limit, offset } = req.query, result = []
+
+        if(companies && companies != '') {
+            companies = JSON.parse( companies )
+        } 
+
+        if( !companies || companies.length == 0 ) {
+            const getCompaniesList = await helpers.getCompaniesList(req.connection_db);
+            companies = []
+            if(getCompaniesList.length > 0) {                   
+                getCompaniesList.forEach(p =>  companies.push(p.representative_id));
+            }
+        }
+
+        if(tabs && tabs != '') {
+            tabs = JSON.parse( tabs )
+        } else {
+            tabs = []
+        }
+
+        if(customers && customers!= '') {
+            let customers = JSON.parse(customers)
+            const findOtherNormaliseCustomers = await AssignorAndAssignee.findAll({
+                attributes: ['assignor_and_assignee_id'],
+                where: { assignor_and_assignee_id: customers, representative_id: {[connection.Op.gt]: 0}}
+            })
+
+            if( findOtherNormaliseCustomers.length > 0 ) {
+                const promise = findOtherNormaliseCustomers.map( customer => {
+                    if( !customers.includes(customer.assignor_and_assignee_id) ) {
+                        customers.push( customer.assignor_and_assignee_id )
+                    }
+                })
+                Promise.all(promise)
+            }
+        } else {
+            customers = []
+        }
+
+        if(assignments && assignments != '') {
+            assignments = JSON.parse( assignments )
+        } else {
+            assignments = []
+        }
+        
+        const where  = {representative_id: companies, organisation_id: req.orgId}
+
+        if( tabs.length > 0 ) {
+            where.tab_id = tabs
+        }
+
+        if( customers.length > 0 ) {
+            where.assignor_and_assignee_id = customers
+        }
+
+        if( assignments.length > 0 ) {
+            where.rf_id = assignments
+        }
+
+        let query = "SELECT appno_doc_num, grant_doc_num FROM documentid WHERE rf_id IN (SELECT rf_id FROM tree_parties_collection WHERE REPLACE_WHERE ) GROUP BY appno_doc_num, grant_doc_num";
+
+        let whereCondition = ' representative_id IN (:representative_id)  AND organisation_id = :organisation_id';
+
+        if(tabs.length > 0) {
+            whereCondition += ' AND tab_id IN (:tabs) '
+        }
+
+        if(customers.length > 0) {
+            whereCondition += ' AND assignor_and_assignee_id IN (:customers) '
+        }
+
+        if(assignments.length > 0) {
+            whereCondition += ' AND rf_id IN (:assignments) '
+        }
+
+
+        const countQuery = `SELECT count(*) as counter FROM (${query.replace('REPLACE_WHERE', whereCondition)}) as temp`
+
+        const countResult = await connection.application.query(countQuery,{
+                type: connection.Sequelize.QueryTypes.SELECT,
+                raw: true,
+                logging: console.log,
+                replacements: where,
+                plain: true
+            }
+        ); 
+        
+        if( countResult != null ) {
+            total_records = countResult.counter
+            if( total_records > 0 ) {
+                limit = limit > 0 ? parseInt(limit) : RECORD_LIMIT;
+                offset = offset > 0 ? parseInt(offset) : OFFSET;
+                result = await connection.application.query(`${query.replace('REPLACE_WHERE', whereCondition)} LIMIT ${offset}, ${limit}`,{
+                        type: connection.Sequelize.QueryTypes.SELECT,
+                        raw: true,
+                        logging: console.log,
+                        replacements: where,
+                    }
+                ); 
+            }
         }
         res.status(200).json({list: result, total_records });
     } catch ( err ) {
