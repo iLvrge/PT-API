@@ -218,7 +218,7 @@ route.get("/asset_types/assignments", [authJWT.verifyToken, clientDBConnection.c
                         customers.push( customer.assignor_and_assignee_id )
                     }
                 })
-                Promise.all(promise)
+                await Promise.all(promise)
             }
         } else {
             customers = []
@@ -311,7 +311,7 @@ route.get("/asset_types/assets", [authJWT.verifyToken, clientDBConnection.connec
         }
 
         if(customers && customers!= '') {
-            let customers = JSON.parse(customers)
+            customers = JSON.parse(customers)
             const findOtherNormaliseCustomers = await AssignorAndAssignee.findAll({
                 attributes: ['assignor_and_assignee_id'],
                 where: { assignor_and_assignee_id: customers, representative_id: {[connection.Op.gt]: 0}}
@@ -323,7 +323,7 @@ route.get("/asset_types/assets", [authJWT.verifyToken, clientDBConnection.connec
                         customers.push( customer.assignor_and_assignee_id )
                     }
                 })
-                Promise.all(promise)
+                await Promise.all(promise)
             }
         } else {
             customers = []
