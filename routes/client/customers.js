@@ -338,15 +338,15 @@ route.get("/asset_types/assets", [authJWT.verifyToken, clientDBConnection.connec
         const where  = {representative_id: companies, organisation_id: req.orgId}
 
         if( tabs.length > 0 ) {
-            where.tab_id = tabs
+            where.tabs = tabs
         }
 
         if( customers.length > 0 ) {
-            where.assignor_and_assignee_id = customers
+            where.customers = customers
         }
 
         if( assignments.length > 0 ) {
-            where.rf_id = assignments
+            where.assignments = assignments
         }
 
         let query = "SELECT appno_doc_num, grant_doc_num FROM documentid WHERE rf_id IN (SELECT rf_id FROM tree_parties_collection WHERE REPLACE_WHERE ) GROUP BY appno_doc_num, grant_doc_num";
