@@ -10,7 +10,7 @@ const express = require("express"),
 //require the Model
 const PatentFamilyMember = require("../../model/resources/PatentFamilyMember");
 const PatentFamilyRelation = require("../../model/resources/PatentFamilyRelation");
-const Documentid = require("../../model/resources/DocumentIds");
+const Documentid = require("../../model/application/DocumentIds");
 
 route.get("/family/:applicationNumber", [authJWT.verifyToken], async (req, res) =>{  
 
@@ -31,7 +31,7 @@ route.get("/family/:applicationNumber", [authJWT.verifyToken], async (req, res) 
             * Custom SubQuery
             */
     
-            const queryFamily = 'SELECT * FROM patent_family_member WHERE family_id = (SELECT family_id FROM patent_family_member WHERE patent_number = :patentNumber)';
+            const queryFamily = 'SELECT * FROM patent_family_member WHERE family_id = (SELECT family_id FROM patent_family_member WHERE patent_number = :patentNumber LIMIT 1)';
     
             getFamily = await connection.resources.query(queryFamily,{
                 type: connection.Sequelize.QueryTypes.SELECT,
