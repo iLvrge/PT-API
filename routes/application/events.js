@@ -5897,12 +5897,11 @@ route.get("/events/tabs/:tabID/companies/:companyID/customers/:customerID/transa
     }
 });
 
-
-route.get("/events/:applicationNumber/:patentNumber", [authJWT.verifyToken], async (req, res) =>{     
+const findEventList = async(req, res) => {
     try {
-        const { applicationNumber, patentNumber } = req.params;
+        let { applicationNumber, patentNumber } = req.params;
         if(applicationNumber != undefined && applicationNumber != null){
-            let where = {appno_doc_num: applicationNumber};
+            let where = {appno_doc_num: applicationNumber}, assetData;
             const event_code = ['M1551', 'M2551', 'M3551', 'M1552', 'M2552', 'M3552', 'M1553', 'M2553', 'M3553'], attributes = ['grant_doc_num', 'appno_doc_num', 'grant_date', [connection.Sequelize.fn('date_format', connection.Sequelize.col('event_date'), '%Y-%m-%d'), 'eventdate'], 'event_code', 'event_icon'], group = ['eventdate','event_code'], include = [
                 {
                     model: MaintainenceCode,
@@ -5919,6 +5918,7 @@ route.get("/events/:applicationNumber/:patentNumber", [authJWT.verifyToken], asy
             });
 
             if(findData.length == 0) {
+                patentNumber = patentNumber == undefined || patentNumber == null ? applicationNumber : patentNumber
                 where = {grant_doc_num: {[connection.Op.like]: `%${patentNumber}%`}};
                 findData = await MaintainenceFees.findAll({
                     attributes: attributes,
@@ -5928,66 +5928,74 @@ route.get("/events/:applicationNumber/:patentNumber", [authJWT.verifyToken], asy
                 });
             }
 
-            let other = [], icons = {}
-
-            if(findData.length > 0) { 
-                where.event_code = event_code
-                const findPaymentEvents = await MaintainenceFees.findAll({
-                    attributes: ['event_code'],
-                    where: where
-                });
-
+            if(findData.length > 0) {
                 const promise = findData.map( event => {
                     icons[event.event_icon] = SvgIconsContent[event.event_icon]
                     return event
                 })
                 Promise.all(promise)
-                if( findPaymentEvents.length > 0 ) {
-                    const promise = findPaymentEvents.map( event => {
-                        let findIndex = event_code.findIndex(e => e === event.event_code)
-                        if( findIndex >= 0 ) {
-                            if(event.event_code == 'M1551' || event.event_code == 'M2551' || event.event_code == 'M3551' ) {
-                                findIndex = event_code.findIndex(e => e === 'M1551')
-                                if( findIndex >= 0 ) event_code.splice( findIndex, 1 )
-                                
-                                findIndex = event_code.findIndex(e => e === 'M2551')
-                                if( findIndex >= 0 ) event_code.splice( findIndex, 1 )
+            } else {
+                assetData = await Documentid.findOne({
+                    attributes: ['appno_doc_num', 'grant_doc_num', 'grant_date'],
+                    where:{[connection.Op.or]: [{appno_doc_num: applicationNumber}, {grant_doc_num: patentNumber}]}
+                })
+            }
 
-                                findIndex = event_code.findIndex(e => e === 'M3551')
-                                if( findIndex >= 0 ) event_code.splice( findIndex, 1 )
-                            }
+            let other = [], icons = {}
 
-                            if(event.event_code == 'M1552' || event.event_code == 'M2552' || event.event_code == 'M3552' ) {
-                                findIndex = event_code.findIndex(e => e === 'M1552')
-                                if( findIndex >= 0 ) event_code.splice( findIndex, 1 )
-                                
-                                findIndex = event_code.findIndex(e => e === 'M2552')
-                                if( findIndex >= 0 ) event_code.splice( findIndex, 1 )
-
-                                findIndex = event_code.findIndex(e => e === 'M3551')
-                                if( findIndex >= 0 ) event_code.splice( findIndex, 1 )
-                            }
-
-                            if(event.event_code == 'M1553' || event.event_code == 'M2553' || event.event_code == 'M3553' ) {
-                                findIndex = event_code.findIndex(e => e === 'M1553')
-                                if( findIndex >= 0 ) event_code.splice( findIndex, 1 )
-                                
-                                findIndex = event_code.findIndex(e => e === 'M2553')
-                                if( findIndex >= 0 ) event_code.splice( findIndex, 1 )
-
-                                findIndex = event_code.findIndex(e => e === 'M3553')
-                                if( findIndex >= 0 ) event_code.splice( findIndex, 1 )
-                            }
+            where.event_code = event_code
+            const findPaymentEvents = await MaintainenceFees.findAll({
+                attributes: ['event_code'],
+                where: where
+            });
+            
+            if( findPaymentEvents.length > 0 ) {
+                const promise = findPaymentEvents.map( event => {
+                    let findIndex = event_code.findIndex(e => e === event.event_code)
+                    if( findIndex >= 0 ) {
+                        if(event.event_code == 'M1551' || event.event_code == 'M2551' || event.event_code == 'M3551' ) {
+                            findIndex = event_code.findIndex(e => e === 'M1551')
+                            if( findIndex >= 0 ) event_code.splice( findIndex, 1 )
                             
+                            findIndex = event_code.findIndex(e => e === 'M2551')
+                            if( findIndex >= 0 ) event_code.splice( findIndex, 1 )
+
+                            findIndex = event_code.findIndex(e => e === 'M3551')
+                            if( findIndex >= 0 ) event_code.splice( findIndex, 1 )
                         }
-                        return event
-                    })
-    
-                    await Promise.all( promise )
-                }
-                
-                if( event_code.length > 0 ) {
-                    const date = findData[0].grant_date;
+
+                        if(event.event_code == 'M1552' || event.event_code == 'M2552' || event.event_code == 'M3552' ) {
+                            findIndex = event_code.findIndex(e => e === 'M1552')
+                            if( findIndex >= 0 ) event_code.splice( findIndex, 1 )
+                            
+                            findIndex = event_code.findIndex(e => e === 'M2552')
+                            if( findIndex >= 0 ) event_code.splice( findIndex, 1 )
+
+                            findIndex = event_code.findIndex(e => e === 'M3551')
+                            if( findIndex >= 0 ) event_code.splice( findIndex, 1 )
+                        }
+
+                        if(event.event_code == 'M1553' || event.event_code == 'M2553' || event.event_code == 'M3553' ) {
+                            findIndex = event_code.findIndex(e => e === 'M1553')
+                            if( findIndex >= 0 ) event_code.splice( findIndex, 1 )
+                            
+                            findIndex = event_code.findIndex(e => e === 'M2553')
+                            if( findIndex >= 0 ) event_code.splice( findIndex, 1 )
+
+                            findIndex = event_code.findIndex(e => e === 'M3553')
+                            if( findIndex >= 0 ) event_code.splice( findIndex, 1 )
+                        }
+                        
+                    }
+                    return event
+                })
+
+                await Promise.all( promise )
+            }
+            
+            if( event_code.length > 0 ) {
+                const date = findData.length > 0 ? findData[0].grant_date : assetData.grant_doc_num;
+                if( date != '' && date != '0000-00-00') {
                     const grantDate = `${date.substring(0,4)}-${date.substring(4,6)}-${date.substring(6,8)} 00:00:00`
                     const eventAddedWithCode = [];
                     const eventPromise = event_code.map( (event, index) => {
@@ -6020,8 +6028,8 @@ route.get("/events/:applicationNumber/:patentNumber", [authJWT.verifyToken], asy
                                 const redEndDate = moment( new Date(redStartDate).setMonth( new Date(redStartDate).getMonth() + 6) ).format('YYYY-MM-DD')
                                 
                                 other.push({
-                                    grant_doc_num: findData[0].grant_doc_num,
-                                    appno_doc_num: findData[0].appno_doc_num,
+                                    grant_doc_num: findData.length > 0 ? findData[0].grant_doc_num : assetData.grant_doc_num,
+                                    appno_doc_num: findData.length > 0 ? findData[0].appno_doc_num : assetData.appno_doc_num,
                                     start: startDate, 
                                     end: redEndDate,
                                     event_code: event,
@@ -6058,7 +6066,6 @@ route.get("/events/:applicationNumber/:patentNumber", [authJWT.verifyToken], asy
                     await Promise.all( eventPromise )
                 }
             }
-
             res.status(200).json({main: findData, other, icons});
         } else {
             res.status(402).send("Invalid application number.");
@@ -6067,6 +6074,14 @@ route.get("/events/:applicationNumber/:patentNumber", [authJWT.verifyToken], asy
         console.log(err);
         res.status(500).send("Internal server error.");
     }
+}
+
+route.get("/events/:applicationNumber", [authJWT.verifyToken], async (req, res) =>{     
+    await findEventList(req, res)
+})
+
+route.get("/events/:applicationNumber/:patentNumber", [authJWT.verifyToken], async (req, res) =>{     
+    await findEventList(req, res)
 });
 
 /*
