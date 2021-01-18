@@ -5927,7 +5927,7 @@ const findEventList = async(req, res) => {
                     include: include
                 });
             }
-
+            let other = [], icons = {}
             if(findData.length > 0) {
                 const promise = findData.map( event => {
                     icons[event.event_icon] = SvgIconsContent[event.event_icon]
@@ -5940,8 +5940,6 @@ const findEventList = async(req, res) => {
                     where:{[connection.Op.or]: [{appno_doc_num: applicationNumber}, {grant_doc_num: patentNumber}]}
                 })
             }
-
-            let other = [], icons = {}
 
             where.event_code = event_code
             const findPaymentEvents = await MaintainenceFees.findAll({
