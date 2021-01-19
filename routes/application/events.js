@@ -5841,16 +5841,21 @@ route.get("/events/tabs/:tabID/companies/:companyID/customers/:customerID", [aut
     }
 });
 
-route.get("/events/tabs/:tabID/companies/:companyID/customers/:customerID/transactions/:rfID", [authJWT.verifyToken, clientDBConnection.connect], async(req, res, next) => {
+route.get("/events/tabs/:tabID/companies/:representativeID/customers/:customerID/transactions/:rfID", [authJWT.verifyToken, clientDBConnection.connect], async(req, res, next) => {
     try {
-        const tabID = req.params.tabID, representativeID = req.params.companyID, customerID = req.params.customerID, rfID = req.params.rfID;
+        const { tabID, representativeID, customerID, rfID } = req.params;
         let assetsLifeSpan = [];
         if(typeof req.connection_db != "undefined" && req.connection_db != null ) {
-            const findRepresentative = await helpers.findRepresentativeByID(req.connection_db, representativeID);
+            
+            if( tabID != undefined && representativeID > 0 && customerID > 0) {
+                const findRepresentative = await helpers.findRepresentativeByID(req.connection_db, representativeID);
 
-            if(findRepresentative != null && findRepresentative.representative_id > 0) {
-                assetsLifeSpan = await helpers.findAssetsTimeSpan([findRepresentative.representative_id], tabID, customerID, rfID, req.orgId);
-            }
+                if(findRepresentative != null && findRepresentative.representative_id > 0) {
+                    assetsLifeSpan = await helpers.findAssetsTimeSpan([findRepresentative.representative_id], tabID, customerID, rfID, req.orgId);
+                }
+            } else {
+                assetsLifeSpan = await helpers.findAssetsTimeSpan(null, 0, 0, rfID, req.orgId);
+            }            
         }
         res.status(200).json(assetsLifeSpan);
     } catch (err) {
@@ -6083,7 +6088,7 @@ route.get("/events/:applicationNumber/:patentNumber", [authJWT.verifyToken], asy
 });
 
 
-route.get("/events/transactions/:rfID", [authJWT.verifyToken], async (req, res) =>{    
+route.get("/events/assets/transactions/:rfID", [authJWT.verifyToken], async (req, res) =>{    
     try {
         const {rfID} = req.params;
         let assetsLifeSpan = [];

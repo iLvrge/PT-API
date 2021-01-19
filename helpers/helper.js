@@ -1745,8 +1745,14 @@ let getCompaniesMinAndMaxDateTransaction = async(searchData) => {
     return {min_date: minDate, max_date: maxDate};
 }
 
+
+
 const findAssetsTimeSpan = async(portfolioList, tabID, customerID, rfID, orgID) => {    
-    const where = {representative_id: portfolioList, organisation_id: orgID}, assetsLifeSpan = [];
+    const where = {organisation_id: orgID}, assetsLifeSpan = [];
+    if(portfolioList != null) {
+        where.representative_id = portfolioList
+    }    
+
     if(tabID != undefined && tabID != null && parseInt(tabID) > 0) {
         where.tab_id = parseInt(tabID);
     }
@@ -1812,10 +1818,10 @@ const findAssetsTimeSpan = async(portfolioList, tabID, customerID, rfID, orgID) 
 
         await Promise.all(promises);
         console.log("TOTALAPPLICATIONS",JSON.stringify(dateAdded));
-        fs.writeFile("abc.log", JSON.stringify(timelineSpan), function (err) {
+        /* fs.writeFile("abc.log", JSON.stringify(timelineSpan), function (err) {
             if (err) return console.log(err);
             console.log('DONE');
-        });
+        }); */
         
         const {max, min} = await minMax2DArray(timelineSpan, 'year');
         
