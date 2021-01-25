@@ -2293,7 +2293,7 @@ const findEventList = async(req, res) => {
                 const date = findData.length > 0 ? findData[0].grant_date : assetData.grant_date;
                 
                 if( date != '' && date != '0000-00-00') {
-                    const grantDate = `${date.substring(0,4)}-${date.substring(4,6)}-${date.substring(6,8)} 00:00:00`
+                    const grantDate = date.indexOf('-') <= 0 ? `${date.substring(0,4)}-${date.substring(4,6)}-${date.substring(6,8)} 00:00:00` : date + ' 00:00:00'
                     const eventAddedWithCode = [];
                     const eventPromise = event_code.map( (event, index) => {
                         if(index === 0) {
