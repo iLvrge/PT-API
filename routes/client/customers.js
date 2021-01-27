@@ -19,7 +19,7 @@ const DocumentIds = require("../../model/application/DocumentIds");
 const Representatives = require("../../model/application/Representatives");
 const AssignorAndAssignee = require("../../model/application/AssignorAndAssignee");
 //const Errors = require("../../model/application/Errors");
-const TABS = [0,1,2,3,4,5,6,7,8,9,10];
+const TABS = [0,1,2,3,4,11,5,6,7,8,9,10];
 const RECORD_LIMIT = 1000
 const OFFSET = 0
 
