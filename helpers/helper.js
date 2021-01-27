@@ -762,6 +762,20 @@ let getAllUsers = async (organisationID) => {
     });
 }
 
+
+/**
+ * Find Customer parent companies count
+ * @param {} DBConnection 
+ */
+
+let getCompaniesCount = async (DBConnection) => {
+    const Representative = DBConnection.define('ClientRepesentative', ClientRepesentative.mainStructure, ClientRepesentative.options);
+
+    return await Representative.count({
+        where: {parent_id: 0}
+    });
+}
+
 /**
  * Find Customer parent companies list
  * @param {} DBConnection 
@@ -1872,6 +1886,7 @@ helper.getAllUsers = getAllUsers;
 helper.findCompanyCustomersByName = findCompanyCustomersByName;
 helper.updateAllCustomerInventor = updateAllCustomerInventor;
 helper.findCompanyCustomersByID = findCompanyCustomersByID;
+helper.getCompaniesCount = getCompaniesCount;
 helper.getCompaniesList = getCompaniesList;
 helper.findRepresentativeByID = findRepresentativeByID;
 helper.getSubCompaniesList = getSubCompaniesList;

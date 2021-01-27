@@ -51,6 +51,39 @@ route.get("/", [authJWT.verifyToken, clientDBConnection.connect], async(req, res
     }
 });
 
+/**
+ * Summary
+ */
+
+route.get("/summary", [authJWT.verifyToken, clientDBConnection.connect], async(req, res, next) => {
+    /**
+     * Total Companies
+     * Total Assignments
+     * Total Third Parties
+     * Total Assets
+     */
+    const companies = await helpers.getCompaniesCount(req.connection_db);
+
+    const assignments = await TreePartiesCollections.count({
+        distinct: true,
+        col: 'rf_id',
+        where: {organisation_id: req.orgId}
+    });
+
+    const third_parties = await TreeParties.count({
+        distinct: true,
+        col: 'assignor_and_assignee_id',
+        where: {organisation_id: req.orgId}
+    });
+
+    const assets = await Validity.findOne({
+        attributes: [[connection.Sequelize.literal('COALESCE(application, 0) + COALESCE(patent, 0)'), 'assets']],
+        where: {organisation_id: req.orgId}
+    });
+
+    res.status(200).json({companies, assignments, third_parties, assets: assets.get('assets')});
+})
+
 /**Get all companies */
 route.get("/list", [authJWT.verifyToken, clientDBConnection.connect], async(req, res, next) => {
     try{
