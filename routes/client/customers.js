@@ -244,7 +244,7 @@ route.get("/asset_types/assignments", [authJWT.verifyToken, clientDBConnection.c
             limit = limit > 0 ? parseInt(limit) : RECORD_LIMIT;
             offset = offset > 0 ? parseInt(offset) : OFFSET;
             result = await TreePartiesCollections.findAll({
-                attributes:['rf_id', ['exec_dt','date']],
+                attributes:['rf_id', ['exec_dt','date'], ['assets_count','assets']],
                 where: where,
                 limit: limit,
                 offset: offset,
