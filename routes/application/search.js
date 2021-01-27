@@ -20,9 +20,9 @@ route.get("/:search_string", [ authJWT.verifyToken, clientDBConnection.connect ]
             let customQuery3rdParty = ''
 
             if(!isNaN(search_string)) {
-                customQuery3rdParty = `SELECT tpc.rf_id as rf_id, tpc.exec_dt as date FROM tree_parties as tp INNER JOIN tree_parties_collection as tpc ON tp.assignor_and_assignee_id = tpc.assignor_and_assignee_id WHERE tpc.rf_id IN (SELECT rf_id FROM db_uspto.representative_transactions WHERE organisation_id = :orgId) AND tpc.rf_id = :searchItem GROUP BY tpc.rf_id LIMIT :limit`
+                customQuery3rdParty = `SELECT tpc.rf_id as rf_id, tpc.exec_dt as date, (SELECT count(*) FROM documentid as dd WHERE dd.rf_id = tpc.rf_id) as assets FROM tree_parties as tp INNER JOIN tree_parties_collection as tpc ON tp.assignor_and_assignee_id = tpc.assignor_and_assignee_id WHERE tpc.rf_id IN (SELECT rf_id FROM db_uspto.representative_transactions WHERE organisation_id = :orgId) AND tpc.rf_id = :searchItem GROUP BY tpc.rf_id LIMIT :limit`
             } else {
-                customQuery3rdParty = `SELECT tpc.rf_id as rf_id, tpc.exec_dt as date FROM tree_parties as tp INNER JOIN tree_parties_collection as tpc ON tp.assignor_and_assignee_id = tpc.assignor_and_assignee_id WHERE tpc.rf_id IN (SELECT rf_id FROM db_uspto.representative_transactions WHERE organisation_id = :orgId) AND MATCH(tp.name) AGAINST (:searchItem) GROUP BY tpc.rf_id LIMIT :limit`
+                customQuery3rdParty = `SELECT tpc.rf_id as rf_id, tpc.exec_dt as date, (SELECT count(*) FROM documentid as dd WHERE dd.rf_id = tpc.rf_id ) as assets FROM tree_parties as tp INNER JOIN tree_parties_collection as tpc ON tp.assignor_and_assignee_id = tpc.assignor_and_assignee_id WHERE tpc.rf_id IN (SELECT rf_id FROM db_uspto.representative_transactions WHERE organisation_id = :orgId) AND MATCH(tp.name) AGAINST (:searchItem) GROUP BY tpc.rf_id LIMIT :limit`
             }
 
             let getList = await connection.application.query(customQuery3rdParty,{
@@ -37,7 +37,7 @@ route.get("/:search_string", [ authJWT.verifyToken, clientDBConnection.connect ]
                 list = [ ...list, ...getList]
             }
 
-            const customQueryLawyer = `SELECT a.rf_id as rf_id, (SELECT exec_dt FROM assignor WHERE assignor.rf_id = a.rf_id LIMIT 1) as date  FROM assignment as a WHERE a.rf_id IN (SELECT rf_id FROM db_uspto.representative_transactions WHERE organisation_id = :orgId) AND MATCH(a.cname, a.caddress_1) AGAINST (:searchItem) GROUP BY a.rf_id LIMIT :limit`
+            const customQueryLawyer = `SELECT a.rf_id as rf_id, (SELECT exec_dt FROM assignor WHERE assignor.rf_id = a.rf_id LIMIT 1) as date, (SELECT count(*) FROM documentid as dd WHERE dd.rf_id = a.rf_id ) as assets FROM assignment as a WHERE a.rf_id IN (SELECT rf_id FROM db_uspto.representative_transactions WHERE organisation_id = :orgId) AND MATCH(a.cname, a.caddress_1) AGAINST (:searchItem) GROUP BY a.rf_id LIMIT :limit`
 
             getList = await connection.application.query(customQueryLawyer,{
                     type: connection.Sequelize.QueryTypes.SELECT,
@@ -54,9 +54,9 @@ route.get("/:search_string", [ authJWT.verifyToken, clientDBConnection.connect ]
             let customQueryDocument = ''
 
             if(!isNaN(search_string)) {
-                customQueryDocument = `SELECT d.rf_id as rf_id, (SELECT exec_dt FROM assignor WHERE assignor.rf_id = d.rf_id LIMIT 1) as date FROM documentid as d WHERE d.rf_id IN (SELECT rf_id FROM db_uspto.representative_transactions WHERE organisation_id = :orgId) AND (d.appno_doc_num = :searchItem OR d.grant_doc_num = :searchItem) GROUP BY d.rf_id LIMIT :limit` 
+                customQueryDocument = `SELECT d.rf_id as rf_id, (SELECT exec_dt FROM assignor WHERE assignor.rf_id = d.rf_id LIMIT 1) as date, (SELECT count(*) FROM documentid as dd WHERE dd.rf_id = d.rf_id ) as assets FROM documentid as d WHERE d.rf_id IN (SELECT rf_id FROM db_uspto.representative_transactions WHERE organisation_id = :orgId) AND (d.appno_doc_num = :searchItem OR d.grant_doc_num = :searchItem) GROUP BY d.rf_id LIMIT :limit` 
             } else {
-                customQueryDocument = `SELECT d.rf_id as rf_id, (SELECT exec_dt FROM assignor WHERE assignor.rf_id = d.rf_id LIMIT 1) as date FROM documentid as d WHERE d.rf_id IN (SELECT rf_id FROM db_uspto.representative_transactions WHERE organisation_id = :orgId) AND d.grant_doc_num = :searchItem GROUP BY d.rf_id LIMIT :limit` 
+                customQueryDocument = `SELECT d.rf_id as rf_id, (SELECT exec_dt FROM assignor WHERE assignor.rf_id = d.rf_id LIMIT 1) as date, (SELECT count(*) FROM documentid as dd WHERE dd.rf_id = d.rf_id ) as assets FROM documentid as d WHERE d.rf_id IN (SELECT rf_id FROM db_uspto.representative_transactions WHERE organisation_id = :orgId) AND d.grant_doc_num = :searchItem GROUP BY d.rf_id LIMIT :limit` 
             }
 
             getList = await connection.application.query(customQueryDocument,{
