@@ -207,19 +207,21 @@ route.get("/asset_types/assignments", [authJWT.verifyToken, clientDBConnection.c
 
         if(customers && customers!= '') {
             customers = JSON.parse(customers)
-            const findOtherNormaliseCustomers = await AssignorAndAssignee.findAll({
-                attributes: ['assignor_and_assignee_id'],
-                where: { assignor_and_assignee_id: customers, representative_id: {[connection.Op.gt]: 0}}
-            })
-
-            if( findOtherNormaliseCustomers.length > 0 ) {
-                const promise = findOtherNormaliseCustomers.map( customer => {
-                    if( !customers.includes(customer.assignor_and_assignee_id) ) {
-                        customers.push( customer.assignor_and_assignee_id )
-                    }
+            if(customers.length > 0) {
+                const findOtherNormaliseCustomers = await AssignorAndAssignee.findAll({
+                    attributes: ['assignor_and_assignee_id'],
+                    where: { assignor_and_assignee_id: customers, representative_id: {[connection.Op.gt]: 0}}
                 })
-                await Promise.all(promise)
-            }
+
+                if( findOtherNormaliseCustomers.length > 0 ) {
+                    const promise = findOtherNormaliseCustomers.map( customer => {
+                        if( !customers.includes(customer.assignor_and_assignee_id) ) {
+                            customers.push( customer.assignor_and_assignee_id )
+                        }
+                    })
+                    await Promise.all(promise)
+                }
+            }            
         } else {
             customers = []
         }
@@ -239,18 +241,18 @@ route.get("/asset_types/assignments", [authJWT.verifyToken, clientDBConnection.c
             distinct: 'name',
             where: where
         })
-        
+
         if( total_records > 0 ) {
             limit = limit > 0 ? parseInt(limit) : RECORD_LIMIT;
             offset = offset > 0 ? parseInt(offset) : OFFSET;
             result = await TreePartiesCollections.findAll({
-                attributes:['rf_id', ['exec_dt','date'], ['assets_count','assets']],
+                attributes:['rf_id', [connection.Sequelize.fn('date_format', connection.Sequelize.col('exec_dt'), '%m/%d/%Y'), 'date'], ['assets_count','assets']],
                 where: where,
                 limit: limit,
                 offset: offset,
                 group: ['rf_id']                  
             });
-        }
+        }  
         res.status(200).json({list: result, total_records });
     } catch ( err ) {
         console.log(err);
