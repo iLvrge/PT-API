@@ -18,6 +18,7 @@ const TreePartiesCollections = require("../../model/application/TreePartiesColle
 const DocumentIds = require("../../model/application/DocumentIds");
 const Representatives = require("../../model/application/Representatives");
 const AssignorAndAssignee = require("../../model/application/AssignorAndAssignee");
+const Timelines = require("../../model/application/Timelines");
 //const Errors = require("../../model/application/Errors");
 const TABS = [0,1,2,3,4,11,5,6,7,8,9,10];
 const RECORD_LIMIT = 1000
@@ -67,17 +68,23 @@ route.get("/timeline", [authJWT.verifyToken, clientDBConnection.connect], async(
             
             if(companies != undefined && companies != '') {
                 companies = JSON.parse(companies)
-                where.representative_id = companies
+                if(companies.length > 0) {
+                    where.representative_id = companies
+                }
             }
 
             if(tabs != undefined && tabs != '') {
                 tabs = JSON.parse(tabs)
-                where.tab = tabs
+                if(tabs.length > 0) {
+                    where.tab = tabs
+                }
             }
 
             if(customers != undefined && customers != '') {
                 customers = JSON.parse(customers);
-                where.assignor_and_assignee_id = customers
+                if(customers.length > 0) {
+                    where.assignor_and_assignee_id = customers
+                }
             }
 
            const whereConstraint = {
@@ -86,12 +93,15 @@ route.get("/timeline", [authJWT.verifyToken, clientDBConnection.connect], async(
             };
 
             if(limit != undefined && limit != null) {
-                limit = limit > 0 ? parseInt(limit) : 1000;
-                offset = offset > 0 ? parseInt(offset) : 0;
-
-                whereConstraint.limit = limit;
-                whereConstraint.offset = offset;
+                limit = limit > 0 ? parseInt(limit) : 1000
+                offset = offset > 0 ? parseInt(offset) : 0
+            } else {
+                limit = 1000
+                offset = 0
             }
+
+            whereConstraint.limit = limit;
+            whereConstraint.offset = offset;
 
             whereConstraint.order = [['exec_dt', 'DESC']]
             timelineList = await Timelines.findAll(whereConstraint)
