@@ -56,6 +56,53 @@ route.get("/events/", [authJWT.verifyToken, clientDBConnection.connect], async(r
     }
 });
 
+route.get("/timeline", [authJWT.verifyToken, clientDBConnection.connect], async(req, res, next) => {
+    let {companies, tabs, customers, limit, offset } = req.query, timelineList = []
+    try {                
+        const organisationData = await helpers.findOrganisationbyID(req.orgId);
+        //console.log(0);
+        if(organisationData != null && organisationData.organisation_id > 0 && typeof req.connection_db != "undefined" && req.connection_db != null) {
+            
+            const where = {organisation_id: req.orgId}, DATE_FORMAT = 'YYYY-MM-DD';
+            
+            if(companies != undefined && companies != '') {
+                companies = JSON.parse(companies)
+                where.representative_id = companies
+            }
+
+            if(tabs != undefined && tabs != '') {
+                tabs = JSON.parse(tabs)
+                where.tab = tabs
+            }
+
+            if(customers != undefined && customers != '') {
+                customers = JSON.parse(customers);
+                where.assignor_and_assignee_id = customers
+            }
+
+           const whereConstraint = {
+                attributes:[['rf_id', 'id'], 'exec_dt', ['original_name', 'customerName'], ['tab', 'tab_id'], ['assets_count', 'totalAssets']],
+                where: where,
+            };
+
+            if(limit != undefined && limit != null) {
+                limit = limit > 0 ? parseInt(limit) : 1000;
+                offset = offset > 0 ? parseInt(offset) : 0;
+
+                whereConstraint.limit = limit;
+                whereConstraint.offset = offset;
+            }
+
+            whereConstraint.order = [['exec_dt', 'DESC']]
+            timelineList = await Timelines.findAll(whereConstraint)
+        }
+        res.status(200).json(timelineList);
+    } catch ( err ) {
+        console.log("Timeline:"+err);
+        res.status(500).send("Internal server error.");
+    }
+})
+
 route.get("/asset_types", [authJWT.verifyToken, clientDBConnection.connect], async(req, res, next) => {
     try {
         let {companies} = req.query, tabs = [];
