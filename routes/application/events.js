@@ -2252,20 +2252,20 @@ const findEventList = async(req, res) => {
                         const eventDate = moment( currentDate.setMonth( currentDate.getMonth() + item ) )
                         const nextDate = new Date( eventDate )
                         const startDate = eventDate.format('YYYY-MM-DD')
-                        const endDate = moment( nextDate.setMonth( nextDate.getMonth() + 12 ) ).format('YYYY-MM-DD')
+                        const endDate = moment( nextDate.setMonth( nextDate.getMonth() + 6 ) ).format('YYYY-MM-DD')
 
                         /**Red */
                         let followingDay = new Date( endDate + ' 00:00:00' );
                         const redStartDate = moment( new Date(followingDay.setTime(followingDay.getTime() + 86400000)) ).format('YYYY-MM-DD')
-                        const redEndDate = moment( new Date(redStartDate).setMonth( new Date(redStartDate).getMonth() + 12) ).format('YYYY-MM-DD')
+                        const redEndDate = moment( new Date(redStartDate).setMonth( new Date(redStartDate).getMonth() + 6) ).format('YYYY-MM-DD')
 
                         other.push({
                             grant_doc_num: findData.length > 0 ? findData[0].grant_doc_num : assetData.grant_doc_num,
                             appno_doc_num: findData.length > 0 ? findData[0].appno_doc_num : assetData.appno_doc_num,
                             start: startDate, 
                             end: redEndDate,
-                            event_code: event,
-                            event_desc: event,
+                            event_code: '',
+                            event_desc: '',
                             type: 'yellow'
                         })
                         return item
