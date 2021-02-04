@@ -307,6 +307,9 @@ route.get("/asset_types/assignments", [authJWT.verifyToken, clientDBConnection.c
                 where: where,
                 limit: limit,
                 offset: offset,
+                order: [
+                    ['exec_dt', 'ASC']
+                ],
                 group: ['rf_id']                  
             });
         }  
@@ -336,6 +339,10 @@ route.get("/asset_types/assignments/:rfID", [authJWT.verifyToken, clientDBConnec
                     where: {rf_id: rfID},
                     limit: limit,
                     offset: offset,
+                    order: [
+                        ['grant_doc_num', 'ASC'],
+                        ['appno_doc_num', 'ASC']
+                    ],
                     group: ['appno_doc_num', 'grant_doc_num']         
                 });
             } 
@@ -441,7 +448,7 @@ route.get("/asset_types/assets", [authJWT.verifyToken, clientDBConnection.connec
             if( total_records > 0 ) {
                 limit = limit > 0 ? parseInt(limit) : RECORD_LIMIT;
                 offset = offset > 0 ? parseInt(offset) : OFFSET;
-                result = await connection.application.query(`${query.replace('REPLACE_WHERE', whereCondition)} LIMIT ${offset}, ${limit}`,{
+                result = await connection.application.query(`${query.replace('REPLACE_WHERE', whereCondition)} ORDER BY grant_doc_num ASC LIMIT ${offset}, ${limit}`,{
                         type: connection.Sequelize.QueryTypes.SELECT,
                         raw: true,
                         logging: console.log,

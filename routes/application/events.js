@@ -2204,14 +2204,20 @@ const findEventList = async(req, res) => {
             });
 
             if(findData.length == 0) {
-                patentNumber = patentNumber == undefined || patentNumber == null ? applicationNumber : patentNumber
-                where = {grant_doc_num: {[connection.Op.like]: `%${patentNumber}%`}};
-                findData = await MaintainenceFees.findAll({
-                    attributes: attributes,
-                    where: where,
-                    group: group,
-                    include: include
-                });
+                assetData = await Documentid.findOne({
+                    attributes: ['appno_doc_num', 'grant_doc_num', 'grant_date'],
+                    where:{[connection.Op.or]: [{appno_doc_num: applicationNumber}, {grant_doc_num: patentNumber}]}
+                })
+                if(assetData != null && assetData.appno_doc_num != '') {
+                    where = {appno_doc_num: assetData.appno_doc_num}
+                    findData = await MaintainenceFees.findAll({
+                        attributes: attributes,
+                        where: where,
+                        group: group,
+                        include: include
+                    });
+                }
+                
             }
             let other = [], icons = {}, expiredEvents = ['EXP.', 'EXPX'], expired = false, eventExpiredDate = ''
             if(findData.length > 0) {
