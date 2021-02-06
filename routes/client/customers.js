@@ -222,7 +222,7 @@ route.get("/asset_types/companies", [authJWT.verifyToken, clientDBConnection.con
         
         if( total_records > 0 ) {
             result = await TreeParties.findAll({
-                attributes:[['assignor_and_assignee_id', 'id'], 'name', ],
+                attributes:[['assignor_and_assignee_id', 'id'], 'name', [connection.Sequelize.fn('sum', connection.Sequelize.col('tree_parties.transaction_count')), 'totalTransactions']],
                 where: {representative_id: companies, organisation_id: req.orgId, tab_id: tabs},
                 limit: limit,
                 offset: offset,
