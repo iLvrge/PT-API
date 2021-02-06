@@ -415,7 +415,7 @@ route.get("/asset_types/assets", [authJWT.verifyToken, clientDBConnection.connec
             where.assignments = assignments
         }
 
-        let query = "SELECT appno_doc_num, grant_doc_num FROM documentid WHERE rf_id IN (SELECT rf_id FROM tree_parties_collection WHERE REPLACE_WHERE ) GROUP BY appno_doc_num, grant_doc_num";
+        let query = "SELECT appno_doc_num, grant_doc_num, CASE WHEN grant_doc_num = '' THEN appno_doc_num ELSE  grant_doc_num END as asset FROM documentid WHERE rf_id IN (SELECT rf_id FROM tree_parties_collection WHERE REPLACE_WHERE ) GROUP BY appno_doc_num, grant_doc_num";
 
         let whereCondition = ' representative_id IN (:representative_id)  AND organisation_id = :organisation_id';
 
@@ -448,7 +448,7 @@ route.get("/asset_types/assets", [authJWT.verifyToken, clientDBConnection.connec
             if( total_records > 0 ) {
                 limit = limit > 0 ? parseInt(limit) : RECORD_LIMIT;
                 offset = offset > 0 ? parseInt(offset) : OFFSET;
-                result = await connection.application.query(`${query.replace('REPLACE_WHERE', whereCondition)} ORDER BY grant_doc_num ASC LIMIT ${offset}, ${limit}`,{
+                result = await connection.application.query(`${query.replace('REPLACE_WHERE', whereCondition)} ORDER BY asset ASC LIMIT ${offset}, ${limit}`,{
                         type: connection.Sequelize.QueryTypes.SELECT,
                         raw: true,
                         logging: console.log,
