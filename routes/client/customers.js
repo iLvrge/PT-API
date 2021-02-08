@@ -339,8 +339,9 @@ route.get("/asset_types/assignments/:rfID", [authJWT.verifyToken, clientDBConnec
                     where: {rf_id: rfID},
                     limit: limit,
                     offset: offset,
-                    order: [
-                        [connection.Sequelize.col('asset'), 'ASC']
+                    order: [                        
+                        [connection.Sequelize.literal('LENGTH(asset)'), 'ASC'],
+                        [connection.Sequelize.literal('asset'), 'ASC']
                     ],
                     group: ['appno_doc_num', 'grant_doc_num']         
                 });
@@ -447,7 +448,7 @@ route.get("/asset_types/assets", [authJWT.verifyToken, clientDBConnection.connec
             if( total_records > 0 ) {
                 limit = limit > 0 ? parseInt(limit) : RECORD_LIMIT;
                 offset = offset > 0 ? parseInt(offset) : OFFSET;
-                result = await connection.application.query(`${query.replace('REPLACE_WHERE', whereCondition)} ORDER BY asset ASC LIMIT ${offset}, ${limit}`,{
+                result = await connection.application.query(`${query.replace('REPLACE_WHERE', whereCondition)} ORDER BY length(asset) ASC, asset ASC LIMIT ${offset}, ${limit}`,{
                         type: connection.Sequelize.QueryTypes.SELECT,
                         raw: true,
                         logging: console.log,
