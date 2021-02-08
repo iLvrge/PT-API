@@ -335,13 +335,12 @@ route.get("/asset_types/assignments/:rfID", [authJWT.verifyToken, clientDBConnec
                 limit = limit > 0 ? parseInt(limit) : RECORD_LIMIT;
                 offset = offset > 0 ? parseInt(offset) : OFFSET;
                 result = await DocumentIds.findAll({
-                    attributes:['appno_doc_num', 'grant_doc_num'],
+                    attributes:['appno_doc_num', 'grant_doc_num', [connection.Sequelize.literal(`CASE WHEN grant_doc_num = "" THEN appno_doc_num ELSE grant_doc_num END`), 'asset']],
                     where: {rf_id: rfID},
                     limit: limit,
                     offset: offset,
                     order: [
-                        ['grant_doc_num', 'ASC'],
-                        ['appno_doc_num', 'ASC']
+                        [connection.Sequelize.col('asset'), 'ASC']
                     ],
                     group: ['appno_doc_num', 'grant_doc_num']         
                 });
