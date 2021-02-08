@@ -337,7 +337,7 @@ route.get("/asset_types/assignments/:rfID", [authJWT.verifyToken, clientDBConnec
                 result = await DocumentIds.findAll({
                     attributes:['appno_doc_num', 'grant_doc_num', [connection.Sequelize.literal(`CASE WHEN grant_doc_num = "" THEN appno_doc_num ELSE grant_doc_num END`), 'asset']],
                     where: {rf_id: rfID},
-                    limit: limit,
+                    limit: limit, 
                     offset: offset,
                     order: [                        
                         [connection.Sequelize.literal('LENGTH(asset)'), 'ASC'],
