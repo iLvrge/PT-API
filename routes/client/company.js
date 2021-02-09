@@ -78,7 +78,7 @@ route.get("/summary", [authJWT.verifyToken, clientDBConnection.connect], async(r
 
     const assets = await Validity.findOne({
         attributes: [[connection.Sequelize.literal('COALESCE(application, 0) + COALESCE(patent, 0)'), 'assets']],
-        where: {organisation_id: req.orgId}
+        where: {organisation_id: req.orgId, representative_id: 0}
     });
 
     res.status(200).json({companies, assignments, third_parties, assets: assets.get('assets')});
@@ -617,9 +617,9 @@ route.post("/", [authJWT.verifyToken, clientDBConnection.connect], async(req, re
                                     let findCompaniesQuery = "";
 
                                     if(companies[i].representative_id > 0) {
-                                        findCompaniesQuery = "SELECT aaa.*, r.representative_name  FROM assignor_and_assignee as aaa LEFT JOIN representative as r ON r.representative_id = aaa.representative_id WHERE aaa.representative_id = :representativeID";
+                                        findCompaniesQuery = "SELECT aaa.*, r.representative_name  FROM assignor_and_assignee as aaa LEFT JOIN representative as r ON r.representative_id = aaa.representative_id WHERE aaa.representative_id = :representativeID AND aaa.name <> :name";
                                     } else {
-                                        findCompaniesQuery = "SELECT aaa.*, r.representative_name  FROM assignor_and_assignee as aaa LEFT JOIN representative as r ON r.representative_id = aaa.representative_id WHERE aaa.representative_id IN (SELECT representative_id FROM representative WHERE representative_name = :name)";
+                                        findCompaniesQuery = "SELECT aaa.*, r.representative_name  FROM assignor_and_assignee as aaa LEFT JOIN representative as r ON r.representative_id = aaa.representative_id WHERE aaa.representative_id IN (SELECT representative_id FROM representative WHERE representative_name = :name) AND aaa.name <> :name";
                                     }
                                     
                                     const list  = await connection.resources.query(findCompaniesQuery,{
@@ -707,11 +707,11 @@ route.post("/", [authJWT.verifyToken, clientDBConnection.connect], async(req, re
                                         mainCompanies.push(nameR);
                                         addRecord++;
                                         if(companies[i].representative_id > 0) {
-                                            const findCompaniesQuery = "SELECT aaa.*, r.representative_name  FROM assignor_and_assignee as aaa LEFT JOIN representative as r ON r.representative_id = aaa.representative_id WHERE aaa.representative_id = :representativeID";
+                                            const findCompaniesQuery = "SELECT aaa.*, r.representative_name  FROM assignor_and_assignee as aaa LEFT JOIN representative as r ON r.representative_id = aaa.representative_id WHERE aaa.representative_id = :representativeID  AND aaa.name <> :name";
         
                                             const list  = await connection.resources.query(findCompaniesQuery,{
                                                 type: connection.Sequelize.QueryTypes.SELECT,
-                                                replacements: { representativeID: companies[i].representative_id },
+                                                replacements: { representativeID: companies[i].representative_id, name: nameR },
                                                 raw: true,
                                                 logging: console.log,
                                                 }
