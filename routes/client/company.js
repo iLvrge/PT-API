@@ -530,6 +530,14 @@ route.post("/", [authJWT.verifyToken, clientDBConnection.connect], async(req, re
                                             console.log(stdd);
                                             console.log(stderr);                                        
                                             console.log("DONE>>>>>>>>>>>");
+                                            console.log(`php -f /var/www/html/trash/epo_api_retrieve_patent_data.php "${req.orgId}" "${findName.representative_id}"`);
+                                            exec(`php -f /var/www/html/trash/epo_api_retrieve_patent_data.php "${req.orgId}" "${findName.representative_id}"`, (error, stdout, stderr)=> {
+                                                console.log("epo_api_retrieve_patent_data....")
+                                                console.log(error);
+                                                console.log(stderr);
+                                                console.log(stdout);
+                                                console.log("DONE");
+                                            });
                                             console.log(`php -f /var/www/html/trash/download_all_pdf.php "${findName.representative_name}"`);
                                             exec(`php -f /var/www/html/trash/download_all_pdf.php "${findName.representative_name}"`, (error, stdd, stderr)=> {
                                                 console.log("donwload_all_pdf....")
@@ -671,7 +679,14 @@ route.post("/", [authJWT.verifyToken, clientDBConnection.connect], async(req, re
                                                     console.log(std);
                                                     console.log(stderr);
                                                     console.log("DONE>>>>>>>>>>>");
-                                                    console.log(`php -f /var/www/html/trash/download_all_pdf.php "${company}"`);
+                                                    console.log(`php -f /var/www/html/trash/epo_api_retrieve_patent_data.php "${req.orgId}" "${parentCompaniesID[index]}"`);
+                                                    exec(`php -f /var/www/html/trash/epo_api_retrieve_patent_data.php "${req.orgId}" "${parentCompaniesID[index]}"`, (error, stdout, stderr)=> {
+                                                        console.log("epo_api_retrieve_patent_data....")
+                                                        console.log(error);
+                                                        console.log(stderr);
+                                                        console.log(stdout);
+                                                        console.log("DONE");
+                                                    });
                                                     exec(`php -f /var/www/html/trash/download_all_pdf.php "${company}"`, (error, stdout, stderr)=> {
                                                         console.log("donwload_all_pdf....")
                                                         console.log(error);
@@ -757,7 +772,14 @@ route.post("/", [authJWT.verifyToken, clientDBConnection.connect], async(req, re
                                                     console.log(std);
                                                     console.log(stderr);
                                                     console.log("DONE>>>>>>>>>>>");
-                                                    console.log(`php -f /var/www/html/trash/download_all_pdf.php "${company}"`);
+                                                    console.log(`php -f /var/www/html/trash/epo_api_retrieve_patent_data.php "${req.orgId}" "${parentCompaniesID[index]}"`);
+                                                    exec(`php -f /var/www/html/trash/epo_api_retrieve_patent_data.php "${req.orgId}" "${parentCompaniesID[index]}"`, (error, stdout, stderr)=> {
+                                                        console.log("epo_api_retrieve_patent_data....")
+                                                        console.log(error);
+                                                        console.log(stderr);
+                                                        console.log(stdout);
+                                                        console.log("DONE");
+                                                    });
                                                     exec(`php -f /var/www/html/trash/download_all_pdf.php "${company}"`, (error, stdout, stderr)=> {
                                                         console.log("donwload_all_pdf....")
                                                         console.log(error);
