@@ -415,7 +415,7 @@ route.get("/asset_types/assets", [authJWT.verifyToken, clientDBConnection.connec
             where.assignments = assignments
         }
 
-        let query = "SELECT appno_doc_num, grant_doc_num, CASE WHEN grant_doc_num = '' THEN appno_doc_num ELSE  grant_doc_num END as asset FROM documentid WHERE rf_id IN (SELECT rf_id FROM tree_parties_collection WHERE REPLACE_WHERE ) GROUP BY appno_doc_num, grant_doc_num";
+        let query = "SELECT appno_doc_num, grant_doc_num, CASE WHEN grant_doc_num = '' THEN appno_doc_num ELSE  grant_doc_num END as asset, 0 as child_count FROM documentid WHERE rf_id IN (SELECT rf_id FROM tree_parties_collection WHERE REPLACE_WHERE ) GROUP BY appno_doc_num, grant_doc_num";
 
         let whereCondition = ' representative_id IN (:representative_id)  AND organisation_id = :organisation_id';
 
