@@ -96,7 +96,7 @@ route.get("/timeline", [authJWT.verifyToken, clientDBConnection.connect], async(
                 limit = limit > 0 ? parseInt(limit) : 5000
                 offset = offset > 0 ? parseInt(offset) : 0
             } else {
-                limit = 1000
+                limit = 5000
                 offset = 0
             }
 
