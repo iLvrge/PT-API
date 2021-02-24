@@ -93,7 +93,7 @@ route.get("/timeline", [authJWT.verifyToken, clientDBConnection.connect], async(
             };
 
             if(limit != undefined && limit != null) {
-                limit = limit > 0 ? parseInt(limit) : 1000
+                limit = limit > 0 ? parseInt(limit) : 5000
                 offset = offset > 0 ? parseInt(offset) : 0
             } else {
                 limit = 1000
