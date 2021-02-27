@@ -6,6 +6,9 @@ const Organisations = require("./Organisations");
 
 const Roles = require("./Roles");
 
+const UserCompanySelection = require("./UserCompanySelection");
+
+
 const Users = connection.business.define('user',{
     user_id: {
         type: Sequelize.INTEGER,
@@ -85,5 +88,7 @@ const Users = connection.business.define('user',{
 Users.belongsTo(Organisations, { foreignKey: 'organisation_id', as: 'organisation' });
 
 Users.belongsTo(Roles, { foreignKey: 'role_id', as: 'role' });
+
+Users.hasMany(UserCompanySelection, { foreignKey: 'user_id', as: 'usercompanyselection'})
 
 module.exports = Users;

@@ -90,9 +90,10 @@ route.get("/timeline", [authJWT.verifyToken, clientDBConnection.connect], async(
            const whereConstraint = {
                 attributes:[['rf_id', 'id'], 'exec_dt', ['original_name', 'customerName'], ['tab', 'tab_id'], ['assets_count', 'totalAssets']],
                 where: where,
+                group: ['rf_id']
             };
 
-            if(limit != undefined && limit != null) {
+           /*  if(limit != undefined && limit != null) {
                 limit = limit > 0 ? parseInt(limit) : 5000
                 offset = offset > 0 ? parseInt(offset) : 0
             } else {
@@ -101,7 +102,7 @@ route.get("/timeline", [authJWT.verifyToken, clientDBConnection.connect], async(
             }
 
             whereConstraint.limit = limit;
-            whereConstraint.offset = offset;
+            whereConstraint.offset = offset; */
 
             whereConstraint.order = [['exec_dt', 'DESC']]
             timelineList = await Timelines.findAll(whereConstraint)
@@ -463,6 +464,54 @@ route.get("/asset_types/assets", [authJWT.verifyToken, clientDBConnection.connec
         res.status(500).send("Internal server error.");
     }
 })
+
+
+/**
+ * Restore Ownership
+ * Broken chain of title
+ * paramters 
+ */
+
+
+ route.get("/restore_ownership/assets", [authJWT.verifyToken, clientDBConnection.connect], async(req, res, next) => {
+    try {
+        let {companies, tabs, customers, assignments, limit, offset } = req.query, brokenData = {list:[], total_records:0}
+
+        const staticQuery = `SELECT  REPLACE_STRING FROM  T_OTA tr
+                                    INNER JOIN assignor_and_assignee _expected on _expected.assignor_and_assignee_id = tr._to
+                                    LEFT JOIN T_OTA tr_1 on tr.appno_doc_num=tr_1.appno_doc_num and tr_1._from=tr._to 
+                                WHERE
+                                        tr_1.appno_doc_num is null
+                                    AND EXISTS  (
+                                            SELECT * FROM T_OTA WHERE appno_doc_num = tr.appno_doc_num AND _when > tr._when
+                                        )`
+        const countResult = await connection.application.query(staticQuery.replace('REPLACE_STRING','COUNT(DISTINCT(tr.appno_doc_num)) as total_records'),{
+                type: connection.Sequelize.QueryTypes.SELECT,
+                raw: true,
+                logging: console.log,
+                replacements: {},
+                plain: true
+            }
+        )
+
+        if( countResult != null ) {
+            brokenData.total_records = countResult.total_records
+            brokenData.list = await connection.application.query(staticQuery.replace('REPLACE_STRING', 'DISTINCT tr.appno_doc_num, tr.grant_doc_num, CASE WHEN tr.grant_doc_num = "" THEN tr.appno_doc_num ELSE  tr.grant_doc_num END as asset, 0 as child_count'),{
+                    type: connection.Sequelize.QueryTypes.SELECT,
+                    raw: true,
+                    logging: console.log,
+                    replacements: {},
+                }
+            );
+        }
+        res.status(200).json(brokenData);
+    } catch ( err ) {
+        console.log(err);
+        res.status(500).send("Internal server error.");
+    }
+ })
+
+
 
 /**
  * List of all portfolio from new table
