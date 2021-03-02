@@ -67,7 +67,7 @@ route.get("/address", [authJWT.verifyToken, clientDBConnection.connect], async(r
                     {
                         model: Addresses,
                         as: 'address',
-                        attributes: ['address_id', 'street_address','suite','city','state','zip_code', 'telephone', 'telephone_2', 'telephone_3',[clientDBConnection.Sequelize.fn('date_format', clientDBConnection.Sequelize.col('created_at'), '%Y-%m-%d'), 'created_at'],[clientDBConnection.Sequelize.fn('date_format', clientDBConnection.Sequelize.col('updated_at'), '%Y-%m-%d'), 'updated_at']]
+                        attributes: ['address_id', 'street_address','suite','city','state','country','zip_code', 'telephone', 'telephone_2', 'telephone_3',[clientDBConnection.Sequelize.fn('date_format', clientDBConnection.Sequelize.col('created_at'), '%Y-%m-%d'), 'created_at'],[clientDBConnection.Sequelize.fn('date_format', clientDBConnection.Sequelize.col('updated_at'), '%Y-%m-%d'), 'updated_at']]
                     }
                 ]
             });
@@ -99,6 +99,7 @@ route.put("/address/:addressID", [authJWT.verifyToken, clientDBConnection.connec
                     suite: req.body.suite,
                     city: req.body.city,
                     state: req.body.state,
+                    country: req.body.country,
                     zip_code: req.body.zip_code,
                     telephone: req.body.telephone,
                     telephone_2: req.body.telephone_2,

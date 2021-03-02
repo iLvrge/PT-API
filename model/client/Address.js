@@ -21,15 +21,19 @@ const Address = {
         },
         city:{
             type: Sequelize.STRING,
-			allowNull: false,
+			allowNull: true,
         },
         state:{
             type: Sequelize.STRING,
-			allowNull: false,
+			allowNull: true,
+        },
+        country:{
+            type: Sequelize.STRING,
+			allowNull: true,
         },
         zip_code:{
             type: Sequelize.STRING,
-			allowNull: false,
+			allowNull: true,
         },
         telephone:{
             type: Sequelize.STRING,
