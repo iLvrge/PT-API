@@ -327,8 +327,12 @@ route.get("/asset_types/assignments/:rfID", [authJWT.verifyToken, clientDBConnec
         let {rfID} = req.params, result = [], total_records = 0
         let {limit, offset} = req.query
         if(rfID > 0) {
-            total_records = await DocumentIds.count({
+            /* total_records = await DocumentIds.count({
                 distinct: ['grant_doc_num'],
+                where: {rf_id: rfID}
+            }) */
+
+            total_records = await DocumentIds.count({
                 where: {rf_id: rfID}
             })
             
@@ -336,7 +340,7 @@ route.get("/asset_types/assignments/:rfID", [authJWT.verifyToken, clientDBConnec
                 limit = limit > 0 ? parseInt(limit) : RECORD_LIMIT;
                 offset = offset > 0 ? parseInt(offset) : OFFSET;
                 result = await DocumentIds.findAll({
-                    attributes:['appno_doc_num', 'grant_doc_num', [connection.Sequelize.literal(`CASE WHEN grant_doc_num = "" THEN appno_doc_num ELSE grant_doc_num END`), 'asset']],
+                    attributes:['appno_doc_num', 'grant_doc_num', [connection.Sequelize.literal(`CASE WHEN grant_doc_num = "" THEN appno_doc_num ELSE grant_doc_num END`), 'asset'],[connection.Sequelize.literal('0'),'child_count']],
                     where: {rf_id: rfID},
                     limit: limit, 
                     offset: offset,
@@ -477,33 +481,14 @@ route.get("/asset_types/assets", [authJWT.verifyToken, clientDBConnection.connec
     try {
         let {companies, tabs, customers, assignments, limit, offset } = req.query, brokenData = {list:[], total_records:0}
 
-        const staticQuery = `SELECT  REPLACE_STRING FROM  T_OTA tr
-                                    INNER JOIN assignor_and_assignee _expected on _expected.assignor_and_assignee_id = tr._to
-                                    LEFT JOIN T_OTA tr_1 on tr.appno_doc_num=tr_1.appno_doc_num and tr_1._from=tr._to 
-                                WHERE
-                                        tr_1.appno_doc_num is null
-                                    AND EXISTS  (
-                                            SELECT * FROM T_OTA WHERE appno_doc_num = tr.appno_doc_num AND _when > tr._when
-                                        )`
-        const countResult = await connection.application.query(staticQuery.replace('REPLACE_STRING','COUNT(DISTINCT(tr.appno_doc_num)) as total_records'),{
+        brokenData.list = await connection.application.query("CALL `GetBrokenChains`('Avaya Inc', 1)",{
                 type: connection.Sequelize.QueryTypes.SELECT,
                 raw: true,
                 logging: console.log,
                 replacements: {},
-                plain: true
             }
-        )
-
-        if( countResult != null ) {
-            brokenData.total_records = countResult.total_records
-            brokenData.list = await connection.application.query(staticQuery.replace('REPLACE_STRING', 'DISTINCT tr.appno_doc_num, tr.grant_doc_num, CASE WHEN tr.grant_doc_num = "" THEN tr.appno_doc_num ELSE  tr.grant_doc_num END as asset, 0 as child_count'),{
-                    type: connection.Sequelize.QueryTypes.SELECT,
-                    raw: true,
-                    logging: console.log,
-                    replacements: {},
-                }
-            );
-        }
+        );
+        brokenData.total_records = brokenData.list.length
         res.status(200).json(brokenData);
     } catch ( err ) {
         console.log(err);
