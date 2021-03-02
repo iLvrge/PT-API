@@ -75,7 +75,15 @@ route.get("/", [authJWT.verifyToken, clientDBConnection.connect], async(req, res
 })
 
 
-
+route.get('/item/:rfId', [authJWT.verifyToken], async(req, res, next) => {
+    try {    
+        const { rfId } = req.params;
+        const itemDetails = await helpers.getAssignmentDataByrfID(rfId.toString().trim(), 1 );
+        res.status(200).json(itemDetails);
+    } catch ( err ) {        
+        res.status(500).send("Invalid item");
+    }
+})
 
 
 route.get("/standalone/:groupId", [authJWT.addToken, clientDBConnection.connect], async(req, res, next) => {
