@@ -87,8 +87,21 @@ route.get("/timeline", [authJWT.verifyToken, clientDBConnection.connect], async(
                 }
             }
 
-           const whereConstraint = {
+            /* const whereConstraint = {
                 attributes:[['rf_id', 'id'], 'exec_dt', ['original_name', 'customerName'], ['tab', 'group'], ['assets_count', 'totalAssets'],['representative_id', 'company']],
+                where: where,
+                group: ['rf_id']
+            };
+
+
+            const findGroupContraint = {
+                attributes: [['tab', 'group']],
+                where: where,
+                group: ['tab']
+            }  */
+
+            const whereConstraint = {
+                attributes:[['rf_id', 'id'], 'exec_dt', ['original_name', 'customerName'], ['tab', 'tab_id'], ['assets_count', 'totalAssets'],['representative_id', 'company']],
                 where: where,
                 group: ['rf_id']
             };
@@ -113,9 +126,10 @@ route.get("/timeline", [authJWT.verifyToken, clientDBConnection.connect], async(
 
             whereConstraint.order = [['exec_dt', 'DESC']]
             list = await Timelines.findAll(whereConstraint)
-            groups = await Timelines.findAll(findGroupContraint)
+            //groups = await Timelines.findAll(findGroupContraint)
         }
-        res.status(200).json({list, groups});
+        //res.status(200).json({list, groups});
+        res.status(200).json(list);
     } catch ( err ) {
         console.log("Timeline:"+err);
         res.status(500).send("Internal server error.");
