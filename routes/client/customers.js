@@ -88,7 +88,7 @@ route.get("/timeline", [authJWT.verifyToken, clientDBConnection.connect], async(
             }
 
            const whereConstraint = {
-                attributes:[['rf_id', 'id'], 'exec_dt', ['original_name', 'customerName'], ['tab', 'tab_id'], ['assets_count', 'totalAssets'],['tab', 'group']],
+                attributes:[['rf_id', 'id'], 'exec_dt', ['original_name', 'customerName'], ['tab', 'group'], ['assets_count', 'totalAssets'],['representative_id', 'company']],
                 where: where,
                 group: ['rf_id']
             };
