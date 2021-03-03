@@ -129,6 +129,8 @@ route.get("/timeline", [authJWT.verifyToken, clientDBConnection.connect], async(
             whereConstraint.order = [['exec_dt', 'DESC']]
             list = await Timelines.findAll(whereConstraint)
             groups = await Timelines.findAll(findGroupContraint)
+
+            //selected_companies = await helpers.findRepresentativeByIDs(req.connection_db, companies)
         }
         res.status(200).json({list, groups});
         

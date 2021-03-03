@@ -797,6 +797,14 @@ let findRepresentativeByID = async (DBConnection, representativeID) => {
     });
 }
 
+let findRepresentativeByIDs = async (DBConnection, representativeIDs) => {
+    const Representative = DBConnection.define('ClientRepesentative', ClientRepesentative.mainStructure, ClientRepesentative.options);
+
+    return await Representative.findAll({
+        where: {representative_id: representativeIDs}
+    });
+}
+
 
 let getSubCompaniesList = async (DBConnection, companyID) => {
     const Representative = DBConnection.define('ClientRepesentative', ClientRepesentative.mainStructure, ClientRepesentative.options);
@@ -1894,6 +1902,7 @@ helper.findCompanyCustomersByID = findCompanyCustomersByID;
 helper.getCompaniesCount = getCompaniesCount;
 helper.getCompaniesList = getCompaniesList;
 helper.findRepresentativeByID = findRepresentativeByID;
+helper.findRepresentativeByIDs = findRepresentativeByIDs;
 helper.getSubCompaniesList = getSubCompaniesList;
 helper.getAllCompaniesList = getAllCompaniesList;
 helper.findCompanyEntitiesByAccountID = findCompanyEntitiesByAccountID;

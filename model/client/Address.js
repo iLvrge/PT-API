@@ -13,7 +13,7 @@ const Address = {
         },		
         street_address:{
             type: Sequelize.STRING,
-			allowNull: false,
+			allowNull: true,
         },
         suite:{
             type: Sequelize.STRING,
