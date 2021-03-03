@@ -171,6 +171,7 @@ route.get("/timeline1", [authJWT.verifyToken, clientDBConnection.connect], async
                     ['rf_id', 'id'],
                     'exec_dt', 
                     ['original_name', 'customerName'], 
+                    ['tab', 'tab_id'], 
                     [connection.Sequelize.literal(`CASE WHEN (tab = 7 OR tab = 8 OR tab = 10) THEN 1  
                         WHEN (tab = 4 OR tab = 11 OR tab = 12 OR tab = 13) THEN 2  
                         WHEN (tab = 2 OR tab = 3) THEN 3  
