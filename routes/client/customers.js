@@ -58,7 +58,7 @@ route.get("/events/", [authJWT.verifyToken, clientDBConnection.connect], async(r
 });
 
 route.get("/timeline", [authJWT.verifyToken, clientDBConnection.connect], async(req, res, next) => {
-    let {companies, tabs, customers, limit, offset } = req.query, timelineList = []
+    let {companies, tabs, customers, limit, offset } = req.query, list = [], groups = []
     try {                
         const organisationData = await helpers.findOrganisationbyID(req.orgId);
         //console.log(0);
@@ -88,10 +88,17 @@ route.get("/timeline", [authJWT.verifyToken, clientDBConnection.connect], async(
             }
 
            const whereConstraint = {
-                attributes:[['rf_id', 'id'], 'exec_dt', ['original_name', 'customerName'], ['tab', 'tab_id'], ['assets_count', 'totalAssets']],
+                attributes:[['rf_id', 'id'], 'exec_dt', ['original_name', 'customerName'], ['tab', 'tab_id'], ['assets_count', 'totalAssets'],['tab', 'group_id']],
                 where: where,
                 group: ['rf_id']
             };
+
+
+            const findGroupContraint = {
+                attributes: [['tab', 'group']],
+                where: where,
+                group: ['tab']
+            } 
 
            /*  if(limit != undefined && limit != null) {
                 limit = limit > 0 ? parseInt(limit) : 5000
@@ -105,9 +112,10 @@ route.get("/timeline", [authJWT.verifyToken, clientDBConnection.connect], async(
             whereConstraint.offset = offset; */
 
             whereConstraint.order = [['exec_dt', 'DESC']]
-            timelineList = await Timelines.findAll(whereConstraint)
+            list = await Timelines.findAll(whereConstraint)
+            groups = await Timelines.findAll(findGroupContraint)
         }
-        res.status(200).json(timelineList);
+        res.status(200).json({list, groups});
     } catch ( err ) {
         console.log("Timeline:"+err);
         res.status(500).send("Internal server error.");
