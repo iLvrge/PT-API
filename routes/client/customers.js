@@ -167,7 +167,19 @@ route.get("/timeline1", [authJWT.verifyToken, clientDBConnection.connect], async
             }
 
             const whereConstraint = {
-                attributes:[['rf_id', 'id'], 'exec_dt', ['original_name', 'customerName'], ['tab', 'group'], ['assets_count', 'totalAssets'],['representative_id', 'company']],
+                attributes:[
+                    ['rf_id', 'id'],
+                    'exec_dt', 
+                    ['original_name', 'customerName'], 
+                    [connection.Sequelize.literal(`CASE WHEN (tab = 7 OR tab = 8 OR tab = 10) THEN 1  
+                        WHEN (tab = 4 OR tab = 11 OR tab = 12 OR tab = 13) THEN 2  
+                        WHEN (tab = 2 OR tab = 3) THEN 3  
+                        WHEN (tab = 0 OR tab = 1 OR tab = 5 OR tab = 6) THEN 4  
+                        WHEN (tab = 9) THEN 5
+                    END`), 'group'], 
+                    ['assets_count', 'totalAssets'],
+                    ['representative_id', 'company']
+                ],
                 where: where,
                 group: ['rf_id']
             };
