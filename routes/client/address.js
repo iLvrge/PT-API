@@ -87,12 +87,12 @@ route.put("/address/:addressID", [authJWT.verifyToken, clientDBConnection.connec
     try{
         if(typeof req.connection_db != "undefined" && req.connection_db != null ) {
 
-            const addressID = req.params.addressID;
+            const { addressID } = req.params;
 
             const Addresses = req.connection_db.define('Address', Address.mainStructure, Address.options);
 
-            const findAddress = Addresses.findByPk(addressID);
-
+            const findAddress = await Addresses.findByPk(addressID);
+            
             if(findAddress != null && findAddress.address_id > 0) {
                 const update = findAddress.update({
                     street_address: req.body.street_address,
@@ -132,7 +132,7 @@ route.delete("/address/:addressID", [authJWT.verifyToken, clientDBConnection.con
                 
                 const Addresses = req.connection_db.define('Address', Address.mainStructure, Address.options);
 
-                const findData = await Addresses.findOne({
+                const findData = await Addresses.findByPk({
                     where:{address_id: req.params.addressID}
                 })
 
