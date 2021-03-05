@@ -507,15 +507,33 @@ route.get("/asset_types/assets", [authJWT.verifyToken, clientDBConnection.connec
     try {
         let {companies, tabs, customers, assignments, limit, offset } = req.query, brokenData = {list:[], total_records:0}
 
-        brokenData.list = await connection.application.query("CALL `GetBrokenChains_New`(55, 68)",{
+        /* const data = await connection.application.query("CALL `GetBrokenChains_New`(55, 68)",{
                 type: connection.Sequelize.QueryTypes.SELECT,
                 raw: true,
                 logging: console.log,
                 replacements: {},
             }
         );
-        brokenData.total_records = brokenData.list.length
-        res.status(200).json(brokenData);
+        console.log("\nInside result : " + JSON.stringify(data));
+        if(data.length > 0 && data[0].length > 0) {
+            brokenData.list = data[0]
+            brokenData.total_records = brokenData.list.length
+        }        
+        res.status(200).json(brokenData); */
+
+        connection.application.query("CALL `GetBrokenChains_New`(55, 68)",{
+            type: connection.Sequelize.QueryTypes.SELECT,
+            raw: true,
+            logging: console.log,
+            replacements: {},
+            }
+        ).spread(result => {
+            if (result) {
+                brokenData.list = Object.values(result)
+                brokenData.total_records = brokenData.list.length
+            }
+            res.status(200).json(brokenData);
+        })
     } catch ( err ) {
         console.log(err);
         res.status(500).send("Internal server error.");
