@@ -507,7 +507,7 @@ route.get("/asset_types/assets", [authJWT.verifyToken, clientDBConnection.connec
     try {
         let {companies, tabs, customers, assignments, limit, offset } = req.query, brokenData = {list:[], total_records:0}
 
-        brokenData.list = await connection.application.query("CALL `GetBrokenChains`('Avaya Inc', 1)",{
+        brokenData.list = await connection.application.query("CALL `GetBrokenChains_New`(55, 68)",{
                 type: connection.Sequelize.QueryTypes.SELECT,
                 raw: true,
                 logging: console.log,
