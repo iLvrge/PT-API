@@ -217,7 +217,7 @@ route.get("/collections/:rf_id/illustration", [authJWT.verifyToken], async (req,
                         boxObj.border_color = inventorDetails[0].border_color;
                         boxObj.border_linepx = inventorDetails[0].border_px;
                         boxObj.background_color = inventorDetails[0].background_color;
-                        boxObj.segment = segment.toString();
+                        boxObj.segment = segment === 0 ? '1' : segment.toString();
                     }
                     boxes.push(boxObj);
                 }
