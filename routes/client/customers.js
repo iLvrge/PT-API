@@ -521,7 +521,7 @@ route.get("/asset_types/assets", [authJWT.verifyToken, clientDBConnection.connec
         }        
         res.status(200).json(brokenData); */
 
-        connection.application.query("CALL `GetBrokenChains_New`(55, 68)",{
+        connection.application.query("CALL `GetAssets`('55', 68, '', '', '', 1);",{
             type: connection.Sequelize.QueryTypes.SELECT,
             raw: true,
             logging: console.log,
@@ -534,6 +534,8 @@ route.get("/asset_types/assets", [authJWT.verifyToken, clientDBConnection.connec
             }
             res.status(200).json(brokenData);
         })
+
+
     } catch ( err ) {
         console.log(err);
         res.status(500).send("Internal server error.");

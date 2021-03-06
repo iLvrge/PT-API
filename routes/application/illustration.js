@@ -14,6 +14,7 @@ route.get("/collections/:rf_id/illustration", [authJWT.verifyToken], async (req,
     const rfID = req.params.rf_id;
     if(rfID > 0) {
         const itemDetails = await helpers.getAssignmentDataByrfID(rfID.toString().trim());
+       
         let boxes = [], connections = [], execDate = '', execDate1 = '', earliestDate = "", fakeDate = '', recordedDate = '', title = "", popup = [], inventionTitle = [], applNum = [], filingDate = [], intlRegNum = [], pctNum = [], patNum = [], publDate = [], publNum = [], issueDate = [], inventionTitleFirst = "", applNumFirst = "", filingDateFirst = "", intlPublDateFirst= "", intlRegNumFirst = "", issueDateFirst = "", patNumFirst = "", publDateFirst = "", publNumFirst = "", inventors = "", assignees = [], assigneesAddress1 = [], assigneesAddress2 = [], assigneesCity = [], assigneesState = [], assigneesCountryName = [], assigneesPostCode = [], assignors = [];
         const box = [
             {id:1,segment:0,border_color:'#363636',border_px:'1',background_color:'#222222',dimension:'100x30',type:'Inventor',shape:'rectangle'},
@@ -178,6 +179,7 @@ route.get("/collections/:rf_id/illustration", [authJWT.verifyToken], async (req,
                     assigneeID = assignee.id;
                     oldAssigneeList.push({id:assigneeID, name: boxName});
                     let checkType = "Ownership";
+                    type = "Ownership";
                     if(itemDetails.assignment.convey_ty === "security"){
                         checkType = "Security";
                         type = "Security";
@@ -187,11 +189,11 @@ route.get("/collections/:rf_id/illustration", [authJWT.verifyToken], async (req,
                     } else if(itemDetails.assignment.convey_ty === "namechg"){
                         checkType = "Ownership";
                         type = "Release";
-                    } else if(itemDetails.assignment.convey_ty === "assignment"){
+                    }/*  else if(itemDetails.assignment.convey_ty === "assignment"){
                         checkType = "Ownership";
                     } else if(itemDetails.assignment.convey_ty === "correct"){
                         checkType = "Ownership";
-                    }
+                    } */
 
                     boxObj = {
                         id: assigneeID,
