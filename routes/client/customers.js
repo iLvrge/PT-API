@@ -58,11 +58,21 @@ route.get("/events/", [authJWT.verifyToken, clientDBConnection.connect], async(r
 });
 
 route.get("/timeline", [authJWT.verifyToken, clientDBConnection.connect], async(req, res, next) => {
-    let {companies, tabs, customers, limit, offset } = req.query, list = [], groups = []
+    let {companies, tabs, customers, rf_ids, limit, offset } = req.query, list = [], groups = []
     try {                
         const organisationData = await helpers.findOrganisationbyID(req.orgId);
         //console.log(0);
         if(organisationData != null && organisationData.organisation_id > 0 && typeof req.connection_db != "undefined" && req.connection_db != null) {
+            
+           /*  if( search != undefined && search != null ) {
+
+                 const { uniquerfIDs } = await helpers.findRfIDsBySearchString(search)
+
+                if(uniquerfIDs.length > 0) {
+                    rfIDs = [...uniquerfIDs]
+                } 
+            }  */
+            
             
             const where = {organisation_id: req.orgId}, DATE_FORMAT = 'YYYY-MM-DD';
             
@@ -84,6 +94,13 @@ route.get("/timeline", [authJWT.verifyToken, clientDBConnection.connect], async(
                 customers = JSON.parse(customers);
                 if(customers.length > 0) {
                     where.assignor_and_assignee_id = customers
+                }
+            }
+
+            if(rf_ids != undefined &&  rf_ids != '' ) {
+                rf_ids = JSON.parse(rf_ids);
+                if(rf_ids.length > 0) {
+                    where.rf_id = rf_ids
                 }
             }
 

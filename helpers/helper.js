@@ -1866,6 +1866,77 @@ const findAssetsTimeSpan = async(portfolioList, tabID, customerID, rfID, orgID) 
     return assetsLifeSpan;
 }
 
+const findRfIDsBySearchString = async(search_string) => {
+
+    let list = [], limit = 100, customQuery3rdParty = ''
+    const searchList = [], uniquerfIDs = []
+
+    if(!isNaN(search_string)) {
+        customQuery3rdParty = `SELECT tpc.rf_id as rf_id, date_format(tpc.exec_dt,'%m/%d/%Y') as date, (SELECT count(*) FROM documentid as dd WHERE dd.rf_id = tpc.rf_id) as assets FROM tree_parties as tp INNER JOIN tree_parties_collection as tpc ON tp.assignor_and_assignee_id = tpc.assignor_and_assignee_id WHERE tpc.rf_id IN (SELECT rf_id FROM db_uspto.representative_transactions WHERE organisation_id = :orgId) AND tpc.rf_id = :searchItem GROUP BY tpc.rf_id LIMIT :limit`
+    } else {
+        customQuery3rdParty = `SELECT tpc.rf_id as rf_id, date_format(tpc.exec_dt,'%m/%d/%Y') as date, (SELECT count(*) FROM documentid as dd WHERE dd.rf_id = tpc.rf_id ) as assets FROM tree_parties as tp INNER JOIN tree_parties_collection as tpc ON tp.assignor_and_assignee_id = tpc.assignor_and_assignee_id WHERE tpc.rf_id IN (SELECT rf_id FROM db_uspto.representative_transactions WHERE organisation_id = :orgId) AND MATCH(tp.name) AGAINST (:searchItem) GROUP BY tpc.rf_id LIMIT :limit`
+    }
+
+    let getList = await connection.application.query(customQuery3rdParty,{
+            type: connection.Sequelize.QueryTypes.SELECT,
+            raw: true,
+            logging: console.log,
+            replacements: { searchItem: search_string, orgId: req.orgId, limit: limit },
+        }
+    );
+
+    if( getList.length > 0) {
+        list = [ ...list, ...getList]
+    }
+
+    const customQueryLawyer = `SELECT a.rf_id as rf_id, (SELECT date_format(exec_dt,'%m/%d/%Y') FROM assignor WHERE assignor.rf_id = a.rf_id LIMIT 1) as date, (SELECT count(*) FROM documentid as dd WHERE dd.rf_id = a.rf_id ) as assets FROM assignment as a WHERE a.rf_id IN (SELECT rf_id FROM db_uspto.representative_transactions WHERE organisation_id = :orgId) AND MATCH(a.cname, a.caddress_1) AGAINST (:searchItem) GROUP BY a.rf_id LIMIT :limit`
+
+    getList = await connection.application.query(customQueryLawyer,{
+            type: connection.Sequelize.QueryTypes.SELECT,
+            raw: true,
+            logging: console.log,
+            replacements: { searchItem: search_string, orgId: req.orgId, limit: limit },
+        }
+    );
+
+    if( getList.length > 0) {
+        list = [ ...list, ...getList]
+    }
+
+    let customQueryDocument = ''
+
+    if(!isNaN(search_string)) {
+        customQueryDocument = `SELECT d.rf_id as rf_id, (SELECT date_format(exec_dt,'%m/%d/%Y') FROM assignor WHERE assignor.rf_id = d.rf_id LIMIT 1) as date, (SELECT count(*) FROM documentid as dd WHERE dd.rf_id = d.rf_id ) as assets FROM documentid as d WHERE d.rf_id IN (SELECT rf_id FROM db_uspto.representative_transactions WHERE organisation_id = :orgId) AND (d.appno_doc_num = :searchItem OR d.grant_doc_num = :searchItem) GROUP BY d.rf_id LIMIT :limit` 
+    } else {
+        customQueryDocument = `SELECT d.rf_id as rf_id, (SELECT date_format(exec_dt,'%m/%d/%Y') FROM assignor WHERE assignor.rf_id = d.rf_id LIMIT 1) as date, (SELECT count(*) FROM documentid as dd WHERE dd.rf_id = d.rf_id ) as assets FROM documentid as d WHERE d.rf_id IN (SELECT rf_id FROM db_uspto.representative_transactions WHERE organisation_id = :orgId) AND d.grant_doc_num = :searchItem GROUP BY d.rf_id LIMIT :limit` 
+    }
+
+    getList = await connection.application.query(customQueryDocument,{
+            type: connection.Sequelize.QueryTypes.SELECT,
+            raw: true,
+            logging: console.log,
+            replacements: { searchItem: search_string, orgId: req.orgId, limit: limit},
+        }
+    );
+    
+    if( getList.length > 0) {
+        list = [ ...list, ...getList]
+    }
+
+    if(list.length) {
+        const promise = list.map( item => {
+            if(!uniquerfIDs.includes(item.rf_id)) {
+                searchList.push(item)
+                uniquerfIDs.push(item.rf_id)
+            }
+            return item
+        })
+
+        await Promise.all(promise)
+    }
+    return {uniquerfIDs,searchList}
+}
+
 const minMax2DArray = async(arr, idx) => {
     console.log(arr.length);
     var max = -Number.MAX_VALUE,
@@ -1922,4 +1993,5 @@ helper.getCollectionByID = getCollectionByID;
 helper.allTransactionEntities = allTransactionEntities;
 helper.findEntityAssets = findEntityAssets;
 helper.findAssetsTimeSpan = findAssetsTimeSpan
+helper.findRfIDsBySearchString = findRfIDsBySearchString
 module.exports = helper;
