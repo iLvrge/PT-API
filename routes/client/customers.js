@@ -516,50 +516,246 @@ route.get("/asset_types/assets", [authJWT.verifyToken, clientDBConnection.connec
 /**
  * Restore Ownership
  * Broken chain of title
- * paramters 
+ * parameters 
  */
-
-
- route.get("/restore_ownership/assets", [authJWT.verifyToken, clientDBConnection.connect], async(req, res, next) => {
+route.get("/:type/assets", [authJWT.verifyToken, clientDBConnection.connect], async(req, res, next) => {
     try {
-        let {companies, tabs, customers, assignments, limit, offset } = req.query, brokenData = {list:[], total_records:0}
+        let {companies, tabs, customers, assignments, limit, offset } = req.query,
+            type = 0
+            
+        const replacements =  { 
+                            companies: '', 
+                            organisationID: req.orgId, 
+                            tabs: '',
+                            customers: '',
+                            assignments: '',
+                            type: type
+                        },
+            assets = {
+                            list: [], 
+                            total_records: 0
+                        }
+        
+        switch(req.params.type) {
+            case 'restore_ownership':
+                replacements.type = 1
+            break
+            case 'encumbered':
+                replacements.type = 2
+            break
+            default:
+                replacements.type = 0
+        }
 
-        /* const data = await connection.application.query("CALL `GetBrokenChains_New`(55, 68)",{
-                type: connection.Sequelize.QueryTypes.SELECT,
-                raw: true,
-                logging: console.log,
-                replacements: {},
-            }
-        );
-        console.log("\nInside result : " + JSON.stringify(data));
-        if(data.length > 0 && data[0].length > 0) {
-            brokenData.list = data[0]
-            brokenData.total_records = brokenData.list.length
-        }        
-        res.status(200).json(brokenData); */
+        if(companies && companies != '') {
+            companies = JSON.parse( companies )
+            replacements.companies = companies.join(',')
+        }
 
-        connection.application.query("CALL `GetAssets`('55', 68, '', '', '', 1);",{
+        if(tabs && tabs != '') {
+            tabs = JSON.parse( tabs )
+            replacements.tabs = tabs.join(',')
+        }
+
+        if(customers && customers != '') {
+            customers = JSON.parse( customers )
+            replacements.customers = customers.join(',')
+        }
+
+        if(assignments && assignments != '') {
+            assignments = JSON.parse( assignments )
+            replacements.assignments = assignments.join(',')
+        }
+        
+        connection.application.query("CALL `GetAssets`(:companies, :organisationID, :tabs, :customers, :assignments, :type);",{
             type: connection.Sequelize.QueryTypes.SELECT,
             raw: true,
             logging: console.log,
-            replacements: {},
+            replacements: replacements,
             }
         ).spread(result => {
             if (result) {
-                brokenData.list = Object.values(result)
-                brokenData.total_records = brokenData.list.length
+                assets.list = Object.values(result)
+                assets.total_records = assets.list.length
             }
-            res.status(200).json(brokenData);
+            res.status(200).json(assets);
         })
-
 
     } catch ( err ) {
         console.log(err);
         res.status(500).send("Internal server error.");
     }
- })
+})
 
 
+route.get("/:type/transactions", [authJWT.verifyToken, clientDBConnection.connect], async(req, res, next) => {
+    try {
+        let {companies, tabs, customers, limit, offset } = req.query,
+            type = 0
+            
+        const replacements =  { 
+                            companies: '', 
+                            organisationID: req.orgId, 
+                            tabs: '',
+                            customers: '',
+                            assignments: '',
+                            type: type
+                        },
+            transactions = {
+                            list: [], 
+                            total_records: 0
+                        }
+        
+        switch(req.params.type) {
+            case 'restore_ownership':
+                replacements.type = 1
+            break
+            case 'encumbered':
+                replacements.type = 2
+            break
+            default:
+                replacements.type = 0
+        }
+
+        if(companies && companies != '') {
+            companies = JSON.parse( companies )
+            replacements.companies = companies.join(',')
+        }
+
+        if(tabs && tabs != '') {
+            tabs = JSON.parse( tabs )
+            replacements.tabs = tabs.join(',')
+        }
+
+        if(customers && customers != '') {
+            customers = JSON.parse( customers )
+            replacements.customers = customers.join(',')
+        }        
+        
+        connection.application.query("CALL `GetTransactions`(:companies, :organisationID, :tabs, :customers, :type);",{
+            type: connection.Sequelize.QueryTypes.SELECT,
+            raw: true,
+            logging: console.log,
+            replacements: replacements,
+            }
+        ).spread(result => {
+            if (result) {
+                transactions.list = Object.values(result)
+                transactions.total_records = transactions.list.length
+            }
+            res.status(200).json(transactions);
+        })
+    } catch ( err ) {
+        console.log(err);
+        res.status(500).send("Internal server error.");
+    }
+})
+
+route.get("/:type/parties", [authJWT.verifyToken, clientDBConnection.connect], async(req, res, next) => {
+    try {
+        let {companies, tabs, limit, offset } = req.query,
+            type = 0
+            
+        const replacements =  { 
+                            companies: '', 
+                            organisationID: req.orgId, 
+                            tabs: '',
+                            customers: '',
+                            assignments: '',
+                            type: type
+                        },
+                parties = {
+                            list: [], 
+                            total_records: 0
+                        }
+        
+        switch(req.params.type) {
+            case 'restore_ownership':
+                replacements.type = 1
+            break
+            case 'encumbered':
+                replacements.type = 2
+            break
+            default:
+                replacements.type = 0
+        }
+
+        if(companies && companies != '') {
+            companies = JSON.parse( companies )
+            replacements.companies = companies.join(',')
+        }
+
+        if(tabs && tabs != '') {
+            tabs = JSON.parse( tabs )
+            replacements.tabs = tabs.join(',')
+        }
+        
+        connection.application.query("CALL `GetParties`(:companies, :organisationID, :tabs, :type);",{
+            type: connection.Sequelize.QueryTypes.SELECT,
+            raw: true,
+            logging: console.log,
+            replacements: replacements,
+            }
+        ).spread(result => {
+            if (result) {
+                parties.list = Object.values(result)
+                parties.total_records = parties.list.length
+            }
+            res.status(200).json(parties);
+        })
+    } catch ( err ) {
+        console.log(err);
+        res.status(500).send("Internal server error.");
+    }
+})
+
+route.get("/:type/activites", [authJWT.verifyToken, clientDBConnection.connect], async(req, res, next) => {
+    try {
+        let {companies, limit, offset } = req.query,
+            type = 0, activites = []
+            
+        const replacements =  { 
+                            companies: '', 
+                            organisationID: req.orgId, 
+                            tabs: '',
+                            customers: '',
+                            assignments: '',
+                            type: type
+                        }
+        
+        switch(req.params.type) {
+            case 'restore_ownership':
+                replacements.type = 1
+            break
+            case 'encumbered':
+                replacements.type = 2
+            break
+            default:
+                replacements.type = 0
+        }
+
+        if(companies && companies != '') {
+            companies = JSON.parse( companies )
+            replacements.companies = companies.join(',')
+        }
+        
+        connection.application.query("CALL `GetActivities`(:companies, :organisationID, :type);",{
+            type: connection.Sequelize.QueryTypes.SELECT,
+            raw: true,
+            logging: console.log,
+            replacements: replacements,
+            }
+        ).spread(result => {
+            if (result) {
+                activites = Object.values(result)
+            }
+            res.status(200).json(activites);
+        })
+    } catch ( err ) {
+        console.log(err);
+        res.status(500).send("Internal server error.");
+    }
+})
 
 /**
  * List of all portfolio from new table
