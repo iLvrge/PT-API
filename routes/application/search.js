@@ -15,9 +15,8 @@ const clientDBConnection = require("../../helpers/clientDBConnection");
 route.get("/:search_string", [ authJWT.verifyToken, clientDBConnection.connect ], async (req, res, next) => {
     try {
         if(typeof req.connection_db != "undefined" && req.connection_db != null ) {
-            const { search_string } = req.params
 
-            const { searchList, uniquerfIDs } = await helpers.findRfIDsBySearchString(search_string)
+            const { searchList, uniquerfIDs } = await helpers.findRfIDsBySearchString(req)
             
             res.status(200).json({list: searchList, total_records: searchList.length, txn_ids: uniquerfIDs});
         } else {

@@ -1866,8 +1866,9 @@ const findAssetsTimeSpan = async(portfolioList, tabID, customerID, rfID, orgID) 
     return assetsLifeSpan;
 }
 
-const findRfIDsBySearchString = async(search_string) => {
-
+const findRfIDsBySearchString = async(req) => {
+    
+    const { search_string } = req.params
     let list = [], limit = 100, customQuery3rdParty = ''
     const searchList = [], uniquerfIDs = []
 
