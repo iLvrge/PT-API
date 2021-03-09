@@ -2,7 +2,7 @@ const Sequelize = require('sequelize');
 
 const Op = Sequelize.Op;
 
-const application = new Sequelize('db_application', 'db_user_all', 'wDv%5tgn0O0kMkM', {
+const application = new Sequelize(process.env.DATABASE_APPLICATION, process.env.USER, process.env.PASSWORD, {
     host: '167.172.195.92',
     dialect: 'mysql',
     operatorsAliases: Op,
@@ -15,7 +15,7 @@ const application = new Sequelize('db_application', 'db_user_all', 'wDv%5tgn0O0k
     }*/
 });
 
-const resources = new Sequelize('db_uspto', 'db_user_all', 'wDv%5tgn0O0kMkM', {
+const resources = new Sequelize(process.env.DATABASE_RAW, process.env.USER, process.env.PASSWORD, {
     host: '167.172.195.92',
     dialect: 'mysql',
     operatorsAliases: Op,
@@ -28,7 +28,7 @@ const resources = new Sequelize('db_uspto', 'db_user_all', 'wDv%5tgn0O0kMkM', {
     }*/
 });
 
-const business = new Sequelize('db_business', 'db_user_all', 'wDv%5tgn0O0kMkM', {
+const business = new Sequelize(process.env.DATABASE_BUSINESS, process.env.USER, process.env.PASSWORD, {
     host: '167.172.195.92',
     dialect: 'mysql',
     operatorsAliases: Op,
@@ -41,7 +41,7 @@ const business = new Sequelize('db_business', 'db_user_all', 'wDv%5tgn0O0kMkM', 
     }*/
 });
 
-const maintainence = new Sequelize('db_patent_maintainence_fee', 'db_user_all', 'wDv%5tgn0O0kMkM', {
+const maintainence = new Sequelize(process.env.DATABASE_MAINTAINENCE, process.env.USER, process.env.PASSWORD, {
   host: '167.172.195.92',
   dialect: 'mysql',
   operatorsAliases: Op,
