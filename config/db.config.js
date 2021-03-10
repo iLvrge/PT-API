@@ -40,7 +40,7 @@ const business = new Sequelize(process.env.DATABASE_BUSINESS, process.env.USER, 
       idle: 10000
     }*/
 });
-
+console.log(process.env.DATABASE_MAINTAINENCE)
 const maintainence = new Sequelize(process.env.DATABASE_MAINTAINENCE, process.env.USER, process.env.PASSWORD, {
   host: '167.172.195.92',
   dialect: 'mysql',

@@ -540,7 +540,7 @@ route.get("/:type/assets", [authJWT.verifyToken, clientDBConnection.connect], as
             case 'restore_ownership':
                 replacements.type = 1
             break
-            case 'encumbered':
+            case 'clear_encumbrances':
                 replacements.type = 2
             break
             default:
@@ -610,7 +610,7 @@ route.get("/:type/transactions", [authJWT.verifyToken, clientDBConnection.connec
             case 'restore_ownership':
                 replacements.type = 1
             break
-            case 'encumbered':
+            case 'clear_encumbrances':
                 replacements.type = 2
             break
             default:
@@ -673,7 +673,7 @@ route.get("/:type/parties", [authJWT.verifyToken, clientDBConnection.connect], a
             case 'restore_ownership':
                 replacements.type = 1
             break
-            case 'encumbered':
+            case 'clear_encumbrances':
                 replacements.type = 2
             break
             default:
@@ -727,7 +727,7 @@ route.get("/:type/activites", [authJWT.verifyToken, clientDBConnection.connect],
             case 'restore_ownership':
                 replacements.type = 1
             break
-            case 'encumbered':
+            case 'clear_encumbrances': 
                 replacements.type = 2
             break
             default:
