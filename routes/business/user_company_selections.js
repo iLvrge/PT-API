@@ -18,23 +18,38 @@ const UserCompanySelection = require("../../model/business/UserCompanySelection"
 route.post("/user_company_selection", [authJWT.verifyToken], async (req, res, next) => {
     let list = []
     try{
-        const { representative_id } = req.body;
+        let { representative_id } = req.body;
 
-        if(representative_id != undefined && representative_id > 0) {
-            const addData = {
-                representative_id: representative_id,
-                user_id: req.userId,
-                organisation_id: req.orgId
-            }
+        if(representative_id != undefined && representative_id != '') {
+            const representative_id = JSON.parse(representative_id)
 
-            const add = await UserCompanySelection.create(addData)
-
-            if(add > 0) {
-                list = await UserCompanySelection.findAll({
-                    attributes: ['user_company_selection_id', 'user_id', 'organisation_id', 'representative_id'],
+            if(representative_id.length > 0) {
+                //truncate previous records
+                await UserCompanySelection.destroy({
                     where: {user_id: req.userId, organisation_id: req.orgId}
+                }) 
+
+                const addData = [];
+                const proimse = representative_id.map( representative => {
+                    addData.push({
+                        representative_id: representative,
+                        user_id: req.userId,
+                        organisation_id: req.orgId
+                    })
+                    return representative
                 })
-            }
+                
+                Promise.all(proimse)
+    
+                const addedRecords = await UserCompanySelection.bulkCreate(addData, { returning: true })
+                console.log("addedRecords", addedRecords)
+                if( addedRecords ) {
+                    list = await UserCompanySelection.findAll({
+                        attributes: ['user_company_selection_id', 'user_id', 'organisation_id', 'representative_id'],
+                        where: {user_id: req.userId, organisation_id: req.orgId}
+                    })
+                }
+            }            
         }
         res.status(200).json({list});
        
@@ -43,7 +58,7 @@ route.post("/user_company_selection", [authJWT.verifyToken], async (req, res, ne
         res.status(500).send("Error while adding selection.");
     }     
 });
-
+/* 
 route.put("/user_company_selection", [authJWT.verifyToken], async (req, res, next) => {
     let list = []
     try{
@@ -77,5 +92,5 @@ route.delete("/user_company_selection", [authJWT.verifyToken], async (req, res, 
         res.status(500).send("Error while adding selection.");
     }     
 });
-
+ */
 module.exports = route;
