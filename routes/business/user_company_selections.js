@@ -10,6 +10,24 @@ const User = require("../../model/business/Users");
 
 const UserCompanySelection = require("../../model/business/UserCompanySelection");
 
+/**
+ * Middleware to check authentication code 
+ * get list of user selected company from database
+ */
+
+route.post("/user_company_selection", [authJWT.verifyToken], async (req, res, next) => {
+    try{
+        const list = await UserCompanySelection.findAll({
+            attributes: ['user_company_selection_id', 'user_id', 'organisation_id', 'representative_id'],
+            where: {user_id: req.userId, organisation_id: req.orgId}
+        })
+        res.status(200).json({list});
+    } catch( e ) {
+        console.log("Error while adding user company selection", e)
+        res.status(500).send("Error while adding selection.");
+    } 
+})
+
 
 /**
  * Middleware to check authentication code 
