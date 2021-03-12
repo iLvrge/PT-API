@@ -15,7 +15,7 @@ const UserCompanySelection = require("../../model/business/UserCompanySelection"
  * get list of user selected company from database
  */
 
-route.post("/user_company_selection", [authJWT.verifyToken], async (req, res, next) => {
+route.get("/user_company_selection", [authJWT.verifyToken], async (req, res, next) => {
     try{
         const list = await UserCompanySelection.findAll({
             attributes: ['user_company_selection_id', 'user_id', 'organisation_id', 'representative_id'],
