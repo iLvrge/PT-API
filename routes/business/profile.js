@@ -34,12 +34,12 @@ route.get("/profile", [authJWT.verifyToken], (req, res, next) => {
                 model: Organisation,
                 as: 'organisation',
                 attributes: ['name', 'logo', 'organisation_id']
-            },
+            }/* ,
             {
                 model: UserCompanySelection,
                 as: 'usercompanyselection',
                 attributes: ['representative_id']
-            }
+            } */
         ]
     }).then(user => {
         res.status(200).json({
