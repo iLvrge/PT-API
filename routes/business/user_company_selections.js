@@ -21,7 +21,7 @@ route.post("/user_company_selection", [authJWT.verifyToken], async (req, res, ne
         let { representative_id } = req.body;
 
         if(representative_id != undefined && representative_id != '') {
-            const representative_id = JSON.parse(representative_id)
+            representative_id = JSON.parse(representative_id)
 
             if(representative_id.length > 0) {
                 //truncate previous records
@@ -42,7 +42,6 @@ route.post("/user_company_selection", [authJWT.verifyToken], async (req, res, ne
                 Promise.all(proimse)
     
                 const addedRecords = await UserCompanySelection.bulkCreate(addData, { returning: true })
-                console.log("addedRecords", addedRecords)
                 if( addedRecords ) {
                     list = await UserCompanySelection.findAll({
                         attributes: ['user_company_selection_id', 'user_id', 'organisation_id', 'representative_id'],
