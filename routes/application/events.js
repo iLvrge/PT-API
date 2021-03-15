@@ -2251,50 +2251,53 @@ const findEventList = async(req, res) => {
                 })
             }
             
-            if( findData.length > 0 ) {
-                const date = findData.length > 0 ? findData[0].grant_date : assetData != null ? assetData.grant_date : '';
-                
-                if( date != '' && date != '0000-00-00') {
-                    const grantDate = date.indexOf('-') <= 0 ? `${date.substring(0,4)}-${date.substring(4,6)}-${date.substring(6,8)} 00:00:00` : date + ' 00:00:00'
-                    let enter = true
-                    const addEventsDates = [42, 90, 138]
-                    const eventPromise = addEventsDates.map( item => {
-                        let currentDate = new Date( grantDate )
-                        /**Yellow */
-                        const eventDate = moment( currentDate.setMonth( currentDate.getMonth() + item ) )
-                        
-                        if( enter === true ) {
-                            if( expired === true && eventExpiredDate != '' && new Date(eventExpiredDate + ' 00:00:00').getTime() <= new Date( eventDate ).getTime() ) {
-                                enter = false
-                            }
-                        }
+            let date = '0000-00-00';
 
-                        if( enter === true ) {
-                            const nextDate = new Date( eventDate )
-                            const startDate = eventDate.format('YYYY-MM-DD')
-                            const endDate = moment( nextDate.setMonth( nextDate.getMonth() + 6 ) ).format('YYYY-MM-DD')
-    
-                            /**Red */
-                            let followingDay = new Date( endDate + ' 00:00:00' );
-                            const redStartDate = moment( new Date(followingDay.setTime(followingDay.getTime() + 86400000)) ).format('YYYY-MM-DD')
-                            const redEndDate = moment( new Date(redStartDate).setMonth( new Date(redStartDate).getMonth() + 6) ).format('YYYY-MM-DD')
-    
-                            other.push({
-                                grant_doc_num: findData.length > 0 ? findData[0].grant_doc_num : assetData.grant_doc_num,
-                                appno_doc_num: findData.length > 0 ? findData[0].appno_doc_num : assetData.appno_doc_num,
-                                start: startDate, 
-                                end: redEndDate,
-                                event_code: '',
-                                event_desc: '',
-                                type: 'yellow'
-                            })
-                        }
-                        
-                        return item
-                    })                    
+            if( findData.length > 0 ) {
+                date = findData[0].grant_date;
+            } else if (assetData != null) {
+                date = assetData.grant_date;
+            }    
+            if( date != '' && date != '0000-00-00') {
+                const grantDate = date.indexOf('-') <= 0 ? `${date.substring(0,4)}-${date.substring(4,6)}-${date.substring(6,8)} 00:00:00` : date + ' 00:00:00'
+                let enter = true
+                const addEventsDates = [42, 90, 138]
+                const eventPromise = addEventsDates.map( item => {
+                    let currentDate = new Date( grantDate )
+                    /**Yellow */
+                    const eventDate = moment( currentDate.setMonth( currentDate.getMonth() + item ) )
                     
-                    await Promise.all( eventPromise )
-                }
+                    if( enter === true ) {
+                        if( expired === true && eventExpiredDate != '' && new Date(eventExpiredDate + ' 00:00:00').getTime() <= new Date( eventDate ).getTime() ) {
+                            enter = false
+                        }
+                    }
+
+                    if( enter === true ) {
+                        const nextDate = new Date( eventDate )
+                        const startDate = eventDate.format('YYYY-MM-DD')
+                        const endDate = moment( nextDate.setMonth( nextDate.getMonth() + 6 ) ).format('YYYY-MM-DD')
+
+                        /**Red */
+                        let followingDay = new Date( endDate + ' 00:00:00' );
+                        const redStartDate = moment( new Date(followingDay.setTime(followingDay.getTime() + 86400000)) ).format('YYYY-MM-DD')
+                        const redEndDate = moment( new Date(redStartDate).setMonth( new Date(redStartDate).getMonth() + 6) ).format('YYYY-MM-DD')
+
+                        other.push({
+                            grant_doc_num: findData.length > 0 ? findData[0].grant_doc_num : assetData.grant_doc_num,
+                            appno_doc_num: findData.length > 0 ? findData[0].appno_doc_num : assetData.appno_doc_num,
+                            start: startDate, 
+                            end: redEndDate,
+                            event_code: '',
+                            event_desc: '',
+                            type: 'yellow'
+                        })
+                    }
+                    
+                    return item
+                })
+                
+                await Promise.all( eventPromise )
             }
             res.status(200).json({main: findData, other, icons});
         } else {
