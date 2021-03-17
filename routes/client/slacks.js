@@ -1,13 +1,14 @@
 const express = require("express");
-const { WebClient } = require('@slack/web-api');
+const { WebClient } = require('@slack/web-api')
 const route = express.Router();
-const config = require("../../config/db.config");
+const config = require("../../config/db.config")
 
 
-const AssetsChannel = require("../../model/client/AssetsChannel");
+const AssetsChannel = require("../../model/client/AssetsChannel")
+const Documentids = require("../../model/application/DocumentIds")
 
-const authJWT = require("../../helpers/verifyJwtToken");
-const clientDBConnection = require("../../helpers/clientDBConnection");
+const authJWT = require("../../helpers/verifyJwtToken")
+const clientDBConnection = require("../../helpers/clientDBConnection")
 
 const createChannelID = async(token, params) => {
 
@@ -18,6 +19,31 @@ const createChannelID = async(token, params) => {
         result = await web.conversations.create( params )
     } catch( err ) {
         console.log("createChannelID", err)
+    }
+    return result
+}
+
+const creatChannelTopic = async(token, channel, asset) => {
+
+    let result = {}
+    try {       
+        let findAssetData = await Documentids.findOne({
+            attributes: ['title'],
+            where:{ grant_doc_num: asset}
+        })
+
+        if(findAssetData != null && findAssetData != '') {
+            findAssetData = await Documentids.findOne({
+                attributes: ['title'],
+                where:{ appno_doc_num: asset}
+            })
+        }
+        if(findAssetData != null && findAssetData != '') {
+            const web = new WebClient(token)
+            result = await web.conversations.setTopic( {channel, topic: findAssetData.title } )
+        }        
+    } catch( err ) {
+        console.log("channelSetTopic", err)
     }
     return result
 }
@@ -154,7 +180,7 @@ route.post("/conversations/message/:token", [authJWT.verifyToken, clientDBConnec
             const AssetChannel = req.connection_db.define('AssetsChannel', AssetsChannel.mainStructure, AssetsChannel.options);
 
             const { token } = req.params;
-            let {channel_id, text, asset, reply, user, edit } = req.body
+            let {channel_id, text, asset, asset_format, reply, user, edit } = req.body
 
             // channel name without space and no special characters
             let result = {}
@@ -167,12 +193,15 @@ route.post("/conversations/message/:token", [authJWT.verifyToken, clientDBConnec
                 })
 
                 if( findChannel == null ) {
-                    const channelResult = await createChannelID(token, {name: asset, is_private: true})
+                    const channelResult = await createChannelID(token, {name: asset_format, is_private: false}) //create public channel
     
                     if(channelResult != null ) {
                         if(channelResult && channelResult.ok === true) {
                             const { channel } = channelResult
                             channel_id = channel.id
+
+                            // setTopic
+                            creatChannelTopic(token, channel_id, asset)
                             AssetChannel.create({
                                 channel_id: channel_id,
                                 asset: asset
@@ -185,7 +214,7 @@ route.post("/conversations/message/:token", [authJWT.verifyToken, clientDBConnec
             }
 
             if(channel_id != "") {
-                console.log(text);
+                console.log('message',text);
                 const messageParams = {
                     channel: channel_id,
                     text: text
