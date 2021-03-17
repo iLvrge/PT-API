@@ -32,7 +32,7 @@ const creatChannelTopic = async(token, channel, asset) => {
             where:{ grant_doc_num: asset}
         })
 
-        if(findAssetData != null && findAssetData != '') {
+        if(findAssetData == null || findAssetData == '') {
             findAssetData = await Documentids.findOne({
                 attributes: ['title'],
                 where:{ appno_doc_num: asset}
@@ -114,6 +114,7 @@ const inviteUserToChannel = async(token, params)=> {
     return result
 }
 
+
 route.get("/conversations/auth/:code", async(req, res, next) => {
     try{
         const  code  = req.params.code;
@@ -193,7 +194,7 @@ route.post("/conversations/message/:token", [authJWT.verifyToken, clientDBConnec
                 })
 
                 if( findChannel == null ) {
-                    const channelResult = await createChannelID(token, {name: asset_format, is_private: false}) //create public channel
+                    const channelResult = await createChannelID(token, {name: asset_format.toString().toLowerCase(), is_private: false}) //create public channel
     
                     if(channelResult != null ) {
                         if(channelResult && channelResult.ok === true) {
@@ -381,6 +382,20 @@ route.get("/asset/:asset", [authJWT.verifyToken, clientDBConnection.connect] , a
     } catch( e ) {
         console.log( e )
         res.status( 200 ).json( {} )
+    }
+})
+
+
+route.get("/channels", [authJWT.verifyToken, clientDBConnection.connect], async(req, res, next) => {
+    try{
+        const AssetChannel = req.connection_db.define('AssetsChannel', AssetsChannel.mainStructure, AssetsChannel.options);
+        const list = await AssetChannel.findAll({
+            attributes: ['asset']
+        })
+        res.status( 200 ).json( list )
+    } catch( e ) {
+        console.log( e )
+        res.status( 200 ).json([])
     }
 })
 
