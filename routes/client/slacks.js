@@ -179,7 +179,7 @@ route.post("/conversations/create/:token" , async(req, res, next) => {
  * Update team ID with main User
  */
 
-route.update('/team/:team', [authJWT.verifyToken], async(req, res, next) =>{
+route.put('/team/:team', [authJWT.verifyToken], async(req, res, next) =>{
     try {
         const { team } = req.params;
         //check teamID and auth user should Admin user
