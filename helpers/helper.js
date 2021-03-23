@@ -105,7 +105,7 @@ let searchCompany = async(query, t) => {
             let querySearchResult = await connection.resources.query(queryCompany,{
                 type: connection.Sequelize.QueryTypes.SELECT,
                 raw: true,
-                replacements: { search: searchTerm },
+                replacements: { search: search },
                 logging: console.log,
             }); 
             //let querySearchResult = [];
