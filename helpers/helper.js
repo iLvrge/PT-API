@@ -66,7 +66,7 @@ let searchCompany = async(query, t) => {
                 search = search.substr(0, search.length - 2);
             }*/
             //search = search.replace(/\b(?:inc|llc|corp|llp|gmbh|lp|agent|sas|na|bank|co|states|ltd|kk|a\/s)\b/g,'').replace(/^\s+/,"");
-            if(regexFindAmp.exec(originalSearch) === null){
+            /* if(regexFindAmp.exec(originalSearch) === null){
                 if(splitSearch.length > 1){				
                     if(splitSearch.length == 2) {
                         if(splitSearch[1] == '') {
@@ -84,10 +84,7 @@ let searchCompany = async(query, t) => {
                         }
                     } else {
                         const ftsQuery = new FtsQuery(true);			
-                        searchTerm = ftsQuery.transform(search);
-                        /*if(!!searchTerm.indexOf('"')){
-                            searchTerm = `${searchTerm}*`;
-                        }*/
+                        searchTerm = ftsQuery.transform(search);                        
                         searchTerm = searchTerm.replace(" AND ", " ");
                         searchTerm = searchTerm.replace(" OR ", " ");
                         searchTerm = searchTerm.replace(" NEAR ", " ");
@@ -100,7 +97,7 @@ let searchCompany = async(query, t) => {
                 }
             } else {
                 searchTerm = `"${search}"`;
-            }
+            } */
             
             console.log("SEARCH:",search);
             queryCompany = "SELECT a.assignor_and_assignee_id as id, a.assignor_and_assignee_id, a.name, a.instances as counter, c.representative_name as normalize_name, (select rr.representative_name FROM representative as rr WHERE rr.representative_name = a.name GROUP BY rr.representative_name) as representative_company, (SELECT concat(ass.reel_no,'-', ass.frame_no) FROM assignee as ee INNER JOIN assignment as ass ON ass.rf_id = ee.rf_id WHERE ee.assignor_and_assignee_id = a.assignor_and_assignee_id LIMIT 1) as assigneeRFID, (SELECT concat(asss.reel_no,'-', asss.frame_no) FROM assignor as assi INNER JOIN assignment as asss ON asss.rf_id = assi.rf_id WHERE assi.assignor_and_assignee_id = a.assignor_and_assignee_id LIMIT 1) as assignorRFID  FROM assignor_and_assignee as a LEFT JOIN representative as c ON c.representative_id = a.representative_id WHERE MATCH(a.name) AGAINST (:search IN BOOLEAN MODE) GROUP BY a.name";
@@ -112,7 +109,7 @@ let searchCompany = async(query, t) => {
                 logging: console.log,
             }); 
             //let querySearchResult = [];
-            if(querySearchResult.length == 0){
+            /* if(querySearchResult.length == 0){
                 queryCompany = `SELECT a.assignor_and_assignee_id as id, a.assignor_and_assignee_id, a.name, a.instances as counter, c.representative_name as normalize_name, (select rr.representative_name FROM representative as rr WHERE rr.representative_name = a.name GROUP BY rr.representative_name) as representative_company, (SELECT concat(ass.reel_no,'-', ass.frame_no) FROM assignee as ee INNER JOIN assignment as ass ON ass.rf_id = ee.rf_id WHERE ee.assignor_and_assignee_id = a.assignor_and_assignee_id LIMIT 1) as assigneeRFID, (SELECT concat(asss.reel_no,'-', asss.frame_no) FROM assignor as assi INNER JOIN assignment as asss ON asss.rf_id = assi.rf_id WHERE assi.assignor_and_assignee_id = a.assignor_and_assignee_id LIMIT 1) as assignorRFID  FROM assignor_and_assignee as a LEFT JOIN representative as c ON c.representative_id = a.representative_id WHERE a.name LIKE :search AND flag = :flag GROUP BY a.name`;
                 
                 querySearchResult = await connection.resources.query(queryCompany,{
@@ -133,7 +130,7 @@ let searchCompany = async(query, t) => {
                       }
                     );
                 }
-            }
+            } */
             if(querySearchResult.length > 0) {
                 queryResult = [...queryResult, ...querySearchResult];
                 /*console.log(queryResult);*/
