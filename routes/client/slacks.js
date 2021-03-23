@@ -175,6 +175,35 @@ route.post("/conversations/create/:token" , async(req, res, next) => {
     }
 })
 
+/**
+ * Update team ID with main User
+ */
+
+route.update('/team/:team', [authJWT.verifyToken], async(req, res, next) =>{
+    try {
+        const { team } = req.params;
+        //check teamID and auth user should Admin user
+        if( team != '' && authJWT.isAdmin() ) {
+            const orgData =  await Organisation.findOne({
+                where: {organisation_id: req.orgId}
+            })
+
+            if(orgData != null && orgData.team != '') {
+                await Organisation.update(team,{where: {organisation_id: req.orgId}})
+                console.log('Team updated...')
+            }
+        }
+        res.status(200).send('');
+    } catch (e) {
+        console.log(e)
+        res.status(500).send('Error creating team.');
+    }
+}) 
+
+/**
+ * Send Slack message
+ */
+
 route.post("/conversations/message/:token", [authJWT.verifyToken, clientDBConnection.connect] , async(req, res, next) => {
     try{
         if(typeof req.connection_db != "undefined" && req.connection_db != null ) {
