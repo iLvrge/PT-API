@@ -6,9 +6,16 @@ const config = require("../../config/db.config")
 
 const AssetsChannel = require("../../model/client/AssetsChannel")
 const Documentids = require("../../model/application/DocumentIds")
+const Users = require("../../model/business/Users")
+const Organisations = require("../../model/business/Organisations")
+
 
 const authJWT = require("../../helpers/verifyJwtToken")
 const clientDBConnection = require("../../helpers/clientDBConnection")
+
+const   jwt = require('jsonwebtoken'),
+        bcrypt = require('bcrypt'),
+        moment = require("moment");
 
 const createChannelID = async(token, params) => {
 
@@ -114,6 +121,61 @@ const inviteUserToChannel = async(token, params)=> {
     return result
 }
 
+route.get('/auth/:code', async(req, res, next) => {
+    try{
+        const  code  = req.params.code;
+
+        const { slackConfig } = config;
+
+        const token = {auth: false, accessToken: '', message: '' , accessSlackToken : {access_token: '', id: '', team: ''} };
+        console.log(req.params);
+        console.log({
+            client_id: slackConfig.clientID,
+            client_secret: slackConfig.clientSecret,
+            code
+        })
+        // Create a client instance just to make this single call, and use it for the exchange
+        const result = await (new WebClient()).oauth.v2.access({
+            client_id: slackConfig.clientID,
+            client_secret: slackConfig.clientSecret,
+            code
+        });
+        console.log(result)
+        if(result && result.ok === true) {
+            //GET TOKEN
+            token.accessSlackToken.access_token  = result.authed_user.access_token
+            token.accessSlackToken.id  = result.authed_user.id
+            token.accessSlackToken.team  = result.team.id
+        }
+        
+        if(token.accessSlackToken.team != '') {
+            const findOrganisation = await Organisations.findOne({
+                where: {team: token.accessSlackToken.team}
+            })
+
+            if( findOrganisation != null ) {
+                const user = await Users.findOne({
+                    where: { organisation_id: findOrganisation.organisation_id, type: '0', status:0 }
+                })
+
+                if( user != null ) {
+                    const currentDate = Date.now();
+
+                    const expiredDate = moment(new Date(currentDate)).add(1,'days').valueOf();
+                    token.auth = true
+                    token.message = 'Login successfully!'
+                    token.accessToken = await jwt.sign({ id: user.user_id, orgId:user.organisation_id, iat: currentDate, expired: expiredDate }, config.config.secret, {
+                        expiresIn: 86400 // expires in 24 hours,
+                    });
+                }
+            }
+        }        
+        res.status(200).json(token);
+    } catch (e) {
+        console.log(e)
+        res.status(401).send(`Error: ${e.data.error}`);
+    }
+})
 
 route.get("/conversations/auth/:code", async(req, res, next) => {
     try{
@@ -183,17 +245,28 @@ route.put('/team/:team', [authJWT.verifyToken], async(req, res, next) =>{
     try {
         const { team } = req.params;
         //check teamID and auth user should Admin user
-        if( team != '' && authJWT.isAdmin() ) {
-            const orgData =  await Organisation.findOne({
-                where: {organisation_id: req.orgId}
+        if( team != '' ) {
+            const user = await Users.findOne({
+                where: { user_id: req.userId, type: '0' }
             })
 
-            if(orgData != null && orgData.team != '') {
-                await Organisation.update(team,{where: {organisation_id: req.orgId}})
-                console.log('Team updated...')
-            }
+            if( user != null ) {
+                const orgData =  await Organisations.findOne({
+                    where: {organisation_id: req.orgId}
+                })
+    
+                if(orgData != null && orgData.team != '') {
+                    await Organisations.update({team: team},{where: {organisation_id: req.orgId}})
+                    console.log('Team updated...')
+                }
+                res.status(200).send('');
+            } else {
+                res.status(200).send('Invalid data.');
+            }            
+        } else {
+            res.status(200).send('Invalid team.');
         }
-        res.status(200).send('');
+       
     } catch (e) {
         console.log(e)
         res.status(500).send('Error creating team.');
