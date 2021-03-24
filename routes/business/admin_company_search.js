@@ -200,13 +200,13 @@ route.put("/company/search/all/", [authJWT.verifyToken, authJWT.isAdmin], async 
                 let  representativeCompany = await helpers.checkRepresentativeCompany(normalize_name);
 
                 /**
-                 * Check normalize company is normalize with  another company
+                 * Check normalize company is normalize with another company
                  * 
                  */
                 let findNormalizedCompany  = await AssignorAndAssignee.findOne({
                     where:{name: normalize_name}
                 });
-                console.log(findNormalizedCompany);
+                //console.log(findNormalizedCompany);
                 if(findNormalizedCompany != null && findNormalizedCompany.representative_id > 0) {
                     representativeCompany  = await Representatives.findOne({
                         where:{representative_id: findNormalizedCompany.representative_id}
@@ -254,6 +254,15 @@ route.put("/company/search/all/", [authJWT.verifyToken, authJWT.isAdmin], async 
                             representative_name: normalize_name
                         });
                     }
+                } else {
+                    const promise = getList.map(r => {
+                        if(r.representative_id > 0 && !allRepresentatives.includes(r.representative_id)) {
+                            allRepresentatives.push(r.representative_id);
+                        }
+                        return r;
+                    })
+
+                    await Promise.all(promise);
                 }
 
                 const item = {representative_id: representativeCompany.representative_id};
