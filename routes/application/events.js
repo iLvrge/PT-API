@@ -2147,7 +2147,7 @@ route.get("/events/tabs/:tabID/companies/:representativeID/customers/:customerID
 
 route.get("/events/tabs", [authJWT.verifyToken, clientDBConnection.connect], async(req, res, next) => {
     try {
-        const { type, companies, tabs, customers } = req.query
+        let { type, companies, tabs, customers, rf_ids } = req.query
         let assetsLifeSpan = [];
         if(typeof req.connection_db != "undefined" && req.connection_db != null ) {
 
@@ -2163,7 +2163,11 @@ route.get("/events/tabs", [authJWT.verifyToken, clientDBConnection.connect], asy
                 customers = JSON.parse(customers)                
             }
 
-            assetsLifeSpan = await helpers.findAllAssetsTimeSpan(companies, tabs, customers, [], req.orgId);
+            if(rf_ids != undefined && rf_ids != '') {
+                rf_ids = JSON.parse(rf_ids)                
+            }
+
+            assetsLifeSpan = await helpers.findAllAssetsTimeSpan(companies, tabs, customers, rf_ids, req.orgId);
         }
         res.status(200).json(assetsLifeSpan);
     } catch (err) {
