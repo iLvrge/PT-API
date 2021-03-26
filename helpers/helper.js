@@ -1765,9 +1765,58 @@ let getCompaniesMinAndMaxDateTransaction = async(searchData) => {
 }
 
 
+const findAssetsTimeSpanByTransactionById = async(rfID) => {
+    let assetsLifeSpan = [];
+    const getAssetList = await DocumentIds.findAll({
+        attributes: [['appno_doc_num','application'], ['grant_doc_num', 'patent'], 'status', 'appno_date'],
+        where: {
+            [connection.Op.and]: [
+                connection.Sequelize.where(
+                    connection.Sequelize.fn(
+                        'DATE_FORMAT',
+                        connection.Sequelize.col('appno_date'),
+                        '%Y'
+                    ),
+                    connection.Sequelize.Op.gte,
+                    1990
+                ),
+                {appno_doc_num: {[connection.Op.ne]: ''}},
+                {grant_doc_num: {[connection.Op.ne] : ''}},
+                {rf_id: rfID}
+            ]
+        },
+        group:['appno_doc_num']             
+    });
+    const applicationNumberAdded = [], dateAdded = [];
+
+    if(getAssetList.length > 0) {                
+        const timelineSpan = [];
+        const promises = getAssetList.map( async application => {
+            if(!applicationNumberAdded.includes(application.get('application'))){
+                const startYear = moment(new Date(application.appno_date)).format(ASSETS_LIFE_SPAN_DATE_FORMAT);
+                let endYear = moment(new Date(application.appno_date)).add(20, 'years').format(ASSETS_LIFE_SPAN_DATE_FORMAT);
+                for(let i = parseInt(startYear); i <= parseInt(endYear); i++) {
+                    timelineSpan.push({year: i, count: 1, application: application.get('application')});
+                }
+                applicationNumberAdded.push(application.get('application'));
+                dateAdded.push(application.appno_date);
+            }            
+            return application;
+        });
+
+        await Promise.all(promises);
+        console.log("TOTALAPPLICATIONS",JSON.stringify(dateAdded));
+        assetsLifeSpan = findMaxMin(timelineSpan)        
+    }
+    return assetsLifeSpan;
+}
+
 
 const findAssetsTimeSpan = async(portfolioList, tabID, customerID, rfID, orgID) => {    
-    const where = {organisation_id: orgID}, assetsLifeSpan = [];
+
+    const where = {organisation_id: orgID};
+    let assetsLifeSpan = [];
+
     if(portfolioList != null) {
         where.representative_id = portfolioList
     }    
@@ -1775,14 +1824,14 @@ const findAssetsTimeSpan = async(portfolioList, tabID, customerID, rfID, orgID) 
     if(tabID != undefined && tabID != null && parseInt(tabID) > 0) {
         where.tab_id = parseInt(tabID);
     }
+
     if(parseInt(customerID) > 0) {
         where.assignor_and_assignee_id = parseInt(customerID);
     }
+
     if(parseInt(rfID) > 0) {
         where.rf_id = parseInt(rfID);
     }
-
-    
 
     const getAssetList = await TreePartiesCollections.findAll({
         attributes:[],
@@ -1811,7 +1860,9 @@ const findAssetsTimeSpan = async(portfolioList, tabID, customerID, rfID, orgID) 
         ],
         group:['assets.appno_doc_num']             
     });
+
     const applicationNumberAdded = [], dateAdded = [];
+
     console.log("TOTALITEMS",getAssetList.length);
     
     if(getAssetList.length > 0) {                
@@ -1837,25 +1888,33 @@ const findAssetsTimeSpan = async(portfolioList, tabID, customerID, rfID, orgID) 
 
         await Promise.all(promises);
         console.log("TOTALAPPLICATIONS",JSON.stringify(dateAdded));
-        /* fs.writeFile("abc.log", JSON.stringify(timelineSpan), function (err) {
-            if (err) return console.log(err);
-            console.log('DONE');
-        }); */
-        
-        const {max, min} = await minMax2DArray(timelineSpan, 'year');
-        
-        for(let i = min; i < max; i++) {
-            let getList = await timelineSpan.filter( item => {
-                return i == parseInt(item.year) ? item : undefined;
-            });
-            if(getList != undefined && getList.length > 0){
-                //console.log(i,getList);
-                let Counter = await getList.reduce((a, b) => +a + +b.count, 0);
-                assetsLifeSpan.push({year: i, count: Counter});
-            }
-        }
+        assetsLifeSpan = findMaxMin(timelineSpan)        
     }
     return assetsLifeSpan;
+}
+
+
+
+
+const findMaxMin = async(timelineSpan) => {
+    let assetsLifeSpan = []
+
+    const {max, min} = await minMax2DArray(timelineSpan, 'year');
+        
+    for(let i = min; i < max; i++) {
+
+        let getList = await timelineSpan.filter( item => {
+            return i == parseInt(item.year) ? item : undefined;
+        });
+
+        if(getList != undefined && getList.length > 0) {
+            
+            let Counter = await getList.reduce((a, b) => +a + +b.count, 0);
+            assetsLifeSpan.push({ year: i, count: Counter });
+        }
+    }
+
+    return assetsLifeSpan
 }
 
 const findRfIDsBySearchString = async(req) => {
@@ -1986,5 +2045,6 @@ helper.getCollectionByID = getCollectionByID;
 helper.allTransactionEntities = allTransactionEntities;
 helper.findEntityAssets = findEntityAssets;
 helper.findAssetsTimeSpan = findAssetsTimeSpan
+helper.findAssetsTimeSpanByTransactionById = findAssetsTimeSpanByTransactionById
 helper.findRfIDsBySearchString = findRfIDsBySearchString
 module.exports = helper;

@@ -2135,7 +2135,7 @@ route.get("/events/tabs/:tabID/companies/:representativeID/customers/:customerID
                     assetsLifeSpan = await helpers.findAssetsTimeSpan([findRepresentative.representative_id], tabID, customerID, rfID, req.orgId);
                 }
             } else {
-                assetsLifeSpan = await helpers.findAssetsTimeSpan(null, 0, 0, rfID, req.orgId);
+                assetsLifeSpan = await helpers.findAssetsTimeSpanByTransactionById( rfID );
             }            
         }
         res.status(200).json(assetsLifeSpan);
