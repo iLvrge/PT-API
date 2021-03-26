@@ -2145,6 +2145,34 @@ route.get("/events/tabs/:tabID/companies/:representativeID/customers/:customerID
     }
 });
 
+route.get("/events/tabs", [authJWT.verifyToken, clientDBConnection.connect], async(req, res, next) => {
+    try {
+        const { type, companies, tabs, customers } = req.query
+        let assetsLifeSpan = [];
+        if(typeof req.connection_db != "undefined" && req.connection_db != null ) {
+
+            if(companies != undefined && companies != '') {
+                companies = JSON.parse(companies)                
+            }
+
+            if(tabs != undefined && tabs != '') {
+                tabs = JSON.parse(tabs)                
+            }
+
+            if(customers != undefined && customers != '') {
+                customers = JSON.parse(customers)                
+            }
+
+            assetsLifeSpan = await helpers.findAllAssetsTimeSpan(companies, tabs, customers, [], req.orgId);
+        }
+        res.status(200).json(assetsLifeSpan);
+    } catch (err) {
+        console.log(err);
+        res.status(500).send("Internal server error.");
+    }
+
+})
+
 
 route.get("/events/tabs/:tabID/companies/:companyID/customers/:customerID/transactions/:rfID/assets/:applicationNumber", [authJWT.verifyToken, clientDBConnection.connect], async (req, res) =>{     
     try {

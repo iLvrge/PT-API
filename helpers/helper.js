@@ -1811,6 +1811,86 @@ const findAssetsTimeSpanByTransactionById = async(rfID) => {
     return assetsLifeSpan;
 }
 
+const findAllAssetsTimeSpan = async( companies, tabs, customers, rfIDs, orgID ) => {
+    const where = {organisation_id: orgID};
+    let assetsLifeSpan = [];
+
+    if(companies.length > 0) {
+        where.representative_id = companies
+    }
+
+    if(tabs.length > 0) {
+        where.tab_id = tabs
+    }
+
+    if(customers.length > 0) {
+        where.assignor_and_assignee_id = customers
+    }
+
+    if(rfIDs.length > 0) {
+        where.rf_id = rfIDs
+    }
+
+    const getAssetList = await TreePartiesCollections.findAll({
+        attributes:[],
+        where: where,
+        include:[
+            {                       
+                model: DocumentIds,
+                as: 'assets',
+                attributes: [['appno_doc_num','application'], ['grant_doc_num', 'patent'], 'status', 'appno_date'],
+                where:{
+                    [connection.Op.and]: [
+                        connection.Sequelize.where(
+                            connection.Sequelize.fn(
+                                'DATE_FORMAT',
+                                connection.Sequelize.col('assets.appno_date'),
+                                '%Y'
+                            ),
+                            connection.Sequelize.Op.gte,
+                            1990
+                        ),
+                        {appno_doc_num: {[connection.Op.ne]: ''}},
+                        {grant_doc_num: {[connection.Op.ne] : ''}}
+                    ]
+                },
+            }
+        ],
+        group:['assets.appno_doc_num']             
+    });
+
+    const applicationNumberAdded = [], dateAdded = [];
+
+    console.log("TOTALITEMS",getAssetList.length);
+    
+    if(getAssetList.length > 0) {                
+        const timelineSpan = [];
+        const promises = getAssetList.map( async item => {
+            if(item.assets.length > 0) {
+                const assetPromise = item.assets.map(application => {
+                    if(!applicationNumberAdded.includes(application.get('application'))){
+                        const startYear = moment(new Date(application.appno_date)).format(ASSETS_LIFE_SPAN_DATE_FORMAT);
+                        let endYear = moment(new Date(application.appno_date)).add(20, 'years').format(ASSETS_LIFE_SPAN_DATE_FORMAT);
+                        for(let i = parseInt(startYear); i <= parseInt(endYear); i++) {
+                            timelineSpan.push({year: i, count: 1, application: application.get('application')});
+                        }
+                        applicationNumberAdded.push(application.get('application'));
+                        dateAdded.push(application.appno_date);
+                    }            
+                    return application;
+                });
+                await Promise.all(assetPromise);
+            }
+            return item;
+        });
+
+        await Promise.all(promises);
+        console.log("TOTALAPPLICATIONS",JSON.stringify(dateAdded));
+        assetsLifeSpan = findMaxMin(timelineSpan)        
+    }
+    return assetsLifeSpan;
+
+}
 
 const findAssetsTimeSpan = async(portfolioList, tabID, customerID, rfID, orgID) => {    
 
@@ -2045,6 +2125,7 @@ helper.getCollectionByID = getCollectionByID;
 helper.allTransactionEntities = allTransactionEntities;
 helper.findEntityAssets = findEntityAssets;
 helper.findAssetsTimeSpan = findAssetsTimeSpan
+helper.findAllAssetsTimeSpan = findAllAssetsTimeSpan
 helper.findAssetsTimeSpanByTransactionById = findAssetsTimeSpanByTransactionById
 helper.findRfIDsBySearchString = findRfIDsBySearchString
 module.exports = helper;
