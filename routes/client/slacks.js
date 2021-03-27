@@ -92,6 +92,21 @@ const getUsersList = async( token ) => {
     return result
 }
 
+const getUsersInfo = async( token, userId ) => {
+    let result = {}
+    try{
+        const web = new WebClient(token);
+            
+        // channel name without space and no special characters
+        result = await web.users.info ({
+            user: userId
+        })
+    } catch( err ) {
+        console.log("getUsersInfo", err)
+    }
+    return result
+}
+
 const uploadFileToChannel = async(token, params) => {
     const mimeType = params.file.mimetype
     let result = {}
@@ -209,6 +224,29 @@ route.get("/conversations/auth/:code", async(req, res, next) => {
         res.status(401).send(`Error: ${e.data.error}`);
     }
 })
+
+/**
+ * Users infor
+ */
+
+route.get("/user/info/:token/:userId" , async(req, res, next) => {
+    try{
+        const { token, userId } = req.params;
+
+        const result = await getUsersInfo( token, userId )
+        if(result && result.ok === true) {
+           const { user } = result;
+           res.status(200).json(user);
+        }   else {
+            res.status(200).json([]);
+        }
+    } catch (e) {
+        console.log(e)
+        res.status(401).send(`Error: ${e.data.error}`);
+    }
+})
+
+
 /**
  * Create Channel
  */
