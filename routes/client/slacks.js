@@ -139,7 +139,7 @@ const inviteUserToChannel = async(token, params)=> {
 route.get('/auth/:code', async(req, res, next) => {
     try{
         const  code  = req.params.code;
-
+        const { redirect_uri } = req.query;
         const { slackConfig } = config;
 
         const token = {auth: false, accessToken: '', message: '' , accessSlackToken : {access_token: '', id: '', team: ''} };
@@ -147,13 +147,15 @@ route.get('/auth/:code', async(req, res, next) => {
         console.log({
             client_id: slackConfig.clientID,
             client_secret: slackConfig.clientSecret,
-            code
+            code,
+            redirect_uri
         })
         // Create a client instance just to make this single call, and use it for the exchange
         const result = await (new WebClient()).oauth.v2.access({
             client_id: slackConfig.clientID,
             client_secret: slackConfig.clientSecret,
-            code
+            code,
+            redirect_uri
         });
         console.log(result)
         if(result && result.ok === true) {
@@ -194,7 +196,8 @@ route.get('/auth/:code', async(req, res, next) => {
 
 route.get("/conversations/auth/:code", async(req, res, next) => {
     try{
-        const  code  = req.params.code;
+        const  { code }  = req.params;
+        const { redirect_uri } = req.query;
 
         const { slackConfig } = config;
 
@@ -203,13 +206,15 @@ route.get("/conversations/auth/:code", async(req, res, next) => {
         console.log({
             client_id: slackConfig.clientID,
             client_secret: slackConfig.clientSecret,
-            code
+            code,
+            redirect_uri
         })
         // Create a client instance just to make this single call, and use it for the exchange
         const result = await (new WebClient()).oauth.v2.access({
             client_id: slackConfig.clientID,
             client_secret: slackConfig.clientSecret,
-            code
+            code,
+            redirect_uri
         });
         console.log(result)
         if(result && result.ok === true) {
