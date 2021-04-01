@@ -69,6 +69,122 @@ route.get("/customers", [authJWT.verifyToken, authJWT.isAdmin], (req, res, next)
 });
 
 /**
+ * List all admin users
+ */
+route.get("/users", [authJWT.verifyToken, authJWT.isAdmin], async(req, res, next) => {
+    try{
+        
+        const adminUsers = await Users.findAll({
+            attributes: ['user_id', 'first_name', 'last_name', 'username'],
+            where: {role_id: 1, type: '9', organisation_id: 3}
+        })
+        
+        res.status(200).json(adminUsers);     
+    } catch( err ) {
+        console.log(err);
+        res.status(400).send("Invalid inputs");
+    }
+});
+
+/**
+ * Add admin user
+ */
+
+route.post("/users", [authJWT.verifyToken, authJWT.isAdmin, userExist.checkDuplicateAdminUsername], async (req, res, next) =>{
+    try{
+        const addUser = await Users.create({
+            first_name: req.body.first_name,
+            last_name: req.body.last_name,
+            email_address: '',
+            username: req.body.username,						
+            password: bcrypt.hashSync(req.body.password ? req.body.password : 123456, 8),
+            job_title: '',
+            linkedin_url: '',
+            type: '9',
+            logo: '',
+            role_id: 1,
+            organisation_id: 3
+        })
+        if(addUser != null) {   
+            const newUser = addUser.toJSON();
+            newUser.id = newUser.user_id;
+            newUser.password = '';
+            newUser.organisation_id = '';
+            res.status(200).json(newUser);
+        }  else {
+            res.status(400).send("Bad inputs");
+        } 
+    } catch( err ) {
+        console.log(err);
+        res.status(400).send("Bad inputs");
+    }
+});
+
+/**
+ * Update admin user
+ */
+
+route.put("/users/:user_id", [authJWT.verifyToken, authJWT.isAdmin], async (req, res, next) =>{
+   
+    try{
+        
+        
+        const user = await Users.findOne({
+            where: {user_id: req.params.user_id, organisation_id: 3, type: '9'}
+        })
+
+        if( user != null && user.user_id > 0){				
+            if(req.body.password != undefined && req.body.password != null && req.body.password != ""){
+                user.password = bcrypt.hashSync(req.body.password, 8);
+                const update = await user.save();
+                console.log(update)
+                if(update) {
+                    res.status(200).send("Updated successfully");
+                } else {
+                    res.status(500).send("Error while updating user.");
+                }                
+            } else {
+                res.status(400).send("Invalid inputs");
+            }
+        } else {
+            res.status(400).send("Invalid inputs");
+        }
+    } catch( err ) {
+        console.log(err);
+        
+        res.status(400).send("Invalid inputs");
+    }
+})
+
+/**
+ * Delete admin user
+ */
+
+route.delete("/users/:user_id", [authJWT.verifyToken, authJWT.isAdmin], async (req, res, next) =>{
+    try{
+        const user = await Users.findOne({
+            where: {user_id: req.params.user_id, organisation_id: 3, type: '9'}
+        })
+
+        if( user != null && user.user_id > 0){
+            
+            const deleteUser = await user.destroy();
+
+            if(deleteUser != null) {
+                res.status(200).send("User deleted successfully.");
+            } else {
+                res.status(500).send("Error while deleting user.");
+            }
+        } else {
+            res.status(500).send("Error while deleting user.");
+        }
+    } catch( err ) {
+        console.log(err);
+        res.status(400).send("Invalid inputs");
+    }
+})
+
+/**
  * Get customer by ID
  */
 

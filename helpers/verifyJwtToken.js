@@ -23,9 +23,19 @@ let verifyToken = (req, res, next) => {
         return res.status(401).send('Authorization error');
       }
       console.log(decoded);
-      req.userId = decoded.id;
-      req.orgId = decoded.orgId;
-      next();
+
+      User.findOne({
+        where:{user_id: decoded.id, organisation_id: decoded.orgId, status: 0}
+      }).then(user => {
+        if(!user){
+          res.status(401).send("You are not authorized user to access this page.");
+          return;
+        } else {
+          req.userId = decoded.id;
+          req.orgId = decoded.orgId;
+          next();
+        }
+      })      
     });
 }
 
@@ -39,7 +49,7 @@ let isAdmin = (req, res, next) => {
     console.log("Checking is Admin");
     console.log("USER:"+req.userId);
     User.findOne({
-      where:{user_id: req.userId,type:'9'}
+      where:{user_id: req.userId,type:'9', status: 0}
     }).then(user => {
       if(!user){
         res.status(401).send("You are not authorized user to access this page.");
