@@ -10,7 +10,7 @@ const User = require("../model/business/Users");
 
 let verifyToken = (req, res, next) => {    
 
-    let token = req.headers['x-access-token'];
+    let token = req.headers['x-auth-token'];
 
     console.log("Verifying token...", token);
 
