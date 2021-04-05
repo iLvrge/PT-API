@@ -135,6 +135,7 @@ route.put("/users/:user_id", [authJWT.verifyToken, authJWT.isAdmin], async (req,
 
         if( user != null && user.user_id > 0){				
             if(req.body.password != undefined && req.body.password != null && req.body.password != ""){
+                user.first_name = req.body.first_name;
                 user.password = bcrypt.hashSync(req.body.password, 8);
                 const update = await user.save();
                 console.log(update)

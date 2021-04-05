@@ -8,10 +8,11 @@ const secret = process.env.SECRET || 'p@nt3nt8@60';
 
 const User = require("../model/business/Users");
 
-let verifyToken = (req, res, next) => {
-    console.log("Verifying token...");
+let verifyToken = (req, res, next) => {    
 
     let token = req.headers['x-access-token'];
+
+    console.log("Verifying token...", token);
 
     if (!token){
       return res.status(401).send('Invalid token');
