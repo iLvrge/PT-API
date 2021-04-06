@@ -567,7 +567,7 @@ route.get("/:type/assets", [authJWT.verifyToken, clientDBConnection.connect], as
             replacements.assignments = assignments.join(',')
         }
 
-        if(req.params.type = 'secure_a_loan') {
+        if(req.params.type == 'secure_a_loan') {
             connection.application.query("CALL `GetAssetsTableA`(:companies, :organisationID);",{
                 type: connection.Sequelize.QueryTypes.SELECT,
                 raw: true,
@@ -581,7 +581,7 @@ route.get("/:type/assets", [authJWT.verifyToken, clientDBConnection.connect], as
                 }
                 res.status(200).json(assets);
             })
-        } else if(req.params.type = 'reduce_interest_rate') {
+        } else if(req.params.type == 'reduce_interest_rate') {
             connection.application.query("CALL `GetAssetsTableB`(:companies, :organisationID);",{
                 type: connection.Sequelize.QueryTypes.SELECT,
                 raw: true,
