@@ -609,6 +609,20 @@ route.get("/:type/assets", [authJWT.verifyToken, clientDBConnection.connect], as
                 }
                 res.status(200).json(assets);
             })
+        }  else if(req.params.type == 'market_review') {
+            connection.application.query("CALL `GetAssetsTableD`(:companies, :organisationID);",{
+                type: connection.Sequelize.QueryTypes.SELECT,
+                raw: true,
+                logging: console.log,
+                replacements: {companies: replacements.companies, organisationID: req.orgId},
+                }
+            ).spread(result => {
+                if (result) {
+                    assets.list = Object.values(result)
+                    assets.total_records = assets.list.length
+                }
+                res.status(200).json(assets);
+            })
         } else {
             connection.application.query("CALL `GetAssets`(:companies, :organisationID, :tabs, :customers, :assignments, :type);",{
                 type: connection.Sequelize.QueryTypes.SELECT,
