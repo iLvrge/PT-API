@@ -232,9 +232,16 @@ route.put("/company/search/all/", [authJWT.verifyToken, authJWT.isAdmin], async 
                 }
                 let findIsNormalized = null, allRepresentatives = [], oldRepresentativeCompanyID = 0, check = true;
 
-                const replaceNames = [];
+                const replaceNames = [], oldRepresentativeIDs = [];
 
-                const promiseName = getList.map( company => replaceNames.push(company.name)) // get name list
+                
+
+                const promiseName = getList.map( company => {
+                    replaceNames.push(company.name)  // get name list
+                    if(company.representative_id > 0) {
+                        otherIDs.push(company.representative_id)
+                    }
+                })
 
 
                 await Promise.all(promiseName)
@@ -244,7 +251,7 @@ route.put("/company/search/all/", [authJWT.verifyToken, authJWT.isAdmin], async 
                 })
 
                 // Replaced companies also normalize companies
-
+                console.log("Replaced Old normalize company list length->", getReplaceNameRepresentative.length)
                 if(getReplaceNameRepresentative.length > 0) {
                     if(representativeCompany == null){
                         const firstCompany = getReplaceNameRepresentative[0].representative_id;
@@ -277,22 +284,48 @@ route.put("/company/search/all/", [authJWT.verifyToken, authJWT.isAdmin], async 
                         const promiseR = findOldRows.map(row => IDs.push(row.assignor_and_assignee_id))
                         await Promise.all(promiseR)
                         console.log("findOldRowsIDs1", IDs)
+                        allRepresentatives = [...allRepresentatives, ...otherIDs]
+                        console.log("allRepresentatives", allRepresentatives)
                     }
 
-                    const updateRows = await AssignorAndAssignee.update({representative_id: representativeCompany.representative_id}, {where: {representative_id: otherIDs}})
+                    /* const updateRows = await AssignorAndAssignee.update({representative_id: representativeCompany.representative_id}, {where: {representative_id: otherIDs}})
                     if(updateRows) {
                         allRepresentatives = [...allRepresentatives, ...otherIDs]
                     }                    
 
-                    console.log("allRepresentatives", allRepresentatives)
+                    console.log("allRepresentatives", allRepresentatives) */
 
-                } else if(representativeCompany == null) {
-                    representativeCompany = await Representatives.create({
-                        representative_name: normalize_name
-                    });
-                }
+                } else {
+                    if(representativeCompany == null) {
+                        representativeCompany = await Representatives.create({
+                            representative_name: normalize_name
+                        });
+                    }
+                    console.log("Update old representatives", otherIDs)
+                    if(otherIDs.length > 0) {
+                        const findOldRows = await AssignorAndAssignee.findAll({
+                            attributes:['assignor_and_assignee_id'],
+                            where: {
+                                [connection.Op.or]: [
+                                {representative_id: otherIDs},
+                                {name: replaceNames}
+                            ]}
+                        })
+                        if(findOldRows.length > 0) {
+                            console.log("findOldRowsIDs", IDs)
+                            const promiseR = findOldRows.map(row => IDs.push(row.assignor_and_assignee_id))
+                            await Promise.all(promiseR)
+                            console.log("findOldRowsIDs1", IDs)
+                            allRepresentatives = [...allRepresentatives, ...otherIDs]
+                        }
+                        /* const updateRows = await AssignorAndAssignee.update({representative_id: representativeCompany.representative_id}, {where: {representative_id: otherIDs}})
+                        if(updateRows) {
+                            allRepresentatives = [...allRepresentatives, ...otherIDs]
+                        }  */
+                    }
+                } 
               
-
+                console.log("RepresentativeID->", representativeCompany.representative_id)
                 const item = {representative_id: representativeCompany.representative_id};
                 
                 //Update representative ID
