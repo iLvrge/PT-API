@@ -208,33 +208,7 @@ route.put("/company/search/all/", [authJWT.verifyToken, authJWT.isAdmin], async 
                 let  representativeCompany = await helpers.checkRepresentativeCompany(normalize_name); //find representative data
 
                 console.log("representativeCompany", representativeCompany)
-
-                /**
-                 * Check normalize company is normalize with another company
-                 * 
-                 */
-                 let findNormalizedCompany  = await AssignorAndAssignee.findOne({
-                    where:{name: normalize_name}
-                });
-                //console.log(findNormalizedCompany);
-                if(findNormalizedCompany != null && findNormalizedCompany.representative_id > 0) {
-                    
-                    if(findNormalizedCompany.representative_id > 0 && (representativeCompany == null || representativeCompany.representative_id != findNormalizedCompany.representative_id)) {
-                        representativeCompany  = await Representatives.findOne({
-                            where:{representative_id: findNormalizedCompany.representative_id}
-                        });
-        
-                        /* if(representativeCompany != null && representativeCompany.representative_id > 0){
-                            await Representatives.update({
-                                representative_name: normalize_name
-                            }, {where: {representative_id: representativeCompany.representative_id} }); // update old representative name with new normalize name
-    
-                            await AssignorAndAssignee.update({
-                                representative_id : representativeCompany.representative_id
-                            }, {where: {name: representativeCompany.representative_name }}) // update old name with representative ID
-                        } */
-                    }
-                }
+                
                 let findIsNormalized = null, allRepresentatives = [], oldRepresentativeCompanyID = 0, check = true;
 
                 const replaceNames = [], oldRepresentativeIDs = [];
