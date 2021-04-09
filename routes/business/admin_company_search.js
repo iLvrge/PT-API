@@ -187,9 +187,11 @@ let allRepresentativesCheckAndDelete = async (allRepresentatives) => {
 }
 
 /**
- * Update normalize name of the Entity
- * Normalize companies with list of IDs with normalize name
- * If other company itself is representative company then update company with new Normalize name
+ * Example
+ * Target A, Rep is B
+ * Check A is Rep if yes then check B is rep if No replace A with B . If No Check B is rep No create B then Associate A with B and B with B
+ * 
+ * 
  */
 route.put("/company/search/all/", [authJWT.verifyToken, authJWT.isAdmin], async (req, res, next) => {
     try {
@@ -199,40 +201,44 @@ route.put("/company/search/all/", [authJWT.verifyToken, authJWT.isAdmin], async 
         if(IDs.length > 0) {
             if(normalize_name != "") {
                 console.log("POST->ID", IDs);
+                
                 let getList = await AssignorAndAssignee.findAll({
                     where:{assignor_and_assignee_id: IDs}
                 });
 
                 console.log("getList->length", getList.length);
-
-                let  representativeCompany = await helpers.checkRepresentativeCompany(normalize_name); //find representative data
+                /**
+                 * Is Rep is already a Rep
+                */
+                let  representativeCompany = await helpers.checkRepresentativeCompany(normalize_name); 
 
                 console.log("representativeCompany", representativeCompany)
-                
-                let findIsNormalized = null, allRepresentatives = [], oldRepresentativeCompanyID = 0, check = true;
-
-                const replaceNames = [], oldRepresentativeIDs = [];
 
                 
+                let allRepresentatives = []; 
+
+                const replaceNames = [];
 
                 const promiseName = getList.map( company => {
-                    replaceNames.push(company.name)  // get name list
-                    /* if(company.representative_id > 0) {
-                        otherIDs.push(company.representative_id)
-                    } */
+                    replaceNames.push(company.name)  
                 })
-
-
                 await Promise.all(promiseName)
-
+                /**
+                 * Is Target a Rep
+                 */
                 const getReplaceNameRepresentative = await Representatives.findAll({
                     where:{ representative_name: replaceNames}
                 })
-
-                // Replaced companies also normalize companies
+               
                 console.log("Replaced Old normalize company list length->", getReplaceNameRepresentative.length)
+
                 if(getReplaceNameRepresentative.length > 0) {
-                    if(representativeCompany == null){
+                    //Yes
+                    /**
+                     * Is Rep is already a Rep
+                    */
+                    if(representativeCompany == null) {
+                        //NO
                         const firstCompany = getReplaceNameRepresentative[0].representative_id;
                         
                         await Representatives.update({
@@ -267,41 +273,26 @@ route.put("/company/search/all/", [authJWT.verifyToken, authJWT.isAdmin], async 
                         console.log("allRepresentatives", allRepresentatives)
                     }
                 } else {
+                    //NO
                     if(representativeCompany == null) {
+                        //NO
                         representativeCompany = await Representatives.create({
                             representative_name: normalize_name
                         });
                     }
-                    console.log("Update old representatives", otherIDs)
-                    /*if(otherIDs.length > 0) {
-                        const findOldRows = await AssignorAndAssignee.findAll({
-                            attributes:['assignor_and_assignee_id'],
-                            where: {
-                                [connection.Op.or]: [
-                                {representative_id: otherIDs},
-                                {name: replaceNames}
-                            ]}
-                        })
-                        if(findOldRows.length > 0) {
-                            console.log("findOldRowsIDs", IDs)
-                            const promiseR = findOldRows.map(row => IDs.push(row.assignor_and_assignee_id))
-                            await Promise.all(promiseR)
-                            console.log("findOldRowsIDs1", IDs)
-                            allRepresentatives = [...allRepresentatives, ...otherIDs]
-                        }                        
-                    }*/
+                    console.log("Update old representatives", otherIDs)                    
                 } 
               
                 console.log("RepresentativeID->", representativeCompany.representative_id)
                 const item = {representative_id: representativeCompany.representative_id};
                 
-                //Update representative ID
+                //Associate Target With Rep
                 await AssignorAndAssignee.update(item, {where: {assignor_and_assignee_id: IDs}}); 
 
-                // Add representative ID to normalize company as well
+                // Associate the Rep with Rep
                 await AssignorAndAssignee.update(item, {where: {name: normalize_name}}); 
                 
-                // Delete other representatives
+                // Delete other rep
                 if(allRepresentatives > 0) {
                     console.log("allRepresentatives1", allRepresentatives)
                     await allRepresentativesCheckAndDelete(allRepresentatives);
