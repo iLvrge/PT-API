@@ -334,18 +334,20 @@ route.put("/company/search/all/", [authJWT.verifyToken, authJWT.isAdmin], async 
                 }	
             } else {
                 let getList = await AssignorAndAssignee.findAll({
-                    attributes:['assignor_and_assignee_id', 'representative_id'],
+                    attributes:['assignor_and_assignee_id', 'representative_id', 'name'],
                     where:{assignor_and_assignee_id: IDs}
-                });
-                
+                });                
+
+                await Promise.all(promiseName)
                 if(getList.length > 0) {
-                    const  allRepresentatives = [];
+                    const  allRepresentatives = [], replaceNames = [], otherIDs = [];
                     IDs = []
                     const promise = getList.map(r => {
                         IDs.push(r.assignor_and_assignee_id)
                         if(r.representative_id > 0) {
                             allRepresentatives.push(r.representative_id)
                         }
+                        replaceNames.push(company.name)
                         return r;
                     })
                     await Promise.all(promise);
