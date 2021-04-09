@@ -337,11 +337,12 @@ route.put("/company/search/all/", [authJWT.verifyToken, authJWT.isAdmin], async 
                     attributes:['assignor_and_assignee_id', 'representative_id'],
                     where:{assignor_and_assignee_id: IDs}
                 });
-
+                
                 if(getList.length > 0) {
-                    const assignorAssigneeIDs = [], allRepresentatives = [];
+                    const  allRepresentatives = [];
+                    IDs = []
                     const promise = getList.map(r => {
-                        assignorAssigneeIDs.push(r.assignor_and_assignee_id)
+                        IDs.push(r.assignor_and_assignee_id)
                         if(r.representative_id > 0) {
                             allRepresentatives.push(r.representative_id)
                         }
@@ -349,7 +350,30 @@ route.put("/company/search/all/", [authJWT.verifyToken, authJWT.isAdmin], async 
                     })
                     await Promise.all(promise);
 
-                    await AssignorAndAssignee.update({representative_id: 0}, {where: {assignor_and_assignee_id: assignorAssigneeIDs}});
+                    const getReplaceNameRepresentative = await Representatives.findAll({
+                        where:{ representative_name: replaceNames}
+                    })
+                    if(getReplaceNameRepresentative.length > 0) {
+                        const promiseIDs = getReplaceNameRepresentative.map( representative => otherIDs.push(representative.representative_id))
+                        await Promise.all(promiseIDs)
+                        const findOldRows = await AssignorAndAssignee.findAll({
+                            attributes:['assignor_and_assignee_id'],
+                            where: {
+                                [connection.Op.or]: [
+                                {representative_id: otherIDs},
+                                {name: replaceNames}
+                            ]}
+                        })
+                        if(findOldRows.length > 0) {
+                            console.log("findOldRowsIDs", IDs)
+                            const promiseR = findOldRows.map(row => IDs.push(row.assignor_and_assignee_id))
+                            await Promise.all(promiseR)
+                            console.log("findOldRowsIDs1", IDs)                            
+                        }
+                    }
+
+
+                    await AssignorAndAssignee.update({representative_id: 0}, {where: {assignor_and_assignee_id: IDs}});
 
                     if(allRepresentatives > 0) {
                         await allRepresentativesCheckAndDelete(allRepresentatives);
