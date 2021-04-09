@@ -338,7 +338,7 @@ route.put("/company/search/all/", [authJWT.verifyToken, authJWT.isAdmin], async 
                     where:{assignor_and_assignee_id: IDs}
                 });                
 
-                await Promise.all(promiseName)
+                
                 if(getList.length > 0) {
                     const  allRepresentatives = [], replaceNames = [], otherIDs = [];
                     IDs = []
@@ -347,7 +347,7 @@ route.put("/company/search/all/", [authJWT.verifyToken, authJWT.isAdmin], async 
                         if(r.representative_id > 0) {
                             allRepresentatives.push(r.representative_id)
                         }
-                        replaceNames.push(company.name)
+                        replaceNames.push(r.name)
                         return r;
                     })
                     await Promise.all(promise);
