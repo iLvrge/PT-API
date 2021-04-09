@@ -537,19 +537,58 @@ route.put("/customers/:id/logo", [authJWT.verifyToken, authJWT.isAdmin], async (
                     if(logoURL != "" && logoURL != 'null' && logoURL != "undefined") {
                         /**Download file from URL */
                         console.log("DOWNLOAD URL");
-                        const extension = logoURL.toString().split('.').pop().toLowerCase();
-                        let contentType = "";
-                        if(extension.indexOf('jpg') >= 0){
-                            contentType = "image/jpeg";
-                        } else if(extension.indexOf('svg') >= 0) {
-                            contentType = "image/svg+xml";
-                        } else if(extension.indexOf('bmp') >= 0){
-                            contentType = "image/bmp";
+                        if(logoURL.toString().indexOf(';base64,')){
+                            const bucketConfig = config.bucketConfig;  
+                            let s3 = new AWS.S3({
+                                credentials: {
+                                    accessKeyId: bucketConfig.accessKeyId,
+                                    secretAccessKey: bucketConfig.secretAccessKey,
+                                },
+                                region: bucketConfig.region
+                            })
+                            let name = `logo_${organisationID}`;
+                            if(extension.indexOf('image/jpeg') >= 0){
+                                name += ".jpeg";
+                            } else if(extension.indexOf('image/svg+xml') >= 0) {
+                                name += ".svg";
+                            } else if(extension.indexOf('image/bmp') >= 0){
+                                name += ".bmp";
+                            } else {
+                                name += ".png";
+                            }
+                            const params = {
+                                Key: `${bucketConfig.documentDir}/${name}`,
+                                Bucket: bucketConfig.bucketName,
+                                Body: logoURL,
+                                ACL: 'public-read'
+                            }
+                            s3.upload(params, async function(err, data) {
+                                if(err == null) {
+                                    org.logo = `${bucketConfig.s3Url}${data.key}`;
+                                    await org.update({
+                                        logo: org.logo
+                                    });
+                                    res.status(200).json({name: org.name, logo: org.logo});
+                                } else {
+                                    return res.status(500).send("ERROR: "+err);	
+                                }
+                            })
                         } else {
-                            contentType = "image/png";
+                            const extension = logoURL.toString().split('.').pop().toLowerCase();
+                            let contentType = "";
+                            if(extension.indexOf('jpg') >= 0){
+                                contentType = "image/jpeg";
+                            } else if(extension.indexOf('svg') >= 0) {
+                                contentType = "image/svg+xml";
+                            } else if(extension.indexOf('bmp') >= 0){
+                                contentType = "image/bmp";
+                            } else {
+                                contentType = "image/png";
+                            }
+                            console.log("contentType", contentType);
+                            await downloadImageToUrl(org, res, logoURL, org.name+'.'+extension, contentType);
                         }
-                        console.log("contentType", contentType);
-                        await downloadImageToUrl(org, res, logoURL, org.name+'.'+extension, contentType);
+                        
                     } else if(req.files != null && req.files.file != null && req.files.file != undefined) {
                         let mimeType = req.files.file.mimetype;
                         console.log(mimeType);
