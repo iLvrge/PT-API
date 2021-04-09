@@ -198,9 +198,12 @@ route.put("/company/search/all/", [authJWT.verifyToken, authJWT.isAdmin], async 
         const otherIDs = [];
         if(IDs.length > 0) {
             if(normalize_name != "") {
+                console.log("POST->ID", IDs);
                 let getList = await AssignorAndAssignee.findAll({
                     where:{assignor_and_assignee_id: IDs}
                 });
+
+                console.log("getList->length", getList.length);
 
                 let  representativeCompany = await helpers.checkRepresentativeCompany(normalize_name); //find representative data
 
