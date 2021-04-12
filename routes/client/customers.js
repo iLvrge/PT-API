@@ -544,7 +544,7 @@ route.get("/:type/assets", [authJWT.verifyToken, clientDBConnection.connect], as
                 replacements.type = 2
             break
             default:
-                replacements.type = 0
+                replacements.type = 15
         }
 
         if(companies && companies != '') {
@@ -567,78 +567,20 @@ route.get("/:type/assets", [authJWT.verifyToken, clientDBConnection.connect], as
             replacements.assignments = assignments.join(',')
         }
 
-        if(req.params.type == 'secure_a_loan') {
-            connection.application.query("CALL `GetAssetsTableA`(:companies, :organisationID);",{
-                type: connection.Sequelize.QueryTypes.SELECT,
-                raw: true,
-                logging: console.log,
-                replacements: {companies: replacements.companies, organisationID: req.orgId},
-                }
-            ).spread(result => {
-                if (result) {
-                    assets.list = Object.values(result)
-                    assets.total_records = assets.list.length
-                }
-                res.status(200).json(assets);
-            })
-        } else if(req.params.type == 'reduce_interest_rate') {
-            connection.application.query("CALL `GetAssetsTableB`(:companies, :organisationID);",{
-                type: connection.Sequelize.QueryTypes.SELECT,
-                raw: true,
-                logging: console.log,
-                replacements: {companies: replacements.companies, organisationID: req.orgId},
-                }
-            ).spread(result => {
-                if (result) {
-                    assets.list = Object.values(result)
-                    assets.total_records = assets.list.length
-                }
-                res.status(200).json(assets);
-            })
-        } else if(req.params.type == 'release_collateral') {
-            connection.application.query("CALL `GetAssetsTableC`(:companies, :organisationID);",{
-                type: connection.Sequelize.QueryTypes.SELECT,
-                raw: true,
-                logging: console.log,
-                replacements: {companies: replacements.companies, organisationID: req.orgId},
-                }
-            ).spread(result => {
-                if (result) {
-                    assets.list = Object.values(result)
-                    assets.total_records = assets.list.length
-                }
-                res.status(200).json(assets);
-            })
-        }  else if(req.params.type == 'market_review') {
-            connection.application.query("CALL `GetAssetsTableD`(:companies, :organisationID);",{
-                type: connection.Sequelize.QueryTypes.SELECT,
-                raw: true,
-                logging: console.log,
-                replacements: {companies: replacements.companies, organisationID: req.orgId},
-                }
-            ).spread(result => {
-                if (result) {
-                    assets.list = Object.values(result)
-                    assets.total_records = assets.list.length
-                }
-                res.status(200).json(assets);
-            })
-        } else {
-            connection.application.query("CALL `GetAssets`(:companies, :organisationID, :tabs, :customers, :assignments, :type);",{
-                type: connection.Sequelize.QueryTypes.SELECT,
-                raw: true,
-                logging: console.log,
-                replacements: replacements,
-                }
-            ).spread(result => {
-                if (result) {
-                    assets.list = Object.values(result)
-                    assets.total_records = assets.list.length
-                }
-                res.status(200).json(assets);
-            })
-        }
         
+        connection.applicationNew.query("CALL `GetAssets`(:companies, :organisationID, :type);",{
+            type: connection.Sequelize.QueryTypes.SELECT,
+            raw: true,
+            logging: console.log,
+            replacements: replacements,
+            }
+        ).spread(result => {
+            if (result) {
+                assets.list = Object.values(result)
+                assets.total_records = assets.list.length
+            }
+            res.status(200).json(assets);
+        })
         
 
     } catch ( err ) {

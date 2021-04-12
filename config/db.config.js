@@ -15,6 +15,12 @@ const application = new Sequelize(process.env.DATABASE_APPLICATION, process.env.
     }*/
 });
 
+const applicationNew = new Sequelize(process.env.DATABASE_APPLICATION_NEW, process.env.USER, process.env.PASSWORD, {
+  host: '167.172.195.92',
+  dialect: 'mysql',
+  operatorsAliases: Op, 
+});
+
 const resources = new Sequelize(process.env.DATABASE_RAW, process.env.USER, process.env.PASSWORD, {
     host: '167.172.195.92',
     dialect: 'mysql',
@@ -82,6 +88,6 @@ const slackConfig = {
 
 const DEFAULT_LIMIT = 100 
 
-const db = { Sequelize, Op, application, resources, business, maintainence, config, bucketConfig, slackConfig, DEFAULT_LIMIT };
+const db = { Sequelize, Op, application, applicationNew, resources, business, maintainence, config, bucketConfig, slackConfig, DEFAULT_LIMIT };
  
 module.exports = db;
