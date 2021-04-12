@@ -533,11 +533,15 @@ route.put("/customers/:id/logo", [authJWT.verifyToken, authJWT.isAdmin], async (
                 if(org != null && org.organisation_id > 0) {
                     console.log(organisationID);
                     console.log(req.files);
-                    const logoURL = req.body.url_customer_logo;
+                    let logoURL = req.body.url_customer_logo;
                     if(logoURL != "" && logoURL != 'null' && logoURL != "undefined") {
                         /**Download file from URL */
                         console.log("DOWNLOAD URL");
-                        if(logoURL.toString().indexOf(';base64,')){
+                        let contentType = "", base64IndexOf = -1;
+                        base64IndexOf = logoURL.toString().indexOf(';base64,');
+                        if(base64IndexOf !== -1){
+                            //Image content
+                            console.log("Image content");
                             const bucketConfig = config.bucketConfig;  
                             let s3 = new AWS.S3({
                                 credentials: {
@@ -547,22 +551,33 @@ route.put("/customers/:id/logo", [authJWT.verifyToken, authJWT.isAdmin], async (
                                 region: bucketConfig.region
                             })
                             let name = `logo_${organisationID}`;
-                            if(extension.indexOf('image/jpeg') >= 0){
+                            if(logoURL.indexOf('image/jpeg') >= 0){
                                 name += ".jpeg";
-                            } else if(extension.indexOf('image/svg+xml') >= 0) {
+                                contentType = "image/jpeg";
+                            } else if(logoURL.indexOf('image/svg+xml') >= 0) {
                                 name += ".svg";
-                            } else if(extension.indexOf('image/bmp') >= 0){
+                                contentType = "image/svg+xml";
+                            } else if(logoURL.indexOf('image/bmp') >= 0){
                                 name += ".bmp";
+                                contentType = "image/bmp";
                             } else {
                                 name += ".png";
+                                contentType = "image/png";
                             }
+                            logoURL = logoURL.substr(base64IndexOf + 8, logoURL.length -1);
+                            logoURL  +=  logoURL.replace('+', ' ');
+                            logoURL = Buffer.from(logoURL, 'base64');
                             const params = {
                                 Key: `${bucketConfig.documentDir}/${name}`,
                                 Bucket: bucketConfig.bucketName,
                                 Body: logoURL,
-                                ACL: 'public-read'
+                                ACL: 'public-read',
+                                ContentType: contentType,
+                                ContentDisposition: 'inline'
                             }
-                            s3.upload(params, async function(err, data) {
+
+                            console.log(params)
+                             s3.upload(params, async function(err, data) {
                                 if(err == null) {
                                     org.logo = `${bucketConfig.s3Url}${data.key}`;
                                     await org.update({
@@ -572,10 +587,12 @@ route.put("/customers/:id/logo", [authJWT.verifyToken, authJWT.isAdmin], async (
                                 } else {
                                     return res.status(500).send("ERROR: "+err);	
                                 }
-                            })
+                            }) 
                         } else {
+                            //Image file
+                            console.log("Image file");
                             const extension = logoURL.toString().split('.').pop().toLowerCase();
-                            let contentType = "";
+                            
                             if(extension.indexOf('jpg') >= 0){
                                 contentType = "image/jpeg";
                             } else if(extension.indexOf('svg') >= 0) {
