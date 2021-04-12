@@ -5,7 +5,7 @@ const connection = require("../../config/db.config");
 
 
 
-const Documentids = connection.application.define('documentid',{
+const Documentids = connection.resources.define('documentid',{
     rf_id: {
         type: Sequelize.INTEGER,
         primaryKey: true,
