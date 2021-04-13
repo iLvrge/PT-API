@@ -86,6 +86,21 @@ route.get("/company/search/all/", [authJWT.verifyToken, authJWT.isAdmin], async 
     }
 });
 
+route.get("/company/:ID/search/address", [authJWT.verifyToken, authJWT.isAdmin], async (req, res, next) => {
+    try {
+        let searchCompanies = [];
+        const companyID = req.params.ID;	
+
+        if(companyID != null && companyID != undefined && companyID.length > 0) {            
+            searchCompanies  = await helpers.searchCompanyIDByAddress(companyID, 1);
+        }
+        res.status(200).json(searchCompanies);           
+    } catch(e) {
+        console.log(e);
+        res.status(402).send("Not found ");
+    }
+});
+
 route.get("/company/search/:search", [authJWT.verifyToken, authJWT.isAdmin], async (req, res, next) => {
     try {
         let searchCompanies = [];

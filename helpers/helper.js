@@ -282,6 +282,38 @@ let searchCompanyByAddress = async( address ) => {
     return searchResult;
 }
 
+let searchCompanyIDByAddress = async( ID ) => {
+    let searchResult = [];
+    if(ID > 0) {
+
+        const queryFindIDS = "SELECT assignor_and_assignee_id FROM assignee WHERE ee_address_1 IN (SELECT ee_address_1 FROM assignee WHERE ee_address_1 <> '' AND assignor_and_assignee_id = :ID GROUP BY ee_address_1) GROUP BY assignor_and_assignee_id";
+
+        resultAssignees = await connection.resources.query(queryFindIDS,{
+            type: connection.Sequelize.QueryTypes.SELECT,
+            raw: true,
+            replacements: { ID: ID },
+            logging: console.log,
+          }
+        );
+
+        const IDs = [];
+        const promise = resultAssignees.map(row => IDs.push(row.assignor_and_assignee_id))
+
+        await Promise.all(promise)
+
+
+        const queryCompany = "SELECT a.assignor_and_assignee_id as id, a.assignor_and_assignee_id, a.name, a.instances as counter, c.representative_name as normalize_name, (select rr.representative_name FROM representative as rr WHERE rr.representative_name = a.name GROUP BY rr.representative_name) as representative_company FROM assignor_and_assignee as a LEFT JOIN representative as c ON c.representative_id = a.representative_id INNER JOIN assignee as ass ON ass.assignor_and_assignee_id = a.assignor_and_assignee_id INNER JOIN assignment ON ass.rf_id = assignment.rf_id WHERE date_format(assignment.record_dt, '%Y') >= :year AND a.assignor_and_assignee_id IN (:ID) GROUP BY a.name ORDER BY counter DESC ";
+
+        searchResult = await connection.resources.query(queryCompany,{
+            type: connection.Sequelize.QueryTypes.SELECT,
+            raw: true,
+            replacements: { ID: IDs, flag: 0, year: 2000},
+            logging: console.log,
+          }
+        );
+    }
+}
+
 let getDifference = (arrayA, arrayB, result) =>{
     return arrayB.filter(function(item) {
             return arrayA.indexOf(item) === -1;    
@@ -2110,6 +2142,7 @@ helper.getCompanyListBySecurity = getCompanyListBySecurity;
 helper.getCompanyListByOther = getCompanyListByOther;
 helper.searchCompany = searchCompany;
 helper.searchCompanyByAddress = searchCompanyByAddress;
+helper.searchCompanyIDByAddress = searchCompanyIDByAddress;
 helper.checkRepresentativeCompany = checkRepresentativeCompany;
 helper.checkCustomerCompany = checkCustomerCompany;
 helper.getAllUsers = getAllUsers;
