@@ -11,6 +11,9 @@ const {google} = require('googleapis');
 const Documents = require("../../model/client/Documents");
 const Users = require("../../model/client/Users");
 
+const Layouts = require("../../model/application/Layouts");
+const Repository = require("../../model/application/Repository");
+
 const authJWT = require("../../helpers/verifyJwtToken");
 
 const config = require("../../config/db.config");
@@ -20,44 +23,23 @@ const AWS  = require('aws-sdk');
 const clientDBConnection = require("../../helpers/clientDBConnection");
 /**Get all documents */
 
+const oauth2Client = new google.auth.OAuth2(
+    process.env.GOOGLE_CLIENT_ID,
+    process.env.GOOGLE_SECRET_KEY,
+    process.env.REDIRECT_URL
+);
+
 let authenticateGoogleToken = async( code ) => {
     let getTokens = {}
 
     try{
-        const oauth2Client = new google.auth.OAuth2(
-            process.env.GOOGLE_CLIENT_ID,
-            process.env.GOOGLE_SECRET_KEY,
-            process.env.REDIRECT_URL
-        );
         const {tokens} = await oauth2Client.getToken(code)
         getTokens = tokens
     } catch(e) {
         console.log(e)
-    }    
-    return getTokens
-}
-
-const authObject = (access_token, refresh_token) => {
-    const oauth2Client = new google.auth.OAuth2(
-        process.env.GOOGLE_CLIENT_ID,
-        process.env.GOOGLE_SECRET_KEY,
-        process.env.REDIRECT_URL
-    )
-    /**
-     * If refresh token is undefined just pass access token only
-     */
-    if(refresh_token != undefined) {
-        oauth2Client.setCredentials({ access_token, refresh_token})
-    } else {
-        oauth2Client.setCredentials({ access_token})
     }
-
-    return oauth2Client    
-}
-
-const driveObject = (access_token, refresh_token) => { 
-    const oauth2Client = authObject(access_token, refresh_token)
-    return google.drive({version: 'v3', auth:oauth2Client})
+    
+    return getTokens
 }
 
 route.get("/auth_token", authJWT.verifyToken, async(req, res, next) => {
@@ -77,37 +59,72 @@ route.get("/auth_token", authJWT.verifyToken, async(req, res, next) => {
 
 route.get("/layout", authJWT.verifyToken, async(req, res, next) => {
     const { access_token, refresh_token } = req.query
+    let list = [], message = ''
     try{
-        if(access_token != '' && access_token != undefined) {
-            //Get user profile 
-            const oauth2Client = authObject(access_token, refresh_token)
-            oauth2Client.userinfo.v3.me.get(
-                async (err, res) => {
-                    if (!err) {
-                        const drive = driveObject(access_token, refresh_token) //get drive object
-                        const token = await authenticateGoogleToken( access_token )
-                        res.status(200).json(token);
-                    } else {
-                        console.log("ERROR in google auth token",err);
-                    }
-                }
-            );
+        /**
+         * If refresh token is undefined just pass access token only
+        */
+        let credentials = {"scope": process.env.GOOGLE_SCOPE}
+        if( access_token ) {
             
+            if(refresh_token != undefined && refresh_token != 'undefined') {
+                credentials.access_token = access_token
+                credentials.refresh_token = refresh_token
+            } else {
+                credentials.access_token = access_token
+            }           
+            oauth2Client.setCredentials(credentials)
+            const oauth2 = google.oauth2({ version: "v2", auth: oauth2Client })    
+        
+            const { data } = await oauth2.userinfo.v2.me.get({})
+            if ( data && data != undefined ) {
+               
+                const userAccount = data.email
+
+                list = await Layouts.findAll({
+                    attributes: ['layout_id', 'layout_name'],                   
+                    include: [
+                        {
+                            model: Repository,
+                            as: 'repositories',
+                            attributes: [ 'repository_id', 'layout_id', 'container_name', 'container_id'],
+                            required: false,
+                            where: {
+                                user_account: userAccount,
+                                organisation_id: req.orgId
+                            }
+                        }
+                    ]
+                })
+            } else {
+                message = 'Please first login with google account.'
+            }            
         } else {
-            res.status(401).send("Authentication code is missing");
-        }
+            message = 'Please first login with google account.'
+        }   
+        res.status(200).json({list, message})     
     } catch(e) {
         console.log(e)
-        res.status(500).send("Unable to authenticate token");
+        message = 'Token expired'
+        res.status(200).json({list, message})
     }
 })
 
-
-
 route.post("/create_maintainence_file", [authJWT.verifyToken], async(req, res, next) => {
     try{
+        
         const { access_token, refresh_token, file_name, file_data } = req.body
-        const drive = driveObject(access_token, refresh_token) //get drive object
+
+        /**
+         * If refresh token is undefined just pass access token only
+         */
+        if(refresh_token != undefined) {
+            oauth2Client.setCredentials({ access_token, refresh_token})
+        } else {
+            oauth2Client.setCredentials({ access_token})
+        }
+
+        const drive = google.drive({version: 'v3', auth:oauth2Client});
 
         if(drive != null && drive != undefined) {
             if(file_data != '') {
@@ -156,33 +173,42 @@ route.post("/create_maintainence_file", [authJWT.verifyToken], async(req, res, n
 })
 
 route.get("/drive", authJWT.verifyToken, async(req, res, next) => {
-    
-    try{
-        let list = []
-        const { access_token, refresh_token } = req.query               
-        const drive = driveObject(access_token, refresh_token) //get drive object
+    let list = [], message = ''
+    const { access_token, refresh_token } = req.query
+    try{        
+       
+        let credentials = {"scope": process.env.GOOGLE_SCOPE}
+        if( access_token ) {
+            /**
+             * If refresh token is undefined just pass access token only
+             */
+            if(refresh_token != undefined && refresh_token != 'undefined') {
+                credentials.access_token = access_token
+                credentials.refresh_token = refresh_token
+            } else {
+                credentials.access_token = access_token
+            }           
+            oauth2Client.setCredentials(credentials)
 
-        if(drive != null && drive != undefined) {
-            drive.files.list({
-                pageSize: 50,
-                fields: 'nextPageToken, files(id, name, mimeType, webContentLink, webViewLink, iconLink, thumbnailLink, exportLinks)',
-            }, (err, response) => {
-                if (err) {
-                    res.status(500).send(err);
-                }
-                if(response.data != undefined) {
-                    list = response.data.files;
-                    res.status(200).json(response.data);
-                } else {
-                    res.status(500).send("Unable to retrive drive files");
-                }                
-            });
+            const drive = google.drive({version: 'v3', auth:oauth2Client});
+
+            if(drive != null && drive != undefined) {
+                const {data} = await drive.files.list({
+                    pageSize: 100,
+                    fields: 'nextPageToken, files(id, name, mimeType, webContentLink, webViewLink, iconLink, thumbnailLink, exportLinks)',
+                    orderBy: 'folder,name'
+                });
+                list = data
+            } else {
+                message = 'Please first login with google account.'
+            }
         } else {
-            res.status(500).send("Unable to retrive drive files");
-        }
+            message = 'Please first login with google account.'
+        }   
+        res.status(200).json({list, message})   
     } catch(e) {
-        console.log("Drive error", e);
-        res.status(500).send("Unable to retrive drive files");
+        message = 'Token expired'
+        res.status(200).json({list, message})   
     }
 })
 
