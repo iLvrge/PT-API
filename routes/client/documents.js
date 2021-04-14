@@ -25,17 +25,39 @@ let authenticateGoogleToken = async( code ) => {
 
     try{
         const oauth2Client = new google.auth.OAuth2(
-            '27050530278-uu7ns2gdg0ibstde3gh1o6h40618k38n.apps.googleusercontent.com',
-            '9VuBSiz5LVedKXGRY37jtBrF',
-            'https://react.patentrack.com'
+            process.env.GOOGLE_CLIENT_ID,
+            process.env.GOOGLE_SECRET_KEY,
+            process.env.REDIRECT_URL
         );
         const {tokens} = await oauth2Client.getToken(code)
         getTokens = tokens
     } catch(e) {
         console.log(e)
-    }
-    
+    }    
     return getTokens
+}
+
+const authObject = (access_token, refresh_token) => {
+    const oauth2Client = new google.auth.OAuth2(
+        process.env.GOOGLE_CLIENT_ID,
+        process.env.GOOGLE_SECRET_KEY,
+        process.env.REDIRECT_URL
+    )
+    /**
+     * If refresh token is undefined just pass access token only
+     */
+    if(refresh_token != undefined) {
+        oauth2Client.setCredentials({ access_token, refresh_token})
+    } else {
+        oauth2Client.setCredentials({ access_token})
+    }
+
+    return oauth2Client    
+}
+
+const driveObject = (access_token, refresh_token) => { 
+    const oauth2Client = authObject(access_token, refresh_token)
+    return google.drive({version: 'v3', auth:oauth2Client})
 }
 
 route.get("/auth_token", authJWT.verifyToken, async(req, res, next) => {
@@ -53,25 +75,39 @@ route.get("/auth_token", authJWT.verifyToken, async(req, res, next) => {
     }
 })
 
+route.get("/layout", authJWT.verifyToken, async(req, res, next) => {
+    const { access_token, refresh_token } = req.query
+    try{
+        if(access_token != '' && access_token != undefined) {
+            //Get user profile 
+            const oauth2Client = authObject(access_token, refresh_token)
+            oauth2Client.userinfo.v3.me.get(
+                async (err, res) => {
+                    if (!err) {
+                        const drive = driveObject(access_token, refresh_token) //get drive object
+                        const token = await authenticateGoogleToken( access_token )
+                        res.status(200).json(token);
+                    } else {
+                        console.log("ERROR in google auth token",err);
+                    }
+                }
+            );
+            
+        } else {
+            res.status(401).send("Authentication code is missing");
+        }
+    } catch(e) {
+        console.log(e)
+        res.status(500).send("Unable to authenticate token");
+    }
+})
+
+
+
 route.post("/create_maintainence_file", [authJWT.verifyToken], async(req, res, next) => {
     try{
-        const oauth2Client = new google.auth.OAuth2(
-            '27050530278-uu7ns2gdg0ibstde3gh1o6h40618k38n.apps.googleusercontent.com',
-            '9VuBSiz5LVedKXGRY37jtBrF',
-            'http://localhost:3000'
-        );
         const { access_token, refresh_token, file_name, file_data } = req.body
-
-        /**
-         * If refresh token is undefined just pass access token only
-         */
-        if(refresh_token != undefined) {
-            oauth2Client.setCredentials({ access_token, refresh_token})
-        } else {
-            oauth2Client.setCredentials({ access_token})
-        }
-
-        const drive = google.drive({version: 'v3', auth:oauth2Client});
+        const drive = driveObject(access_token, refresh_token) //get drive object
 
         if(drive != null && drive != undefined) {
             if(file_data != '') {
@@ -123,23 +159,8 @@ route.get("/drive", authJWT.verifyToken, async(req, res, next) => {
     
     try{
         let list = []
-        const oauth2Client = new google.auth.OAuth2(
-            '27050530278-uu7ns2gdg0ibstde3gh1o6h40618k38n.apps.googleusercontent.com',
-            '9VuBSiz5LVedKXGRY37jtBrF',
-            'http://localhost:3000'
-        );
-        const { access_token, refresh_token } = req.query
-
-        /**
-         * If refresh token is undefined just pass access token only
-         */
-        if(refresh_token != undefined) {
-            oauth2Client.setCredentials({ access_token, refresh_token})
-        } else {
-            oauth2Client.setCredentials({ access_token})
-        }
-               
-        const drive = google.drive({version: 'v3', auth:oauth2Client});
+        const { access_token, refresh_token } = req.query               
+        const drive = driveObject(access_token, refresh_token) //get drive object
 
         if(drive != null && drive != undefined) {
             drive.files.list({

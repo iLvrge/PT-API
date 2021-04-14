@@ -81,7 +81,7 @@ route.get("/summary", [authJWT.verifyToken, clientDBConnection.connect], async(r
         where: {organisation_id: req.orgId, representative_id: 0}
     });
 
-    res.status(200).json({companies, assignments, third_parties, assets: assets.get('assets')});
+    res.status(200).json({companies, assignments, third_parties, assets: assets != null ? assets.get('assets') : 0 });
 })
 
 /**Get all companies */
