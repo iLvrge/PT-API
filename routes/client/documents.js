@@ -78,7 +78,7 @@ route.get("/layout", authJWT.verifyToken, async(req, res, next) => {
         
             const { data } = await oauth2.userinfo.v2.me.get({})
             if ( data && data != undefined ) {
-               
+                console.log("userData", data)
                 const userAccount = data.email
 
                 list = await Layouts.findAll({
@@ -110,6 +110,57 @@ route.get("/layout", authJWT.verifyToken, async(req, res, next) => {
     }
 })
 
+route.post('/layout', [authJWT.verifyToken], async(req, res, next) => {
+    try {
+        const {container_id, container_name, layout_name} = req.body
+        let list = []
+        if(layout_name != '') {
+            const findLayout = await Layouts.findOne({
+                where: { layout_name: layout_name }
+            })
+
+            if( findLayout != null ) {
+                const userAccount = 'Webmaster@ilvrge.com'
+                const addRepo = await Repository.create({
+                    layout_id: findLayout.layout_id,
+                    user_account: userAccount,
+                    organisation_id: req.orgId,
+                    container_id: container_id,
+                    container_name: container_name
+                })
+
+                if( addRepo != null && addRepo.repository_id > 0 ) {
+                    list = await Layouts.findOne({
+                        attributes: ['layout_id', 'layout_name'], 
+                        where: {layout_id: findLayout.layout_id},                  
+                        include: [
+                            {
+                                model: Repository,
+                                as: 'repositories',
+                                attributes: [ 'repository_id', 'layout_id', 'container_name', 'container_id'],
+                                required: false,
+                                where: {
+                                    user_account: userAccount,
+                                    organisation_id: req.orgId
+                                }
+                            }
+                        ]
+                    })
+                    res.status(200).json(list)
+                } else {
+                    res.status(500).send('Invalid input.')
+                }
+            } else {
+                res.status(500).send('Layout not found.')
+            }
+        } else {
+            res.status(500).send('Invalid input.')
+        }            
+    } catch(e) {
+        console.log(e)
+        res.status(500).send('Error while adding template to layout.')
+    }
+})
 route.post("/create_maintainence_file", [authJWT.verifyToken], async(req, res, next) => {
     try{
         
@@ -174,7 +225,7 @@ route.post("/create_maintainence_file", [authJWT.verifyToken], async(req, res, n
 
 route.get("/drive", authJWT.verifyToken, async(req, res, next) => {
     let list = [], message = ''
-    const { access_token, refresh_token } = req.query
+    const { access_token, refresh_token, id } = req.query
     try{        
        
         let credentials = {"scope": process.env.GOOGLE_SCOPE}
@@ -193,11 +244,17 @@ route.get("/drive", authJWT.verifyToken, async(req, res, next) => {
             const drive = google.drive({version: 'v3', auth:oauth2Client});
 
             if(drive != null && drive != undefined) {
-                const {data} = await drive.files.list({
+                const params = {
                     pageSize: 100,
                     fields: 'nextPageToken, files(id, name, mimeType, webContentLink, webViewLink, iconLink, thumbnailLink, exportLinks)',
-                    orderBy: 'folder,name'
-                });
+                    /*orderBy: 'folder,name'*/
+                }
+
+                if( id != '' && id != undefined && id != 'undefined' ) {
+                    params.q = `'${id}' in parents`
+                }
+
+                const {data} = await drive.files.list(params);
                 list = data
             } else {
                 message = 'Please first login with google account.'
@@ -207,6 +264,7 @@ route.get("/drive", authJWT.verifyToken, async(req, res, next) => {
         }   
         res.status(200).json({list, message})   
     } catch(e) {
+        console.log(e)
         message = 'Token expired'
         res.status(200).json({list, message})   
     }

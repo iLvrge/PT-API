@@ -5,8 +5,8 @@ const connection = require("../../config/db.config");
 const Repository = connection.applicationNew.define('repositories',{
     repository_id: {
         type: Sequelize.INTEGER,
-        allowNull: false,
         primaryKey: true,
+        autoIncrement: true
     },   
     layout_id:{
         type: Sequelize.INTEGER,

@@ -88,11 +88,29 @@ route.get("/company/search/all/", [authJWT.verifyToken, authJWT.isAdmin], async 
 
 route.get("/company/:ID/search/address", [authJWT.verifyToken, authJWT.isAdmin], async (req, res, next) => {
     try {
-        let searchCompanies = [];
+        let companyAddress = [];
         const companyID = req.params.ID;	
 
         if(companyID != null && companyID != undefined && companyID.length > 0) {            
-            searchCompanies  = await helpers.searchCompanyIDByAddress(companyID, 1);
+            companyAddress  = await helpers.getAddressListByCompanyID(companyID);
+        }
+        res.status(200).json(companyAddress);           
+    } catch(e) {
+        console.log(e);
+        res.status(402).send("Not found ");
+    }
+});
+
+route.get("/company/:ID/search/address/all", [authJWT.verifyToken, authJWT.isAdmin], async (req, res, next) => {
+    try {
+        let searchCompanies = [];
+        let { address } = req.query
+
+        if(companyID != null && companyID != undefined && address != '') {    
+            address = JSON.parse(address) 
+            if( address.length > 0 ) {
+                searchCompanies  = await helpers.searchCompanyIDByAddress(address, 1);
+            } 
         }
         res.status(200).json(searchCompanies);           
     } catch(e) {
