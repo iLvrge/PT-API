@@ -101,16 +101,14 @@ route.get("/company/:ID/search/address", [authJWT.verifyToken, authJWT.isAdmin],
     }
 });
 
-route.get("/company/:ID/search/address/all", [authJWT.verifyToken, authJWT.isAdmin], async (req, res, next) => {
+route.post("/company/:ID/search/address/all", [authJWT.verifyToken, authJWT.isAdmin], async (req, res, next) => {
     try {
         let searchCompanies = [];
-        let { address } = req.query
-
-        if(companyID != null && companyID != undefined && address != '') {    
-            address = JSON.parse(address) 
-            if( address.length > 0 ) {
-                searchCompanies  = await helpers.searchCompanyIDByAddress(address, 1);
-            } 
+        let address = req.body['address[]']
+        const companyID = req.params.ID
+        console.log(req.body)
+        if(companyID != null && companyID != undefined && address.length > 0) {    
+            searchCompanies  = await helpers.searchCompanyIDByAddress(address, 1);
         }
         res.status(200).json(searchCompanies);           
     } catch(e) {
