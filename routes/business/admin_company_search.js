@@ -106,7 +106,7 @@ route.post("/company/:ID/search/address/all", [authJWT.verifyToken, authJWT.isAd
         let searchCompanies = [];
         let address = req.body['address[]']
         const companyID = req.params.ID
-        console.log(req.body)
+        
         if(companyID != null && companyID != undefined && address.length > 0) {    
             searchCompanies  = await helpers.searchCompanyIDByAddress(address, 1);
         }
