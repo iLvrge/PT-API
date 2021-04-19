@@ -2,13 +2,14 @@ const Sequelize = require("sequelize");
 
 const connection = require("../../config/db.config");
 
-const Repository = require("./Repository");
+const Templates = require("./Templates");
 
 const Layouts = connection.applicationNew.define('layouts',{
     layout_id: {
         type: Sequelize.INTEGER,
         allowNull: false,
         primaryKey: true,
+        autoIncrement: true
     },      
     layout_name:{
         type: Sequelize.STRING,
@@ -22,6 +23,6 @@ const Layouts = connection.applicationNew.define('layouts',{
     tableName: 'layouts'
 });
 
-Layouts.hasMany(Repository, { foreignKey: 'layout_id', as: 'repositories' });
+Layouts.hasMany(Templates, { foreignKey: 'layout_id', as: 'templates' });
 
 module.exports = Layouts;

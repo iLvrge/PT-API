@@ -2,37 +2,38 @@ const Sequelize = require("sequelize");
 
 const connection = require("../../config/db.config");
 
-
-const Repository = connection.applicationNew.define('repositories',{
-    repository_id: {
+const Templates = connection.applicationNew.define('templates',{
+    template_id: {
         type: Sequelize.INTEGER,
-        allowNull: false,
         primaryKey: true,
         autoIncrement: true
-    }, 
+    },   
+    layout_id:{
+        type: Sequelize.INTEGER,
+        allowNull: false,
+    },      
+    user_account:{
+        type: Sequelize.STRING,
+        allowNull: false,
+    },
     organisation_id:{
         type: Sequelize.INTEGER,
         allowNull: false,
-    },  
-    user_account:{
+    },
+    container_name:{
         type: Sequelize.STRING,
         allowNull: false,
     },
     container_id:{
         type: Sequelize.STRING,
         allowNull: false,
-    },   
-    container_name:{
-        type: Sequelize.STRING,
-        allowNull: false,
-    },
+    }
 },
 {
     underscored: true,
     timestamps: false,
     freezeTableName: true,
-    tableName: 'repositories'
+    tableName: 'templates'
 });
 
-
-module.exports = Repository;
+module.exports = Templates;

@@ -6,12 +6,15 @@ const stringify = require('csv-stringify');
 
 const {google} = require('googleapis');
 
+const { create } = require('xmlbuilder2');
+
 //require the Model
 
 const Documents = require("../../model/client/Documents");
 const Users = require("../../model/client/Users");
 
 const Layouts = require("../../model/application/Layouts");
+const Templates = require("../../model/application/Templates");
 const Repository = require("../../model/application/Repository");
 
 const authJWT = require("../../helpers/verifyJwtToken");
@@ -42,6 +45,27 @@ let authenticateGoogleToken = async( code ) => {
     return getTokens
 }
 
+const findLayoutData = async(layoutID, orgID, userAccount) => {
+    const list = await Layouts.findOne({
+        attributes: ['layout_id', 'layout_name'], 
+        where: {layout_id: layoutID},                  
+        include: [
+            {
+                model: Templates,
+                as: 'templates',
+                attributes: [ 'template_id', 'layout_id', 'container_name', 'container_id'],
+                required: false,
+                where: {
+                    user_account: userAccount,
+                    organisation_id: orgID
+                }
+            }
+        ]
+    })
+
+    return list
+}
+
 route.get("/auth_token", authJWT.verifyToken, async(req, res, next) => {
     const { code } = req.query
     try{
@@ -57,13 +81,13 @@ route.get("/auth_token", authJWT.verifyToken, async(req, res, next) => {
     }
 })
 
-route.get("/layout", authJWT.verifyToken, async(req, res, next) => {
+route.get("/profile" , authJWT.verifyToken, async(req, res, next) => {
     const { access_token, refresh_token } = req.query
-    let list = [], message = ''
-    try{
+    try {
         /**
          * If refresh token is undefined just pass access token only
         */
+        let userAccount = {}
         let credentials = {"scope": process.env.GOOGLE_SCOPE}
         if( access_token ) {
             
@@ -74,31 +98,43 @@ route.get("/layout", authJWT.verifyToken, async(req, res, next) => {
                 credentials.access_token = access_token
             }           
             oauth2Client.setCredentials(credentials)
-            const oauth2 = google.oauth2({ version: "v2", auth: oauth2Client })    
-        
+            const oauth2 = google.oauth2({ version: "v2", auth: oauth2Client }) 
             const { data } = await oauth2.userinfo.v2.me.get({})
             if ( data && data != undefined ) {
-                console.log("userData", data)
-                const userAccount = data.email
+                userAccount = data
+            }
+        }
+        res.status(200).json(userAccount)
+    } catch(e) {
+        console.log("Google Profile error", e)
+        res.status(200).send('Error while retreiving profile data')
+    }
+})
 
-                list = await Layouts.findAll({
-                    attributes: ['layout_id', 'layout_name'],                   
-                    include: [
-                        {
-                            model: Repository,
-                            as: 'repositories',
-                            attributes: [ 'repository_id', 'layout_id', 'container_name', 'container_id'],
-                            required: false,
-                            where: {
-                                user_account: userAccount,
-                                organisation_id: req.orgId
-                            }
+route.get("/layout", authJWT.verifyToken, async(req, res, next) => {
+    const { access_token, refresh_token, user_account } = req.query
+    let list = [], message = ''
+    try{
+        /**
+         * If refresh token is undefined just pass access token only
+        */
+        let credentials = {"scope": process.env.GOOGLE_SCOPE}
+        if( access_token && typeof user_account != 'undefined' ) {
+            list = await Layouts.findAll({
+                attributes: ['layout_id', 'layout_name'],                   
+                include: [
+                    {
+                        model: Templates,
+                        as: 'templates',
+                        attributes: [ 'template_id', 'layout_id', 'container_name', 'container_id'],
+                        required: false,
+                        where: {
+                            user_account: user_account,
+                            organisation_id: req.orgId
                         }
-                    ]
-                })
-            } else {
-                message = 'Please first login with google account.'
-            }            
+                    }
+                ]
+            })          
         } else {
             message = 'Please first login with google account.'
         }   
@@ -110,42 +146,51 @@ route.get("/layout", authJWT.verifyToken, async(req, res, next) => {
     }
 })
 
+route.get("/layout/:layout_id", authJWT.verifyToken, async(req, res, next) => {
+    let list = [], message = ''
+    try {
+        const { layout_id } = req.params
+        const { user_account } = req.query
+
+        if(typeof layout_id != 'undefined' && typeof user_account != 'undefined') {
+            list = await Templates.findAll({
+                where: {organisation_id: req.orgId, layout_id: layout_id, user_account: user_account}
+            })
+        } else {
+            if(typeof user_account == 'undefined') {
+                message = 'Token expired'
+            } else {
+                message = 'Invalid inputs'
+            }            
+        }
+        res.status(200).json({list, message})
+    }catch(e) {
+        console.log(e)
+        message = 'No templates'
+        res.status(200).json({list, message})
+    }
+})
+
 route.post('/layout', [authJWT.verifyToken], async(req, res, next) => {
     try {
-        const {container_id, container_name, layout_name} = req.body
-        let list = []
+        const {container_id, container_name, layout_name, user_account} = req.body
+        let list = null
         if(layout_name != '') {
             const findLayout = await Layouts.findOne({
                 where: { layout_name: layout_name }
             })
 
             if( findLayout != null ) {
-                const userAccount = 'Webmaster@ilvrge.com'
-                const addRepo = await Repository.create({
+                const addRepo = await Templates.create({
                     layout_id: findLayout.layout_id,
-                    user_account: userAccount,
+                    user_account: user_account,
                     organisation_id: req.orgId,
                     container_id: container_id,
                     container_name: container_name
                 })
 
-                if( addRepo != null && addRepo.repository_id > 0 ) {
-                    list = await Layouts.findOne({
-                        attributes: ['layout_id', 'layout_name'], 
-                        where: {layout_id: findLayout.layout_id},                  
-                        include: [
-                            {
-                                model: Repository,
-                                as: 'repositories',
-                                attributes: [ 'repository_id', 'layout_id', 'container_name', 'container_id'],
-                                required: false,
-                                where: {
-                                    user_account: userAccount,
-                                    organisation_id: req.orgId
-                                }
-                            }
-                        ]
-                    })
+                if( addRepo != null && addRepo.template_id > 0 ) {
+                    list = await findLayoutData(findLayout.layout_id, req.orgId, user_account)
                     res.status(200).json(list)
                 } else {
                     res.status(500).send('Invalid input.')
@@ -161,11 +206,276 @@ route.post('/layout', [authJWT.verifyToken], async(req, res, next) => {
         res.status(500).send('Error while adding template to layout.')
     }
 })
+
+route.delete('/layout', [authJWT.verifyToken], async(req, res, next) => {
+    try {
+        let list = null
+        const { layout_id, container_id, user_account } = req.query
+        if(layout_id > 0 && container_id != '') {
+            const findTemplate = await Templates.findOne({
+                where: { layout_id: layout_id, container_id: container_id, organisation_id: req.orgId, user_account: user_account }
+            })
+
+            if( findTemplate != null ) {
+                const deleteTemplate = await Templates.destroy({
+                    where: { layout_id: layout_id, container_id: container_id, organisation_id: req.orgId,user_account: user_account, }
+                })
+
+                if( deleteTemplate ) {
+                    list = await findLayoutData(layout_id, req.orgId, user_account) 
+                }
+            }
+        }
+        res.status(200).json(list)
+    } catch(e) {
+        console.log(e)
+        res.status(500).send('Error while deleting template from layout.')
+    }
+})
+
+route.get("/repo_folder", [authJWT.verifyToken], async(req, res, next) => {
+    try {
+        const {  user_account } = req.query
+
+        if(typeof user_account != 'undefined') {
+            let getRepo = await Repository.findOne({
+                where: { organisation_id: req.orgId, user_account: user_account}
+            })        
+            res.status(200).json(getRepo)
+        } else {
+            res.status(200).send(null)
+        }
+    } catch(e) {
+        console.log(e)
+        res.status(500).send('Invalid inputs.')
+    }
+})
+
+route.put("/repo_folder", [authJWT.verifyToken], async(req, res, next) => {
+    try {
+        const { container_id, container_name, user_account } = req.body
+
+        let getRepo = await Repository.findOne({
+            where: { organisation_id: req.orgId, user_account: user_account}
+        })
+
+        if(getRepo == null) {
+            getRepo = await Repository.create({
+                organisation_id: req.orgId,
+                user_account: user_account,
+                container_id: container_id,
+                container_name: container_name
+            })
+        } else {
+            getRepo.container_id = container_id
+            getRepo.container_name = container_name
+            await getRepo.save();
+        }
+        res.status(200).json(getRepo)
+    } catch(e) {
+        console.log(e)
+        res.status(500).send('Error while adding repository folder.')
+    }
+})
+
+
+route.post('/create_template_drive', [authJWT.verifyToken], async(req, res, next) => {
+    try{
+        const { access_token, refresh_token, user_account, id } = req.body
+        if(typeof user_account != 'undefined') {
+            let getRepo = await Repository.findOne({
+                where: { organisation_id: req.orgId, user_account: user_account}
+            })        
+
+            if(getRepo != null) {
+                if(refresh_token != undefined) {
+                    oauth2Client.setCredentials({ access_token, refresh_token})
+                } else {
+                    oauth2Client.setCredentials({ access_token})
+                }
+        
+                const drive = google.drive({version: 'v3', auth:oauth2Client});
+        
+                if(drive != null && drive != undefined) {
+                    const findTemplate = await Templates.findOne({
+                        where: { organisation_id: req.orgId, user_account: user_account, container_id: id}
+                    })
+
+                    if(findTemplate != null) {                        
+                        const copyRequest = {  
+                            name: findTemplate.container_name,
+                            parents: [getRepo.container_id],
+                          };
+                    
+                        const {data} = await drive.files.copy({  
+                            fileId: findTemplate.container_id,
+                            requestBody: copyRequest  
+                          })
+
+                        if( data != null ) {
+                            res.status(200).json(data)
+                        } else {
+                            res.status(200).send('Error while copying drive file')
+                        }
+                    } else {
+                        res.status(200).send("Invalid inputs")
+                    }                    
+                } else {
+                    res.status(200).send("Token expired")
+                }
+            } else {
+                res.status(200).send("Please add a repository folder")
+            }            
+        } else {
+            console.log('user_account undefined')
+            res.status(200).send("Token expired")
+        }        
+    } catch (e) {
+        console.log(e)
+        res.status(200).send("Token expired")
+    }
+});
+
+route.post("/downloadXML", [authJWT.verifyToken], async(req, res, next) => {
+    try{
+        let { assets } = req.body
+
+        if( assets && assets != '' ) {
+            assets = JSON.parse(assets)
+
+            if(assets.length > 0) {
+                const root = create({ version: '1.0' })
+                        .ele('pat-assignment-template')
+                            .ele('correspondent')
+                                .ele('correspondent-name-address')
+                                    .ele('name').txt('UZI ALOUSH').up()
+                                    .ele('address-1').txt('111 EMBARCADERO W').up()
+                                    .ele('address-2').txt('INTERNAL ADDRESS').up()
+                                    .ele('city').txt('OAKLAND').up()
+                                    .ele('state').txt('CALIFORNIA').up()
+                                    .ele('postal-code').txt('94607').up()
+                                .up()
+                            .ele('e-mail').txt('uzi@ilvrge.com').up()
+                            .ele('fax').txt('(415)922-2282').up()
+                            .ele('phone').txt('415-9025901').up()
+                            .up();
+                const assignees = [
+                    {
+                        name: 'THIS IS THE NAME OF THE CONVEYING PARTIES1',
+                        address_1: 'STREET ADDRESS 123',
+                        address_2: 'INTERNAL ADDRESS',
+                        city: 'SAN FRANCISCO',
+                        state: 'ALGERIA',
+                        postal_code: '94132',
+                        type: 'company'
+                    },
+                    {
+                        first_name: 'JAMES',
+                        last_name: 'DEAN',
+                        address_1: 'STREET ADDRESS 123',
+                        address_2: 'INTERNAL ADDRESS',
+                        city: 'SAN FRANCISCO',
+                        state: 'ALGERIA',
+                        postal_code: '94132',
+                        type: 'individual'
+                    }
+                ]  
+                
+                const assignors = [
+                    {
+                        name: 'THE NAME OF THE RECEIVING PARTIES',
+                        exec_dt: '2019-02-28',
+                        type: 'company'
+                    },
+                    {
+                        prefix: 'MR',
+                        first_name: 'JAMES',
+                        middle_name: 'D',
+                        last_name: 'DEAN',
+                        suffix: 'JR',
+                        exec_dt: '2019-02-28',
+                        type: 'individual'
+                    }
+                ] 
+
+                const patConveyingParties = root.ele('pat-conveying-parties')
+                for( let i = 0; i < assignors.length; i++ ) {
+                    if( assignors[i].type == 'individual' ) {
+                        patConveyingParties
+                            .ele('pat-conveying-party')
+                                .ele('individual')
+                                    .ele('prefix').txt(assignors[i].prefix).up()
+                                    .ele('first-name').txt(assignors[i].first_name).up()
+                                    .ele('middle-name').txt(assignors[i].last_name).up()
+                                    .ele('last-name').txt(assignors[i].suffix).up()
+                                .up()
+                                .ele('executed-date').txt(assignors[i].exec_dt).up()
+                            .up()
+                    } else {
+                        patConveyingParties
+                        .ele('pat-conveying-party')
+                            .ele('company')
+                                .ele('orgname').txt(assignors[i].name).up()
+                            .up()
+                            .ele('executed-date').txt(assignors[i].exec_dt).up()
+                        .up()
+                    }
+                }
+
+                const patReceivingParties = root.ele('pat-receiving-parties')
+                for( let i = 0; i < assignees.length; i++ ) {
+                    const receivingParty = patReceivingParties
+                                                .ele('pat-receiving-party')
+                    if( assignees[i].type == 'individual' ) {
+                        receivingParty
+                            .ele('individual')
+                                .ele('first-name').txt(assignees[i].first_name).up()
+                                .ele('last-name').txt(assignees[i].suffix).up()
+                            .up()
+                    } else {
+                        receivingParty
+                            .ele('company')
+                                .ele('orgname').txt(assignees[i].name).up()
+                            .up()
+                    }
+                    receivingParty
+                        .ele('address')
+                            .ele('address-1').txt(assignees[i].address_1).up()
+                            .ele('address-2').txt(assignees[i].address_2).up()
+                            .ele('city').txt(assignees[i].city).up()
+                            .ele('state').txt(assignees[i].state).up()
+                            .ele('postal-code').txt(assignees[i].postal_code).up()
+                        .up()
+
+                }
+
+                const patProperties = root.ele('pat-properties')
+                for( let j = 0; j < assets.length; j++ ) {
+                    patProperties
+                        .ele('pat-property').att('patent', assets[j])
+                            .ele('pat-application-number').txt(assets[j]).up()
+                        .up()
+                }
+                
+                const xml = root.end({ prettyPrint: true });
+                res.status(200).send(xml)
+            } else {
+                res.status(200).send('Invalid inputs')
+            }
+        } else {
+            res.status(200).send('Invalid inputs')
+        }
+    } catch (e) {
+        console.log(e)
+        res.status(200).send("")
+    }
+});
+
 route.post("/create_maintainence_file", [authJWT.verifyToken], async(req, res, next) => {
     try{
         
         const { access_token, refresh_token, file_name, file_data } = req.body
-
+        
         /**
          * If refresh token is undefined just pass access token only
          */
@@ -245,7 +555,7 @@ route.get("/drive", authJWT.verifyToken, async(req, res, next) => {
 
             if(drive != null && drive != undefined) {
                 const params = {
-                    pageSize: 100,
+                    pageSize: 500,
                     fields: 'nextPageToken, files(id, name, mimeType, webContentLink, webViewLink, iconLink, thumbnailLink, exportLinks)',
                     /*orderBy: 'folder,name'*/
                 }
