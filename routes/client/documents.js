@@ -26,6 +26,10 @@ const AWS  = require('aws-sdk');
 const clientDBConnection = require("../../helpers/clientDBConnection");
 /**Get all documents */
 
+console.log(process.env.GOOGLE_CLIENT_ID,
+    process.env.GOOGLE_SECRET_KEY,
+    process.env.REDIRECT_URL)
+
 const oauth2Client = new google.auth.OAuth2(
     process.env.GOOGLE_CLIENT_ID,
     process.env.GOOGLE_SECRET_KEY,
