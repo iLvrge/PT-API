@@ -26,10 +26,6 @@ const AWS  = require('aws-sdk');
 const clientDBConnection = require("../../helpers/clientDBConnection");
 /**Get all documents */
 
-console.log(process.env.GOOGLE_CLIENT_ID,
-    process.env.GOOGLE_SECRET_KEY,
-    process.env.REDIRECT_URL)
-
 const oauth2Client = new google.auth.OAuth2(
     process.env.GOOGLE_CLIENT_ID,
     process.env.GOOGLE_SECRET_KEY,
@@ -38,13 +34,10 @@ const oauth2Client = new google.auth.OAuth2(
 
 let authenticateGoogleToken = async( code ) => {
     let getTokens = {}
-    console.log(process.env.GOOGLE_CLIENT_ID,
-        process.env.GOOGLE_SECRET_KEY,
-        process.env.REDIRECT_URL)
+
     try{
         const {tokens} = await oauth2Client.getToken(code)
         getTokens = tokens
-        console.log(getTokens)
     } catch(e) {
         console.log(e)
     }
@@ -75,14 +68,9 @@ const findLayoutData = async(layoutID, orgID, userAccount) => {
 
 route.get("/auth_token", authJWT.verifyToken, async(req, res, next) => {
     const { code } = req.query
-    console.log("auth_token", code)
     try{
         if(code != '' && code != undefined) {
-            console.log(process.env.REDIRECT_URL)
-            console.log(process.env.GOOGLE_CLIENT_ID)
-            console.log(process.env.GOOGLE_SECRET_KEY)
             const token = await authenticateGoogleToken( code )
-            console.log(token)
             res.status(200).json(token);
         } else {
             res.status(401).send("Authentication code is missing");
