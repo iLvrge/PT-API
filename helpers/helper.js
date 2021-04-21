@@ -285,7 +285,7 @@ let searchCompanyByAddress = async( address ) => {
 let getAddressListByCompanyID = async( ID ) => {
     let addresses = [];
     if(ID > 0) {
-        const queryFindIDS = "SELECT ee_address_1 as address FROM assignee WHERE ee_address_1 <> '' AND assignor_and_assignee_id = :ID GROUP BY ee_address_1 UNION SELECT ee_address_2 as address FROM assignee WHERE ee_address_2 <> '' AND assignor_and_assignee_id = :ID GROUP BY ee_address_2";
+        const queryFindIDS = "SELECT ee_address_1 as address, rf_id FROM assignee WHERE ee_address_1 <> '' AND assignor_and_assignee_id = :ID GROUP BY ee_address_1 UNION SELECT ee_address_2 as address, rf_id FROM assignee WHERE ee_address_2 <> '' AND assignor_and_assignee_id = :ID GROUP BY ee_address_2";
 
         addresses = await connection.resources.query(queryFindIDS,{
             type: connection.Sequelize.QueryTypes.SELECT,
