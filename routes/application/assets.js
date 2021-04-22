@@ -6,6 +6,10 @@ const connection = require("../../config/db.config");
 
 //require the Model
 
+
+const ResourcesDocumentids = require("../../model/resources/DocumentIds");
+const ResourcesAssignments = require("../../model/resources/Assignments");
+
 const Assets = require("../../model/application/Assets");
 
 const Documentids = require("../../model/application/DocumentIds");
@@ -28,7 +32,7 @@ const helpers = require("../../helpers/helper");
 
 const clientDBConnection = require("../../helpers/clientDBConnection");
 
-route.get("/assets", [authJWT.verifyToken], (req, res, next) => {
+route.get("/assets", [authJWT.verifyToken], async(req, res, next) => {
 
     Assets.findAll({
         where: {organisation_id: req.orgId}
@@ -39,6 +43,54 @@ route.get("/assets", [authJWT.verifyToken], (req, res, next) => {
         console.log(err);
         res.status(500).json({message: "Unable to retrieve assets"})
     });
+});
+
+route.get("/assets/:patentNumber/files", [authJWT.verifyToken], async(req, res, next) => {
+
+    try {
+        const { patentNumber } = req.params
+        let assetsFiles = []
+        let findNumber = await ResourcesDocumentids.findOne({
+            where:{grant_doc_num: patentNumber},
+            attributes:['grant_doc_num', 'appno_doc_num'],
+            group: ['grant_doc_num', 'appno_doc_num']
+        })
+
+        if( findNumber == null ) {
+            findNumber = await ResourcesDocumentids.findOne({
+                where:{appno_doc_num: patentNumber},
+                attributes:['grant_doc_num', 'appno_doc_num'],
+                group: ['grant_doc_num', 'appno_doc_num']
+            })
+        }
+
+        if( findNumber != null ) {
+            const where = {}
+
+            if( findNumber.grant_doc_num != '' && findNumber.grant_doc_num != null ) {
+                where.grant_doc_num = findNumber.grant_doc_num 
+            } else {
+                where.appno_doc_num = findNumber.appno_doc_num 
+            }
+            
+            assetsFiles = await ResourcesAssignments.findAll({
+                attributes:['reel_no', 'frame_no'],
+                group: [connection.Sequelize.col('assignment.rf_id')],
+                include: [
+                    {
+                        model: ResourcesDocumentids,
+                        as: 'documentids',
+                        attributes: ['appno_doc_num'],
+                        where: where
+                    }
+                ]
+            })
+        }
+        res.status(200).json(assetsFiles);
+    } catch (err) {
+        console.log(err);
+        res.status(400).send("Invalid number");
+    }
 });
 
 /*6*/

@@ -544,4 +544,26 @@ route.get("/channels", [authJWT.verifyToken, clientDBConnection.connect], async(
     }
 })
 
+
+route.get("/channel/:channelID/files/:token" , async(req, res, next) => {
+    try{
+        const { token, channelID } = req.params;
+        const web = new WebClient(token);
+        
+        // channel name without space and no special characters
+        const result = await web.files.list({
+            channel: channelID
+        })
+        //console.log(result);
+
+        if(result && result.ok === true) {
+            const { files } = result;
+            res.status(200).json(files);
+        }
+    } catch (e) {
+        console.log(e)
+        res.status(401).send(`Error: ${e.data.error}`);
+    }
+})
+
 module.exports = route;

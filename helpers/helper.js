@@ -1827,7 +1827,8 @@ let getCompaniesMinAndMaxDateTransaction = async(searchData) => {
 const findAssetsTimeSpanByTransactionById = async(rfID) => {
     let assetsLifeSpan = [];
     const getAssetList = await DocumentIds.findAll({
-        attributes: [['appno_doc_num','application'], ['grant_doc_num', 'patent'], 'status', 'appno_date'],
+        /* attributes: [['appno_doc_num','application'], ['grant_doc_num', 'patent'], 'status', 'appno_date'], */
+        attributes: [['appno_doc_num','application'], ['grant_doc_num', 'patent'], 'appno_date'],
         where: {
             [connection.Op.and]: [
                 connection.Sequelize.where(
