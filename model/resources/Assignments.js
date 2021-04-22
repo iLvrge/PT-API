@@ -6,7 +6,7 @@ const LawFirms = require("./LawFirms");
 
 const RepresentativeTransactions = require("./RepresentativeTransactions"); 
 
-const Documentids = require("./Documentids");
+const DocumentIds = require("./DocumentIds");
 
 const Assignments = connection.resources.define('assignment',{
     rf_id: {
@@ -88,6 +88,6 @@ Assignments.belongsTo(LawFirms, { foreignKey: 'law_firm_id', as: 'lawfirm', othe
 
 Assignments.belongsTo(RepresentativeTransactions, { foreignKey: 'rf_id', as: 'representativetransaction', targetKey: 'rf_id' });
 
-Assignments.belongsTo(Documentids, { foreignKey: 'rf_id', as: 'documentids', targetKey: 'rf_id' });
+Assignments.belongsTo(DocumentIds, { foreignKey: 'rf_id', as: 'documentids', targetKey: 'rf_id' });
 
 module.exports = Assignments;
