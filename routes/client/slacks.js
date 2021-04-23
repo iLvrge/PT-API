@@ -361,11 +361,12 @@ route.post("/conversations/message/:token", [authJWT.verifyToken, clientDBConnec
 
             if(channel_id != "") {
                 console.log('message',text);
+                text = text.replace(/&lt;p&gt;/g, '')
+                text = text.replace(/&lt;\/p&gt;/g, '')
                 const messageParams = {
                     channel: channel_id,
                     text: text
                 }
-
 
                 if((edit != null && edit === true) || reply != null) {
                     messageParams.ts = reply
@@ -502,8 +503,6 @@ route.get("/conversations/users/:token" , async(req, res, next) => {
         res.status(401).send(`Error: ${e.data.error}`);
     }
 })
-
-
 
 route.get("/asset/:asset", [authJWT.verifyToken, clientDBConnection.connect] , async(req, res, next) => {
     try{

@@ -1391,4 +1391,29 @@ route.get("/company/assets/:entityID", [authJWT.verifyToken, authJWT.isAdmin], a
     }
 });
 
+
+/**
+ * Creating Report
+ */
+route.get("/company/report", [authJWT.verifyToken, authJWT.isAdmin], async (req, res, next) => {
+    try {
+        connection.resources.query("CALL `companies_report`();",{
+            type: connection.Sequelize.QueryTypes.SELECT,
+            raw: true,
+            logging: console.log,
+            replacements: {},
+            }
+        ).spread(result => {
+            let reports = []
+            if (result) {
+                reports = Object.values(result)
+            }
+            res.status(200).json(reports);
+        })
+    } catch(e) {
+        console.log(e);
+        res.status(402).send("Unable to retrieve data.");
+    }
+});
+
 module.exports = route;
