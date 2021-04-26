@@ -1413,7 +1413,7 @@ route.get("/company/report", [authJWT.verifyToken, authJWT.isAdmin], async (req,
     } catch(e) {
         console.log(e);
         res.status(402).send("Unable to retrieve data.");
-    }
+    } 
 });
 
 module.exports = route;

@@ -474,7 +474,7 @@ route.post("/downloadXML", [authJWT.verifyToken], async(req, res, next) => {
 route.post("/create_maintainence_file", [authJWT.verifyToken], async(req, res, next) => {
     try{
         
-        const { access_token, refresh_token, file_name, file_data } = req.body
+        const { access_token, refresh_token, file_name, file_data, user_account } = req.body
         
         /**
          * If refresh token is undefined just pass access token only
@@ -497,32 +497,42 @@ route.post("/create_maintainence_file", [authJWT.verifyToken], async(req, res, n
                     fee_code: 'Fee Code',
                     fee_amount: 'Fee Amount'
                 }
-                stringify(fileData, { header: true, columns}, (err, output) => {
+                stringify(fileData, { header: true, columns}, async (err, output) => {
                     if(err) {
                         console.log("dasdsad", err);
                         res.status(400).send("Not able to create file")
                     } else {
-                        console.log("output", output)
-                        const fileMetadata = {
-                            'name': file_name
-                        };
-                        const fileMedia = {
-                            mimeType: 'text/csv',
-                            body: output
-                        };
-                        drive.files.create({
-                            resource: fileMetadata,
-                            media: fileMedia,
-                            fields: 'id, name, mimeType, webContentLink, webViewLink, iconLink, thumbnailLink, exportLinks '
-                        }, function (error, response) {
-                            if (error) {
-                              // Handle error
-                              console.error(error);
-                              res.status(400).send(error)
-                            } else {
-                                res.status(200).json(response.data)
-                            }
-                        });
+                        let getRepo = await Repository.findOne({
+                            where: { organisation_id: req.orgId, user_account: user_account}
+                        }) 
+                        if(getRepo != null) {
+                            console.log("output", output)
+
+                            const fileMetadata = {
+                                'name': `${file_name}.csv`,
+                                parents: [ getRepo.container_id ]
+                            };
+                            const fileMedia = {
+                                mimeType: 'text/csv',
+                                body: output
+                            };
+                            drive.files.create({
+                                resource: fileMetadata,
+                                media: fileMedia,
+                                fields: 'id, name, mimeType, webContentLink, webViewLink, iconLink, thumbnailLink, exportLinks '
+                            }, function (error, response) {
+                                if (error) {
+                                // Handle error
+                                console.error(error);
+                                res.status(400).send(error)
+                                } else {
+                                    res.status(200).json(response.data)
+                                }
+                            });
+                        } else {
+                            res.status(200).send("Please add a repository folder")
+                        } 
+                        
                     }                    
                 })
             }
