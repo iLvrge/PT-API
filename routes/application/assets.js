@@ -5,7 +5,7 @@ const route = express.Router();
 const connection = require("../../config/db.config");
 
 //require the Model
-
+const { WebClient } = require('@slack/web-api')
 
 const ResourcesDocumentids = require("../../model/resources/DocumentIds");
 const ResourcesAssignments = require("../../model/resources/Assignments");
@@ -45,10 +45,10 @@ route.get("/assets", [authJWT.verifyToken], async(req, res, next) => {
     });
 });
 
-route.get("/assets/:patentNumber/files", [authJWT.verifyToken], async(req, res, next) => {
+route.get("/assets/:patentNumber/files/:channelID/slack/:token", [authJWT.verifyToken], async(req, res, next) => {
 
     try {
-        const { patentNumber } = req.params
+        const { patentNumber, token, channelID } = req.params
         let assetsFiles = [], type = 1
         let findNumber = await ResourcesDocumentids.findOne({
             where:{grant_doc_num: patentNumber},
@@ -75,7 +75,7 @@ route.get("/assets/:patentNumber/files", [authJWT.verifyToken], async(req, res, 
             } */
 
 
-            let query = 'SELECT assignment.rf_id as id, "usptodrive" as external_type, assignment.rf_id as title, CASE WHEN assignment.status = 1 THEN CONCAT("https://s3-us-west-1.amazonaws.com/static.patentrack.com/assignments/var/www/html/beta/resources/shared/data/assignment-pat-",reel_no,"-",frame_no,".pdf") ELSE CONCAT("https://legacy-assignments.uspto.gov/assignments/assignment-pat-",reel_no,"-",frame_no,".pdf") END as url_private FROM assignment INNER JOIN documentid ON documentid.rf_id = assignment.rf_id'
+            let query = 'SELECT assignment.rf_id as id, "usptodrive" as external_type, assignor.exec_dt as title, CASE WHEN assignment.status = 1 THEN CONCAT("https://s3-us-west-1.amazonaws.com/static.patentrack.com/assignments/var/www/html/beta/resources/shared/data/assignment-pat-",reel_no,"-",frame_no,".pdf") ELSE CONCAT("https://legacy-assignments.uspto.gov/assignments/assignment-pat-",reel_no,"-",frame_no,".pdf") END as url_private FROM assignment INNER JOIN assignor ON assignor.rf_id = assignment.rf_id INNER JOIN documentid ON documentid.rf_id = assignment.rf_id'
 
             if(type == 0) {
                 query += ' WHERE appno_doc_num =:appno_doc_num '                
@@ -94,20 +94,22 @@ route.get("/assets/:patentNumber/files", [authJWT.verifyToken], async(req, res, 
                     logging: console.log,
                 }
             );
+        }
 
+        if(token != '' && token != undefined && token != 'undefined' && channelID != '' && channelID != undefined && channelID != 'undefined') {
             
-            /* assetsFiles = await ResourcesAssignments.findAll({
-                attributes:['reel_no', 'frame_no', 'status', [connection.Sequelize.col('rf_id'), 'title'], [connection.Sequelize.literal('usptodrive'), 'external_type']],
-                group: [connection.Sequelize.col('assignment.rf_id')],
-                include: [
-                    {
-                        model: ResourcesDocumentids,
-                        as: 'documentids',
-                        attributes: ['appno_doc_num'],
-                        where: where
-                    }
-                ]
-            }) */
+            const web = new WebClient(token);
+            
+            // channel name without space and no special characters
+            const result = await web.files.list({
+                channel: channelID
+            })
+            //console.log(result);
+
+            if(result && result.ok === true) {
+                const { files } = result;
+                assetsFiles = [...assetsFiles, ...files]
+            }
         }
         res.status(200).json(assetsFiles);
     } catch (err) {

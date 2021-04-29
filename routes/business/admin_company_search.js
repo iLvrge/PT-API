@@ -1362,7 +1362,7 @@ route.put("/company/assignments", [authJWT.verifyToken, authJWT.isAdmin], async 
 /**
  * Find All Transaction with conveyanceType and Entity Type
  */
-route.get("/company/transactions/:conveyanceType", [authJWT.verifyToken, authJWT.isAdmin], async (req, res, next) => {
+route.get("/all/transactions/:conveyanceType", [authJWT.verifyToken, authJWT.isAdmin], async (req, res, next) => {
     try {
         const conveyanceType = req.params.conveyanceType;
 
