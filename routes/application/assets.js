@@ -49,7 +49,7 @@ route.get("/assets/:patentNumber/files", [authJWT.verifyToken], async(req, res, 
 
     try {
         const { patentNumber } = req.params
-        let assetsFiles = []
+        let assetsFiles = [], type = 1
         let findNumber = await ResourcesDocumentids.findOne({
             where:{grant_doc_num: patentNumber},
             attributes:['grant_doc_num', 'appno_doc_num'],
@@ -57,6 +57,7 @@ route.get("/assets/:patentNumber/files", [authJWT.verifyToken], async(req, res, 
         })
 
         if( findNumber == null ) {
+            type = 0
             findNumber = await ResourcesDocumentids.findOne({
                 where:{appno_doc_num: patentNumber},
                 attributes:['grant_doc_num', 'appno_doc_num'],
@@ -67,14 +68,36 @@ route.get("/assets/:patentNumber/files", [authJWT.verifyToken], async(req, res, 
         if( findNumber != null ) {
             const where = {}
 
-            if( findNumber.grant_doc_num != '' && findNumber.grant_doc_num != null ) {
+            /* if( findNumber.grant_doc_num != '' && findNumber.grant_doc_num != null ) {
                 where.grant_doc_num = findNumber.grant_doc_num 
             } else {
                 where.appno_doc_num = findNumber.appno_doc_num 
+            } */
+
+
+            let query = 'SELECT assignment.rf_id as id, "usptodrive" as external_type, assignment.rf_id as title, CASE WHEN assignment.status = 1 THEN CONCAT("https://s3-us-west-1.amazonaws.com/static.patentrack.com/assignments/var/www/html/beta/resources/shared/data/assignment-pat-",reel_no,"-",frame_no,".pdf") ELSE CONCAT("https://legacy-assignments.uspto.gov/assignments/assignment-pat-",reel_no,"-",frame_no,".pdf") END as url_private FROM assignment INNER JOIN documentid ON documentid.rf_id = assignment.rf_id'
+
+            if(type == 0) {
+                query += ' WHERE appno_doc_num =:appno_doc_num '                
+                where.appno_doc_num = findNumber.appno_doc_num 
+            } else if(type == 1) {
+                query += ' WHERE grant_doc_num =:grant_doc_num '
+                where.grant_doc_num = findNumber.grant_doc_num 
             }
+
+            query +=' GROUP BY assignment.rf_id'
+
+            assetsFiles =  await connection.resources.query(query,{
+                    type: connection.Sequelize.QueryTypes.SELECT,
+                    replacements: where,
+                    raw: true,
+                    logging: console.log,
+                }
+            );
+
             
-            assetsFiles = await ResourcesAssignments.findAll({
-                attributes:['reel_no', 'frame_no'],
+            /* assetsFiles = await ResourcesAssignments.findAll({
+                attributes:['reel_no', 'frame_no', 'status', [connection.Sequelize.col('rf_id'), 'title'], [connection.Sequelize.literal('usptodrive'), 'external_type']],
                 group: [connection.Sequelize.col('assignment.rf_id')],
                 include: [
                     {
@@ -84,7 +107,7 @@ route.get("/assets/:patentNumber/files", [authJWT.verifyToken], async(req, res, 
                         where: where
                     }
                 ]
-            })
+            }) */
         }
         res.status(200).json(assetsFiles);
     } catch (err) {

@@ -363,10 +363,11 @@ route.post("/conversations/message/:token", [authJWT.verifyToken, clientDBConnec
                 console.log('message',text);
                 text = text.replace(/&lt;p&gt;/g, '')
                 text = text.replace(/&lt;\/p&gt;/g, '')
+                
                 const messageParams = {
                     channel: channel_id,
                     text: text
-                }
+                }                
 
                 if((edit != null && edit === true) || reply != null) {
                     messageParams.ts = reply
@@ -380,9 +381,7 @@ route.post("/conversations/message/:token", [authJWT.verifyToken, clientDBConnec
                 
     
                 if(result != null && Object.keys(result).length > 0) {
-                    if(result.ok === true) {
-                        
-                        
+                    if(result.ok === true) {                        
                         if(req.files != null && req.files != undefined && req.files.file != undefined) {
                             const fileUploaded = uploadFileToChannel(token, {
                                 channel: channel_id,
