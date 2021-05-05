@@ -1397,7 +1397,18 @@ route.get("/company/assets/:entityID", [authJWT.verifyToken, authJWT.isAdmin], a
  */
 route.get("/company/report", [authJWT.verifyToken, authJWT.isAdmin], async (req, res, next) => {
     try {
-        connection.resources.query("CALL `companies_report`();",{
+
+        const queryReport = `SELECT representative_id, representative_name, no_of_assets as assets, no_of_transactions, no_of_parties, (no_of_parties - no_of_transactions) as product FROM representative_reports`;
+
+        let reports = await connection.resources.query(queryReport,{
+                type: connection.Sequelize.QueryTypes.SELECT,
+                raw: true,
+                replacements: { conveyanceType:  cType},
+                logging: console.log,
+                }
+            );
+
+        /* connection.resources.query("CALL `companies_report`();",{
             type: connection.Sequelize.QueryTypes.SELECT,
             raw: true,
             logging: console.log,
@@ -1409,7 +1420,7 @@ route.get("/company/report", [authJWT.verifyToken, authJWT.isAdmin], async (req,
                 reports = Object.values(result)
             }
             res.status(200).json(reports);
-        })
+        }) */
     } catch(e) {
         console.log(e);
         res.status(402).send("Unable to retrieve data.");
