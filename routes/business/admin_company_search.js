@@ -1435,7 +1435,7 @@ route.get("/company/:representativeID/event_maintainence", [authJWT.verifyToken,
 
         const { representativeID } = req.params;
 
-        const queryAbaondants = `SELECT event_date FROM representative_ota_event WHERE representative_id = :representativeID AND event_code IN (:eventCode)`;
+        const queryAbaondants = `SELECT date_format(event_date, '%Y-%m-%d') as event_date FROM representative_ota_event WHERE representative_id = :representativeID AND event_code IN (:eventCode)`;
 
         let abaondants = await connection.resources.query(queryAbaondants,{
                 type: connection.Sequelize.QueryTypes.SELECT,
@@ -1445,7 +1445,7 @@ route.get("/company/:representativeID/event_maintainence", [authJWT.verifyToken,
                 }
             );
 
-        const queryRenewal = `SELECT event_date FROM representative_ota_event WHERE representative_id = :representativeID AND event_code IN (:eventCode)`;
+        const queryRenewal = `SELECT date_format(event_date, '%Y-%m-%d') as event_date FROM representative_ota_event WHERE representative_id = :representativeID AND event_code IN (:eventCode)`;
 
         let renewals = await connection.resources.query(queryRenewal,{
                 type: connection.Sequelize.QueryTypes.SELECT,
