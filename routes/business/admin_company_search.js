@@ -1435,16 +1435,26 @@ route.get("/company/:representativeID/event_maintainence", [authJWT.verifyToken,
 
         const { representativeID } = req.params;
 
-        const queryEvents = `SELECT appno_doc_num, grant_doc_num, event_date FROM representative_ota_event WHERE representative_id = :representativeID AND event_code IN (:eventCode)`;
+        const queryAbaondants = `SELECT event_date FROM representative_ota_event WHERE representative_id = :representativeID AND event_code IN (:eventCode)`;
 
-        let reports = await connection.resources.query(queryEvents,{
+        let abaondants = await connection.resources.query(queryAbaondants,{
                 type: connection.Sequelize.QueryTypes.SELECT,
                 raw: true,
                 replacements: { representativeID, eventCode: ['EXP.', 'EXPX'] },
                 logging: console.log,
                 }
             );
-        res.status(200).json(reports);
+
+        const queryRenewal = `SELECT event_date FROM representative_ota_event WHERE representative_id = :representativeID AND event_code IN (:eventCode)`;
+
+        let renewal = await connection.resources.query(queryRenewal,{
+                type: connection.Sequelize.QueryTypes.SELECT,
+                raw: true,
+                replacements: { representativeID, eventCode: ['M1551', 'M2551', 'M3551', 'M1552', 'M2552', 'M3552', 'M1553', 'M2553', 'M3553'] },
+                logging: console.log,
+                }
+            );
+        res.status(200).json({abaondants, renewal});
         /* connection.resources.query("CALL `companies_report`();",{
             type: connection.Sequelize.QueryTypes.SELECT,
             raw: true,
