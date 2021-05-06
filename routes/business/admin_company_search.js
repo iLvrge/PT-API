@@ -1403,11 +1403,48 @@ route.get("/company/report", [authJWT.verifyToken, authJWT.isAdmin], async (req,
         let reports = await connection.resources.query(queryReport,{
                 type: connection.Sequelize.QueryTypes.SELECT,
                 raw: true,
-                replacements: { conveyanceType:  cType},
+                replacements: { },
                 logging: console.log,
                 }
             );
+        res.status(200).json(reports);            
+        /* connection.resources.query("CALL `companies_report`();",{
+            type: connection.Sequelize.QueryTypes.SELECT,
+            raw: true,
+            logging: console.log,
+            replacements: {},
+            }
+        ).spread(result => {
+            let reports = []
+            if (result) {
+                reports = Object.values(result)
+            }
+            res.status(200).json(reports);
+        }) */
+    } catch(e) {
+        console.log(e);
+        res.status(402).send("Unable to retrieve data.");
+    } 
+});
 
+/**
+ * Creating Report
+ */
+route.get("/company/:representativeID/event_maintainence", [authJWT.verifyToken, authJWT.isAdmin], async (req, res, next) => {
+    try {
+
+        const { representativeID } = req.params;
+
+        const queryEvents = `SELECT appno_doc_num, grant_doc_num, event_date FROM representative_ota_event WHERE representative_id = :representativeID AND event_code IN (:eventCode)`;
+
+        let reports = await connection.resources.query(queryEvents,{
+                type: connection.Sequelize.QueryTypes.SELECT,
+                raw: true,
+                replacements: { representativeID, eventCode: ['EXP.', 'EXPX'] },
+                logging: console.log,
+                }
+            );
+        res.status(200).json(reports);
         /* connection.resources.query("CALL `companies_report`();",{
             type: connection.Sequelize.QueryTypes.SELECT,
             raw: true,

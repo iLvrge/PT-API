@@ -11,6 +11,8 @@ const Representatives = require("../../model/client/Representatives");
 
 const ActivityLogs = require("../../model/resources/ActivityLog");
 
+const RepresentativeReport = require("../../model/resources/RepresentativeReport");
+
 const RepresentativeTransactions = require("../../model/resources/RepresentativeTransactions");
 
 const Lawfirm = require("../../model/client/Lawfirm");
@@ -104,8 +106,40 @@ route.get("/list", [authJWT.verifyToken, clientDBConnection.connect], async(req,
             ];
             where.attributes = ['representative_id', 'original_name', 'representative_name'];
 
-            const list = await Representative.findAll( where );
-            res.status(200).json({list, total_records});
+            const list = await Representative.findAll( where )
+
+            const companiesList = []
+
+            if(list.length > 0) {
+                const representativeNames = []
+
+                const promises = list.map( representative => {
+                    representativeNames.push(representative.representative_name)
+                })
+    
+                await Promise.all(promises)
+
+                const findReports = await RepresentativeReport.findAll({
+                    attributes: ['representative_name', 'no_of_assets', 'no_of_transactions', 'no_of_parties'],
+                    where: {representative_name: representativeNames},
+                    order: [['representative_name', 'ASC']]
+                })
+
+                if( findReports.length > 0 ) {
+                    const promiseReport = list.map( representative => {
+                        let representaitveJSON = representative.toJSON();
+                        const findIndex = findReports.findIndex( r => r.representative_name == representative.representative_name)
+                        if( findIndex !== -1) {
+                            representaitveJSON = {...representaitveJSON, no_of_assets: findReports[findIndex]['no_of_assets'], no_of_transactions: findReports[findIndex]['no_of_transactions'], no_of_parties: findReports[findIndex]['no_of_parties']}
+                        }
+                        companiesList.push(representaitveJSON)
+                        return representative
+                    })
+                    await Promise.all(promiseReport)
+                }
+            }            
+
+            res.status(200).json({list: companiesList, total_records});
         } else {
             res.status(401).send("Unable to retrieve companies");
         }
