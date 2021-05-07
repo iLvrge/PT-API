@@ -10,6 +10,8 @@ const { WebClient } = require('@slack/web-api')
 const ResourcesDocumentids = require("../../model/resources/DocumentIds");
 const ResourcesAssignments = require("../../model/resources/Assignments");
 
+const AssetsTransfer = require("../../model/application/AssetsTransfer");
+
 const Assets = require("../../model/application/Assets");
 
 const Documentids = require("../../model/application/DocumentIds");
@@ -75,7 +77,7 @@ route.get("/assets/:patentNumber/files/:channelID/slack/:token", [authJWT.verify
             } */
 
 
-            let query = 'SELECT assignment.rf_id as id, "usptodrive" as external_type, assignor.exec_dt as title, representative_assignment_conveyance.convey_ty, CASE WHEN assignment.status = 1 THEN CONCAT("https://s3-us-west-1.amazonaws.com/static.patentrack.com/assignments/var/www/html/beta/resources/shared/data/assignment-pat-",reel_no,"-",frame_no,".pdf") ELSE CONCAT("https://legacy-assignments.uspto.gov/assignments/assignment-pat-",reel_no,"-",frame_no,".pdf") END as url_private, (SELECT sum(no_of_parties) FROM report_representative_assets_transactions_parties WHERE report_representative_assets_transactions_parties.rf_id = assignment.rf_id GROUP BY report_representative_assets_transactions_parties.rf_id ) as count_parties, (SELECT assignee FROM report_representative_assets_transactions WHERE report_representative_assets_transactions.rf_id = assignment.rf_id LIMIT 1) as assignee, (SELECT assignor FROM report_representative_assets_transactions WHERE report_representative_assets_transactions.rf_id = assignment.rf_id LIMIT 1) as assignor FROM assignment INNER JOIN assignor ON assignor.rf_id = assignment.rf_id INNER JOIN documentid ON documentid.rf_id = assignment.rf_id INNER JOIN representative_assignment_conveyance ON representative_assignment_conveyance.rf_id = assignment.rf_id'
+            let query = 'SELECT assignment.rf_id as id, "usptodrive" as external_type, date_format(assignor.exec_dt, "%m-%d-%Y") as title, representative_assignment_conveyance.convey_ty, CASE WHEN assignment.status = 1 THEN CONCAT("https://s3-us-west-1.amazonaws.com/static.patentrack.com/assignments/var/www/html/beta/resources/shared/data/assignment-pat-",reel_no,"-",frame_no,".pdf") ELSE CONCAT("https://legacy-assignments.uspto.gov/assignments/assignment-pat-",reel_no,"-",frame_no,".pdf") END as url_private, (SELECT sum(no_of_parties) FROM report_representative_assets_transactions_parties WHERE report_representative_assets_transactions_parties.rf_id = assignment.rf_id GROUP BY report_representative_assets_transactions_parties.rf_id ) as count_parties, (SELECT assignee FROM report_representative_assets_transactions WHERE report_representative_assets_transactions.rf_id = assignment.rf_id LIMIT 1) as assignee, (SELECT assignor FROM report_representative_assets_transactions WHERE report_representative_assets_transactions.rf_id = assignment.rf_id LIMIT 1) as assignor FROM assignment INNER JOIN assignor ON assignor.rf_id = assignment.rf_id INNER JOIN documentid ON documentid.rf_id = assignment.rf_id INNER JOIN representative_assignment_conveyance ON representative_assignment_conveyance.rf_id = assignment.rf_id'
 
             if(type == 0) {
                 query += ' WHERE appno_doc_num =:appno_doc_num '                
@@ -186,6 +188,99 @@ route.get("/assets/:patentNumber/:type/outsource",[authJWT.verifyToken], async (
                 res.status(200).send("");
             }
         })
+    }    
+});
+
+/**
+ * Move asset to other layout
+ */
+route.post("/assets/move",[authJWT.verifyToken], async (req, res) => { 
+    try{
+        const { moved_assets } = req.body
+        let addedData = []
+        if( moved_assets != null  && moved_assets != 'undefined') {
+            const list = JSON.parse(moved_assets)
+            if( list.length > 0 ) {
+                const assets = []
+                let query = [], queryCondition = {}
+                let a = 0;
+                list.map( (row, index) => {
+                    let layout_id = row.move_category == 0 ? row.currentLayout : row.move_category
+                    let status = row.move_category == 0 ? 0 : 1
+                    assets.push({
+                        grant_doc_num: row.grant_doc_num,
+                        appno_doc_num: row.appno_doc_num,
+                        organisation_id: req.orgId,
+                        layout_id,
+                        status
+                    })
+                    if( row.move_category != 0 ) {
+                        assets.push({
+                            grant_doc_num: row.grant_doc_num,
+                            appno_doc_num: row.appno_doc_num,
+                            organisation_id: req.orgId,
+                            layout_id: row.currentLayout,
+                            status: 0
+                        })
+                    }
+                    query.push(`(grant_doc_num = :grant${index} AND appno_doc_num = :appno${a} AND layout_id = :layout${a} AND status = :status${a}) `)
+                    queryCondition[`grant${a}`] = row.grant_doc_num
+                    queryCondition[`appno${a}`] = row.appno_doc_num
+                    queryCondition[`layout${a}`] = layout_id
+                    queryCondition[`status${a}`] = status
+                    a++
+                    if( row.move_category != 0 ) {
+                        query.push(`(grant_doc_num = :grant${a} AND appno_doc_num = :appno${a} AND layout_id = :layout${a} AND status = :status${a}) `)
+                        queryCondition[`grant${a}`] = row.grant_doc_num
+                        queryCondition[`appno${a}`] = row.appno_doc_num
+                        queryCondition[`layout${a}`] = row.currentLayout
+                        queryCondition[`status${a}`] = 0
+                    }
+                    a++
+                    
+                })
+                addedBulkData = await AssetsTransfer.bulkCreate(assets)  
+                if(addedBulkData) {                    
+                    const findQuery = `SELECT asset_id FROM assets_transfer WHERE ${query.join(' OR ')}`
+                    addedData = await connection.application.query(findQuery,{
+                            type: connection.Sequelize.QueryTypes.SELECT,
+                            replacements: queryCondition,
+                            raw: true,
+                            logging: console.log,
+                        });
+                    
+                } 
+            }                   
+        }
+        res.status(200).json(addedData);
+    } catch (err) {
+        console.log(err);
+        res.status(400).send("Invalid data");
+    }    
+});
+
+/**
+ * Rollback assets
+ */
+route.delete("/assets/rollback",[authJWT.verifyToken], async (req, res) => { 
+    try{
+        const { revert } = req.query
+        let deleted = false
+        if( revert != null  && revert != 'undefined') {
+            const assetIDs = JSON.parse(revert)
+            if( assetIDs.length > 0 ) {                
+                const deleteList = await AssetsTransfer.destroy({
+                    where: { asset_id: assetIDs }
+                })                
+                if( deleteList ) {
+                    deleted = true
+                } 
+            }                   
+        }
+        res.status(200).send(deleted);
+    } catch (err) {
+        console.log(err);
+        res.status(400).send("Invalid data");
     }    
 });
 
