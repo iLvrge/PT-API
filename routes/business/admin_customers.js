@@ -470,19 +470,21 @@ route.put("/customers/:id/users/:user_id", [authJWT.verifyToken, authJWT.isAdmin
     })();    
 });
 
-let downloadImageToUrl = async (org, res, url, filename, contentType, callback) => {
-
+let downloadImageFromUrl = async (org, res, url, filename, contentType, callback) => {
+    console.log("Calling downloadImageFromUrl.....")
     var client = http;
-    if (url.toString().indexOf("https") === 0){
+    if (url.toString().indexOf("https") !== -1){
       client = https;
+      console.log("sending HTTPS request");
     }
     
     client.request(url, async (response)=> {  
-                                      
+       
+        console.log("response chunk", response)
        const data = new Stream();                                                    
 
         response.on('data', function(chunk) {  
-
+            console.log("Logo", chunk)
             data.push(chunk);                                                         
         });                                                                         
 
@@ -507,7 +509,7 @@ let downloadImageToUrl = async (org, res, url, filename, contentType, callback) 
                 ContentType: contentType,
                 ContentDisposition: 'inline'
             }
-           
+           console.log("params", params)
             s3.putObject(params, async function(err, data) {
                 console.log(err, data);
                 if(err == null) {
@@ -603,7 +605,7 @@ route.put("/customers/:id/logo", [authJWT.verifyToken, authJWT.isAdmin], async (
                                 contentType = "image/png";
                             }
                             console.log("contentType", contentType);
-                            await downloadImageToUrl(org, res, logoURL, org.name+'.'+extension, contentType);
+                            await downloadImageFromUrl(org, res, logoURL, org.name+'.'+extension, contentType);
                         }
                         
                     } else if(req.files != null && req.files.file != null && req.files.file != undefined) {

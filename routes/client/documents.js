@@ -173,24 +173,32 @@ route.get("/layout/:layout_id", authJWT.verifyToken, async(req, res, next) => {
 
 route.post('/layout', [authJWT.verifyToken], async(req, res, next) => {
     try {
-        const {container_id, container_name, layout_name, user_account} = req.body
+        let {container_id, container_name, layout_id, user_account} = req.body
         let list = null
-        if(layout_name != '') {
-            const findLayout = await Layouts.findOne({
-                where: { layout_name: layout_name }
+        if(layout_id != '') {
+            layout_id = JSON.parse(layout_id)
+            const findLayout = await Layouts.findAll({
+                where: { layout_id: layout_id }
             })
 
-            if( findLayout != null ) {
-                const addRepo = await Templates.create({
-                    layout_id: findLayout.layout_id,
-                    user_account: user_account,
-                    organisation_id: req.orgId,
-                    container_id: container_id,
-                    container_name: container_name
+            if( findLayout.length > 0 ) {
+                const addData = []
+                const promises = layout_id.map( ID => {
+                    addData.push({
+                        layout_id: ID,
+                        user_account: user_account,
+                        organisation_id: req.orgId,
+                        container_id: container_id,
+                        container_name: container_name
+                    })
+                    return ID
                 })
 
-                if( addRepo != null && addRepo.template_id > 0 ) {
-                    list = await findLayoutData(findLayout.layout_id, req.orgId, user_account)
+                await Promise.all(promises)
+                const addRepo = await Templates.bulkCreate(addData, { ignoreDuplicates: true })
+
+                if( addRepo ) {
+                    list = await findLayoutData(layout_id, req.orgId, user_account)
                     res.status(200).json(list)
                 } else {
                     res.status(500).send('Invalid input.')
@@ -210,21 +218,24 @@ route.post('/layout', [authJWT.verifyToken], async(req, res, next) => {
 route.delete('/layout', [authJWT.verifyToken], async(req, res, next) => {
     try {
         let list = null
-        const { layout_id, container_id, user_account } = req.query
-        if(layout_id > 0 && container_id != '') {
-            const findTemplate = await Templates.findOne({
-                where: { layout_id: layout_id, container_id: container_id, organisation_id: req.orgId, user_account: user_account }
-            })
-
-            if( findTemplate != null ) {
-                const deleteTemplate = await Templates.destroy({
-                    where: { layout_id: layout_id, container_id: container_id, organisation_id: req.orgId,user_account: user_account, }
+        let { layout_id, container_id, user_account } = req.query
+        if(layout_id != 0 && container_id != '') {
+            layout_id = JSON.parse(layout_id)
+            if(layout_id.length > 0) {
+                const findTemplate = await Templates.findOne({
+                    where: { layout_id: layout_id, container_id: container_id, organisation_id: req.orgId, user_account: user_account }
                 })
-
-                if( deleteTemplate ) {
-                    list = await findLayoutData(layout_id, req.orgId, user_account) 
+    
+                if( findTemplate != null ) {
+                    const deleteTemplate = await Templates.destroy({
+                        where: { layout_id: layout_id, container_id: container_id, organisation_id: req.orgId,user_account: user_account, }
+                    })
+    
+                    if( deleteTemplate ) {
+                        list = await findLayoutData(layout_id, req.orgId, user_account) 
+                    }
                 }
-            }
+            } 
         }
         res.status(200).json(list)
     } catch(e) {
@@ -545,7 +556,7 @@ route.post("/create_maintainence_file", [authJWT.verifyToken], async(req, res, n
 
 route.get("/drive", authJWT.verifyToken, async(req, res, next) => {
     let list = [], message = ''
-    const { access_token, refresh_token, id } = req.query
+    const { access_token, refresh_token, id, show_folders } = req.query
     try{        
        
         let credentials = {"scope": process.env.GOOGLE_SCOPE}
@@ -567,11 +578,13 @@ route.get("/drive", authJWT.verifyToken, async(req, res, next) => {
                 const params = {
                     pageSize: 500,
                     fields: 'nextPageToken, files(id, name, mimeType, webContentLink, webViewLink, iconLink, thumbnailLink, exportLinks)',
-                    /*orderBy: 'folder,name'*/
+                    orderBy: 'folder,name'
                 }
 
                 if( id != '' && id != undefined && id != 'undefined' ) {
                     params.q = `'${id}' in parents`
+                } else if(show_folders == 'true'){
+                    params.q = "mimeType = 'application/vnd.google-apps.folder'"
                 }
 
                 const {data} = await drive.files.list(params);
