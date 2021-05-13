@@ -558,7 +558,7 @@ route.post("/create_maintainence_file", [authJWT.verifyToken], async(req, res, n
 
 route.get("/drive", authJWT.verifyToken, async(req, res, next) => {
     let list = [], message = ''
-    const { access_token, refresh_token, id, show_folders } = req.query
+    let { access_token, refresh_token, id, show_folders } = req.query
     try{        
        
         let credentials = {"scope": process.env.GOOGLE_SCOPE}
@@ -577,15 +577,16 @@ route.get("/drive", authJWT.verifyToken, async(req, res, next) => {
             const drive = google.drive({version: 'v3', auth:oauth2Client});
 
             if(drive != null && drive != undefined) {
+                
                 const params = {
                     pageSize: 1000,
-                    fields: 'nextPageToken, files(id, name, mimeType, webContentLink, webViewLink, iconLink, thumbnailLink, exportLinks)'
+                    fields: 'nextPageToken, files(id, name, mimeType, webContentLink, webViewLink, iconLink, thumbnailLink, exportLinks)',
+                    q: "'root' in parents"
                 }
 
                 if( id != '' && id != undefined && id != 'undefined' ) {
                     params.q = `'${id}' in parents`
                 } 
-
                 const {data} = await drive.files.list(params);
                 list = data
             } else {
