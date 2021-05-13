@@ -26,6 +26,10 @@ const Repository = connection.applicationNew.define('repositories',{
         type: Sequelize.STRING,
         allowNull: false,
     },
+    breadcrumb:{
+        type: Sequelize.STRING,
+        allowNull: false,
+    },
 },
 {
     underscored: true,

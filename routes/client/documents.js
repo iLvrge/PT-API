@@ -264,7 +264,7 @@ route.get("/repo_folder", [authJWT.verifyToken], async(req, res, next) => {
 
 route.put("/repo_folder", [authJWT.verifyToken], async(req, res, next) => {
     try {
-        const { container_id, container_name, user_account } = req.body
+        const { container_id, container_name, user_account, breadcrumb } = req.body
 
         let getRepo = await Repository.findOne({
             where: { organisation_id: req.orgId, user_account: user_account}
@@ -275,11 +275,13 @@ route.put("/repo_folder", [authJWT.verifyToken], async(req, res, next) => {
                 organisation_id: req.orgId,
                 user_account: user_account,
                 container_id: container_id,
-                container_name: container_name
+                container_name: container_name,
+                breadcrumb: breadcrumb
             })
         } else {
             getRepo.container_id = container_id
             getRepo.container_name = container_name
+            getRepo.breadcrumb = breadcrumb
             await getRepo.save();
         }
         res.status(200).json(getRepo)
@@ -576,16 +578,13 @@ route.get("/drive", authJWT.verifyToken, async(req, res, next) => {
 
             if(drive != null && drive != undefined) {
                 const params = {
-                    pageSize: 500,
-                    fields: 'nextPageToken, files(id, name, mimeType, webContentLink, webViewLink, iconLink, thumbnailLink, exportLinks)',
-                    orderBy: 'folder,name'
+                    pageSize: 1000,
+                    fields: 'nextPageToken, files(id, name, mimeType, webContentLink, webViewLink, iconLink, thumbnailLink, exportLinks)'
                 }
 
                 if( id != '' && id != undefined && id != 'undefined' ) {
                     params.q = `'${id}' in parents`
-                } else if(show_folders == 'true'){
-                    params.q = "mimeType = 'application/vnd.google-apps.folder'"
-                }
+                } 
 
                 const {data} = await drive.files.list(params);
                 list = data
