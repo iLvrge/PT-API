@@ -581,7 +581,8 @@ route.get("/drive", authJWT.verifyToken, async(req, res, next) => {
                 const params = {
                     pageSize: 1000,
                     fields: 'nextPageToken, files(id, name, mimeType, webContentLink, webViewLink, iconLink, thumbnailLink, exportLinks)',
-                    q: "'root' in parents"
+                    q: "'root' in parents",
+                    orderBy: 'name'
                 }
 
                 if( id != '' && id != undefined && id != 'undefined' ) {
