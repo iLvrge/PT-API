@@ -294,7 +294,7 @@ route.put("/repo_folder", [authJWT.verifyToken], async(req, res, next) => {
 
 route.post('/create_template_drive', [authJWT.verifyToken], async(req, res, next) => {
     try{
-        const { access_token, refresh_token, user_account, id } = req.body
+        const { access_token, refresh_token, user_account, id, name } = req.body
         if(typeof user_account != 'undefined') {
             let getRepo = await Repository.findOne({
                 where: { organisation_id: req.orgId, user_account: user_account}
@@ -316,14 +316,14 @@ route.post('/create_template_drive', [authJWT.verifyToken], async(req, res, next
 
                     if(findTemplate != null) {                        
                         const copyRequest = {  
-                            name: findTemplate.container_name,
+                            name: name,
                             parents: [getRepo.container_id],
-                          };
+                        };
                     
                         const {data} = await drive.files.copy({  
                             fileId: findTemplate.container_id,
                             requestBody: copyRequest  
-                          })
+                        })
 
                         if( data != null ) {
                             res.status(200).json(data)
