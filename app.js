@@ -59,6 +59,7 @@ const validity = require("./routes/application/validity");
 const events = require("./routes/application/events");
 const timelines = require("./routes/application/timelines");
 const search = require("./routes/application/search");
+const entity = require("./routes/application/entity");
 /**
  * Route for Client database
  */
@@ -134,6 +135,8 @@ app.use("/", userCompanySelections);
 app.use('/events_icons', svgFlagIcons);
 
 app.use('/search', search);
+
+app.use('/entity', entity);
 
 app.use("/slacks", slacks);
 

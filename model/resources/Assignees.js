@@ -2,7 +2,7 @@ const Sequelize = require("sequelize");
 
 const connection = require("../../config/db.config");
 
-const Representatives = require("./Representatives");
+const AssignorAndAssignee = require("./AssignorAndAssignee");
 
 const Assignees = connection.resources.define('assignee',{
     rf_id: {
@@ -38,13 +38,9 @@ const Assignees = connection.resources.define('assignee',{
         type: Sequelize.STRING,
         allowNull: false,
     },
-    representative_id:{
+    assignor_and_assignee_id:{
         type: Sequelize.INTEGER,
         allowNull: true,
-        references: {
-            model: Representatives,
-            key: 'representative_id',
-        }
     }
 },
 {
@@ -52,5 +48,7 @@ const Assignees = connection.resources.define('assignee',{
     timestamps: false,
     freezeTableName: true
 });
+
+Assignees.belongsTo(AssignorAndAssignee, { foreignKey: 'assignor_and_assignee_id', as: 'assignor_and_assignee' });
 
 module.exports = Assignees;

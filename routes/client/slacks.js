@@ -284,9 +284,9 @@ route.post("/conversations/create/:token" , async(req, res, next) => {
  * Update team ID with main User
  */
 
-route.put('/team/:team', [authJWT.verifyToken], async(req, res, next) =>{
+route.put('/team', [authJWT.verifyToken], async(req, res, next) =>{
     try {
-        const { team } = req.params;
+        const { team } = req.body;
         //check teamID and auth user should Admin user
         if( team != '' ) {
             const user = await Users.findOne({
@@ -298,7 +298,7 @@ route.put('/team/:team', [authJWT.verifyToken], async(req, res, next) =>{
                     where: {organisation_id: req.orgId}
                 })
     
-                if(orgData != null && orgData.team != '') {
+                if(orgData != null && orgData.team != team) {
                     await Organisations.update({team: team},{where: {organisation_id: req.orgId}})
                     console.log('Team updated...')
                 }

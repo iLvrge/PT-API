@@ -2,6 +2,8 @@ const express = require("express");
 
 const route = express.Router();
 
+const moment = require('moment')
+
 const stringify = require('csv-stringify');
 
 const {google} = require('googleapis');
@@ -9,6 +11,12 @@ const {google} = require('googleapis');
 const { create } = require('xmlbuilder2');
 
 //require the Model
+
+const Assignments = require("../../model/resources/Assignments");
+const Assignees = require("../../model/resources/Assignees");
+const Assignors = require("../../model/resources/Assignors");
+
+const BusinessUsers = require("../../model/business/Users");
 
 const Documents = require("../../model/client/Documents");
 const Users = require("../../model/client/Users");
@@ -351,127 +359,94 @@ route.post('/create_template_drive', [authJWT.verifyToken], async(req, res, next
 
 route.post("/downloadXML", [authJWT.verifyToken], async(req, res, next) => {
     try{
-        let { assets } = req.body
+        let { asset, assignee, assignor, correspondance } = req.body
 
-        if( assets && assets != '' ) {
-            assets = JSON.parse(assets)
+        if( asset && asset != '' ) {
+            asset = JSON.parse(asset)
+            assignee = JSON.parse(assignee)
+            assignor = JSON.parse(assignor)
+            correspondance = JSON.parse(correspondance)
+            if(asset.length > 0) {
+                const user = await BusinessUsers.findOne({
+                    where: {user_id: req.userId}
+                })
+                const findCorrespondence = await Assignments.findOne({
+                    where: {rf_id: correspondance.id},
+                    order: [['rf_id', 'DESC']],
+                    limit: 1
+                })
 
-            if(assets.length > 0) {
-                const root = create({ version: '1.0' })
+                if(findCorrespondence && findCorrespondence != null) {
+                    const root = create({ version: '1.0' })
                         .ele('pat-assignment-template')
                             .ele('correspondent')
                                 .ele('correspondent-name-address')
-                                    .ele('name').txt('UZI ALOUSH').up()
-                                    .ele('address-1').txt('111 EMBARCADERO W').up()
-                                    .ele('address-2').txt('INTERNAL ADDRESS').up()
-                                    .ele('city').txt('OAKLAND').up()
-                                    .ele('state').txt('CALIFORNIA').up()
-                                    .ele('postal-code').txt('94607').up()
+                                    .ele('name').txt(findCorrespondence.cname).up()
+                                    .ele('address-1').txt(findCorrespondence.caddress_1 != '' ? findCorrespondence.caddress_1 : 'Address-1').up()
+                                    .ele('address-2').txt(findCorrespondence.caddress_2 != '' ? findCorrespondence.caddress_2 : 'Address-2').up()
+                                    .ele('city').txt(findCorrespondence.caddress_3 != '' ? findCorrespondence.caddress_3 : 'City').up()
+                                    .ele('state').txt(findCorrespondence.caddress_3 != '' ? findCorrespondence.caddress_3 : 'State' ).up()
+                                    .ele('postal-code').txt(findCorrespondence.caddress_4 != '' ? findCorrespondence.caddress_4 : '00000').up()
                                 .up()
-                            .ele('e-mail').txt('uzi@ilvrge.com').up()
-                            .ele('fax').txt('(415)922-2282').up()
-                            .ele('phone').txt('415-9025901').up()
+                            .ele('e-mail').txt(user.email_address).up()
+                            .ele('fax').txt(user.telephone != '' ? user.telephone : '000-000-0000').up()
+                            .ele('phone').txt(user.telephone != '' ? user.telephone : '000-000-0000').up()
                             .up();
-                const assignees = [
-                    {
-                        name: 'THIS IS THE NAME OF THE CONVEYING PARTIES1',
-                        address_1: 'STREET ADDRESS 123',
-                        address_2: 'INTERNAL ADDRESS',
-                        city: 'SAN FRANCISCO',
-                        state: 'ALGERIA',
-                        postal_code: '94132',
-                        type: 'company'
-                    },
-                    {
-                        first_name: 'JAMES',
-                        last_name: 'DEAN',
-                        address_1: 'STREET ADDRESS 123',
-                        address_2: 'INTERNAL ADDRESS',
-                        city: 'SAN FRANCISCO',
-                        state: 'ALGERIA',
-                        postal_code: '94132',
-                        type: 'individual'
-                    }
-                ]  
-                
-                const assignors = [
-                    {
-                        name: 'THE NAME OF THE RECEIVING PARTIES',
-                        exec_dt: '2019-02-28',
-                        type: 'company'
-                    },
-                    {
-                        prefix: 'MR',
-                        first_name: 'JAMES',
-                        middle_name: 'D',
-                        last_name: 'DEAN',
-                        suffix: 'JR',
-                        exec_dt: '2019-02-28',
-                        type: 'individual'
-                    }
-                ] 
+                    const patConveyingParties = root.ele('pat-conveying-parties')
+                    for( let i = 0; i < assignor.length; i++ ) {
+                        const findAssignor = await Assignors.findOne({
+                            where: {assignor_and_assignee_id: assignor[i].id},
+                            order: [['rf_id', 'DESC']],
+                            limit: 1
+                        })
 
-                const patConveyingParties = root.ele('pat-conveying-parties')
-                for( let i = 0; i < assignors.length; i++ ) {
-                    if( assignors[i].type == 'individual' ) {
-                        patConveyingParties
+                        if( findAssignor  && findAssignor != null ) {
+                            patConveyingParties
                             .ele('pat-conveying-party')
-                                .ele('individual')
-                                    .ele('prefix').txt(assignors[i].prefix).up()
-                                    .ele('first-name').txt(assignors[i].first_name).up()
-                                    .ele('middle-name').txt(assignors[i].last_name).up()
-                                    .ele('last-name').txt(assignors[i].suffix).up()
+                                .ele('company')
+                                    .ele('orgname').txt(findAssignor.or_name).up()
                                 .up()
-                                .ele('executed-date').txt(assignors[i].exec_dt).up()
-                            .up()
-                    } else {
-                        patConveyingParties
-                        .ele('pat-conveying-party')
-                            .ele('company')
-                                .ele('orgname').txt(assignors[i].name).up()
-                            .up()
-                            .ele('executed-date').txt(assignors[i].exec_dt).up()
-                        .up()
+                                .ele('executed-date').txt(moment(new Date()).format('YYYY-MM-DD')).up()
+                            .up()    
+                        }
+                                           
                     }
-                }
 
-                const patReceivingParties = root.ele('pat-receiving-parties')
-                for( let i = 0; i < assignees.length; i++ ) {
-                    const receivingParty = patReceivingParties
-                                                .ele('pat-receiving-party')
-                    if( assignees[i].type == 'individual' ) {
-                        receivingParty
-                            .ele('individual')
-                                .ele('first-name').txt(assignees[i].first_name).up()
-                                .ele('last-name').txt(assignees[i].suffix).up()
-                            .up()
-                    } else {
-                        receivingParty
-                            .ele('company')
-                                .ele('orgname').txt(assignees[i].name).up()
-                            .up()
+                    const patReceivingParties = root.ele('pat-receiving-parties')
+                    for( let i = 0; i < assignee.length; i++ ) {
+                        const findAssignee = await Assignees.findOne({
+                            where: {assignor_and_assignee_id: assignee[i].id},
+                            order: [['rf_id', 'DESC']],
+                            limit: 1
+                        })
+                        if( findAssignee && findAssignee != null ) {
+                            const receivingParty = patReceivingParties
+                                                    .ele('pat-receiving-party')
+                                receivingParty
+                                    .ele('company')
+                                        .ele('orgname').txt(findAssignee.ee_name).up()
+                                    .up()
+                                receivingParty
+                                    .ele('address')
+                                        .ele('address-1').txt(findAssignee.ee_address_1).up()
+                                        .ele('address-2').txt(findAssignee.ee_address_2).up()
+                                        .ele('city').txt(findAssignee.ee_city != '' ? findAssignee.ee_city : 'City').up()
+                                        .ele('state').txt(findAssignee.ee_state != '' ? findAssignee.ee_state : 'State').up()
+                                        .ele('postal-code').txt(findAssignee.ee_postcode != '' ? findAssignee.ee_postcode.substr(0,5) : '0000').up()
+                                    .up()
+                        }                        
                     }
-                    receivingParty
-                        .ele('address')
-                            .ele('address-1').txt(assignees[i].address_1).up()
-                            .ele('address-2').txt(assignees[i].address_2).up()
-                            .ele('city').txt(assignees[i].city).up()
-                            .ele('state').txt(assignees[i].state).up()
-                            .ele('postal-code').txt(assignees[i].postal_code).up()
-                        .up()
-
-                }
-
-                const patProperties = root.ele('pat-properties')
-                for( let j = 0; j < assets.length; j++ ) {
-                    patProperties
-                        .ele('pat-property').att('patent', assets[j])
-                            .ele('pat-application-number').txt(assets[j]).up()
-                        .up()
-                }
+                    root.ele('pat-properties')
+                    .ele('pat-property').att('patent', asset[0])
+                    .ele('pat-application-number').txt(asset[1]).up()
+                    .up()                
                 
-                const xml = root.end({ prettyPrint: true });
-                res.status(200).send(xml)
+                    const xml = root.end({ prettyPrint: true });
+                    res.status(200).send(xml)                    
+                } else {
+                    console.log('Error XML, Invalid data')
+                    res.status(200).send(null)
+                }
             } else {
                 res.status(200).send('Invalid inputs')
             }
@@ -480,7 +455,7 @@ route.post("/downloadXML", [authJWT.verifyToken], async(req, res, next) => {
         }
     } catch (e) {
         console.log(e)
-        res.status(200).send("")
+        res.status(200).send(null)
     }
 });
 
