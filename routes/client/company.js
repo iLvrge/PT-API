@@ -13,6 +13,8 @@ const ActivityLogs = require("../../model/resources/ActivityLog");
 
 const RepresentativeReport = require("../../model/resources/RepresentativeReport");
 
+const AdminRepresentativeReport = require("../../model/resources/AdminRepresentativeReport");
+
 const RepresentativeTransactions = require("../../model/resources/RepresentativeTransactions");
 
 const Lawfirm = require("../../model/client/Lawfirm");
@@ -64,26 +66,25 @@ route.get("/summary", [authJWT.verifyToken, clientDBConnection.connect], async(r
      * Total Third Parties
      * Total Assets
      */
-    const companies = await helpers.getCompaniesCount(req.connection_db);
+    const companies = await helpers.getCompaniesList(req.connection_db);
 
-    const assignments = await TreePartiesCollections.count({
-        distinct: true,
-        col: 'rf_id',
-        where: {organisation_id: req.orgId}
-    });
+    const allCompanies = []
 
-    const third_parties = await TreeParties.count({
-        distinct: true,
-        col: 'assignor_and_assignee_id',
-        where: {organisation_id: req.orgId}
-    });
+    const promises = companies.map( row => allCompanies.push(row.representative_name))
 
-    const assets = await Validity.findOne({
-        attributes: [[connection.Sequelize.literal('COALESCE(application, 0) + COALESCE(patent, 0)'), 'assets']],
-        where: {organisation_id: req.orgId, representative_id: 0}
-    });
+    await Promise.all(promises)
 
-    res.status(200).json({companies, assignments, third_parties, assets: assets != null ? assets.get('assets') : 0 });
+    const query = `SELECT ${allCompanies.length} as companies, sum(no_of_assets) as assets, sum(no_of_transactions) as transactions, sum(no_of_parties) as parties, sum(no_of_inventor) as inventors, sum(no_of_activities) as activites, (SELECT sum(no_of_parties) - sum(no_of_transactions) FROM admin_representative_reports WHERE representative_name IN (:representativeName)) as products FROM representative_reports WHERE representative_name IN (:representativeName)`
+
+    report = await connection.resources.query(query,{
+        type: connection.Sequelize.QueryTypes.SELECT,
+        replacements: { representativeName: allCompanies },
+        raw: true,
+        plain: true,
+        logging: console.log,
+    })
+    res.status(200).json(report)
+
 })
 
 /**Get all companies */
@@ -120,7 +121,13 @@ route.get("/list", [authJWT.verifyToken, clientDBConnection.connect], async(req,
                 await Promise.all(promises)
 
                 const findReports = await RepresentativeReport.findAll({
-                    attributes: ['representative_name', 'no_of_assets', 'no_of_transactions', 'no_of_parties'],
+                    attributes: ['representative_name', 'no_of_assets', 'no_of_transactions', 'no_of_parties', 'no_of_inventor', 'no_of_activities'],
+                    where: {representative_name: representativeNames},
+                    order: [['representative_name', 'ASC']]
+                })
+
+                const findAdminReports = await AdminRepresentativeReport.findAll({
+                    attributes: ['representative_name', 'no_of_transactions', 'no_of_parties'],
                     where: {representative_name: representativeNames},
                     order: [['representative_name', 'ASC']]
                 })
@@ -130,7 +137,14 @@ route.get("/list", [authJWT.verifyToken, clientDBConnection.connect], async(req,
                         let representaitveJSON = representative.toJSON();
                         const findIndex = findReports.findIndex( r => r.representative_name == representative.representative_name)
                         if( findIndex !== -1) {
-                            representaitveJSON = {...representaitveJSON, no_of_assets: findReports[findIndex]['no_of_assets'], no_of_transactions: findReports[findIndex]['no_of_transactions'], no_of_parties: findReports[findIndex]['no_of_parties']}
+                            representaitveJSON = {...representaitveJSON, no_of_assets: findReports[findIndex]['no_of_assets'], no_of_transactions: findReports[findIndex]['no_of_transactions'], no_of_parties: findReports[findIndex]['no_of_parties'], no_of_inventor: findReports[findIndex]['no_of_inventor'], no_of_activities: findReports[findIndex]['no_of_activities']}
+                            let product = 0;
+                            const findAdminIndex = findAdminReports.findIndex( r => r.representative_name == representative.representative_name)
+
+                            if( findAdminIndex !== -1) {
+                                product = findAdminReports[findAdminIndex]['no_of_parties'] - findAdminReports[findAdminIndex]['no_of_transactions']
+                            }
+                            representaitveJSON['product'] = product
                         }
                         companiesList.push(representaitveJSON)
                         return representative
