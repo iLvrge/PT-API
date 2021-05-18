@@ -432,7 +432,7 @@ route.get("/company/transactions/:id/:representativeID", [authJWT.verifyToken, a
         
         let findAllAssignments  = await helpers.allAssignmentsByRepresentativeIDs(customerID, representativeIDs, req);
 
-        res.status(200).json({list:findAllAssignments, type: type, assignment_type: assignment_type});
+        res.status(200).json({list: findAllAssignments.list, conveyance: findAllAssignments.conveyance, type: type, assignment_type: assignment_type});
     } catch(e) {
         console.log(e);
         res.status(402).send("Unable to retrieve data.");

@@ -601,7 +601,7 @@ let findAllLawFirms = async (customerID, representativeIDs, req ) => {
 
 
 let allAssignmentsByRepresentativeIDs = async (customerID, representativeIDs, req) => {
-    let queryAllAssignments = "", assignmentsList = [];
+    let queryAllAssignments = "", assignmentsList = [], conveyanceList = [];
     if(parseInt(customerID) > 0) {        
         let org = await findOrganisationbyID( customerID );
         
@@ -658,12 +658,23 @@ let allAssignmentsByRepresentativeIDs = async (customerID, representativeIDs, re
                             logging: console.log,
                             }
                         );
+
+
+                        queryAllConveyance = "Select ac.convey_ty from assignment as a INNER JOIN assignment_conveyance as ac ON ac.rf_id = a.rf_id  WHERE a.convey_text <> '' AND a.convey_text IS NOT NULL AND a.rf_id IN (SELECT d.rf_id FROM documentid as d WHERE appno_doc_num <> '' AND  d.rf_id IN (:rfIDs) GROUP BY d.rf_id) GROUP BY ac.convey_ty";
+
+                        conveyanceList =  await connection.resources.query(queryAllConveyance,{
+                            type: connection.Sequelize.QueryTypes.SELECT,
+                            replacements: { rfIDs: rfIDs },
+                            raw: true,
+                            logging: console.log,
+                            }
+                        );
                     }
                 }
             }
         }
     }  
-    return assignmentsList;
+    return {list: assignmentsList, conveyance: conveyanceList} ;
 }
 
 let getCompanyListByEmployee = async(companyName) => {
