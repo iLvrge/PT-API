@@ -460,6 +460,16 @@ let allAssignments = async (customerID, req) => {
                     logging: console.log,
                     }
                 );
+
+                /* const queryAllConveyance = "Select ac.convey_ty as name from assignment as a INNER JOIN assignment_conveyance as ac ON ac.rf_id = a.rf_id  WHERE a.convey_text <> '' AND a.convey_text IS NOT NULL AND a.rf_id IN (SELECT d.rf_id FROM documentid as d WHERE appno_doc_num <> '' AND  d.rf_id IN (SELECT rf_id FROM db_uspto.representative_transactions WHERE organisation_id = :organisationID AND representative_id IN (:representativeID)) GROUP BY d.rf_id) GROUP BY ac.convey_ty";
+
+                conveyanceList =  await connection.resources.query(queryAllConveyance,{
+                    type: connection.Sequelize.QueryTypes.SELECT,
+                    replacements: { organisationID: org.organisation_id, representativeID: representativeID },
+                    raw: true,
+                    logging: console.log,
+                    }
+                ); */
                 
                 /* let queryFindMainCompany = "SELECT rf_id FROM representative_transactions WHERE organisation_id = :organisationID AND representative_id IN (:representativeID) ";
 
@@ -584,6 +594,16 @@ let allAssignments = async (customerID, req) => {
                 logging: console.log,
               }
             );
+
+            /* const queryAllConveyance = "Select ac.convey_ty as name from assignment as a INNER JOIN assignment_conveyance as ac ON ac.rf_id = a.rf_id  WHERE a.convey_text <> '' AND a.convey_text IS NOT NULL AND a.rf_id IN (SELECT d.rf_id FROM documentid as d WHERE appno_doc_num <> '' AND  d.rf_id IN (SELECT rf_id FROM db_uspto.representative_transactions WHERE organisation_id = :organisationID AND representative_id IN (:representativeID)) GROUP BY d.rf_id) GROUP BY ac.convey_ty";
+
+            conveyanceList =  await connection.resources.query(queryAllConveyance,{
+                type: connection.Sequelize.QueryTypes.SELECT,
+                replacements: { organisationID: org.organisation_id, representativeID: representativeID },
+                raw: true,
+                logging: console.log,
+                }
+            ); */
         }        
     } 
     return assignmentsList;
@@ -608,6 +628,7 @@ let allAssignmentsByRepresentativeIDs = async (customerID, representativeIDs, re
         if(org != null && org.organisation_id > 0) {
 
             if(representativeIDs != null && representativeIDs.length > 0) {
+                console.log("allAssignmentsByRepresentativeIDs")
                                
                 let queryFindMainCompany = "SELECT rf_id FROM representative_transactions WHERE organisation_id = :organisationID AND representative_id IN (:representativeID) ";
 
@@ -660,7 +681,7 @@ let allAssignmentsByRepresentativeIDs = async (customerID, representativeIDs, re
                         );
 
 
-                        queryAllConveyance = "Select ac.convey_ty from assignment as a INNER JOIN assignment_conveyance as ac ON ac.rf_id = a.rf_id  WHERE a.convey_text <> '' AND a.convey_text IS NOT NULL AND a.rf_id IN (SELECT d.rf_id FROM documentid as d WHERE appno_doc_num <> '' AND  d.rf_id IN (:rfIDs) GROUP BY d.rf_id) GROUP BY ac.convey_ty";
+                        const queryAllConveyance = "Select ac.convey_ty as name from assignment as a INNER JOIN assignment_conveyance as ac ON ac.rf_id = a.rf_id  WHERE a.convey_text <> '' AND a.convey_text IS NOT NULL AND a.rf_id IN (SELECT d.rf_id FROM documentid as d WHERE appno_doc_num <> '' AND  d.rf_id IN (:rfIDs) GROUP BY d.rf_id) GROUP BY ac.convey_ty";
 
                         conveyanceList =  await connection.resources.query(queryAllConveyance,{
                             type: connection.Sequelize.QueryTypes.SELECT,
