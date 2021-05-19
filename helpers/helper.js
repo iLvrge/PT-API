@@ -33,6 +33,8 @@ const TreePartiesCollections = require("../model/application/TreePartiesCollecti
 
 const DocumentIds = require("../model/application/DocumentIds");
 
+const Inventors = require("../model/resources/Inventors");
+
 const moment = require('moment');
 
 const ASSETS_LIFE_SPAN_DATE_FORMAT = 'YYYY';
@@ -1002,12 +1004,12 @@ let updateAllCustomerInventor = async(organisationID, inventors, flag, DBConnect
         let queryResourceUpdate, queryApplicationUpdate, where = { flag: flag, list: inventorsList};
         if( flag == 1) {
             queryResourceUpdate = "UPDATE representative_assignment_conveyance SET employer_assign = :flag, convey_ty = :conveyType WHERE rf_id IN (SELECT rf_id FROM assignor WHERE assignor_and_assignee_id IN (:list))";
-            queryApplicationUpdate = "UPDATE assignment_conveyance SET employer_assign = :flag, convey_ty = :conveyType WHERE rf_id IN (SELECT rf_id FROM assignor WHERE assignor_and_assignee_id IN (:list))";
+            //queryApplicationUpdate = "UPDATE assignment_conveyance SET employer_assign = :flag, convey_ty = :conveyType WHERE rf_id IN (SELECT rf_id FROM assignor WHERE assignor_and_assignee_id IN (:list))";
 
             where.conveyType = 'employee';
         } else {
             queryResourceUpdate = "UPDATE representative_assignment_conveyance SET employer_assign = :flag WHERE rf_id IN (SELECT rf_id FROM assignor WHERE assignor_and_assignee_id IN (:list))";
-            queryApplicationUpdate = "UPDATE assignment_conveyance SET employer_assign = :flag WHERE rf_id IN (SELECT rf_id FROM assignor WHERE assignor_and_assignee_id IN (:list))";
+            //queryApplicationUpdate = "UPDATE assignment_conveyance SET employer_assign = :flag WHERE rf_id IN (SELECT rf_id FROM assignor WHERE assignor_and_assignee_id IN (:list))";
         }
 
         added = await connection.resources.query(queryResourceUpdate,{
@@ -1017,13 +1019,21 @@ let updateAllCustomerInventor = async(organisationID, inventors, flag, DBConnect
                 logging: console.log,
             }
         );
-        added = await connection.application.query(queryApplicationUpdate,{
+
+        const newInventors = [];
+        const promise = inventorsList.map(inventor => newInventors.push({assignor_and_assignee_id: inventor}))
+        await Promise.all(promise)
+
+        const addNew = Inventors.bulkCreate(newInventors, { ignoreDuplicates: true })
+            console.log('addNew', addNew)
+        
+        /* added = await connection.application.query(queryApplicationUpdate,{
                 type: connection.Sequelize.QueryTypes.UPDATE,
                 replacements: where,
                 raw: true,
                 logging: console.log,
             }
-        );
+        ); */
     }
 
     /* const list = await getCompaniesList(DBConnection);
@@ -1236,7 +1246,9 @@ let findAssignorAndAssigneeListFromRFIDs = async(rfIDs, type) => {
     let customer_list = [], assignees = [], assignors = [];
     
     if(typeof type != 'undefined' &&  parseInt(type) < 3) {
-        let queryAssignor = "SELECT a.assignor_and_assignee_id, a.or_name as name, count(a.or_name) as counter, r.representative_name as normalize_name, (select rr.representative_name FROM representative as rr WHERE rr.representative_name = aaa.name GROUP BY rr.representative_name) as representativeCompany, (SELECT aa.instances FROM assignor_and_assignee as aa WHERE aa.assignor_and_assignee_id = a.assignor_and_assignee_id GROUP BY aa.assignor_and_assignee_id) as total_occurences, a.rf_id FROM db_uspto.assignor as a LEFT JOIN assignor_and_assignee as aaa ON aaa.assignor_and_assignee_id = a.assignor_and_assignee_id LEFT JOIN db_uspto.representative_assignment_conveyance as rac ON rac.rf_id = a.rf_id LEFT JOIN representative as r ON r.representative_id = aaa.representative_id WHERE a.rf_id IN (:IDs) ";
+        /* let queryAssignor = "SELECT a.assignor_and_assignee_id, a.or_name as name, count(a.or_name) as counter, r.representative_name as normalize_name, (select rr.representative_name FROM representative as rr WHERE rr.representative_name = aaa.name GROUP BY rr.representative_name) as representativeCompany, (SELECT aa.instances FROM assignor_and_assignee as aa WHERE aa.assignor_and_assignee_id = a.assignor_and_assignee_id GROUP BY aa.assignor_and_assignee_id) as total_occurences, a.rf_id FROM db_uspto.assignor as a LEFT JOIN assignor_and_assignee as aaa ON aaa.assignor_and_assignee_id = a.assignor_and_assignee_id LEFT JOIN db_uspto.representative_assignment_conveyance as rac ON rac.rf_id = a.rf_id LEFT JOIN representative as r ON r.representative_id = aaa.representative_id WHERE a.rf_id IN (:IDs) "; */
+
+        let queryAssignor = "SELECT a.assignor_and_assignee_id, a.or_name as name, count(a.or_name) as counter, r.representative_name as normalize_name, (select rr.representative_name FROM representative as rr WHERE rr.representative_name = aaa.name GROUP BY rr.representative_name) as representativeCompany, (SELECT aa.instances FROM assignor_and_assignee as aa WHERE aa.assignor_and_assignee_id = a.assignor_and_assignee_id GROUP BY aa.assignor_and_assignee_id) as total_occurences, a.rf_id FROM db_uspto.assignor as a LEFT JOIN assignor_and_assignee as aaa ON aaa.assignor_and_assignee_id = a.assignor_and_assignee_id LEFT JOIN db_uspto.representative_assignment_conveyance as rac ON rac.rf_id = a.rf_id LEFT JOIN representative as r ON r.representative_id = aaa.representative_id WHERE a.rf_id IN (SELECT rf_id FROM documentid WHERE appno_doc_num IN (SELECT appno_doc_num FROM documentid WHERE rf_id IN (:IDs)) GROUP BY rf_id) ";
         console.log("TYPE: "+ parseInt(type));
         if(parseInt(type) > 0) {
             console.log("TYPE: "+ type);

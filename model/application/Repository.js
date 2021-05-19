@@ -20,15 +20,27 @@ const Repository = connection.applicationNew.define('repositories',{
     },
     container_id:{
         type: Sequelize.STRING,
-        allowNull: false,
+        allowNull: true,
     },   
     container_name:{
         type: Sequelize.STRING,
-        allowNull: false,
+        allowNull: true,
     },
     breadcrumb:{
         type: Sequelize.STRING,
-        allowNull: false,
+        allowNull: true,
+    },
+    template_container_id:{
+        type: Sequelize.STRING,
+        allowNull: true,
+    },   
+    template_container_name:{
+        type: Sequelize.STRING,
+        allowNull: true,
+    },
+    template_breadcrumb:{
+        type: Sequelize.STRING,
+        allowNull: true,
     },
 },
 {

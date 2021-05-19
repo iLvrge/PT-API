@@ -299,6 +299,35 @@ route.put("/repo_folder", [authJWT.verifyToken], async(req, res, next) => {
     }
 })
 
+route.put("/template_folder", [authJWT.verifyToken], async(req, res, next) => {
+    try {
+        const { template_container_id, template_container_name, user_account, template_breadcrumb } = req.body
+
+        let getRepo = await Repository.findOne({
+            where: { organisation_id: req.orgId, user_account: user_account}
+        })
+
+        if(getRepo == null) {
+            getRepo = await Repository.create({
+                organisation_id: req.orgId,
+                user_account: user_account,
+                template_container_id: template_container_id,
+                template_container_name: template_container_name,
+                template_breadcrumb: template_breadcrumb
+            })
+        } else {
+            getRepo.template_container_id = template_container_id
+            getRepo.template_container_name = template_container_name
+            getRepo.template_breadcrumb = template_breadcrumb
+            await getRepo.save();
+        }
+        res.status(200).json(getRepo)
+    } catch(e) {
+        console.log(e)
+        res.status(500).send('Error while adding repository folder.')
+    }
+})
+
 
 route.post('/create_template_drive', [authJWT.verifyToken], async(req, res, next) => {
     try{
