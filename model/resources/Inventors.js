@@ -15,5 +15,5 @@ const Inventors = connection.resources.define('inventors',{
     freezeTableName: true
 });
 
-
+Inventors.removeAttribute('id');
 module.exports = Inventors;

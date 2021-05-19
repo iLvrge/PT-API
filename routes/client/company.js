@@ -74,7 +74,7 @@ route.get("/summary", [authJWT.verifyToken, clientDBConnection.connect], async(r
 
     await Promise.all(promises)
 
-    const query = `SELECT ${allCompanies.length} as companies, sum(no_of_assets) as assets, sum(no_of_transactions) as transactions, sum(no_of_parties) as parties, sum(no_of_inventor) as inventors, sum(no_of_activities) as activites, (SELECT sum(no_of_parties) - sum(no_of_transactions) FROM admin_representative_reports WHERE representative_name IN (:representativeName)) as products FROM representative_reports WHERE representative_name IN (:representativeName)`
+    const query = `SELECT ${allCompanies.length} as companies, sum(no_of_activities) as activites, sum(no_of_parties) as parties,  sum(no_of_inventor) as inventors, sum(no_of_transactions) as transactions, sum(no_of_assets) as assets, (SELECT sum(no_of_parties) - sum(no_of_transactions) FROM admin_representative_reports WHERE representative_name IN (:representativeName)) as arrows FROM representative_reports WHERE representative_name IN (:representativeName)`
 
     report = await connection.resources.query(query,{
         type: connection.Sequelize.QueryTypes.SELECT,
