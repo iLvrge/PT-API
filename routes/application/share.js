@@ -28,15 +28,38 @@ route.post("/share", [authJWT.verifyToken], async (req, res) =>{
 });
 
 route.get("/share/:code", async (req, res) =>{     
-    const shareCode = req.params.code;
+    const { code } = req.params;
     try {
-        if( shareCode != "") {
-            const share = await helpers.getShareData(shareCode);
+        if( code != "") {
+            const share = await helpers.getShareList(code);
             if( share != null ) {
                 req.orgId = share.organisation_id;
                 req.userId = share.user_id;
-                if(share.subject != "" && share.subject_type == 2) {
-                    req.params.patentNumber = share.subject;
+                if(share.share.length > 0 ) {
+                    res.status(200).json(share.share)
+                }
+            } else {
+                res.status(500).send("Invalid url.");
+            }
+        } else {
+            res.status(500).send("Invalid url.");
+        }
+    }catch(e){
+        console.log(e);
+        res.status(500).send("Invalid url.");
+    }
+});
+
+route.get("/share/:asset/:code", async (req, res) =>{     
+    const { asset, code } = req.params;
+    try {
+        if( code != "") {
+            const share = await helpers.getShareData(code, asset);
+            if( share != null ) {
+                req.orgId = share.organisation_id;
+                req.userId = share.user_id;
+                if(share.share  != null ) {
+                    req.params.patentNumber = asset;
                     helpers.generateJSON(req, res);
                 }
             } else {

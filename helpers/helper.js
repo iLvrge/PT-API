@@ -27,6 +27,10 @@ const Roles = require("../model/client/Roles");
 
 const ShareLink = require("../model/business/ShareLinks");
 
+const Share = require("../model/application/Share");
+
+const ShareLists = require("../model/application/ShareLists");
+
 const ClientRepesentative = require("../model/client/Representatives");
 
 const TreePartiesCollections = require("../model/application/TreePartiesCollections");
@@ -1727,7 +1731,7 @@ let getNewCode = async () => {
     for (let i = 0; i < retryLimit; i++) {
         if(run === true){
             const code = (Math.random()*1e32).toString(36).substr(0,10);
-            await ShareLink.findOne({
+            await Share.findOne({
                 where:{code: code},
                 attributes: ['share_id']
             })
@@ -1745,22 +1749,60 @@ let getNewCode = async () => {
 };
 
 let shareURL = async (params) => {
-    let insertRecord = await ShareLink.create({
-        code: params.code,
-        organisation_id: params.organisation_id,        
-        user_id: params.user_id,
-        subject_type: params.type,
-        subject: params.assets
-    });
-    if(insertRecord != null && insertRecord.share_id > 0) {
-        return "https://share.patentrack.com/"+params.code;
+    const assets = JSON.parse(params.assets)
+
+    if( assets.length > 0 ) {
+        let insertRecord = await Share.create({
+            code: params.code,
+            organisation_id: params.organisation_id,        
+            user_id: params.user_id
+        });
+        if(insertRecord != null && insertRecord.share_id > 0) {      
+    
+            const bulkData = []
+            const promises = assets.map(asset => bulkData.push({asset, share_id: insertRecord.share_id}))
+    
+            await Promise.all(promises)
+    
+            const addBulkData = await ShareLists.bulkCreate(bulkData, { ignoreDuplicates: true })
+    
+            if(addBulkData) {
+                return "https://share.patentrack.com/"+params.code;
+            } else {
+                return '';
+            }
+        } else {
+            return '';
+        }
     } else {
         return '';
-    }
+    }    
 };
-let getShareData = async (code) => {
-	return await ShareLink.findOne({
-		where:{code:code}
+
+let getShareList = async (code) => {
+	return await Share.findOne({
+        where:{code:code},
+        include:[
+            {                       
+                model: ShareLists,
+                as: 'share',
+                attributes: [ 'asset' ]               
+            }
+        ]
+	});
+}
+
+let getShareData = async (code, asset) => {
+	return await Share.findOne({
+        where:{code},
+        include:[
+            {                       
+                model: ShareLists,
+                as: 'share',
+                attributes: [ 'asset' ],
+                where: {asset}             
+            }
+        ]
 	});
 }
 
@@ -2220,6 +2262,7 @@ helper.getAssignmentDataByrfID = getAssignmentDataByrfID;
 helper.generateJSON = generateJSON;
 helper.getNewCode = getNewCode;
 helper.shareURL = shareURL;
+helper.getShareList = getShareList;
 helper.getShareData = getShareData;
 helper.getCompaniesMinAndMaxDateTransaction = getCompaniesMinAndMaxDateTransaction;
 helper.findProfessionalFromUserID = findProfessionalFromUserID;
