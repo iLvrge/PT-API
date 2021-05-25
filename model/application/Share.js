@@ -2,6 +2,8 @@ const Sequelize = require("sequelize");
 
 const connection = require("../../config/db.config");
 
+const ShareLists = require("./ShareLists");
+
 const Share = connection.applicationNew.define('share',{
     share_id: {
         type: Sequelize.INTEGER,
@@ -34,5 +36,8 @@ const Share = connection.applicationNew.define('share',{
     freezeTableName: true,
     tableName: 'share'
 });
+
+Share.hasMany( ShareLists, { foreignKey: 'share_id'});
+
 
 module.exports = Share;

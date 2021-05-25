@@ -35,9 +35,7 @@ route.get("/share/:code", async (req, res) =>{
             if( share != null ) {
                 req.orgId = share.organisation_id;
                 req.userId = share.user_id;
-                if(share.share.length > 0 ) {
-                    res.status(200).json(share.share)
-                }
+                res.status(200).json(share)
             } else {
                 res.status(500).send("Invalid url.");
             }
@@ -58,7 +56,7 @@ route.get("/share/:asset/:code", async (req, res) =>{
             if( share != null ) {
                 req.orgId = share.organisation_id;
                 req.userId = share.user_id;
-                if(share.share  != null ) {
+                if(share  != null ) {
                     req.params.patentNumber = asset;
                     helpers.generateJSON(req, res);
                 }

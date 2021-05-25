@@ -145,10 +145,12 @@ route.get("/assets/:patentNumber",[authJWT.verifyToken], async (req, res) =>{
     })
 });
 
+/**
+ * route.get("/assets/:patentNumber/:type/outsource",[authJWT.verifyToken], async (req, res) =>{   
+ */
 
-
-route.get("/assets/:patentNumber/:type/outsource",[authJWT.verifyToken], async (req, res) =>{        
-    let patentNumber = req.params.patentNumber, type = req.params.type;
+route.get("/assets/:patentNumber/:type/outsource",[], async (req, res) =>{        
+    let { patentNumber, type } = req.params;
     
     if(type == 1) {
         Documentids.findOne({

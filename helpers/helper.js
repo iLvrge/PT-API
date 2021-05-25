@@ -1780,25 +1780,23 @@ let shareURL = async (params) => {
 };
 
 let getShareList = async (code) => {
-	return await Share.findOne({
-        where:{code:code},
-        include:[
-            {                       
-                model: ShareLists,
-                as: 'share',
-                attributes: [ 'asset' ]               
-            }
-        ]
-	});
+	const query = "SELECT  `share_lists`.`asset` AS asset FROM `share` AS `share` INNER JOIN `share_list` AS `share_lists` ON `share`.`share_id` = `share_lists`.`share_id` WHERE `share`.`code` = :code"
+
+    return await connection.applicationNew.query(query,{
+        type: connection.Sequelize.QueryTypes.SELECT,
+        raw: true,
+        logging: console.log,
+        replacements: {code},
+        }
+    );
 }
 
 let getShareData = async (code, asset) => {
-	return await Share.findOne({
+    return await Share.findOne({
         where:{code},
         include:[
             {                       
                 model: ShareLists,
-                as: 'share',
                 attributes: [ 'asset' ],
                 where: {asset}             
             }
