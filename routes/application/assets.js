@@ -51,7 +51,7 @@ route.get("/assets/:patentNumber/files/:channelID/slack/:token", [authJWT.verify
 
     try {
         const { patentNumber, token, channelID } = req.params
-        let assetsFiles = [], type = 1
+        let assets_files = [], document_files = [], type = 1
         let findNumber = await ResourcesDocumentids.findOne({
             where:{grant_doc_num: patentNumber},
             attributes:['grant_doc_num', 'appno_doc_num'],
@@ -89,7 +89,7 @@ route.get("/assets/:patentNumber/files/:channelID/slack/:token", [authJWT.verify
 
             query +=' GROUP BY assignment.rf_id'
 
-            assetsFiles =  await connection.resources.query(query,{
+            assets_files =  await connection.resources.query(query,{
                     type: connection.Sequelize.QueryTypes.SELECT,
                     replacements: where,
                     raw: true,
@@ -110,10 +110,11 @@ route.get("/assets/:patentNumber/files/:channelID/slack/:token", [authJWT.verify
 
             if(result && result.ok === true) {
                 const { files } = result;
-                assetsFiles = [...assetsFiles, ...files]
+                document_files = [...files]
             }
         }
-        res.status(200).json(assetsFiles);
+        
+        res.status(200).json({assets_files, document_files});
     } catch (err) {
         console.log(err);
         res.status(400).send("Invalid number");

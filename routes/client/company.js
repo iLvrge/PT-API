@@ -40,6 +40,10 @@ const authJWT = require("../../helpers/verifyJwtToken");
 const connection = require("../../config/db.config");
 
 const clientDBConnection = require("../../helpers/clientDBConnection");
+
+const {google} = require('googleapis');
+
+
 /**Get all companies */
 route.get("/", [authJWT.verifyToken, clientDBConnection.connect], async(req, res, next) => {
     try{
@@ -66,6 +70,7 @@ route.get("/summary", [authJWT.verifyToken, clientDBConnection.connect], async(r
      * Total Third Parties
      * Total Assets
      */
+    const { access_token, user_account } = req.query
     const companies = await helpers.getCompaniesList(req.connection_db);
 
     const allCompanies = []
@@ -74,7 +79,7 @@ route.get("/summary", [authJWT.verifyToken, clientDBConnection.connect], async(r
 
     await Promise.all(promises)
 
-    const query = `SELECT ${allCompanies.length} as companies, sum(no_of_activities) as activites, sum(no_of_parties) as parties,  sum(no_of_inventor) as inventors, sum(no_of_transactions) as transactions, sum(no_of_assets) as assets, (SELECT sum(no_of_parties) - sum(no_of_transactions) FROM admin_representative_reports WHERE representative_name IN (:representativeName)) as arrows FROM representative_reports WHERE representative_name IN (:representativeName)`
+    const query = `SELECT ${allCompanies.length} as companies, sum(no_of_activities) as activites, sum(no_of_parties) as parties,  sum(no_of_inventor) as inventors, sum(no_of_transactions) as transactions, sum(no_of_assets) as assets, (SELECT sum(no_of_parties) - sum(no_of_transactions), 0 as documents FROM admin_representative_reports WHERE representative_name IN (:representativeName)) as arrows FROM representative_reports WHERE representative_name IN (:representativeName)`
 
     report = await connection.resources.query(query,{
         type: connection.Sequelize.QueryTypes.SELECT,
@@ -83,6 +88,20 @@ route.get("/summary", [authJWT.verifyToken, clientDBConnection.connect], async(r
         plain: true,
         logging: console.log,
     })
+
+    /* if( access_token != '' && access_token != null && access_token != 'undefined' ) {
+        const oauth2Client = new google.auth.OAuth2(
+            process.env.GOOGLE_CLIENT_ID,
+            process.env.GOOGLE_SECRET_KEY,
+            process.env.REDIRECT_URL
+        );
+
+        const credentials = {"scope": process.env.GOOGLE_SCOPE, access_token: access_token}
+        oauth2Client.setCredentials(credentials)
+        const oauth2 = google.oauth2({ version: "v2", auth: oauth2Client }) 
+    } */
+
+
     res.status(200).json(report)
 
 })

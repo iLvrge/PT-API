@@ -518,10 +518,10 @@ route.get("/asset_types/assets", [authJWT.verifyToken, clientDBConnection.connec
  * Broken chain of title
  * parameters 
  */
-route.get("/:type/assets", [authJWT.verifyToken, clientDBConnection.connect], async(req, res, next) => {
+route.get("/:layout/assets", [authJWT.verifyToken, clientDBConnection.connect], async(req, res, next) => {
     try {
-        let {companies, tabs, customers, assignments, limit, offset } = req.query,
-            type = 0
+        let { companies, tabs, customers, assignments, limit, offset } = req.query,
+            layoutID = 15
             
         const replacements =  { 
                             companies: '', 
@@ -529,22 +529,22 @@ route.get("/:type/assets", [authJWT.verifyToken, clientDBConnection.connect], as
                             tabs: '',
                             customers: '',
                             assignments: '',
-                            type: type
+                            layoutID: layoutID
                         },
             assets = {
                             list: [], 
                             total_records: 0
                         }
         
-        switch(req.params.type) {
+        switch(req.params.layout) {
             case 'restore_ownership':
-                replacements.type = 1
+                replacements.layoutID = 1
             break
             case 'clear_encumbrances':
-                replacements.type = 2
+                replacements.layoutID = 2
             break
             default:
-                replacements.type = 15
+                replacements.layoutID = 15
         }
 
         if(companies && companies != '') {
@@ -568,7 +568,7 @@ route.get("/:type/assets", [authJWT.verifyToken, clientDBConnection.connect], as
         }
 
         
-        connection.applicationNew.query("CALL `GetAssets`(:companies, :organisationID, :type);",{
+        connection.applicationNew.query("CALL `routine_assets`(:companies, :organisationID, :tabs, :customers, :assignments, :layoutID);",{
             type: connection.Sequelize.QueryTypes.SELECT,
             raw: true,
             logging: console.log,
@@ -590,10 +590,10 @@ route.get("/:type/assets", [authJWT.verifyToken, clientDBConnection.connect], as
 })
 
 
-route.get("/:type/transactions", [authJWT.verifyToken, clientDBConnection.connect], async(req, res, next) => {
+route.get("/:layout/transactions", [authJWT.verifyToken, clientDBConnection.connect], async(req, res, next) => {
     try {
         let {companies, tabs, customers, limit, offset } = req.query,
-            type = 0
+            layoutID = 15
             
         const replacements =  { 
                             companies: '', 
@@ -601,22 +601,22 @@ route.get("/:type/transactions", [authJWT.verifyToken, clientDBConnection.connec
                             tabs: '',
                             customers: '',
                             assignments: '',
-                            type: type
+                            layoutID: layoutID
                         },
             transactions = {
-                            list: [], 
-                            total_records: 0
-                        }
+                        list: [], 
+                        total_records: 0
+                    }
         
-        switch(req.params.type) {
+        switch(req.params.layoutID) {
             case 'restore_ownership':
-                replacements.type = 1
+                replacements.layoutID = 1
             break
             case 'clear_encumbrances':
-                replacements.type = 2
+                replacements.layoutID = 2
             break
             default:
-                replacements.type = 0
+                replacements.layoutID = 15
         }
 
         if(companies && companies != '') {
@@ -634,7 +634,7 @@ route.get("/:type/transactions", [authJWT.verifyToken, clientDBConnection.connec
             replacements.customers = customers.join(',')
         }        
         
-        connection.application.query("CALL `GetTransactions`(:companies, :organisationID, :tabs, :customers, :type);",{
+        connection.applicationNew.query("CALL `routine_transactions`(:companies, :organisationID, :tabs, :customers, :layoutID);",{
             type: connection.Sequelize.QueryTypes.SELECT,
             raw: true,
             logging: console.log,
@@ -653,10 +653,10 @@ route.get("/:type/transactions", [authJWT.verifyToken, clientDBConnection.connec
     }
 })
 
-route.get("/:type/parties", [authJWT.verifyToken, clientDBConnection.connect], async(req, res, next) => {
+route.get("/:layout/parties", [authJWT.verifyToken, clientDBConnection.connect], async(req, res, next) => {
     try {
         let {companies, tabs, limit, offset } = req.query,
-            type = 0
+        layoutID = 15
             
         const replacements =  { 
                             companies: '', 
@@ -664,22 +664,22 @@ route.get("/:type/parties", [authJWT.verifyToken, clientDBConnection.connect], a
                             tabs: '',
                             customers: '',
                             assignments: '',
-                            type: type
+                            layoutID: layoutID
                         },
                 parties = {
                             list: [], 
                             total_records: 0
                         }
         
-        switch(req.params.type) {
+        switch(req.params.layoutID) {
             case 'restore_ownership':
-                replacements.type = 1
+                replacements.layoutID = 1
             break
             case 'clear_encumbrances':
-                replacements.type = 2
+                replacements.layoutID = 2
             break
             default:
-                replacements.type = 0
+                replacements.layoutID = 15
         }
 
         if(companies && companies != '') {
@@ -692,7 +692,7 @@ route.get("/:type/parties", [authJWT.verifyToken, clientDBConnection.connect], a
             replacements.tabs = tabs.join(',')
         }
         
-        connection.application.query("CALL `GetParties`(:companies, :organisationID, :tabs, :type);",{
+        connection.applicationNew.query("CALL `routine_parties`(:companies, :organisationID, :tabs, :layoutID);",{
             type: connection.Sequelize.QueryTypes.SELECT,
             raw: true,
             logging: console.log,
@@ -711,10 +711,10 @@ route.get("/:type/parties", [authJWT.verifyToken, clientDBConnection.connect], a
     }
 })
 
-route.get("/:type/activites", [authJWT.verifyToken, clientDBConnection.connect], async(req, res, next) => {
+route.get("/:layout/activites", [authJWT.verifyToken, clientDBConnection.connect], async(req, res, next) => {
     try {
         let {companies, limit, offset } = req.query,
-            type = 0, activites = []
+            layoutID = 15, activites = []
             
         const replacements =  { 
                             companies: '', 
@@ -722,26 +722,26 @@ route.get("/:type/activites", [authJWT.verifyToken, clientDBConnection.connect],
                             tabs: '',
                             customers: '',
                             assignments: '',
-                            type: type
+                            layoutID: layoutID
                         }
         
-        switch(req.params.type) {
+        switch(req.params.layout) {
             case 'restore_ownership':
-                replacements.type = 1
+                replacements.layoutID = 1
             break
             case 'clear_encumbrances': 
-                replacements.type = 2
+                replacements.layoutID = 2
             break
             default:
-                replacements.type = 0
+                replacements.layoutID = 15
         }
 
         if(companies && companies != '') {
             companies = JSON.parse( companies )
             replacements.companies = companies.join(',')
         }
-        
-        connection.application.query("CALL `GetActivities`(:companies, :organisationID, :type);",{
+
+        connection.applicationNew.query("CALL `routine_activities`(:companies, :organisationID, :layoutID);",{
             type: connection.Sequelize.QueryTypes.SELECT,
             raw: true,
             logging: console.log,

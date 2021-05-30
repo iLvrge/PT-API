@@ -608,7 +608,27 @@ route.get("/drive", authJWT.verifyToken, async(req, res, next) => {
     }
 })
 
-
+/* function retrieveAllFilesInFolder(folderId, callback) {
+    var retrievePageOfChildren = function(request, result) {
+      request.execute(function(resp) {
+        result = result.concat(resp.items);
+        var nextPageToken = resp.nextPageToken;
+        if (nextPageToken) {
+          request = gapi.client.drive.children.list({
+            'folderId' : folderId,
+            'pageToken': nextPageToken
+          });
+          retrievePageOfChildren(request, result);
+        } else {
+          callback(result);
+        }
+      });
+    }
+    var initialRequest = gapi.client.drive.children.list({
+        'folderId' : folderId
+      });
+    retrievePageOfChildren(initialRequest, []);
+  } */
 
 route.get("/", [authJWT.verifyToken, clientDBConnection.connect], async(req, res, next) => {
     try{
