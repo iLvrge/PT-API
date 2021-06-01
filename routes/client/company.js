@@ -89,6 +89,17 @@ route.get("/summary", [authJWT.verifyToken, clientDBConnection.connect], async(r
         logging: console.log,
     })
 
+
+    if(typeof user_account != 'undefined') {
+        let getRepo = await Repository.findOne({
+            where: { organisation_id: req.orgId, user_account: user_account}
+        })     
+
+        if(getRepo != null) {
+            
+        }
+    }
+
     /* if( access_token != '' && access_token != null && access_token != 'undefined' ) {
         const oauth2Client = new google.auth.OAuth2(
             process.env.GOOGLE_CLIENT_ID,
@@ -562,9 +573,14 @@ route.post("/", [authJWT.verifyToken, clientDBConnection.connect], async(req, re
                                     /**
                                      * For inserting bulk entries creating array of companies
                                      */
-                                    await companies.push({
+                                    const arrayObj = {
                                         original_name: company.name , representative_name: nameRepre, instances: company.instances, parent_id: findName.representative_id
-                                    });
+                                    }
+
+                                    if(companyList.includes(company.assignor_and_assignee_id)) {
+                                        arrayObj.child = 1
+                                    }
+                                    companies.push(arrayObj);
 
                                     /**
                                      *  For inserting bulk entries for activity log

@@ -23,6 +23,10 @@ const ClientRepresentatives = {
             type: Sequelize.INTEGER,
             allowNull: true,
         },
+        child:{
+            type: Sequelize.INTEGER,
+            allowNull: true,
+        },
     }, 
     options: {
         underscored: true,

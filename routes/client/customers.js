@@ -57,98 +57,91 @@ route.get("/events/", [authJWT.verifyToken, clientDBConnection.connect], async(r
     }
 });
 
-route.get("/timeline", [authJWT.verifyToken, clientDBConnection.connect], async(req, res, next) => {
-    let {companies, tabs, customers, rf_ids, limit, offset } = req.query, list = [], groups = []
+route.get("/timeline", [authJWT.verifyToken], async(req, res, next) => {
+    let {companies, tabs, customers, rf_ids, layout, limit, offset } = req.query, list = [], groups = []
     try {                
-        const organisationData = await helpers.findOrganisationbyID(req.orgId);
-        //console.log(0);
-        if(organisationData != null && organisationData.organisation_id > 0 && typeof req.connection_db != "undefined" && req.connection_db != null) {
-            
-           /*  if( search != undefined && search != null ) {
+        
+        const replacements = { organisation_id: req.orgId, year: 2000 }
 
-                 const { uniquerfIDs } = await helpers.findRfIDsBySearchString(search)
-
-                if(uniquerfIDs.length > 0) {
-                    rfIDs = [...uniquerfIDs]
-                } 
-            }  */
-            
-            
-            const where = {organisation_id: req.orgId}, DATE_FORMAT = 'YYYY-MM-DD';
-            
-            if(companies != undefined && companies != '') {
-                companies = JSON.parse(companies)
-                if(companies.length > 0) {
-                    where.representative_id = companies
-                }
-            }
-
-            if(tabs != undefined && tabs != '') {
-                tabs = JSON.parse(tabs)
-                if(tabs.length > 0) {
-                    where.tab = tabs
-                }
-            }
-
-            if(customers != undefined && customers != '') {
-                customers = JSON.parse(customers);
-                if(customers.length > 0) {
-                    where.assignor_and_assignee_id = customers
-                }
-            }
-
-            if(rf_ids != undefined &&  rf_ids != '' ) {
-                rf_ids = JSON.parse(rf_ids);
-                if(rf_ids.length > 0) {
-                    where.rf_id = rf_ids
-                }
-            }
-
-            const whereConstraint = {
-                attributes:[
-                    ['rf_id', 'id'],
-                    'exec_dt', 
-                    ['original_name', 'customerName'], 
-                    ['tab', 'tab_id'], 
-                    [connection.Sequelize.literal(`CASE WHEN (tab = 7 OR tab = 8 OR tab = 10) THEN 1  
-                        WHEN (tab = 4 OR tab = 11 OR tab = 12 OR tab = 13) THEN 2  
-                        WHEN (tab = 2 OR tab = 3) THEN 3  
-                        WHEN (tab = 0 OR tab = 1 OR tab = 5 OR tab = 6) THEN 4  
-                        WHEN (tab = 9) THEN 5
-                    END`), 'group'], 
-                    ['assets_count', 'totalAssets'],
-                    ['representative_id', 'company']
-                ],
-                where: where,
-                group: ['rf_id']
-            };
-
-
-            const findGroupContraint = {
-                attributes: [['tab', 'group']],
-                where: where,
-                group: ['tab']
-            } 
-
-            
-
-           /*  if(limit != undefined && limit != null) {
-                limit = limit > 0 ? parseInt(limit) : 5000
-                offset = offset > 0 ? parseInt(offset) : 0
-            } else {
-                limit = 5000
-                offset = 0
-            }
-
-            whereConstraint.limit = limit;
-            whereConstraint.offset = offset; */
-
-            whereConstraint.order = [['exec_dt', 'DESC']]
-            list = await Timelines.findAll(whereConstraint)
-            groups = await Timelines.findAll(findGroupContraint)
-
-            //selected_companies = await helpers.findRepresentativeByIDs(req.connection_db, companies)
+        if(typeof companies != 'undefined' && companies != '') {            
+            companies = JSON.parse(companies)
         }
+
+        if(typeof tabs != 'undefined' && tabs != '') {
+            tabs = JSON.parse(tabs)
+        }
+
+        if(typeof customers != 'undefined' && customers != '') {
+            customers = JSON.parse(customers);
+        }
+
+        if(typeof rf_ids != 'undefined' &&  rf_ids != '' ) {
+            rf_ids = JSON.parse(rf_ids);
+        }
+
+       
+        let transactionQuery = "SELECT documentid.appno_doc_num FROM db_uspto.documentid AS documentid WHERE documentid.rf_id =  activity_parties_transactions.rf_id ) AND assets.organisation_id = :organisation_id  "
+
+        if( companies.length > 0 ) {
+            transactionQuery += " AND assets.company_id IN (:companies)"
+        }
+
+        if( typeof layout != 'undefined' ) {
+            transactionQuery += " AND assets.layout_id IN (:layout)"
+        }
+
+        let query = "SELECT activity_parties_transactions.rf_id as id, exec_dt, assignor_and_assignee.name AS customerName, activity_id AS tab_id, (CASE WHEN (activity_id = 8 OR activity_id = 9 OR activity_id = 14) THEN 1 WHEN (activity_id = 5 OR activity_id = 11 OR activity_id = 12 OR activity_id = 13) THEN 2 WHEN (activity_id = 3 OR activity_id = 4) THEN 3 WHEN (activity_id = 1 OR activity_id = 2 OR activity_id = 6 OR activity_id = 7) THEN 4 WHEN (activity_id = 10) THEN 5 END) AS `group`, company_id AS `company`, (SELECT count(distinct assets.appno_doc_num) FROM assets WHERE assets.appno_doc_num IN ( " + transactionQuery + " ) AS totalAssets FROM activity_parties_transactions INNER JOIN db_uspto.assignor_and_assignee AS assignor_and_assignee ON assignor_and_assignee.assignor_and_assignee_id = activity_parties_transactions.assignor_and_assignee_id WHERE activity_parties_transactions.organisation_id = :organisation_id AND date_format(activity_parties_transactions.exec_dt, '%Y') >= :year"
+                
+
+        if( companies.length > 0 ) {
+            query += " AND activity_parties_transactions.company_id IN (:companies)"
+            replacements.companies = companies
+        }
+
+        if( tabs.length > 0 ) {
+            query += " AND activity_parties_transactions.activity_id IN (:tabs)"
+            replacements.tabs = tabs
+        }
+
+        if( customers.length > 0 ) {
+            query += " AND activity_parties_transactions.assignor_and_assignee_id IN (:customers)"
+            replacements.customers = customers
+        }
+
+        if( rf_ids.length > 0 ) {
+            query += " AND activity_parties_transactions.rf_id IN (:rf_ids)"
+            replacements.rf_ids = rf_ids
+        }
+
+        query += " GROUP BY activity_parties_transactions.rf_id ORDER BY exec_dt DESC "
+
+        switch(layout) {
+            case 'restore_ownership':
+                replacements.layout = 1
+            break
+            case 'clear_encumbrances':
+                replacements.layout = 2
+            break
+            default:
+                replacements.layout = 15
+        }
+
+
+        list =  await connection.applicationNew.query(query, {
+                type: connection.Sequelize.QueryTypes.SELECT,
+                raw: true,
+                logging: console.log,
+                replacements: replacements,
+            }
+        ); 
+
+        groups =  await connection.applicationNew.query("SELECT activity_id AS `group` FROM activity_parties_transactions GROUP BY activity_id", {
+                type: connection.Sequelize.QueryTypes.SELECT,
+                raw: true,
+                logging: console.log,
+                replacements: replacements,
+            }
+        ); 
         res.status(200).json({list, groups});
         
     } catch ( err ) {
@@ -622,7 +615,7 @@ route.get("/:layout/transactions", [authJWT.verifyToken, clientDBConnection.conn
 
 route.get("/:layout/parties", [authJWT.verifyToken, clientDBConnection.connect], async(req, res, next) => {
     try {
-        let {companies, tabs, limit, offset } = req.query,
+        let {companies, tabs, t, limit, offset } = req.query,
         layoutID = 15
             
         const replacements =  { 
@@ -631,7 +624,8 @@ route.get("/:layout/parties", [authJWT.verifyToken, clientDBConnection.connect],
                             tabs: '',
                             customers: '',
                             assignments: '',
-                            layoutID: layoutID
+                            layoutID: layoutID,
+                            customerType: t
                         },
                 parties = {
                             list: [], 
@@ -659,7 +653,7 @@ route.get("/:layout/parties", [authJWT.verifyToken, clientDBConnection.connect],
             replacements.tabs = tabs.join(',')
         }
         
-        connection.applicationNew.query("CALL `routine_parties`(:companies, :organisationID, :tabs, :layoutID);",{
+        connection.applicationNew.query("CALL `routine_parties`(:companies, :organisationID, :tabs, :layoutID, :customerType);",{
             type: connection.Sequelize.QueryTypes.SELECT,
             raw: true,
             logging: console.log,

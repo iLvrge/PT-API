@@ -28,11 +28,21 @@ const Representatives = require("../../model/client/Representatives");
 
 const RepresentativeTransactions = require('../../model/resources/RepresentativeTransactions');
 
+const Repository = require("../../model/application/Repository");
+
 const authJWT = require("../../helpers/verifyJwtToken");
 
 const helpers = require("../../helpers/helper");
 
 const clientDBConnection = require("../../helpers/clientDBConnection");
+
+const {google} = require('googleapis');
+
+const oauth2Client = new google.auth.OAuth2(
+    process.env.GOOGLE_CLIENT_ID,
+    process.env.GOOGLE_SECRET_KEY,
+    process.env.REDIRECT_URL
+);
 
 route.get("/assets", [authJWT.verifyToken], async(req, res, next) => {
 
@@ -48,24 +58,28 @@ route.get("/assets", [authJWT.verifyToken], async(req, res, next) => {
 });
 
 route.get("/assets/:patentNumber/files/:channelID/slack/:token", [authJWT.verifyToken], async(req, res, next) => {
-
+    let assets_files = [], document_files = [], type = 1, findNumber = null
     try {
         const { patentNumber, token, channelID } = req.params
-        let assets_files = [], document_files = [], type = 1
-        let findNumber = await ResourcesDocumentids.findOne({
-            where:{grant_doc_num: patentNumber},
-            attributes:['grant_doc_num', 'appno_doc_num'],
-            group: ['grant_doc_num', 'appno_doc_num']
-        })
+        let { companies, layout, g, ga } = req.query
+        
 
-        if( findNumber == null ) {
-            type = 0
+        if( patentNumber != '' && patentNumber != null && patentNumber != 'undefined' ) {
             findNumber = await ResourcesDocumentids.findOne({
-                where:{appno_doc_num: patentNumber},
+                where:{grant_doc_num: patentNumber},
                 attributes:['grant_doc_num', 'appno_doc_num'],
                 group: ['grant_doc_num', 'appno_doc_num']
             })
-        }
+    
+            if( findNumber == null ) {
+                type = 0
+                findNumber = await ResourcesDocumentids.findOne({
+                    where:{appno_doc_num: patentNumber},
+                    attributes:['grant_doc_num', 'appno_doc_num'],
+                    group: ['grant_doc_num', 'appno_doc_num']
+                })
+            }
+        }        
 
         if( findNumber != null ) {
             const where = {}
@@ -96,6 +110,39 @@ route.get("/assets/:patentNumber/files/:channelID/slack/:token", [authJWT.verify
                     logging: console.log,
                 }
             );
+        } else {
+            if( companies != '' ) {
+                companies = JSON.parse(companies)
+            }
+
+            const replacements = { organisation_id: req.orgId }
+
+            switch(layout) {
+                case 'restore_ownership':
+                    replacements.layout = 1
+                break
+                case 'clear_encumbrances':
+                    replacements.layout = 2
+                break
+                default:
+                    replacements.layout = 15
+            }
+
+            let query = 'SELECT assignment.rf_id as id, "usptodrive" as external_type, date_format(assignor.exec_dt, "%m-%d-%Y") as title, CASE WHEN representative_assignment_conveyance.convey_ty = "assignment" THEN "Ownership" WHEN representative_assignment_conveyance.convey_ty = "addresschg" THEN "Address Change" WHEN representative_assignment_conveyance.convey_ty = "namechg" THEN "Name Change" WHEN representative_assignment_conveyance.convey_ty = "partialassignment" THEN "Ownership" WHEN representative_assignment_conveyance.convey_ty = "release" THEN "Security Release"  ELSE representative_assignment_conveyance.convey_ty END as convey_ty, CASE WHEN assignment.status = 1 THEN CONCAT("https://s3-us-west-1.amazonaws.com/static.patentrack.com/assignments/var/www/html/beta/resources/shared/data/assignment-pat-",reel_no,"-",frame_no,".pdf") ELSE CONCAT("https://legacy-assignments.uspto.gov/assignments/assignment-pat-",reel_no,"-",frame_no,".pdf") END as url_private, (SELECT sum(no_of_parties) FROM report_representative_assets_transactions_parties WHERE report_representative_assets_transactions_parties.rf_id = assignment.rf_id GROUP BY report_representative_assets_transactions_parties.rf_id ) as count_parties, (SELECT assignee FROM report_representative_assets_transactions WHERE report_representative_assets_transactions.rf_id = assignment.rf_id LIMIT 1) as assignee, (SELECT assignor FROM report_representative_assets_transactions WHERE report_representative_assets_transactions.rf_id = assignment.rf_id LIMIT 1) as assignor FROM assignment INNER JOIN assignor ON assignor.rf_id = assignment.rf_id INNER JOIN representative_assignment_conveyance ON representative_assignment_conveyance.rf_id = assignment.rf_id INNER JOIN list2 ON list2.rf_id = assignment.rf_id WHERE list2.rf_id IN (SELECT documentid.rf_id FROM documentid WHERE documentid.appno_doc_num IN (SELECT assets.appno_doc_num FROM db_new_application.assets as assets WHERE layout_id = :layout AND organisation_id = :organisation_id ';
+
+            if(companies.length > 0) {
+                replacements.companies = companies
+                query += ' AND company_id IN (:companies)'
+            }
+            query += '  GROUP BY assets.appno_doc_num ) GROUP BY documentid.rf_id ) GROUP BY assignment.rf_id'
+
+            assets_files =  await connection.resources.query(query,{
+                    type: connection.Sequelize.QueryTypes.SELECT,
+                    replacements: replacements,
+                    raw: true,
+                    logging: console.log,
+                }
+            );
         }
 
         if(token != '' && token != undefined && token != 'undefined' && channelID != '' && channelID != undefined && channelID != 'undefined') {
@@ -112,12 +159,38 @@ route.get("/assets/:patentNumber/files/:channelID/slack/:token", [authJWT.verify
                 const { files } = result;
                 document_files = [...files]
             }
+        } else {
+            if( g != '' && g != null && g != 'undefined' && ga != '' && ga != null && ga != 'undefined'  ) {
+                let getRepo = await Repository.findOne({
+                    where: { organisation_id: req.orgId, user_account: ga}
+                }) 
+
+                if(getRepo != null && getRepo.container_id != '') {
+                    let credentials = {"scope": process.env.GOOGLE_SCOPE}
+                    credentials.access_token = g
+                    oauth2Client.setCredentials(credentials)
+                    const drive = google.drive({version: 'v3', auth:oauth2Client});
+
+                    if(drive != null && drive != undefined) {
+                
+                        const params = {
+                            pageSize: 1000,
+                            fields: 'nextPageToken, files(id, name, mimeType, webContentLink, webViewLink, iconLink, thumbnailLink, exportLinks)',
+                            q: `'${getRepo.container_id}' in parents`,
+                            orderBy: 'folder,name'
+                        }
+        
+                        const {data} = await drive.files.list(params);
+                        document_files = data.files
+                    }
+                }
+            }
         }
         
         res.status(200).json({assets_files, document_files});
     } catch (err) {
         console.log(err);
-        res.status(400).send("Invalid number");
+        res.status(200).json({assets_files, document_files});
     }
 });
 
