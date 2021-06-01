@@ -479,31 +479,22 @@ route.get("/:layout/assets", [authJWT.verifyToken, clientDBConnection.connect], 
 
         if(companies && companies != '') {
             companies = JSON.parse( companies )
-            if(companies.length > 0) {
-                replacements.companies = companies
-            }
-            
+            replacements.companies = companies.join(',')
         }
 
         if(tabs && tabs != '') {
             tabs = JSON.parse( tabs )
-            if(tabs.length > 0) {
-                replacements.tabs = tabs
-            }
+            replacements.tabs = tabs.join(',')
         }
 
         if(customers && customers != '') {
             customers = JSON.parse( customers )
-            if(customers.length > 0) {
-                replacements.customers = customers
-            }
+            replacements.customers = customers.join(',')
         }
 
         if(assignments && assignments != '') {
             assignments = JSON.parse( assignments )
-            if(assignments.length > 0) {
-                replacements.assignments = assignments
-            }
+            replacements.assignments = assignments.join(',')
         }
         
         connection.applicationNew.query("CALL `routine_assets`(:companies, :organisationID, :tabs, :customers, :assignments, :layoutID);",{
