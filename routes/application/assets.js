@@ -143,7 +143,7 @@ route.get("/assets/cpc", [authJWT.verifyToken], async(req, res, next) => {
             logging: console.log,
         })
 
-        const group =  await connection.applicationNew.query(query.replace('REPLACE_STRING', " concat(section, class, sub_class, '/', main_group, sub_group) as cpc_code,       ROW_NUMBER() OVER () as id ").replace('GROUP_STRING', " cpc_code "),{
+        const group =  await connection.applicationNew.query(query.replace('REPLACE_STRING', " concat(section, class, sub_class, '/', main_group, sub_group) as cpc_code,       ROW_NUMBER() OVER () as id ").replace('GROUP_STRING', " cpc_code ORDER BY cpc_code ASC "),{
             type: connection.Sequelize.QueryTypes.SELECT,
             replacements: replacements,
             raw: true,
