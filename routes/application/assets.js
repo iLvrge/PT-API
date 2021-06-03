@@ -135,15 +135,17 @@ route.get("/assets/cpc", [authJWT.verifyToken], async(req, res, next) => {
     
        
         query += ' GROUP BY assets.appno_doc_num ) GROUP BY GROUP_STRING'
+
+        /**, '/', main_group, sub_group */
     
-        const list =  await connection.applicationNew.query(query.replace('REPLACE_STRING', " count(application_number) as countAssets, date_format(grant_date, '%Y') as fillingYear, concat(section, class, sub_class, '/', main_group, sub_group) as cpc_code ").replace('GROUP_STRING', " fillingYear, cpc_code ORDER BY cpc_code ASC"),{
+        const list =  await connection.applicationNew.query(query.replace('REPLACE_STRING', " count(application_number) as countAssets, date_format(grant_date, '%Y') as fillingYear, concat(section, class, sub_class) as cpc_code ").replace('GROUP_STRING', " fillingYear, cpc_code"),{
             type: connection.Sequelize.QueryTypes.SELECT,
             replacements: replacements,
             raw: true,
             logging: console.log,
         })
 
-        const group =  await connection.applicationNew.query(query.replace('REPLACE_STRING', "  ROW_NUMBER() OVER () AS id, cpc_code FROM ( SELECT  concat(section, class, sub_class, '/', main_group, sub_group) as cpc_code ").replace('GROUP_STRING', " cpc_code ORDER BY cpc_code ASC ) AS cpc"),{
+        const group =  await connection.applicationNew.query(query.replace('REPLACE_STRING', "  ROW_NUMBER() OVER () AS id, cpc_code FROM ( SELECT  concat(section, class, sub_class) as cpc_code ").replace('GROUP_STRING', " cpc_code ORDER BY cpc_code ASC ) AS cpc"),{
             type: connection.Sequelize.QueryTypes.SELECT,
             replacements: replacements,
             raw: true,
