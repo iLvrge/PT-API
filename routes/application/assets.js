@@ -44,6 +44,24 @@ const oauth2Client = new google.auth.OAuth2(
     process.env.REDIRECT_URL
 );
 
+const findLayout = (layout) => {
+    let layoutID = 15
+    switch(layout) {
+        case 'restore_ownership':
+            layoutID = 1
+            break
+        case 'clear_encumbrances':
+            layoutID = 2
+            break
+        case 'correct_details':
+            layoutID = 4
+            break
+        default:
+            layoutID = 15
+    }
+    return layoutID
+}
+
 route.get("/assets", [authJWT.verifyToken], async(req, res, next) => {
 
     Assets.findAll({
@@ -57,11 +75,93 @@ route.get("/assets", [authJWT.verifyToken], async(req, res, next) => {
     });
 });
 
+route.get("/assets/cpc", [authJWT.verifyToken], async(req, res, next) => {
+
+    try {
+        let { type, companies, activities, parties, assignments } = req.query
+
+        const replacements = {organisation_id: req.orgId}
+    
+        replacements.layout = findLayout(type)
+    
+        if( companies != '' ) {
+            companies = JSON.parse(companies)
+        }
+    
+        if( activities != '' ) {
+            activities = JSON.parse(activities)
+        }
+    
+        if( parties != '' ) {
+            parties = JSON.parse(parties)
+        }
+    
+        if( assignments != '' ) {
+            assignments = JSON.parse(assignments)
+        }
+    
+        let query = "SELECT REPLACE_STRING FROM db_patent_grant_bibliographic.patent_cpc AS patent_cpc WHERE type = 0 AND patent_cpc.application_number IN ( SELECT assets.appno_doc_num FROM db_new_application.assets AS assets  WHERE assets.layout_id = :layout AND assets.organisation_id = :organisation_id ";
+        
+        if(companies.length > 0) {
+            replacements.companies = companies
+            query += ' AND assets.company_id IN (:companies)'
+        }
+    
+    
+        if( activities.length > 0 ||  parties.length > 0 || assignments.length > 0 ) {
+            query += ' AND assets.appno_doc_num IN ( SELECT documentid.appno_doc_num FROM activity_parties_transactions	INNER JOIN db_uspto.documentid AS documentid ON documentid.rf_id = activity_parties_transactions.rf_id WHERE activity_parties_transactions.organisation_id = :organisation_id  '
+    
+            if(companies.length > 0) {
+                replacements.companies = companies
+                query += ' AND activity_parties_transactions.company_id IN (:companies) '
+            }
+            
+            if( activities.length > 0 ){
+                replacements.activities = activities
+                query += ' AND activity_parties_transactions.activity_id IN (:activities) '
+            }
+    
+            if( parties.length > 0 ){
+                replacements.parties = parties
+                query += ' AND activity_parties_transactions.assignor_and_assignee_id IN (:parties) '
+            }
+    
+            if( assignments.length > 0 ){
+                replacements.assignments = assignments
+                query += ' AND activity_parties_transactions.rf_id IN (:assignments) '
+            }
+            query += ' )'
+        }
+    
+       
+        query += ' GROUP BY assets.appno_doc_num ) GROUP BY GROUP_STRING'
+    
+        const list =  await connection.applicationNew.query(query.replace('REPLACE_STRING', " patent_number, count(application_number) as countAssets, date_format(grant_date, '%Y') as fillingYear, concat(section, class, sub_class, '/', main_group, sub_group) as cpc_code ").replace('GROUP_STRING', " fillingYear, cpc_code ORDER BY cpc_code ASC"),{
+            type: connection.Sequelize.QueryTypes.SELECT,
+            replacements: replacements,
+            raw: true,
+            logging: console.log,
+        })
+
+        const group =  await connection.applicationNew.query(query.replace('REPLACE_STRING', " concat(section, class, sub_class, '/', main_group, sub_group) as cpc_code,       ROW_NUMBER() OVER () as id ").replace('GROUP_STRING', " cpc_code "),{
+            type: connection.Sequelize.QueryTypes.SELECT,
+            replacements: replacements,
+            raw: true,
+            logging: console.log,
+        })
+
+        res.status(200).json({list, group});
+    } catch(err) {
+        console.log("CPC", err);
+        res.status(500).send("Internal error");
+    }
+})
+
 route.get("/assets/:patentNumber/files/:channelID/slack/:token", [authJWT.verifyToken], async(req, res, next) => {
     let assets_files = [], document_files = [], type = 1, findNumber = null
     try {
         const { patentNumber, token, channelID } = req.params
-        let { companies, layout, g, ga } = req.query
+        let { type, companies, layout, g, ga } = req.query
         
 
         if( patentNumber != '' && patentNumber != null && patentNumber != 'undefined' ) {
@@ -81,7 +181,7 @@ route.get("/assets/:patentNumber/files/:channelID/slack/:token", [authJWT.verify
             }
         }        
 
-        if( findNumber != null ) {
+        if( findNumber != null && type == 0) {
             const where = {}
 
             /* if( findNumber.grant_doc_num != '' && findNumber.grant_doc_num != null ) {
@@ -110,24 +210,15 @@ route.get("/assets/:patentNumber/files/:channelID/slack/:token", [authJWT.verify
                     logging: console.log,
                 }
             );
-        } else {
+        } else if(type == 0){
             if( companies != '' ) {
                 companies = JSON.parse(companies)
             }
 
             const replacements = { organisation_id: req.orgId }
 
-            switch(layout) {
-                case 'restore_ownership':
-                    replacements.layout = 1
-                break
-                case 'clear_encumbrances':
-                    replacements.layout = 2
-                break
-                default:
-                    replacements.layout = 15
-            }
-
+            replacements.layout = findLayout(layout)
+            
             let query = 'SELECT assignment.rf_id as id, "usptodrive" as external_type, date_format(assignor.exec_dt, "%m-%d-%Y") as title, CASE WHEN representative_assignment_conveyance.convey_ty = "assignment" THEN "Ownership" WHEN representative_assignment_conveyance.convey_ty = "addresschg" THEN "Address Change" WHEN representative_assignment_conveyance.convey_ty = "namechg" THEN "Name Change" WHEN representative_assignment_conveyance.convey_ty = "partialassignment" THEN "Ownership" WHEN representative_assignment_conveyance.convey_ty = "release" THEN "Security Release"  ELSE representative_assignment_conveyance.convey_ty END as convey_ty, CASE WHEN assignment.status = 1 THEN CONCAT("https://s3-us-west-1.amazonaws.com/static.patentrack.com/assignments/var/www/html/beta/resources/shared/data/assignment-pat-",reel_no,"-",frame_no,".pdf") ELSE CONCAT("https://legacy-assignments.uspto.gov/assignments/assignment-pat-",reel_no,"-",frame_no,".pdf") END as url_private, (SELECT sum(no_of_parties) FROM report_representative_assets_transactions_parties WHERE report_representative_assets_transactions_parties.rf_id = assignment.rf_id GROUP BY report_representative_assets_transactions_parties.rf_id ) as count_parties, (SELECT assignee FROM report_representative_assets_transactions WHERE report_representative_assets_transactions.rf_id = assignment.rf_id LIMIT 1) as assignee, (SELECT assignor FROM report_representative_assets_transactions WHERE report_representative_assets_transactions.rf_id = assignment.rf_id LIMIT 1) as assignor FROM assignment INNER JOIN assignor ON assignor.rf_id = assignment.rf_id INNER JOIN representative_assignment_conveyance ON representative_assignment_conveyance.rf_id = assignment.rf_id INNER JOIN list2 ON list2.rf_id = assignment.rf_id WHERE list2.rf_id IN (SELECT documentid.rf_id FROM documentid WHERE documentid.appno_doc_num IN (SELECT assets.appno_doc_num FROM db_new_application.assets as assets WHERE layout_id = :layout AND organisation_id = :organisation_id ';
 
             if(companies.length > 0) {
@@ -145,7 +236,7 @@ route.get("/assets/:patentNumber/files/:channelID/slack/:token", [authJWT.verify
             );
         }
 
-        if(token != '' && token != undefined && token != 'undefined' && channelID != '' && channelID != undefined && channelID != 'undefined') {
+        if(type == 1 && token != '' && token != undefined && token != 'undefined' && channelID != '' && channelID != undefined && channelID != 'undefined') {
             
             const web = new WebClient(token);
             
@@ -159,7 +250,7 @@ route.get("/assets/:patentNumber/files/:channelID/slack/:token", [authJWT.verify
                 const { files } = result;
                 document_files = [...files]
             }
-        } else {
+        } else if(type == 1){
             if( g != '' && g != null && g != 'undefined' && ga != '' && ga != null && ga != 'undefined'  ) {
                 let getRepo = await Repository.findOne({
                     where: { organisation_id: req.orgId, user_account: ga}
