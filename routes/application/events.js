@@ -2145,31 +2145,76 @@ route.get("/events/tabs/:tabID/companies/:representativeID/customers/:customerID
     }
 });
 
-route.get("/events/tabs", [authJWT.verifyToken, clientDBConnection.connect], async(req, res, next) => {
+route.get("/events/tabs", [authJWT.verifyToken], async(req, res, next) => {
     try {
         let { type, companies, tabs, customers, rf_ids } = req.query
-        let assetsLifeSpan = [];
-        if(typeof req.connection_db != "undefined" && req.connection_db != null ) {
-
-            if(companies != undefined && companies != '') {
-                companies = JSON.parse(companies)                
-            }
-
-            if(tabs != undefined && tabs != '') {
-                tabs = JSON.parse(tabs)                
-            }
-
-            if(customers != undefined && customers != '') {
-                customers = JSON.parse(customers)                
-            }
-
-            if(rf_ids != undefined && rf_ids != '') {
-                rf_ids = JSON.parse(rf_ids)                
-            }
-
-            assetsLifeSpan = await helpers.findAllAssetsTimeSpan(companies, tabs, customers, rf_ids, req.orgId);
+        
+        const replacements =  { 
+            companies: '', 
+            organisationID: req.orgId, 
+            tabs: '',
+            customers: '',
+            assignments: '',
+            layoutID: type
         }
-        res.status(200).json(assetsLifeSpan);
+
+        replacements.layoutID = helpers.findLayout(type)
+
+        if(companies && companies != '') {
+            companies = JSON.parse( companies )
+            replacements.companies = companies.join(',')
+        }
+
+        if(tabs && tabs != '') {
+            tabs = JSON.parse( tabs )
+            replacements.tabs = tabs.join(',')
+        }
+
+        if(customers && customers != '') {
+            customers = JSON.parse( customers )
+            replacements.customers = customers.join(',')
+        }
+
+        if(rf_ids && rf_ids != '') {
+            rf_ids = JSON.parse( rf_ids )
+            replacements.rf_ids = rf_ids.join(',')
+        }
+
+        connection.applicationNew.query("CALL `routine_life_span`(:layoutID, :companies, :organisationID, :tabs, :customers, :assignments);",{
+                type: connection.Sequelize.QueryTypes.SELECT,
+                raw: true,
+                logging: console.log,
+                replacements: replacements,
+            }
+        ).spread(result => {
+            if (result) {
+                (async () => {
+                    const getAssetList = Object.values(result), ASSETS_LIFE_SPAN_DATE_FORMAT = 'YYYY';
+                    let assetsLifeSpan = [];
+                    if(getAssetList.length > 0) {                
+                        const timelineSpan = [], applicationNumberAdded = [], dateAdded = [];
+                        const promises = getAssetList.map( async item => {
+                            if(!applicationNumberAdded.includes(item.application)){
+                                const startYear = moment(new Date(item.appno_date)).format(ASSETS_LIFE_SPAN_DATE_FORMAT);
+                                let endYear = moment(new Date(item.appno_date)).add(20, 'years').format(ASSETS_LIFE_SPAN_DATE_FORMAT);
+                                for(let i = parseInt(startYear); i <= parseInt(endYear); i++) {
+                                    timelineSpan.push({year: i, count: 1, application: item.application});
+                                }
+                                applicationNumberAdded.push(item.application);
+                                dateAdded.push(item.appno_date);
+                            } 
+                            return item;                            
+                        });
+                
+                        await Promise.all(promises);
+                        assetsLifeSpan = await helpers.findMaxMin(timelineSpan)        
+                    }
+                    res.status(200).json(assetsLifeSpan);
+                })();                
+            } else {
+                res.status(200).json([]);
+            }
+        })
     } catch (err) {
         console.log(err);
         res.status(500).send("Internal server error.");

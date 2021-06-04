@@ -2004,6 +2004,9 @@ const findAllAssetsTimeSpan = async( companies, tabs, customers, rfIDs, orgID ) 
         group:['assets.appno_doc_num']             
     });
 
+
+
+
     const applicationNumberAdded = [], dateAdded = [];
 
     console.log("TOTALITEMS",getAssetList.length);
@@ -2229,7 +2232,27 @@ const minMax2DArray = async(arr, idx) => {
     return {max: max, min: min};
 }
 
+const findLayout = (layout) => {
+    let layoutID = 15
+    switch(layout) {
+        case 'restore_ownership':
+            layoutID = 1
+            break
+        case 'clear_encumbrances':
+            layoutID = 2
+            break
+        case 'correct_details':
+            layoutID = 4
+            break
+        default:
+            layoutID = 15
+    }
+    return layoutID
+}
+
 const helper = {};
+helper.findMaxMin = findMaxMin;
+helper.findLayout = findLayout;
 helper.allAssignments = allAssignments;
 helper.allAssignmentsByRepresentativeIDs = allAssignmentsByRepresentativeIDs;
 helper.findAllLawFirms = findAllLawFirms;
