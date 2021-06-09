@@ -9,7 +9,7 @@ const Assignments = require("../../model/resources/Assignments");
 const Assignees = require("../../model/resources/Assignees");
 const Assignors = require("../../model/resources/Assignors");
 const AssignorAndAssignee = require("../../model/resources/AssignorAndAssignee");
-const Documentids = require("../../model/resources/Documentids");
+const Documentids = require("../../model/resources/DocumentIds");
 const Representatives = require("../../model/resources/Representatives");
 
 const authJWT = require("../../helpers/verifyJwtToken");
