@@ -15,6 +15,9 @@ const { create } = require('xmlbuilder2');
 const Assignments = require("../../model/resources/Assignments");
 const Assignees = require("../../model/resources/Assignees");
 const Assignors = require("../../model/resources/Assignors");
+const AssignorAndAssignee = require("../../model/resources/AssignorAndAssignee");
+const Documentids = require("../../model/resources/Documentids");
+const Representatives = require("../../model/resources/Representatives");
 
 const BusinessUsers = require("../../model/business/Users");
 
@@ -388,7 +391,7 @@ route.post('/create_template_drive', [authJWT.verifyToken], async(req, res, next
 
 route.post("/downloadXML", [authJWT.verifyToken], async(req, res, next) => {
     try{
-        let { asset, assignee, assignor, correspondance } = req.body
+        let { asset, assignee, assignor, correspondance, transactions, transaction_patent } = req.body
 
         if( asset && asset != '' ) {
             asset = JSON.parse(asset)
@@ -421,55 +424,159 @@ route.post("/downloadXML", [authJWT.verifyToken], async(req, res, next) => {
                             .ele('fax').txt(user.telephone != '' ? user.telephone : '000-000-0000').up()
                             .ele('phone').txt(user.telephone != '' ? user.telephone : '000-000-0000').up()
                             .up();
-                    const patConveyingParties = root.ele('pat-conveying-parties')
-                    for( let i = 0; i < assignor.length; i++ ) {
-                        const findAssignor = await Assignors.findOne({
-                            where: {assignor_and_assignee_id: assignor[i].id},
-                            order: [['rf_id', 'DESC']],
-                            limit: 1
+
+                    if(transactions != undefined && transactions.length > 0) {
+                        const assigneeList = await Assignees.findAll({
+                            attributes: [['ee_name', 'name'], 'assignor_and_assignee_id', 'ee_address_1', 'ee_address_2', 'ee_city', 'ee_state', 'ee_postcode', 'ee_country'],
+                            where:{rf_id: correspondance.id},
+                            include:[
+                                {
+                                    model: AssignorAndAssignee,
+                                    as: "assignor_and_assignee",
+                                    attributes: ['name', ['representative_id', 'id']],
+                                    include:[
+                                        {
+                                            model: Representatives,
+                                            as: "representative",
+                                            attributes: [['representative_name', 'name']],
+                                        }
+                                    ]
+                                }
+                            ],
+                            group: ['assignor_and_assignee_id', 'rf_id']
                         })
 
-                        if( findAssignor  && findAssignor != null ) {
+                        const assignorList = await Assignors.findAll({
+                            attributes: [['or_name', 'name'], 'assignor_and_assignee_id'],
+                            where:{rf_id: correspondance.id},
+                            include:[
+                                {
+                                    model: AssignorAndAssignee,
+                                    as: "assignor_and_assignee",
+                                    attributes: ['name', ['representative_id', 'id']],
+                                    include:[
+                                        {
+                                            model: Representatives,
+                                            as: "representative",
+                                            attributes: [['representative_name', 'name']],
+                                        }
+                                    ]
+                                }
+                            ],
+                            group: ['assignor_and_assignee_id', 'rf_id']
+                        })
+                        const patConveyingParties = root.ele('pat-conveying-parties')
+                        for( let i = 0; i < assignorList.length; i++ ) {
+                            let aName =  assignorList[i].name
+                            if( assignorList[i].assignor_and_assignee != null && assignorList[i].assignor_and_assignee.representative != null ) {
+                                aName = assignorList[i].assignor_and_assignee.representative.name
+                            } else {
+                                aName = assignorList[i].assignor_and_assignee.name
+                            }
                             patConveyingParties
                             .ele('pat-conveying-party')
                                 .ele('company')
-                                    .ele('orgname').txt(findAssignor.or_name).up()
+                                    .ele('orgname').txt(aName).up()
                                 .up()
                                 .ele('executed-date').txt(moment(new Date()).format('YYYY-MM-DD')).up()
-                            .up()    
+                            .up()
                         }
-                                           
-                    }
 
-                    const patReceivingParties = root.ele('pat-receiving-parties')
-                    for( let i = 0; i < assignee.length; i++ ) {
-                        const findAssignee = await Assignees.findOne({
-                            where: {assignor_and_assignee_id: assignee[i].id},
-                            order: [['rf_id', 'DESC']],
-                            limit: 1
-                        })
-                        if( findAssignee && findAssignee != null ) {
+                        const patReceivingParties = root.ele('pat-receiving-parties')
+    
+                        for( let i = 0; i < assigneeList.length; i++ ) {
+                            let aName =  assigneeList[i].name
+                            if( assigneeList[i].assignor_and_assignee != null && assigneeList[i].assignor_and_assignee.representative != null ) {
+                                aName = assigneeList[i].assignor_and_assignee.representative.name
+                            } else {
+                                aName = assigneeList[i].assignor_and_assignee.name
+                            }
+                            
                             const receivingParty = patReceivingParties
-                                                    .ele('pat-receiving-party')
+                                                        .ele('pat-receiving-party')
                                 receivingParty
                                     .ele('company')
-                                        .ele('orgname').txt(findAssignee.ee_name).up()
+                                        .ele('orgname').txt(aName).up()
                                     .up()
                                 receivingParty
                                     .ele('address')
-                                        .ele('address-1').txt(findAssignee.ee_address_1).up()
-                                        .ele('address-2').txt(findAssignee.ee_address_2).up()
-                                        .ele('city').txt(findAssignee.ee_city != '' ? findAssignee.ee_city : 'City').up()
-                                        .ele('state').txt(findAssignee.ee_state != '' ? findAssignee.ee_state : 'State').up()
-                                        .ele('postal-code').txt(findAssignee.ee_postcode != '' ? findAssignee.ee_postcode.substr(0,5) : '0000').up()
+                                        .ele('address-1').txt(assigneeList[i].ee_address_1).up()
+                                        .ele('address-2').txt(assigneeList[i].ee_address_2).up()
+                                        .ele('city').txt(assigneeList[i].ee_city != '' ? assigneeList[i].ee_city : 'City').up()
+                                        .ele('state').txt(assigneeList[i].ee_state != '' ? assigneeList[i].ee_state : 'State').up()
+                                        .ele('postal-code').txt(assigneeList[i].ee_postcode != '' ? assigneeList[i].ee_postcode.substr(0,5) : '0000').up()
+                                    .up()                       
+                        }
+                    } else {
+                        const patConveyingParties = root.ele('pat-conveying-parties')
+                    
+                        for( let i = 0; i < assignor.length; i++ ) {
+                            const findAssignor = await Assignors.findOne({
+                                where: {assignor_and_assignee_id: assignor[i].id},
+                                order: [['rf_id', 'DESC']],
+                                limit: 1
+                            })
+    
+                            if( findAssignor  && findAssignor != null ) {
+                                patConveyingParties
+                                .ele('pat-conveying-party')
+                                    .ele('company')
+                                        .ele('orgname').txt(findAssignor.or_name).up()
                                     .up()
-                        }                        
+                                    .ele('executed-date').txt(moment(new Date()).format('YYYY-MM-DD')).up()
+                                .up()    
+                            }                  
+                        }
+    
+                        const patReceivingParties = root.ele('pat-receiving-parties')
+    
+                        for( let i = 0; i < assignee.length; i++ ) {
+                            const findAssignee = await Assignees.findOne({
+                                where: {assignor_and_assignee_id: assignee[i].id},
+                                order: [['rf_id', 'DESC']],
+                                limit: 1
+                            })
+                            if( findAssignee && findAssignee != null ) {
+                                const receivingParty = patReceivingParties
+                                                        .ele('pat-receiving-party')
+                                    receivingParty
+                                        .ele('company')
+                                            .ele('orgname').txt(findAssignee.ee_name).up()
+                                        .up()
+                                    receivingParty
+                                        .ele('address')
+                                            .ele('address-1').txt(findAssignee.ee_address_1).up()
+                                            .ele('address-2').txt(findAssignee.ee_address_2).up()
+                                            .ele('city').txt(findAssignee.ee_city != '' ? findAssignee.ee_city : 'City').up()
+                                            .ele('state').txt(findAssignee.ee_state != '' ? findAssignee.ee_state : 'State').up()
+                                            .ele('postal-code').txt(findAssignee.ee_postcode != '' ? findAssignee.ee_postcode.substr(0,5) : '0000').up()
+                                        .up()
+                            }                        
+                        }
                     }
-                    root.ele('pat-properties')
-                    .ele('pat-property').att('patent', asset[0])
-                    .ele('pat-application-number').txt(asset[1]).up()
-                    .up()                
-                
+
+                    if( transaction_patent != undefined && transaction_patent.length > 0 ) {
+                        const patProperties = root.ele('pat-properties')
+                        const  promisePat = transaction_patent.map( trans => {
+                            if(trans.patent != '') {
+                                patProperties
+                                .ele('pat-property').att('patent', trans.patent)
+                                .ele('pat-application-number').txt(trans.application).up()
+                                .up()
+                            } else {
+                                patProperties
+                                .ele('pat-property')
+                                .ele('pat-application-number').txt(trans.application).up()
+                                .up()
+                            }                           
+                        })
+                        await Promise.all(promisePat)
+                    } else {
+                        root.ele('pat-properties')
+                        .ele('pat-property').att('patent', asset[0])
+                        .ele('pat-application-number').txt(asset[1]).up()
+                        .up()
+                    }
                     const xml = root.end({ prettyPrint: true });
                     res.status(200).send(xml)                    
                 } else {

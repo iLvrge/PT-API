@@ -2241,9 +2241,9 @@ const findLayout = (layout) => {
         case 'clear_encumbrances':
             layoutID = 2
             break
-        case 'correct_details':
+        /* case 'correct_details':
             layoutID = 4
-            break
+            break */
         default:
             layoutID = 15
     }

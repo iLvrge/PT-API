@@ -217,6 +217,34 @@ let allRepresentativesCheckAndDelete = async (allRepresentatives) => {
     }
 }
 
+let allRepresentativesFirmCheckAndDelete = async (allRepresentatives) => {
+    const findRepresentativeCount = await LawFirms.findAll({
+        attributes: ['representative_id', [connection.Sequelize.fn('COUNT', 'law_firm_id'), 'counter']],
+        where: {representative_id: allRepresentatives},
+        group:['representative_id']
+    });
+    if(findRepresentativeCount.length > 0) {
+        const destroyRepresentatives = [];
+        const promise = findRepresentativeCount.map(r => {
+            if(r.representative_id > 0 && r.get('counter') == 0) {
+                destroyRepresentatives.push(r.representative_id);
+            }
+            return r;
+        })
+        await Promise.all(promise);
+
+        if(destroyRepresentatives.length > 0) {
+            await RepresentativeLawFirms.destroy({
+                where: {representative_id: destroyRepresentatives}
+            })
+        }
+    } else {
+         await RepresentativeLawFirms.destroy({
+            where: {representative_id: allRepresentatives}
+        }) 
+    }
+}
+
 /**
  * Example
  * Target A, Rep is B
@@ -656,118 +684,188 @@ route.put("/company/law_firms", [authJWT.verifyToken, authJWT.isAdmin, authJWT.a
     try{
         let IDs = JSON.parse(req.body.law_firm_ids), normalize_name = req.body.normalize_name;
 
-        console.log(IDs);
-        console.log(normalize_name);
+        const otherIDs = [];
 
         if(IDs.length > 0) {
             if(normalize_name != '') {
-                const promises = IDs.map(async lawFirmID => {
 
-                    let oldRepresentativeCompanyID = 0, oldRepresentativeCompanyName = "";
+                console.log("POST->ID", IDs);
 
-                    let findIsNormalized  = await LawFirms.findOne({
-                                            where:{law_firm_id: lawFirmID}
-                                        });
-                    if(findIsNormalized != null ) {
-                        if(findIsNormalized.representative_id > 0) {
-                            findIsNormalized  = await RepresentativeLawFirms.findOne({
-                                where:{representative_id: findIsNormalized.representative_id}
-                            });
-                        } else {
-                            findIsNormalized  = await RepresentativeLawFirms.findOne({
-                                where:{representative_name: findIsNormalized.name}
-                            });
-                        }                        
-                    } 
+                let getList = await LawFirms.findAll({
+                    where:{law_firm_id: IDs}
+                });
 
-                    if(findIsNormalized != null && findIsNormalized.representative_id > 0) {
-                        /** 
-                         * Find old representative company
-                        */
-                        oldRepresentativeCompanyID = findIsNormalized.representative_id;
-                        oldRepresentativeCompanyName = findIsNormalized.representative_name;
-                    }
+                console.log("getList->length", getList.length);
 
-                    let  representativeLawFirm = await RepresentativeLawFirms.findOne({
-                        where: {representative_name: normalize_name}
-                    });
-
-                    /**
-                     * Check normalize company is normalize with  another company
-                     * 
-                     */
-                    let findNormalizedCompany  = await LawFirms.findOne({
-                        where:{name: normalize_name}
-                    });
-
-                    if(findNormalizedCompany != null && findNormalizedCompany.representative_id > 0) {
-                        representativeLawFirm  = await RepresentativeLawFirms.findOne({
-                            where:{representative_id: findNormalizedCompany.representative_id}
-                        });
-        
-                        if(representativeLawFirm != null && representativeLawFirm.representative_id > 0){
-                            await RepresentativeLawFirms.update({
-                                representative_name: normalize_name
-                            }, {where: {representative_id: representativeLawFirm.representative_id} });
-                        }
-                    }
-
-                    if(representativeLawFirm == null) {
-                        /**
-                         * If Old representative found
-                         */                    
-                        if(oldRepresentativeCompanyID > 0) {
-                            /**
-                             * Update old representative company name with new representative name i.e normalize name
-                             */
-                            await RepresentativeLawFirms.update({
-                                representative_name: normalize_name
-                            }, {where: {representative_id: oldRepresentativeCompanyID} });
-
-                            representativeLawFirm = await RepresentativeLawFirms.findOne({
-                                where: {representative_name: normalize_name}
-                            });
-                        } else {
-                            /**
-                             * Insert new representative company in the representative table
-                             */                        
-                            representativeLawFirm = await RepresentativeLawFirms.create({
-                                representative_name: normalize_name
-                            });
-                        }                    
-                    }
-
-                    if(representativeLawFirm != null && representativeLawFirm.representative_id > 0) { 
-                        const item = {representative_id: representativeLawFirm.representative_id};
-
-                        if(oldRepresentativeCompanyID == 0) {
-                            /**
-                             * Update representative ID
-                             */
-                            await LawFirms.update(item, {where: {law_firm_id: lawFirmID}});                                             
-                        } else {  
-                            
-                            await LawFirms.update(item, {where: {representative_id: oldRepresentativeCompanyID}});
-
-                            await LawFirms.update(item, {where: {name: oldRepresentativeCompanyName}});
-
-
-                        }
-                    }
-
-                    return lawFirmID;
-                })
-
-                await Promise.all(promises);
-                res.status(200).send("Updated successfully");	
                 /**
-                 * This check is to find company is already normalised with other representative company
+                 * Is Rep is already a Rep
+                */
+
+                console.log("CHECKING REPRESENTATIVE COMPANY: "+normalize_name);
+              
+                let  representativeFirm = await RepresentativeLawFirms.findOne({
+                        where:{representative_name: normalize_name}
+                });
+
+                console.log("representativeFirm", representativeFirm)
+
+                let allRepresentatives = []; 
+
+                const replaceNames = [];
+
+                const promiseName = getList.map( lawFirm => {
+                    replaceNames.push(lawFirm.name)  
+                })
+                await Promise.all(promiseName)
+                /**
+                 * Is Target a Rep
                  */
-                
+                const getReplaceNameRepresentative = await RepresentativeLawFirms.findAll({
+                    where:{ representative_name: replaceNames}
+                })
+               
+                console.log("Replaced Old normalize company list length->", getReplaceNameRepresentative.length)
+
+                if(getReplaceNameRepresentative.length > 0) {
+                    //Yes
+                    /**
+                     * Is Rep is already a Rep
+                    */
+                    if(representativeFirm == null) {
+                        const firstCompany = getReplaceNameRepresentative[0].representative_id;
+
+                        await RepresentativeLawFirms.update({
+                            representative_name: normalize_name
+                        }, {where: {representative_id: firstCompany} });
+
+                        representativeFirm  = await RepresentativeLawFirms.findOne({
+                            where:{representative_id: firstCompany}
+                        });
+                    }
+                    const promiseIDs = getReplaceNameRepresentative.map( representative => otherIDs.push(representative.representative_id))
+                    await Promise.all(promiseIDs)
+
+                    console.log("UPDATE", otherIDs)
+
+                    const findOldRows = await LawFirms.findAll({
+                        attributes:['law_firm_id'],
+                        where: {
+                            [connection.Op.or]: [
+                            {representative_id: otherIDs},
+                            {name: replaceNames}
+                        ]}
+                    })
+                    console.log("findOldRows", findOldRows)
+                    if(findOldRows.length > 0) {
+                        console.log("findOldRowsIDs", IDs)
+                        const promiseR = findOldRows.map(row => IDs.push(row.law_firm_id))
+                        await Promise.all(promiseR)
+                        console.log("findOldRowsIDs1", IDs)
+                        allRepresentatives = [...allRepresentatives, ...otherIDs]
+                        console.log("allRepresentatives", allRepresentatives)
+                    }
+                } else {
+                    //NO
+                    if(representativeFirm == null) {
+                        //NO
+                        representativeFirm = await RepresentativeLawFirms.create({
+                            representative_name: normalize_name
+                        });
+                    }
+                    console.log("Update old representatives", otherIDs)  
+                }
+                console.log("RepresentativeID->", representativeFirm.representative_id)
+                const item = {representative_id: representativeFirm.representative_id};
+                //Associate Target With Rep
+                await LawFirms.update(item, {where: {law_firm_id: IDs}}); 
+
+                // Associate the Rep with Rep
+                await LawFirms.update(item, {where: {name: normalize_name}}); 
+
+                // Delete other rep
+                if(allRepresentatives > 0) {
+                    console.log("allRepresentatives1", allRepresentatives)
+                    await allRepresentativesFirmCheckAndDelete(allRepresentatives);
+                }                
             } else {
-                await LawFirms.update({representative_id: 0}, {where: {law_firm_id: IDs}});
-                res.status(200).send("Updated successfully");	
+                let getList = await LawFirms.findAll({
+                    attributes:['law_firm_id', 'representative_id', 'name'],
+                    where:{law_firm_id: IDs}
+                }); 
+
+                if(getList.length > 0) {
+                    const  allRepresentatives = [], replaceNames = [], otherIDs = [];
+                    IDs = []
+                    const promise = getList.map(r => {
+                        IDs.push(r.law_firm_id)
+                        if(r.representative_id > 0) {
+                            allRepresentatives.push(r.representative_id)
+                        }
+                        replaceNames.push(r.name)
+                        return r;
+                    })
+                    await Promise.all(promise);
+                    const getReplaceNameRepresentative = await RepresentativeLawFirms.findAll({
+                        where:{ representative_name: replaceNames}
+                    })
+                    if(getReplaceNameRepresentative.length > 0) {
+                        const promiseIDs = getReplaceNameRepresentative.map( representative => otherIDs.push(representative.representative_id))
+                        await Promise.all(promiseIDs)
+                        const findOldRows = await LawFirms.findAll({
+                            attributes:['law_firm_id'],
+                            where: {
+                                [connection.Op.or]: [
+                                {representative_id: otherIDs},
+                                {name: replaceNames}
+                            ]}
+                        })
+                        if(findOldRows.length > 0) {
+                            console.log("findOldRowsIDs", IDs)
+                            const promiseR = findOldRows.map(row => IDs.push(row.law_firm_id))
+                            await Promise.all(promiseR)
+                            console.log("findOldRowsIDs1", IDs)                            
+                        }
+                    }
+                    await LawFirms.update({representative_id: 0}, {where: {law_firm_id: IDs}});
+
+                    if(allRepresentatives > 0) {
+                        await allRepresentativesFirmCheckAndDelete(allRepresentatives);
+                    }
+                }
             }
+
+            let where = {
+                    [connection.Op.or]: [
+                        {law_firm_id: IDs},
+                        {name: normalize_name}
+                    ]
+                }
+
+            if(otherIDs.length > 0) {
+                where = {
+                    [connection.Op.or]: [
+                        {law_firm_id: IDs},
+                        {name: normalize_name},
+                        {representative_id: otherIDs}
+                    ]
+                }
+            }
+
+            // Get all list including normalize company and other names
+            const findAllLawFirms = await LawFirms.findAll({
+                attributes: ['law_firm_id', 'name', ['instances', 'counter']],
+                where: where,
+                include: [
+                    {
+                        model: RepresentativeLawFirms,
+                        as: "representativelawfirm",
+                        attributes: ['representative_id','representative_name'],
+                        required:false
+                    }
+                ]
+            });
+
+            res.status(200).json(findAllLawFirms);
         } else {
             res.status(403).send("Please select lawfirms");
         }

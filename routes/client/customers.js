@@ -25,24 +25,6 @@ const RECORD_LIMIT = 1000
 const OFFSET = 0
 
 
-const findLayout = (layout) => {
-    let layoutID = 15
-    switch(layout) {
-        case 'restore_ownership':
-            layoutID = 1
-            break
-        case 'clear_encumbrances':
-            layoutID = 2
-            break
-        case 'correct_details':
-            layoutID = 4
-            break
-        default:
-            layoutID = 15
-    }
-    return layoutID
-}
-
 /**
  * Find lifespan for all the company assets
  */
@@ -160,7 +142,7 @@ route.get("/timeline", [authJWT.verifyToken], async(req, res, next) => {
         }
 
         query += " GROUP BY activity_parties_transactions.rf_id ORDER BY exec_dt DESC "
-        replacements.layout = findLayout(layout)   
+        replacements.layout = helpers.findLayout(layout)   
 
 
         list =  await connection.applicationNew.query(query, {
@@ -226,7 +208,7 @@ route.get("/asset_types/:tab_id/companies", [authJWT.verifyToken, clientDBConnec
         } 
 
         const replacements  = { companies, organisation_id: req.orgId, tab_id }
-        replacements.layout = findLayout(layout)   
+        replacements.layout = helpers.findLayout(layout)   
         
         const query = "SELECT activity_parties_transactions.assignor_and_assignee_id AS id, IF(representative.representative_name <> '', representative.representative_name, assignor_and_assignee.name) AS entityName FROM activity_parties_transactions INNER JOIN db_uspto.assignor_and_assignee AS assignor_and_assignee ON assignor_and_assignee.assignor_and_assignee_id = activity_parties_transactions.assignor_and_assignee_id LEFT JOIN db_uspto.representative AS representative ON representative.representative_id = assignor_and_assignee.representative_id WHERE activity_parties_transactions.company_id = :companies AND activity_parties_transactions.organisation_id = :organisation_id AND rf_id IN ( SELECT documentid.rf_id FROM db_uspto.documentid AS documentid INNER JOIN db_new_application.assets AS assets  ON assets.appno_doc_num = documentid.appno_doc_num AND assets.grant_doc_num = documentid.grant_doc_num WHERE assets.layout_id = :layout AND activity_parties_transactions.company_id = :companies AND assets.organisation_id = :organisation_id GROUP BY documentid.rf_id) AND activity_id = :tab_id GROUP BY entityName";
 
@@ -320,7 +302,7 @@ route.get("/asset_types/assignments", [authJWT.verifyToken, clientDBConnection.c
         }
         
         const replacements  = { companies, organisation_id: req.orgId, tabs, customers }
-        replacements.layout = findLayout(layout)   
+        replacements.layout = helpers.findLayout(layout)   
        
         const query = "SELECT activity_parties_transactions.rf_id, activity_parties_transactions.exec_dt AS date, (SELECT COUNT(distinct assets1.appno_doc_num) FROM assets AS assets1  INNER JOIN db_uspto.documentid AS documentid_1 ON assets1.appno_doc_num = documentid_1.appno_doc_num AND assets1.grant_doc_num = documentid_1.grant_doc_num WHERE documentid_1.rf_id = activity_parties_transactions.rf_id) AS assets FROM activity_parties_transactions AS activity_parties_transactions WHERE  activity_parties_transactions.company_id IN (:companies) AND activity_parties_transactions.organisation_id = :organisation_id AND rf_id IN (SELECT documentid.rf_id FROM db_uspto.documentid AS documentid INNER JOIN assets AS assets ON assets.appno_doc_num = documentid.appno_doc_num AND assets.grant_doc_num = documentid.grant_doc_num WHERE assets.layout_id = :layout AND activity_parties_transactions.company_id IN (:companies) AND assets.organisation_id = :organisation_id GROUP BY documentid.rf_id ) AND activity_parties_transactions.activity_id IN (:tabs) AND activity_parties_transactions.assignor_and_assignee_id IN (:customers) GROUP BY activity_parties_transactions.rf_id";
 
@@ -349,7 +331,7 @@ route.get("/asset_types/assignments/:rfID", [authJWT.verifyToken, clientDBConnec
         let {layout, limit, offset} = req.query
         if(rfID > 0) {
             const replacements  = { organisation_id: req.orgId, rfID }
-            replacements.layout = findLayout(layout)   
+            replacements.layout = helpers.findLayout(layout)   
            
             const query = "SELECT case when assets.grant_doc_num = '' then assets.appno_doc_num else assets.grant_doc_num end as asset, case when assets.grant_doc_num = '' then 1 else 0 end as asset_type, assets.appno_doc_num, assets.grant_doc_num, 0 as child_count, '' as channel FROM db_new_application.assets AS assets INNER JOIN db_uspto.documentid as documentid ON assets.appno_doc_num = documentid.appno_doc_num AND assets.grant_doc_num = documentid.grant_doc_num WHERE layout_id = :layout AND assets.organisation_id = :organisation_id AND documentid.rf_id = :rfID GROUP BY asset";
 
@@ -503,7 +485,7 @@ route.get("/:layout/assets", [authJWT.verifyToken, clientDBConnection.connect], 
                         total_records: 0
                     }
 
-        replacements.layoutID = findLayout(req.params.layout)        
+        replacements.layoutID = helpers.findLayout(req.params.layout)        
 
         if(companies && companies != '') {
             companies = JSON.parse( companies )
@@ -563,7 +545,7 @@ route.get("/:layout/transactions", [authJWT.verifyToken, clientDBConnection.conn
                         total_records: 0
                     }
         
-        replacements.layoutID = findLayout(req.params.layout)        
+        replacements.layoutID = helpers.findLayout(req.params.layout)        
 
         if(companies && companies != '') {
             companies = JSON.parse( companies )
@@ -578,9 +560,11 @@ route.get("/:layout/transactions", [authJWT.verifyToken, clientDBConnection.conn
         if(customers && customers != '') {
             customers = JSON.parse( customers )
             replacements.customers = customers.join(',')
-        }        
+        }  
         
-        connection.applicationNew.query("CALL `routine_transactions`(:companies, :organisationID, :tabs, :customers, :layoutID);",{
+        const procedureName = req.params.layout == 'correct_details' ? 'routine_correct_details' : 'routine_transactions'
+        
+        connection.applicationNew.query(`CALL ${procedureName} (:companies, :organisationID, :tabs, :customers, :layoutID);`,{
             type: connection.Sequelize.QueryTypes.SELECT,
             raw: true,
             logging: console.log,
@@ -618,7 +602,7 @@ route.get("/:layout/parties", [authJWT.verifyToken, clientDBConnection.connect],
                             total_records: 0
                         }
         
-        replacements.layoutID = findLayout(req.params.layout)        
+        replacements.layoutID = helpers.findLayout(req.params.layout)        
 
         if(companies && companies != '') {
             companies = JSON.parse( companies )
@@ -663,7 +647,7 @@ route.get("/:layout/activites", [authJWT.verifyToken, clientDBConnection.connect
                             layoutID: layoutID
                         }
         
-        replacements.layoutID = findLayout(req.params.layout)        
+        replacements.layoutID = helpers.findLayout(req.params.layout)        
 
         if(companies && companies != '') {
             companies = JSON.parse( companies )

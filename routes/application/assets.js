@@ -134,18 +134,24 @@ route.get("/assets/cpc", [authJWT.verifyToken], async(req, res, next) => {
         }
     
        
-        query += ' GROUP BY assets.appno_doc_num ) GROUP BY GROUP_STRING'
+        query += ' GROUP BY assets.appno_doc_num ) '
 
         /**, '/', main_group, sub_group */
+
+        const listQuery = "SELECT count(if(patent_number != '' AND application_number >0  , patent_number, '')) as patent_number, COUNT(CASE WHEN patent_number = '' AND application_number > 0  THEN application_number END ) as application_number, count(if(patent_number != '', patent_number, application_number)) as countAssets, fillingYear, cpc_code,  GROUP_CONCAT(distinct origin SEPARATOR '@@ ') AS group_name FROM ( " + query.replace('REPLACE_STRING', " patent_number, application_number, date_format(grant_date, '%Y') as fillingYear, concat(section, class, sub_class) as cpc_code, (Select GROUP_CONCAT(distinct ee_name SEPARATOR '@@ ') from db_uspto.assignee             INNER JOIN db_uspto.assignment_conveyance ON  assignment_conveyance.rf_id = assignee.rf_id WHERE assignee.rf_id IN (SELECT rf_id FROM db_uspto.documentid WHERE documentid.appno_doc_num = concat('0', patent_cpc.application_number)) AND assignment_conveyance.employer_assign = 1 ) as origin ") + " )  as temp GROUP BY fillingYear, cpc_code "
+        
     
-        const list =  await connection.applicationNew.query(query.replace('REPLACE_STRING', " count(application_number) as countAssets, date_format(grant_date, '%Y') as fillingYear, concat(section, class, sub_class) as cpc_code ").replace('GROUP_STRING', " fillingYear, cpc_code"),{
+        const list =  await connection.applicationNew.query( listQuery ,{
             type: connection.Sequelize.QueryTypes.SELECT,
             replacements: replacements,
             raw: true,
             logging: console.log,
         })
 
-        const group =  await connection.applicationNew.query(query.replace('REPLACE_STRING', "  ROW_NUMBER() OVER () AS id, cpc_code FROM ( SELECT  concat(section, class, sub_class) as cpc_code ").replace('GROUP_STRING', " cpc_code ORDER BY cpc_code ASC ) AS cpc"),{
+
+        query +=  '  GROUP BY GROUP_STRING '
+
+        const group =  await connection.applicationNew.query(query.replace('REPLACE_STRING', "  ROW_NUMBER() OVER () AS id, cpc_code, '' as defination FROM ( SELECT  concat(section, class, sub_class) as cpc_code ").replace('GROUP_STRING', " cpc_code ORDER BY cpc_code ASC ) AS cpc"),{
             type: connection.Sequelize.QueryTypes.SELECT,
             replacements: replacements,
             raw: true,
@@ -153,6 +159,86 @@ route.get("/assets/cpc", [authJWT.verifyToken], async(req, res, next) => {
         })
 
         res.status(200).json({list, group});
+    } catch(err) {
+        console.log("CPC", err);
+        res.status(500).send("Internal error");
+    }
+})
+
+route.get("/assets/cpc/:year/:cpcCode", [authJWT.verifyToken], async(req, res, next) => {
+    try {
+        let { type, companies, activities, parties, assignments } = req.query
+
+        const replacements = {organisation_id: req.orgId}
+    
+        replacements.layout = findLayout(type)
+        replacements.cpcCode = req.params.cpcCode
+        replacements.year = req.params.year
+    
+        if( companies != '' ) {
+            companies = JSON.parse(companies)
+        }
+    
+        if( activities != '' ) {
+            activities = JSON.parse(activities)
+        }
+    
+        if( parties != '' ) {
+            parties = JSON.parse(parties)
+        }
+    
+        if( assignments != '' ) {
+            assignments = JSON.parse(assignments)
+        }
+    
+        let query = "SELECT REPLACE_STRING FROM db_patent_grant_bibliographic.patent_cpc AS patent_cpc WHERE concat(section, class, sub_class) = :cpcCode  AND type = 0 AND patent_cpc.application_number IN ( SELECT assets.appno_doc_num FROM db_new_application.assets AS assets  WHERE assets.layout_id = :layout AND assets.organisation_id = :organisation_id ";
+        
+        if(companies.length > 0) {
+            replacements.companies = companies
+            query += ' AND assets.company_id IN (:companies)'
+        }
+    
+    
+        if( activities.length > 0 ||  parties.length > 0 || assignments.length > 0 ) {
+            query += ' AND assets.appno_doc_num IN ( SELECT documentid.appno_doc_num FROM activity_parties_transactions	INNER JOIN db_uspto.documentid AS documentid ON documentid.rf_id = activity_parties_transactions.rf_id WHERE activity_parties_transactions.organisation_id = :organisation_id  '
+    
+            if(companies.length > 0) {
+                replacements.companies = companies
+                query += ' AND activity_parties_transactions.company_id IN (:companies) '
+            }
+            
+            if( activities.length > 0 ){
+                replacements.activities = activities
+                query += ' AND activity_parties_transactions.activity_id IN (:activities) '
+            }
+    
+            if( parties.length > 0 ){
+                replacements.parties = parties
+                query += ' AND activity_parties_transactions.assignor_and_assignee_id IN (:parties) '
+            }
+    
+            if( assignments.length > 0 ){
+                replacements.assignments = assignments
+                query += ' AND activity_parties_transactions.rf_id IN (:assignments) '
+            }
+            query += ' )'
+        }
+    
+       
+        query += ' GROUP BY assets.appno_doc_num ) '
+
+        /**, '/', main_group, sub_group */
+
+        const listQuery =  `SELECT ROW_NUMBER() OVER () AS id, CASE WHEN grant_doc_num != "" THEN grant_doc_num ELSE appno_doc_num END as assets, title FROM db_uspto.documentid WHERE date_format(grant_date, '%Y') = :year  AND appno_doc_num IN (${query.replace("REPLACE_STRING", " concat('0', application_number) ")}) GROUP BY appno_doc_num`  
+            
+        const list =  await connection.applicationNew.query( listQuery ,{
+            type: connection.Sequelize.QueryTypes.SELECT,
+            replacements: replacements,
+            raw: true,
+            logging: console.log,
+        })
+
+        res.status(200).json({list});
     } catch(err) {
         console.log("CPC", err);
         res.status(500).send("Internal error");

@@ -5,6 +5,12 @@ const route = express.Router();
 //require the Model
 
 const Transactions = require("../../model/application/Transactions");
+const Assignments = require("../../model/resources/Assignments");
+const Assignees = require("../../model/resources/Assignees");
+const Assignors = require("../../model/resources/Assignors");
+const AssignorAndAssignee = require("../../model/resources/AssignorAndAssignee");
+const Documentids = require("../../model/resources/Documentids");
+const Representatives = require("../../model/resources/Representatives");
 
 const authJWT = require("../../helpers/verifyJwtToken");
 
@@ -47,5 +53,66 @@ route.get("/transactions", [authJWT.verifyToken, clientDBConnection.connect], as
         res.status(200).json(resultS);
     }
 });
+
+route.get("/transactions/:transactionId", [authJWT.verifyToken], async(req, res, next) => {
+    try {
+        const {transactionId} = req.params
+
+        const assignees = await Assignees.findAll({
+                            attributes: [['ee_name', 'name'], 'assignor_and_assignee_id'],
+                            where:{rf_id: transactionId},
+                            include:[
+                                {
+                                    model: AssignorAndAssignee,
+                                    as: "assignor_and_assignee",
+                                    attributes: ['name', ['representative_id', 'id']],
+                                    include:[
+                                        {
+                                            model: Representatives,
+                                            as: "representative",
+                                            attributes: [['representative_name', 'name']],
+                                        }
+                                    ]
+                                }
+                            ],
+                            group: ['assignor_and_assignee_id', 'rf_id']
+                        })
+
+        const assignors = await Assignors.findAll({
+            attributes: [['or_name', 'name'], 'assignor_and_assignee_id'],
+            where:{rf_id: transactionId},
+            include:[
+                {
+                    model: AssignorAndAssignee,
+                    as: "assignor_and_assignee",
+                    attributes: ['name', ['representative_id', 'id']],
+                    include:[
+                        {
+                            model: Representatives,
+                            as: "representative",
+                            attributes: [['representative_name', 'name']],
+                        }
+                    ]
+                }
+            ],
+            group: ['assignor_and_assignee_id', 'rf_id']
+        })
+
+        const assignments = await Assignments.findOne({
+                                attributes: [['cname', 'name'], 'caddress_1', 'caddress_2',['rf_id', 'id']],
+                                where:{rf_id: transactionId},
+                            })
+        const patent = await Documentids.findAll({
+                                attributes: [['appno_doc_num', 'application'], ['grant_doc_num', 'patent']],
+                                where:{rf_id: transactionId},
+                                group: ['appno_doc_num', 'grant_doc_num']
+                            })
+        
+        res.status(200).json({assignees, assignors, assignments, patent});
+    } catch (err) {
+        console.log("Err Transaction", err )
+        res.status(500).send('Error while get details.')
+    }
+})
 
 module.exports = route;
