@@ -191,7 +191,7 @@ route.get("/assets/cpc/:year/:cpcCode", [authJWT.verifyToken], async(req, res, n
             assignments = JSON.parse(assignments)
         }
     
-        let query = "SELECT REPLACE_STRING FROM db_patent_grant_bibliographic.patent_cpc AS patent_cpc WHERE concat(section, class, sub_class) = :cpcCode  AND type = 0 AND patent_cpc.application_number IN ( SELECT assets.appno_doc_num FROM db_new_application.assets AS assets  WHERE assets.layout_id = :layout AND assets.organisation_id = :organisation_id ";
+        let query = "SELECT REPLACE_STRING FROM db_patent_grant_bibliographic.patent_cpc AS patent_cpc WHERE concat(section, class, sub_class) = :cpcCode AND date_format(grant_date, '%Y') = :year AND type = 0 AND patent_cpc.application_number IN ( SELECT assets.appno_doc_num FROM db_new_application.assets AS assets  WHERE assets.layout_id = :layout AND assets.organisation_id = :organisation_id ";
         
         if(companies.length > 0) {
             replacements.companies = companies
@@ -229,7 +229,7 @@ route.get("/assets/cpc/:year/:cpcCode", [authJWT.verifyToken], async(req, res, n
 
         /**, '/', main_group, sub_group */
 
-        const listQuery =  `SELECT ROW_NUMBER() OVER () AS id, CASE WHEN grant_doc_num != "" THEN grant_doc_num ELSE appno_doc_num END as assets, title FROM db_uspto.documentid WHERE date_format(grant_date, '%Y') = :year  AND appno_doc_num IN (${query.replace("REPLACE_STRING", " concat('0', application_number) ")}) GROUP BY appno_doc_num`  
+        const listQuery =  `SELECT ROW_NUMBER() OVER () AS id, CASE WHEN grant_doc_num != "" THEN grant_doc_num ELSE appno_doc_num END AS asset, CASE WHEN grant_doc_num = '' THEN 1 ELSE 0 END AS asset_type, title, temp.cpc_code AS cpc_code, (SELECT title FROM db_patent_grant_bibliographic.cpc_defination AS cpc_defination WHERE cpc_defination.cpc_code = temp.cpc_code) AS defination FROM db_uspto.documentid INNER JOIN (${query.replace("REPLACE_STRING", " concat('', application_number) AS application_number, CONCAT(section, class, sub_class, main_group, '/', sub_group) AS cpc_code ")}) as temp ON temp.application_number = documentid.appno_doc_num WHERE date_format(grant_date, '%Y') = :year  GROUP BY appno_doc_num`  
             
         const list =  await connection.applicationNew.query( listQuery ,{
             type: connection.Sequelize.QueryTypes.SELECT,

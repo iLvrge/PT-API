@@ -100,6 +100,7 @@ const keywords = require("./routes/business/admin_keywords");
 const svgFlagIcons = require('./routes/application/svg_flag_icon');
 
 const userCompanySelections = require('./routes/business/user_company_selections');
+const userActivitySelection = require('./routes/business/user_activity_selection');
 
 //routes for application / client
 app.use("/", appLogin);
@@ -131,6 +132,8 @@ app.use("/", collections);
 app.use("/", events);
 
 app.use("/", userCompanySelections);
+
+app.use("/", userActivitySelection);
 
 app.use('/events_icons', svgFlagIcons);
 
