@@ -75,7 +75,7 @@ route.get("/assets", [authJWT.verifyToken], async(req, res, next) => {
     });
 });
 
-route.get("/assets/cpc", [authJWT.verifyToken], async(req, res, next) => {
+/* route.get("/assets/cpc", [authJWT.verifyToken], async(req, res, next) => {
 
     try {
         let { type, companies, activities, parties, assignments } = req.query
@@ -136,9 +136,9 @@ route.get("/assets/cpc", [authJWT.verifyToken], async(req, res, next) => {
        
         query += ' GROUP BY assets.appno_doc_num ) '
 
-        /**, '/', main_group, sub_group */
+        
 
-        const listQuery = "SELECT count(if(patent_number != '' AND application_number >0  , patent_number, '')) as patent_number, COUNT(CASE WHEN patent_number = '' AND application_number > 0  THEN application_number END ) as application_number, count(if(patent_number != '', patent_number, application_number)) as countAssets, fillingYear, cpc_code,  GROUP_CONCAT(distinct origin SEPARATOR '@@ ') AS group_name FROM ( " + query.replace('REPLACE_STRING', " patent_number, application_number, date_format(grant_date, '%Y') as fillingYear, concat(section, class, sub_class) as cpc_code, (Select GROUP_CONCAT(distinct ee_name SEPARATOR '@@ ') from db_uspto.assignee             INNER JOIN db_uspto.assignment_conveyance ON  assignment_conveyance.rf_id = assignee.rf_id WHERE assignee.rf_id IN (SELECT rf_id FROM db_uspto.documentid WHERE documentid.appno_doc_num = concat('0', patent_cpc.application_number)) AND assignment_conveyance.employer_assign = 1 ) as origin ") + " )  as temp GROUP BY fillingYear, cpc_code "
+        const listQuery = "SELECT count(if(patent_number != '' AND application_number >0  , patent_number, '')) as patent_number, COUNT(CASE WHEN patent_number = '' AND application_number > 0  THEN application_number END ) as application_number, count(if(patent_number != '', patent_number, application_number)) as countAssets, fillingYear, cpc_code,  GROUP_CONCAT(distinct origin SEPARATOR '@@ ') AS group_name FROM ( " + query.replace('REPLACE_STRING', " patent_number, application_number, date_format(grant_date, '%Y') as fillingYear, concat(section, class, sub_class) as cpc_code, (Select GROUP_CONCAT(distinct ee_name SEPARATOR '@@ ') from db_uspto.assignee  INNER JOIN db_uspto.assignment_conveyance ON  assignment_conveyance.rf_id = assignee.rf_id WHERE assignee.rf_id IN (SELECT rf_id FROM db_uspto.documentid WHERE documentid.appno_doc_num = concat('0', patent_cpc.application_number)) AND assignment_conveyance.employer_assign = 1 ) as origin ") + " )  as temp GROUP BY fillingYear, cpc_code "
         
     
         const list =  await connection.applicationNew.query( listQuery ,{
@@ -151,7 +151,7 @@ route.get("/assets/cpc", [authJWT.verifyToken], async(req, res, next) => {
 
         query +=  '  GROUP BY GROUP_STRING '
 
-        const group =  await connection.applicationNew.query(query.replace('REPLACE_STRING', "  ROW_NUMBER() OVER () AS id, cpc_code, '' as defination FROM ( SELECT  concat(section, class, sub_class) as cpc_code ").replace('GROUP_STRING', " cpc_code ORDER BY cpc_code ASC ) AS cpc"),{
+        const group =  await connection.applicationNew.query(query.replace('REPLACE_STRING', "  ROW_NUMBER() OVER () AS id, cpc_code,  (SELECT title FROM db_patent_grant_bibliographic.cpc_defination AS cpc_defination WHERE cpc_defination.cpc_code = cpc.cpc_code) AS defination FROM ( SELECT  concat(section, class, sub_class) as cpc_code ").replace('GROUP_STRING', " cpc_code ORDER BY cpc_code ASC ) AS cpc"),{
             type: connection.Sequelize.QueryTypes.SELECT,
             replacements: replacements,
             raw: true,
@@ -163,82 +163,68 @@ route.get("/assets/cpc", [authJWT.verifyToken], async(req, res, next) => {
         console.log("CPC", err);
         res.status(500).send("Internal error");
     }
+}) */
+
+route.post("/assets/cpc", [authJWT.verifyToken], async(req, res, next) => {
+    try{
+        let { list } = req.body, getList = [], group = []
+
+        if( list != '' ) {
+            list = JSON.parse(list)
+
+            if( list.length > 0 ) {
+
+                const query = "SELECT REPLACE_STRING FROM ( SELECT temp.grant_doc_num AS patent_number, temp.appno_doc_num AS application_number, date_format(temp.appno_date, '%Y') AS fillingYear, concat(section, class, sub_class) AS cpc_code, (SELECT GROUP_CONCAT(distinct ee_name SEPARATOR '@@ ') FROM db_uspto.assignee INNER JOIN db_uspto.assignment_conveyance ON assignment_conveyance.rf_id = assignee.rf_id WHERE assignee.rf_id IN (     SELECT rf_id FROM db_uspto.documentid WHERE documentid.appno_doc_num = application_cpc.application_number) AND assignment_conveyance.employer_assign = 1 ) AS origin FROM db_patent_grant_bibliographic.application_cpc AS application_cpc INNER JOIN (SELECT documentid.grant_doc_num, documentid.appno_doc_num, documentid.appno_date FROM db_uspto.documentid AS documentid WHERE documentid.appno_doc_num IN(:list) GROUP BY documentid.appno_doc_num) AS temp ON temp.appno_doc_num = application_cpc.application_number WHERE application_cpc.type = 0 GROUP BY temp.appno_doc_num ) AS temp1 GROUP_STRING "
+
+                const listQuery =  query.replace('REPLACE_STRING', "COUNT(if(patent_number != '' AND application_number >0  , patent_number, '')) AS patent_number, COUNT(CASE WHEN patent_number = '' AND application_number > 0  THEN application_number END ) AS application_number, COUNT(if(patent_number != '', patent_number, application_number)) AS countAssets,   fillingYear, cpc_code, GROUP_CONCAT(distinct origin SEPARATOR '@@ ') AS group_name ").replace('GROUP_STRING', "GROUP BY fillingYear, cpc_code ")
+
+                const replacements = {list}
+                getList = await connection.applicationNew.query(listQuery, {
+                    type: connection.Sequelize.QueryTypes.SELECT,
+                    replacements: replacements,
+                    raw: true,
+                    logging: console.log,
+                })
+
+                const groupQuery = `SELECT ROW_NUMBER() OVER () AS id, cpc_code,  (SELECT title FROM db_patent_grant_bibliographic.cpc_defination AS cpc_defination WHERE cpc_defination.cpc_code = cpc.cpc_code) AS defination FROM (${query.replace('REPLACE_STRING', "cpc_code").replace('GROUP_STRING', " GROUP BY cpc_code ORDER BY cpc_code ASC ") }) AS cpc`
+
+                group =  await connection.applicationNew.query(groupQuery,{
+                    type: connection.Sequelize.QueryTypes.SELECT,
+                    replacements: replacements,
+                    raw: true,
+                    logging: console.log,
+                })
+            }
+        }
+        res.status(200).json({list: getList, group});
+    } catch(err) {
+        console.log("CPC", err);
+        res.status(500).send("Internal error");
+    }
 })
 
-route.get("/assets/cpc/:year/:cpcCode", [authJWT.verifyToken], async(req, res, next) => {
+route.post("/assets/cpc/:year/:cpcCode", [authJWT.verifyToken], async(req, res, next) => {
     try {
-        let { type, companies, activities, parties, assignments } = req.query
+        let { list } = req.body, getList = []
 
-        const replacements = {organisation_id: req.orgId}
-    
-        replacements.layout = findLayout(type)
-        replacements.cpcCode = req.params.cpcCode
-        replacements.year = req.params.year
-    
-        if( companies != '' ) {
-            companies = JSON.parse(companies)
-        }
-    
-        if( activities != '' ) {
-            activities = JSON.parse(activities)
-        }
-    
-        if( parties != '' ) {
-            parties = JSON.parse(parties)
-        }
-    
-        if( assignments != '' ) {
-            assignments = JSON.parse(assignments)
-        }
-    
-        let query = "SELECT REPLACE_STRING FROM db_patent_grant_bibliographic.patent_cpc AS patent_cpc WHERE concat(section, class, sub_class) = :cpcCode AND date_format(grant_date, '%Y') = :year AND type = 0 AND patent_cpc.application_number IN ( SELECT assets.appno_doc_num FROM db_new_application.assets AS assets  WHERE assets.layout_id = :layout AND assets.organisation_id = :organisation_id ";
-        
-        if(companies.length > 0) {
-            replacements.companies = companies
-            query += ' AND assets.company_id IN (:companies)'
-        }
-    
-    
-        if( activities.length > 0 ||  parties.length > 0 || assignments.length > 0 ) {
-            query += ' AND assets.appno_doc_num IN ( SELECT documentid.appno_doc_num FROM activity_parties_transactions	INNER JOIN db_uspto.documentid AS documentid ON documentid.rf_id = activity_parties_transactions.rf_id WHERE activity_parties_transactions.organisation_id = :organisation_id  '
-    
-            if(companies.length > 0) {
-                replacements.companies = companies
-                query += ' AND activity_parties_transactions.company_id IN (:companies) '
-            }
-            
-            if( activities.length > 0 ){
-                replacements.activities = activities
-                query += ' AND activity_parties_transactions.activity_id IN (:activities) '
-            }
-    
-            if( parties.length > 0 ){
-                replacements.parties = parties
-                query += ' AND activity_parties_transactions.assignor_and_assignee_id IN (:parties) '
-            }
-    
-            if( assignments.length > 0 ){
-                replacements.assignments = assignments
-                query += ' AND activity_parties_transactions.rf_id IN (:assignments) '
-            }
-            query += ' )'
-        }
-    
-       
-        query += ' GROUP BY assets.appno_doc_num ) '
+        if( list != '' ) {
+            list = JSON.parse(list)
 
-        /**, '/', main_group, sub_group */
+            if( list.length > 0 ) {
 
-        const listQuery =  `SELECT ROW_NUMBER() OVER () AS id, CASE WHEN grant_doc_num != "" THEN grant_doc_num ELSE appno_doc_num END AS asset, CASE WHEN grant_doc_num = '' THEN 1 ELSE 0 END AS asset_type, title, temp.cpc_code AS cpc_code, (SELECT title FROM db_patent_grant_bibliographic.cpc_defination AS cpc_defination WHERE cpc_defination.cpc_code = temp.cpc_code) AS defination FROM db_uspto.documentid INNER JOIN (${query.replace("REPLACE_STRING", " concat('', application_number) AS application_number, CONCAT(section, class, sub_class, main_group, '/', sub_group) AS cpc_code ")}) as temp ON temp.application_number = documentid.appno_doc_num WHERE date_format(grant_date, '%Y') = :year  GROUP BY appno_doc_num`  
-            
-        const list =  await connection.applicationNew.query( listQuery ,{
-            type: connection.Sequelize.QueryTypes.SELECT,
-            replacements: replacements,
-            raw: true,
-            logging: console.log,
-        })
+                const query = "SELECT ROW_NUMBER() OVER () AS id, CASE WHEN grant_doc_num != '' THEN grant_doc_num ELSE appno_doc_num END AS asset, CASE WHEN grant_doc_num = '' THEN 1 ELSE 0 END AS asset_type, grant_doc_num, appno_doc_num, title, temp1.cpc_code AS cpc_code, (SELECT title FROM db_patent_grant_bibliographic.cpc_defination AS cpc_defination WHERE cpc_defination.cpc_code = temp1.cpc_code) AS defination FROM ( SELECT temp.grant_doc_num , temp.appno_doc_num, temp.title, CONCAT(section, class, sub_class, main_group, '/', sub_group) AS cpc_code FROM db_patent_grant_bibliographic.application_cpc AS application_cpc INNER JOIN (SELECT documentid.grant_doc_num, documentid.appno_doc_num, documentid.appno_date, documentid.title FROM db_uspto.documentid AS documentid WHERE date_format(appno_date, '%Y') = :year AND documentid.appno_doc_num IN(:list) GROUP BY documentid.appno_doc_num) AS temp ON temp.appno_doc_num = application_cpc.application_number WHERE application_cpc.type = 0 AND concat(section, class, sub_class) = :cpcCode GROUP BY temp.appno_doc_num ) AS temp1 GROUP BY appno_doc_num"
 
-        res.status(200).json({list});
+                const replacements = { cpcCode: req.params.cpcCode, year: req.params.year, list }
+
+                getList =  await connection.applicationNew.query( query ,{
+                    type: connection.Sequelize.QueryTypes.SELECT,
+                    replacements: replacements,
+                    raw: true,
+                    logging: console.log,
+                })
+            }
+        }
+        res.status(200).json({list: getList})
     } catch(err) {
         console.log("CPC", err);
         res.status(500).send("Internal error");
