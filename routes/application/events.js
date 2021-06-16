@@ -2145,6 +2145,52 @@ route.get("/events/tabs/:tabID/companies/:representativeID/customers/:customerID
     }
 });
 
+route.post("/events/assets", [authJWT.verifyToken], async(req, res, next) => {
+    try{
+        let { list } = req.body, assetsLifeSpan = []
+
+        if( list != '' ) {
+            list = JSON.parse(list)
+
+            if( list.length > 0 ) {
+                const query = "SELECT documentid.appno_doc_num AS application, documentid.grant_doc_num AS patent, documentid.status AS `status`,  documentid.appno_date AS appno_date FROM activity_parties_transactions INNER JOIN db_uspto.documentid AS documentid ON documentid.rf_id = activity_parties_transactions.rf_id         WHERE documentid.appno_doc_num IN (:list) AND date_format(documentid.appno_date, '%Y') >= 1990 GROUP BY documentid.appno_doc_num"
+
+                const replacements = {list}
+                getList = await connection.applicationNew.query(query, {
+                    type: connection.Sequelize.QueryTypes.SELECT,
+                    replacements: replacements,
+                    raw: true,
+                    logging: console.log,
+                })
+
+                const ASSETS_LIFE_SPAN_DATE_FORMAT = 'YYYY';
+                if(getList.length > 0) {                
+                    const timelineSpan = [], applicationNumberAdded = [], dateAdded = [];
+                    const promises = getList.map( async item => {
+                        if(!applicationNumberAdded.includes(item.application)){
+                            const startYear = moment(new Date(item.appno_date)).format(ASSETS_LIFE_SPAN_DATE_FORMAT);
+                            let endYear = moment(new Date(item.appno_date)).add(20, 'years').format(ASSETS_LIFE_SPAN_DATE_FORMAT);
+                            for(let i = parseInt(startYear); i <= parseInt(endYear); i++) {
+                                timelineSpan.push({year: i, count: 1, application: item.application});
+                            }
+                            applicationNumberAdded.push(item.application);
+                            dateAdded.push(item.appno_date);
+                        } 
+                        return item;                            
+                    });            
+                    await Promise.all(promises);
+                    assetsLifeSpan = await helpers.findMaxMin(timelineSpan)        
+                }
+            }
+        }
+        res.status(200).json(assetsLifeSpan);
+    } catch (err) {
+        console.log(err);
+        res.status(500).send("Internal server error.");
+    }
+})
+
+
 route.get("/events/tabs", [authJWT.verifyToken], async(req, res, next) => {
     try {
         let { type, companies, tabs, customers, rf_ids } = req.query

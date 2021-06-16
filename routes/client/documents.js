@@ -30,11 +30,15 @@ const Repository = require("../../model/application/Repository");
 
 const authJWT = require("../../helpers/verifyJwtToken");
 
+const SheetsHelper = require('../../helpers/sheets');
+
 const config = require("../../config/db.config");
 
 const AWS  = require('aws-sdk');
 
 const clientDBConnection = require("../../helpers/clientDBConnection");
+
+
 /**Get all documents */
 
 const oauth2Client = new google.auth.OAuth2(
@@ -331,7 +335,6 @@ route.put("/template_folder", [authJWT.verifyToken], async(req, res, next) => {
     }
 })
 
-
 route.post('/create_template_drive', [authJWT.verifyToken], async(req, res, next) => {
     try{
         const { access_token, refresh_token, user_account, id, name } = req.body
@@ -387,7 +390,7 @@ route.post('/create_template_drive', [authJWT.verifyToken], async(req, res, next
         console.log(e)
         res.status(200).send("Token expired")
     }
-});
+})
 
 route.post("/downloadXML", [authJWT.verifyToken], async(req, res, next) => {
     try{
@@ -593,7 +596,7 @@ route.post("/downloadXML", [authJWT.verifyToken], async(req, res, next) => {
         console.log(e)
         res.status(200).send(null)
     }
-});
+})
 
 route.post("/create_maintainence_file", [authJWT.verifyToken], async(req, res, next) => {
     try{
@@ -712,6 +715,80 @@ route.get("/drive", authJWT.verifyToken, async(req, res, next) => {
         console.log(e)
         message = 'Token expired'
         res.status(200).json({list, message})   
+    }
+})
+
+route.post("/transaction", [authJWT.verifyToken], async(req, res, next) =>{
+    try{
+        
+        const { access_token, refresh_token, file_data, channel } = req.body
+
+        /**
+         * create spreadsheet with current date as name of the spreadsheet 
+         * add data to the spreadsheet
+         * move spreadsheet to the repository folder
+         * add record to the model
+         */
+        
+        const sheetHelper = new SheetsHelper(access_token), title =  moment(new Date()).format('YYYY-mm-dd')
+
+        const spreadsheet = await sheetHelper.createSpreadsheet(title)
+
+        if( spreadsheet ) {
+            const insertData = []
+
+            if(file_data != '') {
+                insertData = JSON.parse(file_data)
+            }
+
+            const model = {
+                spreadsheet_id: spreadsheet.spreadsheetId,
+                sheet_id: spreadsheet.sheets[0].properties.sheetId,
+                name: spreadsheet.properties.title,
+                channel: channel,
+                count_assets: insertData.length
+            }
+
+            sheetHelper.sync(model.spreadsheet_id, model.sheet_id, insertData, function(err) {
+                if (err) {
+                    console.log("Error while adding ")
+                }
+                (async () => {
+                    /**
+                     * move sheet to repository folder
+                     *
+                     * If refresh token is undefined just pass access token only
+                     */
+                    if(refresh_token != undefined) {
+                        oauth2Client.setCredentials({ access_token, refresh_token})
+                    } else {
+                        oauth2Client.setCredentials({ access_token})
+                    }
+
+                    const drive = google.drive({version: 'v3', auth:oauth2Client});
+
+                    if(drive != null && drive != undefined) {
+                        let getRepo = await Repository.findOne({
+                            where: { organisation_id: req.orgId, user_account: user_account}
+                        }) 
+                        if(getRepo != null) {
+                            const response = await drive.files.update({
+                                                        fileId: model.spreadsheet_id,
+                                                        addParents: getRepo.container_id
+                                                    })
+                            console.log("response", response)
+
+                            const createRecord = await VirtualTransactions.create(model)
+                            if( createRecord ) {
+                                console.log("response", createRecord)
+                            }
+                        }
+                    }
+                })()                    
+            });            
+        }
+    } catch(err){
+        console.log("Err", err)
     }
 })
 

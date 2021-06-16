@@ -335,7 +335,7 @@ let createJSON = async(itemDetails, rfID) => {
     return illustrationData
 }
 
-route.get('/connection/:reelFrame',  [authJWT.verifyToken], async (req, res) => {  
+route.get('/connection/:reelFrame',  /* [authJWT.verifyToken], */ async (req, res) => {  
     let { reelFrame }  = req.params
 
     if( reelFrame != '' && reelFrame != null && reelFrame != undefined ) {
