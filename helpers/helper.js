@@ -1751,6 +1751,7 @@ let getNewCode = async () => {
 };
 
 let shareURL = async (params) => {
+    console.log(params.assets)
     const assets = JSON.parse(params.assets)
 
     if( assets.length > 0 ) {
@@ -1791,6 +1792,12 @@ let getShareList = async (code) => {
         replacements: {code},
         }
     );
+}
+
+let getShareDataByCode = async (code) => {
+    return await Share.findOne({
+        where:{code}
+	});
 }
 
 let getShareData = async (code, asset) => {
@@ -2287,6 +2294,7 @@ helper.getNewCode = getNewCode;
 helper.shareURL = shareURL;
 helper.getShareList = getShareList;
 helper.getShareData = getShareData;
+helper.getShareDataByCode = getShareDataByCode;
 helper.getCompaniesMinAndMaxDateTransaction = getCompaniesMinAndMaxDateTransaction;
 helper.findProfessionalFromUserID = findProfessionalFromUserID;
 helper.findFakeDocument = findFakeDocument;

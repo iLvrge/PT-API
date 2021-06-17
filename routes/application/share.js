@@ -27,6 +27,41 @@ route.post("/share", [authJWT.verifyToken], async (req, res) =>{
     }
 });
 
+route.get("/share/illustration/:asset/:code",  async (req, res) =>{     
+    const { asset, code } = req.params;
+    try {
+        if( code != "") {
+            const share = await helpers.getShareDataByCode(code);
+            if( share != null ) {
+                const params = {
+                    assets: JSON.stringify([asset]),
+                    organisation_id: share.organisation_id,
+                    user_id: share.user_id
+                }
+                let newCode = await helpers.getNewCode();
+                if(newCode != undefined){
+                    params.code = newCode;
+                    let shareURL = await helpers.shareURL(params);
+                    if(shareURL) {
+                        res.status(200).send(shareURL);
+                    } else {
+                        res.status(500).send("Unable to create share url.");
+                    }
+                } else {
+                    res.status(500).send("Unable to create share url.");
+                }
+            } else {
+                res.status(500).send("Unable to create share url.");
+            }
+        } else {
+            res.status(500).send("Unable to create share url.");
+        }        
+    }catch(e){
+        console.log(e);
+        res.status(500).send("Unable to create share url.");
+    }
+});
+
 route.get("/share/:code", async (req, res) =>{     
     const { code } = req.params;
     try {
