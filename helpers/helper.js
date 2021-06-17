@@ -247,7 +247,7 @@ let searchCompany = async(query, t) => {
                         }
                     });
                 }
-                searchResult.map( (s, index) => {
+                const promise = searchResult.map( (s, index) => {
                     if(s.children.length > 0) {
                         let total = 0;
                         s.children.map( c => {
@@ -257,11 +257,13 @@ let searchCompany = async(query, t) => {
                             searchResult[index].counter = total;
                         }
                     }
-                });
-                return searchResult;
-            } else {
-                return searchResult;
-            }        
+                });  
+                await Promise.all(promise)              
+            }
+            console.log(searchResult.length)
+            searchResult = await searchResult.filter(company => company.name == company.normalize_name || company.normalize_name == null)
+            console.log(searchResult.length)
+            return searchResult;
         } else {
             return searchResult;
         }
