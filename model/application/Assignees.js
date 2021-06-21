@@ -10,6 +10,10 @@ const Assignees = connection.application.define('assignee',{
         primaryKey: true,
         autoIncrement: true
     },  
+    original_name:{
+        type: Sequelize.STRING,
+        allowNull: false,
+    }, 
     ee_name:{
         type: Sequelize.STRING,
         allowNull: false,

@@ -79,6 +79,51 @@ route.get("/address", [authJWT.verifyToken, clientDBConnection.connect], async(r
     }
 });
 
+/**
+ * Get Address
+ */
+route.get("/address/companies", [authJWT.verifyToken, clientDBConnection.connect], async(req, res, next) => {
+    try{
+        if(typeof req.connection_db != "undefined" && req.connection_db != null ) {
+
+            let { companies } = req.query
+
+            if( companies != '' ) {
+                companies = JSON.parse(companies)
+                if(companies.length > 0) {
+                    const Addresses = req.connection_db.define('Address', Address.mainStructure, Address.options);
+
+                    const Representative = req.connection_db.define('Representatives', Representatives.mainStructure, Representatives.options);
+        
+                    Representative.hasMany(Addresses, { foreignKey: 'representative_id', as: 'address' });
+        
+                    let where = {};
+        
+                    if(req.query.companies != undefined && req.query.companies != null) {
+                        const representativeIDs = JSON.parse(req.query.companies);
+                        where = {representative_id: representativeIDs};
+                    }
+                    where.parent_id = 0;
+                    const list = await Addresses.findAll({
+                        attributes: ['address_id', 'street_address','suite','city','state','country','zip_code'],
+                        where:{ representative_id: companies}                        
+                    });
+                    res.status(200).json(list);
+                } else {
+                    res.status(200).json([]);
+                }
+            } else {
+                res.status(200).json([]);
+            }            
+        } else {
+            res.status(200).json([]);
+        }
+    } catch (err) {
+        console.log(err);
+        res.status(500).send("Internal error");
+    }
+});
+
 
 /**
  * Get Address

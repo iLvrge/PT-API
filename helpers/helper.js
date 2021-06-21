@@ -41,9 +41,92 @@ const Inventors = require("../model/resources/Inventors");
 
 const moment = require('moment');
 
+const { create } = require('xmlbuilder2');
+
 const ASSETS_LIFE_SPAN_DATE_FORMAT = 'YYYY';
 
 const fs = require('fs');
+
+/**
+ * 
+ * @param {*} correspondence 
+ * @param {*} assignors
+ * @param {*} assignees
+ * @param {*} assets
+ * 
+ * 
+ */
+
+const getXML = async(correspondence, assignors, assignees, assets) => {
+    const root = create({ version: '1.0' })
+            .ele('pat-assignment-template')
+                .ele('correspondent')
+                    .ele('correspondent-name-address')
+                        .ele('name').txt(correspondence.cname).up()
+                        .ele('address-1').txt(correspondence.caddress_1 != '' ? correspondence.caddress_1 : 'Address-1').up()
+                        .ele('address-2').txt(correspondence.caddress_2 != '' ? correspondence.caddress_2 : 'Address-2').up()
+                        .ele('city').txt(correspondence.caddress_3 != '' ? correspondence.caddress_3 : 'City').up()
+                        .ele('state').txt(correspondence.caddress_3 != '' ? correspondence.caddress_3 : 'State' ).up()
+                        .ele('postal-code').txt(correspondence.caddress_4 != '' ? correspondence.caddress_4 : '00000').up()
+                    .up()
+                .ele('e-mail').txt(' ').up()
+                .ele('fax').txt('000-000-0000').up()
+                .ele('phone').txt('000-000-0000').up()
+                .up();
+
+    const patConveyingParties = root.ele('pat-conveying-parties')
+    for( let i = 0; i < assignors.length; i++ ) {
+        console.log('assignors', assignors[i])
+        patConveyingParties
+        .ele('pat-conveying-party')
+            .ele('company')
+                .ele('orgname').txt(assignors[i].original_name != '' ? assignors[i].original_name : or_name).up()
+            .up()
+            .ele('executed-date').txt(moment(new Date(assignors[i].exec_dt)).format('YYYY-MM-DD')).up()
+        .up()
+    }
+
+    const patReceivingParties = root.ele('pat-receiving-parties')
+
+    for( let i = 0; i < assignees.length; i++ ) {
+        console.log('assignees', assignees[i])
+        const receivingParty = patReceivingParties.ele('pat-receiving-party')
+                                receivingParty
+                                    .ele('company')
+                                        .ele('orgname').txt(assignees[i].original_name != '' ? assignees[i].original_name : assignees[i].ee_name).up()
+                                    .up()
+                                receivingParty
+                                    .ele('address')
+                                        .ele('address-1').txt(assignees[i].ee_address_1).up()
+                                        .ele('address-2').txt(assignees[i].ee_address_2).up()
+                                        .ele('city').txt(assignees[i].ee_city != '' ? assignees[i].ee_city : 'City').up()
+                                        .ele('state').txt(assignees[i].ee_state != '' ? assignees[i].ee_state : 'State').up()
+                                        .ele('postal-code').txt(assignees[i].ee_postcode != '' ? assignees[i].ee_postcode.substr(0,5) : '0000').up()
+                                    .up()
+    }
+
+    const patProperties = root.ele('pat-properties')
+
+    for( let i = 0; i < assets.length; i++ ) {
+        if(assets[i].grant_doc_num != '') {
+            patProperties
+            .ele('pat-property').att('patent', assets[i].grant_doc_num)
+            .ele('pat-application-number').txt(assets[i].appno_doc_num).up()
+            .up()
+        } else {
+            patProperties
+            .ele('pat-property')
+            .ele('pat-application-number').txt(assets[i].appno_doc_num).up()
+            .up()
+        } 
+    }
+    const xml = root.end({ prettyPrint: true });
+
+    return xml;
+}
+
+
+
 /**
  * 
  * @param {SearchCompanies} search 
@@ -457,7 +540,7 @@ let allAssignments = async (customerID, req) => {
                 let representativeID = [];
                 findRepresentative.map(e => representativeID.push(e.representative_id));
 
-                queryAllAssignments = "Select a.rf_id as id, a.convey_text as text, CONCAT(a.reel_no, '/', a.frame_no) as reel_frame, a.frame_no, a.reel_no , ac.convey_ty, rac.convey_ty as updated_convey_ty,  CASE  WHEN rac.convey_ty = 'assignment' THEN 0 WHEN rac.convey_ty = 'addresschg' THEN 1	 WHEN rac.convey_ty = 'correct' THEN 2	 WHEN rac.convey_ty = 'courtappointment' THEN 3	 WHEN rac.convey_ty = 'courtorder' THEN 4	 WHEN rac.convey_ty = 'employee' THEN 5	 WHEN rac.convey_ty = 'govern' THEN 6	 WHEN rac.convey_ty = 'license' THEN 7	 WHEN rac.convey_ty = 'licenseend' THEN 8	 WHEN rac.convey_ty = 'missing' THEN 9	 WHEN rac.convey_ty = 'merger' THEN 10	 WHEN rac.convey_ty = 'namechg' THEN 11	 WHEN rac.convey_ty = 'option' THEN 12	 WHEN rac.convey_ty = 'other' THEN 13	 WHEN rac.convey_ty = 'partialassignment' THEN 14	 WHEN rac.convey_ty = 'release' THEN 15	 WHEN rac.convey_ty = 'restatedsecurity' THEN 16	 WHEN rac.convey_ty = 'security' THEN 17  WHEN rac.convey_ty='correspondchange' THEN 18	 ELSE '' END as assignment_convey_ty FROM db_application.assignment as a INNER JOIN db_application.assignment_conveyance as ac ON ac.rf_id = a.rf_id LEFT JOIN db_uspto.representative_assignment_conveyance as rac ON rac.rf_id = a.rf_id WHERE a.convey_text <> '' AND a.convey_text IS NOT NULL AND a.rf_id IN (SELECT d.rf_id FROM db_application.documentid as d WHERE appno_doc_num <> '' AND  d.rf_id IN (SELECT rf_id FROM db_uspto.representative_transactions WHERE organisation_id = :organisationID AND representative_id IN (:representativeID)) GROUP BY d.rf_id)"; 
+                queryAllAssignments = "Select a.rf_id as id, a.convey_text as text, CONCAT(a.reel_no, '/', a.frame_no) as reel_frame, a.frame_no, a.reel_no , ac.convey_ty, rac.convey_ty as updated_convey_ty,  CASE  WHEN rac.convey_ty = 'assignment' THEN 0 WHEN rac.convey_ty = 'addresschg' THEN 1	 WHEN rac.convey_ty = 'correct' THEN 2	 WHEN rac.convey_ty = 'courtappointment' THEN 3	 WHEN rac.convey_ty = 'courtorder' THEN 4	 WHEN rac.convey_ty = 'employee' THEN 5	 WHEN rac.convey_ty = 'govern' THEN 6	 WHEN rac.convey_ty = 'license' THEN 7	 WHEN rac.convey_ty = 'licenseend' THEN 8	 WHEN rac.convey_ty = 'missing' THEN 9	 WHEN rac.convey_ty = 'merger' THEN 10	 WHEN rac.convey_ty = 'namechg' THEN 11	 WHEN rac.convey_ty = 'option' THEN 12	 WHEN rac.convey_ty = 'other' THEN 13	 WHEN rac.convey_ty = 'partialassignment' THEN 14	 WHEN rac.convey_ty = 'release' THEN 15	 WHEN rac.convey_ty = 'restatedsecurity' THEN 16	 WHEN rac.convey_ty = 'security' THEN 17  WHEN rac.convey_ty='correspondchange' THEN 18	 ELSE '' END as assignment_convey_ty FROM db_uspto.assignment as a INNER JOIN db_uspto.assignment_conveyance as ac ON ac.rf_id = a.rf_id LEFT JOIN db_uspto.representative_assignment_conveyance as rac ON rac.rf_id = a.rf_id WHERE a.convey_text <> '' AND a.convey_text IS NOT NULL AND a.rf_id IN (SELECT d.rf_id FROM db_uspto.documentid as d WHERE appno_doc_num <> '' AND  d.rf_id IN (SELECT rf_id FROM db_uspto.representative_transactions WHERE organisation_id = :organisationID AND representative_id IN (:representativeID)) GROUP BY d.rf_id)"; 
 
                 /* queryAllAssignments = "SELECT a.rf_id as id, a.convey_text as text, CONCAT(a.reel_no, '/', a.frame_no) as reel_frame, a.frame_no, a.reel_no , ac.convey_ty, rac.convey_ty as updated_convey_ty, CASE WHEN rac.convey_ty = 'assignment' THEN 0 WHEN rac.convey_ty = 'addresschg' THEN 1 WHEN rac.convey_ty = 'correct' THEN 2 WHEN rac.convey_ty = 'courtappointment' THEN 3 WHEN rac.convey_ty = 'courtorder' THEN 4 WHEN rac.convey_ty = 'employee' THEN 5 WHEN rac.convey_ty = 'govern' THEN 6 WHEN rac.convey_ty = 'license' THEN 7 WHEN rac.convey_ty = 'licenseend' THEN 8 WHEN rac.convey_ty = 'missing' THEN 9 WHEN rac.convey_ty = 'merger' THEN 10 WHEN rac.convey_ty = 'namechg' THEN 11 WHEN rac.convey_ty = 'option' THEN 12 WHEN rac.convey_ty = 'other' THEN 13 WHEN rac.convey_ty = 'partialassignment' THEN 14 WHEN rac.convey_ty = 'release' THEN 15  WHEN rac.convey_ty = 'restatedsecurity' THEN 16 WHEN rac.convey_ty = 'security' THEN 17 ELSE '' END as assignment_convey_ty FROM db_application.assignment as a INNER JOIN db_application.assignment_conveyance as ac ON ac.rf_id = a.rf_id LEFT JOIN db_uspto.representative_assignment_conveyance as rac ON rac.rf_id = a.rf_id WHERE a.convey_text <> '' AND a.convey_text IS NOT NULL AND a.rf_id IN (SELECT d.rf_id FROM db_application.documentid as d WHERE appno_doc_num <> '' AND d.rf_id IN (SELECT rf_id FROM assignee WHERE rf_id IN (SELECT rf_id FROM db_uspto.representative_transactions WHERE organisation_id = :organisationID AND representative_id IN (:representativeID))) OR d.rf_id IN(SELECT rf_id FROM assignor WHERE rf_id IN (SELECT rf_id FROM db_uspto.representative_transactions WHERE organisation_id = :organisationID AND representative_id IN (:representativeID))) GROUP BY d.rf_id)"; */
 
@@ -542,7 +625,7 @@ let allAssignments = async (customerID, req) => {
         
         if(search != "" && search != undefined) {
             const splitSearch = search.toString().split(' ');
-            if(splitSearch.length > 1){				
+            /* if(splitSearch.length > 1){				
                 if(splitSearch.length == 2) {
                     if(splitSearch[1] == '') {
                         searchTerm = `${search} *`;
@@ -566,9 +649,11 @@ let allAssignments = async (customerID, req) => {
                 }				
             } else {
                 searchTerm = `${search}*`;
-            }
+            } */
             queryAllAssignments += " WHERE MATCH(text) AGAINST (:search IN BOOLEAN MODE) ";
-            replacements.search =  searchTerm ;
+            /* replacements.search =  searchTerm ; */
+            replacements.search =  search ;
+
         }
 
         queryAllAssignments += " GROUP BY text, updated_convey_ty";
@@ -583,7 +668,7 @@ let allAssignments = async (customerID, req) => {
           }
         );
 
-        if(assignmentsList.length == 0){
+        /*if(assignmentsList.length == 0){
             queryAllAssignments = "SELECT id, text, reel_frame, counter, convey_ty, updated_convey_ty FROM assignment_group WHERE text = :search GROUP BY text, updated_convey_ty";
             assignmentsList =  await connection.resources.query(queryAllAssignments,{
                 type: connection.Sequelize.QueryTypes.SELECT,
@@ -612,7 +697,7 @@ let allAssignments = async (customerID, req) => {
                 logging: console.log,
                 }
             ); */
-        }        
+        /*}*/        
     } 
     return assignmentsList;
 }
@@ -2260,6 +2345,7 @@ const findLayout = (layout) => {
 }
 
 const helper = {};
+helper.getXML = getXML;
 helper.findMaxMin = findMaxMin;
 helper.findLayout = findLayout;
 helper.allAssignments = allAssignments;

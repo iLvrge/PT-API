@@ -10,6 +10,10 @@ const Assignors = connection.resources.define('assignor',{
         primaryKey: true,
         autoIncrement: true
     },  
+    original_name:{
+        type: Sequelize.STRING,
+        allowNull: false,
+    }, 
     or_name:{
         type: Sequelize.STRING,
         allowNull: false,

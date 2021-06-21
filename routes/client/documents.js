@@ -23,6 +23,7 @@ const BusinessUsers = require("../../model/business/Users");
 
 const Documents = require("../../model/client/Documents");
 const Users = require("../../model/client/Users");
+const Address = require("../../model/client/Address");
 
 const Layouts = require("../../model/application/Layouts");
 const Templates = require("../../model/application/Templates");
@@ -36,7 +37,11 @@ const config = require("../../config/db.config");
 
 const AWS  = require('aws-sdk');
 
+const connection = require("../../config/db.config");
+
 const clientDBConnection = require("../../helpers/clientDBConnection");
+
+const helper = require("../../helpers/helper");
 
 
 /**Get all documents */
@@ -591,6 +596,140 @@ route.post("/downloadXML", [authJWT.verifyToken], async(req, res, next) => {
             }
         } else {
             res.status(200).send('Invalid inputs')
+        }
+    } catch (e) {
+        console.log(e)
+        res.status(200).send(null)
+    }
+})
+
+route.post("/fixed_transaction_address/downloadXML", [ authJWT.verifyToken, clientDBConnection.connect ], async(req, res, next) => {
+    try{
+        let { id, update_address, company_ids } = req.body
+
+        const where = { rf_id: id}
+        const assignment = await Assignments.findOne({
+            where
+        })
+
+        if( assignment != null ) {
+            company_ids = JSON.parse(company_ids)
+            const assignors = await Assignors.findAll({where})
+
+            const assignees = await Assignees.findAll({where})
+
+            const assets = await Documentids.findAll({where})
+
+            const Addresses = req.connection_db.define('Address', Address.mainStructure, Address.options);
+
+            const getAddressData = await Addresses.findOne({
+                attributes: ['address_id', 'street_address','suite','city','state','country','zip_code'],
+                where:{ address_id: update_address}                        
+            });
+
+            if( getAddressData != null) {
+                const query = `SELECT assignor_and_assignee_id FROM db_uspto.list1 AS list1 WHERE company_id IN (:companyIDs) AND organisation_id = :organisationID`
+
+                const replacements = { organisationID: req.orgId, companyIDs: company_ids}
+
+                const getList = await connection.applicationNew.query(query,{
+                    type: connection.Sequelize.QueryTypes.SELECT,
+                    raw: true,
+                    logging: console.log,
+                    replacements: replacements,
+                    }
+                )
+
+                const allNormalizeIDs = []
+
+                const promise = getList.map( row => allNormalizeIDs.push(row.assignor_and_assignee_id))
+
+                await Promise.all(promise)
+
+                const assigneePromise = assignees.map( (row, index) => {
+                    if(allNormalizeIDs.includes(row.assignor_and_assignee_id)) {
+                        assignees[index].ee_address_1 = getAddressData.street_address
+                        assignees[index].ee_address_2 = getAddressData.suite
+                        assignees[index].ee_city = getAddressData.city
+                        assignees[index].ee_state = getAddressData.state
+                        assignees[index].ee_postcode = getAddressData.zip_code
+                        assignees[index].ee_country = getAddressData.country
+                    }
+                })
+
+                await Promise.all(assigneePromise)
+
+                const xml = await helper.getXML(assignment, assignors, assignees, assets)
+
+                res.status(200).send(xml) 
+            } else {
+                console.log('Error XML, Invalid data')
+                res.status(200).send(null)
+            }
+        } else {
+            console.log('Error XML, Invalid data')
+            res.status(200).send(null)
+        }
+    } catch (e) {
+        console.log(e)
+        res.status(200).send(null)
+    }
+})
+
+route.post("/fixed_transaction_name/downloadXML", [ authJWT.verifyToken ], async(req, res, next) => {
+    try{
+        let { id, new_name, company_ids } = req.body
+
+        const where = { rf_id: id}
+        const assignment = await Assignments.findOne({
+            where
+        })
+
+        if( assignment != null ) {
+            company_ids = JSON.parse(company_ids)
+            const assignors = await Assignors.findAll({where})
+
+            const assignees = await Assignees.findAll({where})
+
+            const assets = await Documentids.findAll({where})
+
+            if( new_name != null && new_name != 'undefined') {
+                const query = `SELECT assignor_and_assignee_id FROM db_uspto.list1 AS list1 WHERE company_id IN (:companyIDs) AND organisation_id = :organisationID`
+
+                const replacements = { organisationID: req.orgId, companyIDs: company_ids}
+
+                const getList = await connection.applicationNew.query(query,{
+                    type: connection.Sequelize.QueryTypes.SELECT,
+                    raw: true,
+                    logging: console.log,
+                    replacements: replacements,
+                    }
+                )
+
+                const allNormalizeIDs = []
+
+                const promise = getList.map( row => allNormalizeIDs.push(row.assignor_and_assignee_id))
+
+                await Promise.all(promise)
+
+                const assigneePromise = assignees.map( (row, index) => {
+                    if(allNormalizeIDs.includes(row.assignor_and_assignee_id)) {
+                        assignees[index].original_name = new_name
+                    }
+                })
+
+                await Promise.all(assigneePromise)
+
+                const xml = await helper.getXML(assignment, assignors, assignees, assets)
+
+                res.status(200).send(xml) 
+            } else {
+                console.log('Error XML, Invalid data')
+                res.status(200).send(null)
+            }
+        } else {
+            console.log('Error XML, Invalid data')
+            res.status(200).send(null)
         }
     } catch (e) {
         console.log(e)

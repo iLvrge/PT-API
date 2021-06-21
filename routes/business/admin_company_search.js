@@ -542,9 +542,9 @@ route.put("/company/transactions/:customerID", [authJWT.verifyToken, authJWT.isA
 
 
 
-route.get("/company/law_firms", [authJWT.verifyToken, authJWT.isAdmin, authJWT.addClientID, clientDBConnection.connect], async (req, res, next) => {
+route.get("/company/law_firms", [authJWT.verifyToken, authJWT.isAdmin], async (req, res, next) => {
     try {        
-        const query = req.query.search;
+        /*const query = req.query.search;
         const where = {law_firm_id:{[connection.Op.gt]: 0}};
         
         if(query != undefined && query != null) {
@@ -563,12 +563,74 @@ route.get("/company/law_firms", [authJWT.verifyToken, authJWT.isAdmin, authJWT.a
                 }
             ]
         });
+        */
+
+        const query = `SELECT law_firm_id, name, (SELECT COUNT(assignment.rf_id) FROM db_uspto.assignment AS assignment WHERE assignment.law_firm_id = law_firms.law_firm_id) AS counter, instances AS total_occurences, representative_law_firm.representative_id, representative_law_firm.representative_name FROM db_uspto.law_firm AS law_firms LEFT JOIN db_uspto.representative_law_firm AS representative_law_firm ON representative_law_firm.representative_id =  law_firms.representative_id WHERE MATCH(name) AGAINST(:search IN BOOLEAN MODE)`
+
+        const findAllLawFirms = await connection.resources.query(query,{
+            type: connection.Sequelize.QueryTypes.SELECT,
+            raw: true,
+            replacements: { search: req.query.search },
+            logging: console.log,
+            }
+        );
+
         res.status(200).json(findAllLawFirms);
     } catch(e) {
         console.log(e);
         res.status(402).send("Unable to retrieve data.");
     }
 });
+
+route.get("/company/law_firms/:id/companies", [authJWT.verifyToken, authJWT.isAdmin], async (req, res, next) => {
+    try{
+        const {id} = req.params
+        let querySearchResult = []
+
+        const query = `SELECT law_firm_id FROM db_uspto.law_firm AS law_firm WHERE law_firm.representative_id IN (SELECT representative_law_firm.representative_id FROM db_uspto.representative_law_firm AS representative_law_firm INNER JOIN db_uspto.law_firm AS law_firm ON representative_law_firm.representative_id = law_firm.representative_id WHERE law_firm.law_firm_id = :lawfirmID) AND law_firm.representative_id > 0`
+
+        const findAllLawFirms = await connection.resources.query(query,{
+                type: connection.Sequelize.QueryTypes.SELECT,
+                raw: true,
+                replacements: { lawfirmID: id },
+                logging: console.log,
+            }
+        );
+
+        if( findAllLawFirms.length > 0 ) {
+            const firmIDs = []
+            const promise = findAllLawFirms.map( lawfirm => firmIDs.push(lawfirm.law_firm_id))
+
+            await Promise.all(promise)
+
+            if( firmIDs.length > 0 ) {
+                const  queryCompany = `SELECT a.assignor_and_assignee_id as id, a.assignor_and_assignee_id, a.name, a.instances as counter, c.representative_name as normalize_name, (select rr.representative_name FROM representative as rr WHERE rr.representative_name = a.name GROUP BY rr.representative_name) as representative_company, (SELECT concat(ass.reel_no,'-', ass.frame_no) FROM assignee as ee INNER JOIN assignment as ass ON ass.rf_id = ee.rf_id  WHERE ee.assignor_and_assignee_id = a.assignor_and_assignee_id  LIMIT 1) as assigneeRFID, (SELECT concat(asss.reel_no,'-', asss.frame_no) FROM assignor as assi INNER JOIN assignment as asss ON asss.rf_id = assi.rf_id WHERE assi.assignor_and_assignee_id = a.assignor_and_assignee_id LIMIT 1) as assignorRFID  FROM assignor_and_assignee as a 
+                LEFT JOIN representative as c ON c.representative_id = a.representative_id 
+                INNER JOIN LATERAL (Select assignee.assignor_and_assignee_id from assignment
+                    INNER JOIN assignee ON assignee.rf_id = assignment.rf_id
+                    WHERE date_format(assignment.record_dt, '%Y') >= :year AND assignee.assignor_and_assignee_id = a.assignor_and_assignee_id
+                    GROUP BY assignee.ee_name                
+                    UNION 
+                    Select assignor.assignor_and_assignee_id from assignment
+                    INNER JOIN assignor ON assignor.rf_id = assignment.rf_id
+                    WHERE date_format(assignment.record_dt, '%Y') >= :year AND assignor.assignor_and_assignee_id = a.assignor_and_assignee_id
+                    GROUP BY assignor.or_name) as tempAssignorAndAssignee 
+                WHERE a.assignor_and_assignee_id IN (SELECT assignor_and_assignee_id FROM assignee INNER JOIN assignment ON assignment.rf_id = assignee.rf_id WHERE assignment.law_firm_id IN (:lawFirmIDs) GROUP BY assignor_and_assignee_id) OR a.assignor_and_assignee_id IN (SELECT assignor_and_assignee_id FROM assignor INNER JOIN assignment ON assignment.rf_id = assignor.rf_id WHERE assignment.law_firm_id IN (:lawFirmIDs) GROUP BY assignor_and_assignee_id) GROUP BY a.name ORDER BY counter DESC`;
+
+                querySearchResult = await connection.resources.query(queryCompany,{
+                    type: connection.Sequelize.QueryTypes.SELECT,
+                    raw: true,
+                    replacements: { lawFirmIDs: firmIDs, year: 2000 },
+                    logging: console.log,
+                });
+            }
+        }
+        res.status(200).json(querySearchResult);
+    } catch(e) {
+        console.log(e);
+        res.status(402).send("Unable to retrieve data.");
+    }
+})
 
 route.get("/company/law_firms/:id", [authJWT.verifyToken, authJWT.isAdmin, authJWT.addClientID, clientDBConnection.connect], async (req, res, next) => {
     try {
@@ -680,11 +742,13 @@ route.get("/company/law_firms/:id", [authJWT.verifyToken, authJWT.isAdmin, authJ
     }
 });
 
-route.put("/company/law_firms", [authJWT.verifyToken, authJWT.isAdmin, authJWT.addClientID, clientDBConnection.connect], async (req, res, next) => {
+/* route.put("/company/law_firms", [authJWT.verifyToken, authJWT.isAdmin, authJWT.addClientID, clientDBConnection.connect], async (req, res, next) => { */
+route.put("/company/law_firms", [authJWT.verifyToken, authJWT.isAdmin], async (req, res, next) => {
     try{
         let IDs = JSON.parse(req.body.law_firm_ids), normalize_name = req.body.normalize_name;
 
-        const otherIDs = [];
+        
+        const client_id = req.body.client_id , otherIDs = [];
 
         if(IDs.length > 0) {
             if(normalize_name != '') {

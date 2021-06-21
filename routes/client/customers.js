@@ -6,6 +6,8 @@ const express = require("express"),
 
     connection = require("../../config/db.config"),
 
+    Address = require("../../model/client/Address"),
+
     helpers = require("../../helpers/helper"),
 
     authJWT = require("../../helpers/verifyJwtToken"),
@@ -581,6 +583,218 @@ route.get("/:layout/transactions", [authJWT.verifyToken, clientDBConnection.conn
         console.log(err);
         res.status(500).send("Internal server error.");
     }
+})
+
+route.post("/transactions/groupids", [authJWT.verifyToken], async(req, res, next) => {
+    try{
+        let { group_ids } = req.body, transactions = {list: [], total_records: 0}
+        
+        if( group_ids != '') {
+            const replacements = {}
+            if(group_ids && group_ids != '') {
+                group_ids = JSON.parse( group_ids )
+                replacements.rfIDs = group_ids
+            }
+
+            transactions.list = await connection.applicationNew.query("	WITH trans AS (SELECT assignor.rf_id, assignor.exec_dt AS `date`,  (SELECT COUNT(DISTINCT documentid.appno_doc_num) FROM db_uspto.documentid AS documentid  WHERE documentid.rf_id = assignor.rf_id) AS `assets` FROM db_uspto.assignor AS assignor WHERE  assignor.rf_id IN (:rfIDs) GROUP BY assignor.rf_id ) SELECT rf_id, `date`, `assets`, SUM(`assets`) OVER (ORDER BY rf_id) AS grand_total FROM trans;",{
+                type: connection.Sequelize.QueryTypes.SELECT,
+                raw: true,
+                logging: console.log,
+                replacements: replacements,
+            })
+            transactions.total_records = transactions.list.length
+            res.status(200).json(transactions);
+        } else {
+            res.status(200).json(transactions);
+        }        
+    } catch(err) {
+        res.status(500).send("Internal server error.");
+    }
+})
+
+route.get("/transactions/address", [authJWT.verifyToken], async(req, res, next) => {
+    try {
+        let {companies, tabs, customers, limit, offset } = req.query,
+            layoutID = 15
+            
+        const replacements =  { 
+                            companies: '', 
+                            organisationID: req.orgId, 
+                            tabs: '',
+                            customers: '',
+                            assignments: '',
+                            layoutID: layoutID
+                        },
+            transactions = {
+                        list: [], 
+                        total_records: 0
+                    }
+        
+        replacements.layoutID = helpers.findLayout(req.params.layout)        
+
+        if(companies && companies != '') {
+            companies = JSON.parse( companies )
+            replacements.companies = companies.join(',')
+        }
+
+        if(tabs && tabs != '') {
+            tabs = JSON.parse( tabs )
+            replacements.tabs = tabs.join(',')
+        }
+
+        if(customers && customers != '') {
+            customers = JSON.parse( customers )
+            replacements.customers = customers.join(',')
+        } 
+        
+        connection.applicationNew.query(`CALL routine_correct_address (:companies, :organisationID, :tabs, :customers, :layoutID);`,{
+            type: connection.Sequelize.QueryTypes.SELECT,
+            raw: true,
+            logging: console.log,
+            replacements: replacements,
+            }
+        ).spread(result => {
+            if (result) {
+                transactions.list = Object.values(result)
+                transactions.total_records = transactions.list.length
+            }
+            res.status(200).json(transactions);
+        })
+    } catch ( err ) {
+        console.log(err);
+        res.status(500).send("Internal server error.");
+    }
+})
+
+route.get("/transactions/name", [authJWT.verifyToken], async(req, res, next) => {
+    try {
+        let {companies, tabs, customers, limit, offset } = req.query           
+            
+        const replacements =  { 
+                            companies: '', 
+                            organisationID: req.orgId, 
+                            tabs: '',
+                            customers: '',
+                            assignments: '',
+                        },
+            transactions = {
+                        list: [], 
+                        total_records: 0
+                    }
+        
+        
+
+        if(companies && companies != '') {
+            companies = JSON.parse( companies )
+            replacements.companies = companies.join(',')
+        }
+
+        if(tabs && tabs != '') {
+            tabs = JSON.parse( tabs )
+            replacements.tabs = tabs.join(',')
+        }
+
+        if(customers && customers != '') {
+            customers = JSON.parse( customers )
+            replacements.customers = customers.join(',')
+        } 
+        
+        connection.applicationNew.query(`CALL routine_correct_names (:companies, :organisationID, :tabs, :customers);`,{
+            type: connection.Sequelize.QueryTypes.SELECT,
+            raw: true,
+            logging: console.log,
+            replacements: replacements,
+            }
+        ).spread(result => {
+            if (result) {
+                transactions.list = Object.values(result)
+                transactions.total_records = transactions.list.length
+            }
+            res.status(200).json(transactions);
+        })
+    } catch ( err ) {
+        console.log(err);
+        res.status(500).send("Internal server error.");
+    }
+})
+
+route.post("/transactions/queues/address", [authJWT.verifyToken, clientDBConnection.connect], async(req, res, next) => {
+    try {
+        let { group_ids, new_address, company_ids } = req.body, getList = []
+
+        if( group_ids != '' ) {
+            group_ids = JSON.parse(group_ids)
+            company_ids = JSON.parse(company_ids)
+
+            const Addresses = req.connection_db.define('Address', Address.mainStructure, Address.options);
+
+            const getAddressData = await Addresses.findOne({
+                attributes: ['address_id', 'street_address','suite','city','state','country','zip_code'],
+                where:{ address_id: new_address}                        
+            });
+
+            if( getAddressData != null ) {
+                const assigneeNewAddress = `${getAddressData.street_address} ${getAddressData.suite} ${getAddressData.city} ${getAddressData.state} ${getAddressData.zip_code} ${getAddressData.country}`.trim()
+                const query = `SELECT assignment.rf_id AS id, ${new_address} AS new_address_id, IF( assignee.original_name != '', assignee.original_name, assignee.ee_name ) AS name, TRIM(CONCAT(assignee.ee_address_1, " ", assignee.ee_address_2, " ", assignee.ee_city, " ", assignee.ee_state, " ", assignee.ee_postcode, " ", assignee.ee_country )) AS current_address, "${assigneeNewAddress}" as new_address, assignment_conveyance.convey_ty, (SELECT date_format(assignor.exec_dt, "%b %d, %Y") FROM db_uspto.assignor AS assignor WHERE assignor.rf_id = assignment.rf_id LIMIT 1)  AS exec_dt, date_format(record_dt, "%b %d, %Y") AS record_dt, (SELECT COUNT(documentid.appno_doc_num) FROM db_uspto.documentid AS documentid WHERE documentid.rf_id =  assignment.rf_id) AS assets, IF(cname != '', cname, caddress_1) AS original_correspondence FROM db_uspto.assignment AS assignment INNER JOIN db_uspto.assignment_conveyance AS assignment_conveyance ON assignment_conveyance.rf_id = assignment.rf_id INNER JOIN db_uspto.assignee AS assignee ON assignee.rf_id = assignment.rf_id WHERE assignee.assignor_and_assignee_id IN (SELECT assignor_and_assignee_id FROM db_uspto.list1 WHERE company_id IN (:companyIDs) AND organisation_id = :organisation_id) AND assignment.rf_id IN (:rfIDs)`
+
+
+                const replacements = { organisation_id: req.orgId, companyIDs: company_ids, rfIDs: group_ids}
+
+                getList = await connection.applicationNew.query(query,{
+                    type: connection.Sequelize.QueryTypes.SELECT,
+                    raw: true,
+                    logging: console.log,
+                    replacements: replacements,
+                    }
+                )
+            }
+        }
+        res.status(200).json(getList);
+    } catch (err) {
+        console.log("/transactions/queues/address", err)
+        res.status(500).send("Internal server error.")
+    }    
+})
+
+route.post("/transactions/queues/name", [authJWT.verifyToken, clientDBConnection.connect], async(req, res, next) => {
+    try {
+        let { group_ids, new_name, company_ids } = req.body, getList = []
+
+        if( group_ids != '' ) {
+            group_ids = JSON.parse(group_ids)
+            
+            if( new_name == undefined || new_name == 'undefined') {
+                const Representative = req.connection_db.define('Representatives', Representatives.mainStructure, Representatives.options);
+
+                const getNameData = await Representative.findOne({
+                    attributes: ['representative_name'],
+                    where:{ representative_id: company_ids}                        
+                });
+                if(getNameData != null) {
+                    new_name = getNameData.get('representative_name')
+                }
+            }            
+            if( new_name != null && new_name != '' && new_name != 'undefined') {
+                
+                const query = `SELECT assignment.rf_id AS id, IF( assignee.original_name != '', assignee.original_name, assignee.ee_name ) AS name, TRIM(CONCAT(assignee.ee_address_1, " ", assignee.ee_address_2, " ", assignee.ee_city, " ", assignee.ee_state, " ", assignee.ee_postcode, " ", assignee.ee_country )) AS current_address, "${new_name.toString().toUpperCase()}" as new_name, assignment_conveyance.convey_ty, (SELECT date_format(assignor.exec_dt, "%b %d, %Y") FROM db_uspto.assignor AS assignor WHERE assignor.rf_id = assignment.rf_id LIMIT 1)  AS exec_dt, date_format(record_dt, "%b %d, %Y") AS record_dt, (SELECT COUNT(documentid.appno_doc_num) FROM db_uspto.documentid AS documentid WHERE documentid.rf_id =  assignment.rf_id) AS assets, IF(cname != '', cname, caddress_1) AS original_correspondence FROM db_uspto.assignment AS assignment INNER JOIN db_uspto.assignment_conveyance AS assignment_conveyance ON assignment_conveyance.rf_id = assignment.rf_id INNER JOIN db_uspto.assignee AS assignee ON assignee.rf_id = assignment.rf_id WHERE assignee.assignor_and_assignee_id IN (SELECT assignor_and_assignee_id FROM db_uspto.list1 WHERE company_id = :companyIDs AND organisation_id = :organisation_id) AND assignment.rf_id IN (:rfIDs)`
+
+
+                const replacements = { organisation_id: req.orgId, companyIDs: company_ids, rfIDs: group_ids}
+
+                getList = await connection.applicationNew.query(query,{
+                    type: connection.Sequelize.QueryTypes.SELECT,
+                    raw: true,
+                    logging: console.log,
+                    replacements: replacements,
+                    }
+                )
+            }
+        }
+        res.status(200).json(getList);
+    } catch (err) {
+        console.log("/transactions/queues/address", err)
+        res.status(500).send("Internal server error.")
+    }    
 })
 
 route.get("/:layout/parties", [authJWT.verifyToken, clientDBConnection.connect], async(req, res, next) => {

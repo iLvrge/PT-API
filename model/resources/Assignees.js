@@ -9,6 +9,10 @@ const Assignees = connection.resources.define('assignee',{
         type: Sequelize.INTEGER,
         primaryKey: true,
         autoIncrement: true
+    }, 
+    original_name:{
+        type: Sequelize.STRING,
+        allowNull: false,
     },  
     ee_name:{
         type: Sequelize.STRING,
