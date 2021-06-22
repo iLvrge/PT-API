@@ -31,7 +31,7 @@ route.get("/family/:applicationNumber", [authJWT.verifyToken], async (req, res) 
             * Custom SubQuery
             */
     
-            const queryFamily = 'SELECT * FROM patent_family_member WHERE family_id = (SELECT family_id FROM patent_family_member WHERE patent_number = :patentNumber LIMIT 1)';
+            const queryFamily = 'SELECT * FROM patent_family_member WHERE family_id = (SELECT family_id FROM patent_family_member WHERE patent_number = :patentNumber AND family_id > 0 LIMIT 1) OR (patent_number = :patentNumber AND family_id = 0)';
     
             getFamily = await connection.resources.query(queryFamily,{
                 type: connection.Sequelize.QueryTypes.SELECT,
