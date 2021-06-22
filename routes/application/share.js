@@ -1,10 +1,9 @@
-const express = require("express");
+const express = require("express"), 
+    route = express.Router(), 
+    authJWT = require("../../helpers/verifyJwtToken"), 
+    helpers = require("../../helpers/helper"),
+    connection = require("../../config/db.config");
 
-const route = express.Router();
-
-const authJWT = require("../../helpers/verifyJwtToken");
-
-const helpers = require("../../helpers/helper");
 
 route.post("/share", [authJWT.verifyToken], async (req, res) =>{     
     const params = req.body;
@@ -68,9 +67,17 @@ route.get("/share/:code", async (req, res) =>{
         if( code != "") {
             const share = await helpers.getShareList(code);
             if( share != null ) {
-                req.orgId = share.organisation_id;
-                req.userId = share.user_id;
-                res.status(200).json(share)
+                const query = `SELECT logo FROM db_business.organisation WHERE organisation_id IN (SELECT organisation_id FROM db_new_application.share WHERE code = :code)`
+                
+                const findCompanyLogo = await connection.applicationNew.query(query,{
+                    type: connection.Sequelize.QueryTypes.SELECT,
+                    raw: true,
+                    logging: console.log,
+                    replacements: {code},
+                    plain: true
+                })    
+                console.log('findCompanyLogo', findCompanyLogo)            
+                res.status(200).json({list: share, logo: findCompanyLogo != null ? findCompanyLogo.logo : ''})
             } else {
                 res.status(500).send("Invalid url.");
             }
