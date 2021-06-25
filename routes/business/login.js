@@ -16,6 +16,52 @@ const config = require("../../config/db.config");
 
 const User = require("../../model/business/Users");
 
+route.get("/authenticate/:code", async(req, res, next) => {
+
+    try{
+        const query = `SELECT organisation_id FROM db_business.organisation WHERE uuid = UUID_TO_BIN(:binToUUID) AND status = 0`
+
+        const replacements = { binToUUID : req.params.code  }
+    
+        const findOrg = await config.resources.query(query,{
+                type: config.Sequelize.QueryTypes.SELECT,
+                replacements: replacements,
+                raw: true,
+                plain: true,
+                logging: console.log,
+            }
+        );
+    
+        let response = { auth: false, accessToken: null, message: "Bad inputs"}
+    
+        if( findOrg != null ) {
+            const findAdminUser = await User.findOne({
+                                        where: {
+                                            type: 1,
+                                            status: 0,
+                                            organisation_id: findOrg.organisation_id
+                                        }
+                                    })
+            
+            if( findAdminUser && findAdminUser != null ) {
+                const currentDate = Date.now();
+    
+                const expiredDate = moment(new Date(currentDate)).add(1,'days').valueOf();
+    
+                token = jwt.sign({ id: findAdminUser.user_id, orgId: findAdminUser.organisation_id, iat: currentDate, expired: expiredDate }, config.config.secret, {
+                    expiresIn: 86400 // expires in 24 hours,
+                });
+        
+                response = { auth: true, accessToken: token, message: "Login successfully!"}
+            }                        
+        }
+        res.status(200).send(response);
+    } catch( err ) {
+        console.log('err', err)
+        res.status(401).send('Bad inputs');
+    }    
+})
+
 
 route.post("/signin", (req, res, next) => {
 

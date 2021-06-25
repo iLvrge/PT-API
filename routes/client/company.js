@@ -121,7 +121,7 @@ route.get("/summary", [authJWT.verifyToken, clientDBConnection.connect], async(r
 route.get("/list", [authJWT.verifyToken, clientDBConnection.connect], async(req, res, next) => {
     try{
         if(typeof req.connection_db != "undefined" && req.connection_db != null ) {
-            const { offset } = req.query;
+            const { offset, limit } = req.query;
 
             const Representative = req.connection_db.define('Representatives', Representatives.mainStructure, Representatives.options);
 
@@ -129,8 +129,8 @@ route.get("/list", [authJWT.verifyToken, clientDBConnection.connect], async(req,
 
             const total_records = await Representative.count( where );
 
-            where.limit = connection.DEFAULT_LIMIT;
-            where.offset = offset > 0 ? parseInt(offset) : 0;
+            /*where.limit = limit > 0 ? parseInt(limit) : connection.DEFAULT_LIMIT;
+            where.offset = offset > 0 ? parseInt(offset) : 0;*/
             where.order = [
                 ['original_name', 'ASC'],
                 ['representative_name', 'ASC']

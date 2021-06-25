@@ -30,7 +30,7 @@ const createChannelID = async(token, params) => {
     return result
 }
 
-const creatChannelTopic = async(token, channel, asset) => {
+const createChannelTopic = async(token, channel, asset) => {
 
     let result = {}
     try {       
@@ -333,7 +333,7 @@ route.post("/conversations/message/:token", [authJWT.verifyToken, clientDBConnec
 
             if(channel_id == '' || channel_id == undefined) {
 
-                const findChannel = await AssetChannel.findOne({
+                /* const findChannel = await AssetChannel.findOne({
                     attributes: ['channel_id'],
                     where: {asset: asset}
                 })
@@ -347,7 +347,7 @@ route.post("/conversations/message/:token", [authJWT.verifyToken, clientDBConnec
                             channel_id = channel.id
 
                             // setTopic
-                            creatChannelTopic(token, channel_id, asset)
+                            createChannelTopic(token, channel_id, asset)
                             AssetChannel.create({
                                 channel_id: channel_id,
                                 asset: asset
@@ -356,7 +356,20 @@ route.post("/conversations/message/:token", [authJWT.verifyToken, clientDBConnec
                     } 
                 } else {
                     channel_id = findChannel.channel_id
-                }                
+                } */
+                
+                const channelResult = await createChannelID(token, {name: asset_format.toString().toLowerCase(), is_private: false}) //create public channel
+    
+                if(channelResult != null ) {
+                    if(channelResult && channelResult.ok === true) {
+                        const { channel } = channelResult
+                        channel_id = channel.id
+
+                        // setTopic
+                        createChannelTopic(token, channel_id, asset)
+
+                    }
+                }
             }
 
             if(channel_id != "") {
@@ -529,7 +542,51 @@ route.get("/asset/:asset", [authJWT.verifyToken, clientDBConnection.connect] , a
 })
 
 
-route.get("/channels", [authJWT.verifyToken, clientDBConnection.connect], async(req, res, next) => {
+route.get("/channels/:token", [authJWT.verifyToken, clientDBConnection.connect], async(req, res, next) => {
+    try{
+        const { token } = req.params;
+        
+        const showChannels = (channels) => {
+            res.status( 200 ).json( channels )
+        }
+
+        await retrieveAllChannels(token, showChannels)              
+    } catch( e ) {
+        console.log( e )
+        res.status( 200 ).json([])
+    }
+})
+
+const retrieveAllChannels = async(token, callback) => {
+    const web = new WebClient(token);
+    const reteivePageOfChannels = async(nextPageToken, result) => {
+        const request = {
+            limit : 1000,
+        }
+        if(nextPageToken != '') {
+            request.cursor = nextPageToken
+        }
+
+        const response = await web.conversations.list(request) 
+
+        if(response) {
+            result = result.concat(response.channels);
+
+            nextPageToken = response.response_metadata.next_cursor;
+
+            if(nextPageToken && nextPageToken != '') {
+                await reteivePageOfChannels(nextPageToken, result)
+            } else {
+                callback(result)
+            }
+        } else {
+            callback(result)
+        }
+    }
+    await reteivePageOfChannels('', []);
+}
+
+/* route.get("/channels", [authJWT.verifyToken, clientDBConnection.connect], async(req, res, next) => {
     try{
         const AssetChannel = req.connection_db.define('AssetsChannel', AssetsChannel.mainStructure, AssetsChannel.options);
         const list = await AssetChannel.findAll({
@@ -540,7 +597,7 @@ route.get("/channels", [authJWT.verifyToken, clientDBConnection.connect], async(
         console.log( e )
         res.status( 200 ).json([])
     }
-})
+}) */
 
 
 route.get("/channel/:channelID/files/:token" , async(req, res, next) => {

@@ -61,7 +61,7 @@ route.get("/events/", [authJWT.verifyToken, clientDBConnection.connect], async(r
 });
 
 route.get("/timeline", [authJWT.verifyToken], async(req, res, next) => {
-    let {companies, tabs, customers, rf_ids, layout, limit, offset } = req.query, list = [], groups = []
+    let {companies, tabs, customers, rf_ids, layout, exclude, limit, offset } = req.query, list = [], groups = []
     try {                
         
         const replacements = { organisation_id: req.orgId, year: 2000 }
@@ -108,6 +108,11 @@ route.get("/timeline", [authJWT.verifyToken], async(req, res, next) => {
             query += " AND activity_parties_transactions.activity_id IN (:tabs)"
             groupQuery += " AND activity_parties_transactions.activity_id IN (:tabs)"
             replacements.tabs = tabs
+        }
+
+        if(exclude == undefined || exclude == 'undefined') {
+            query += " AND activity_parties_transactions.activity_id NOT IN (10)"
+            groupQuery += " AND activity_parties_transactions.activity_id NOT IN (10)"
         }
 
         if( customers.length > 0 ) {
@@ -596,7 +601,7 @@ route.post("/transactions/groupids", [authJWT.verifyToken], async(req, res, next
                 replacements.rfIDs = group_ids
             }
 
-            transactions.list = await connection.applicationNew.query("	WITH trans AS (SELECT assignor.rf_id, assignor.exec_dt AS `date`,  (SELECT COUNT(DISTINCT documentid.appno_doc_num) FROM db_uspto.documentid AS documentid  WHERE documentid.rf_id = assignor.rf_id) AS `assets` FROM db_uspto.assignor AS assignor WHERE  assignor.rf_id IN (:rfIDs) GROUP BY assignor.rf_id ) SELECT rf_id, `date`, `assets`, SUM(`assets`) OVER (ORDER BY rf_id) AS grand_total FROM trans;",{
+            transactions.list = await connection.applicationNew.query("	WITH trans AS (SELECT assignment.cname, assignment.caddress_1, assignor.rf_id, assignor.exec_dt AS `date`,  (SELECT COUNT(DISTINCT documentid.appno_doc_num) FROM db_uspto.documentid AS documentid  WHERE documentid.rf_id = assignor.rf_id) AS `assets` FROM db_uspto.assignor AS assignor INNER JOIN db_uspto.assignment AS assignment ON assignment.rf_id = assignor.rf_id  WHERE  assignor.rf_id IN (:rfIDs) GROUP BY assignor.rf_id ) SELECT rf_id, IF(cname != '', cname, caddress_1) AS name, `date`, `assets`, SUM(`assets`) OVER (ORDER BY rf_id) AS grand_total FROM trans;",{
                 type: connection.Sequelize.QueryTypes.SELECT,
                 raw: true,
                 logging: console.log,

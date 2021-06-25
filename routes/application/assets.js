@@ -342,7 +342,7 @@ route.get("/assets/:patentNumber/files/:channelID/slack/:token", [authJWT.verify
                 
                         const params = {
                             pageSize: 1000,
-                            fields: 'nextPageToken, files(id, name, mimeType, webContentLink, webViewLink, iconLink, thumbnailLink, exportLinks)',
+                            fields: 'nextPageToken, files(id, name, mimeType, webContentLink, webViewLink, iconLink, thumbnailLink, exportLinks, createdTime, owners)',
                             q: `'${getRepo.container_id}' in parents`,
                             orderBy: 'folder,name'
                         }

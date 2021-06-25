@@ -203,7 +203,11 @@ let searchCompany = async(query, t) => {
                 INNER JOIN assignor ON assignor.rf_id = assignment.rf_id
                 WHERE date_format(assignment.record_dt, '%Y') >= :year AND assignor.assignor_and_assignee_id = a.assignor_and_assignee_id
                 GROUP BY assignor.or_name) as tempAssignorAndAssignee 
-            WHERE MATCH(a.name) AGAINST (:search IN BOOLEAN MODE) GROUP BY a.name ORDER BY counter DESC`;
+            WHERE MATCH(a.name) AGAINST (:search IN BOOLEAN MODE) ` ;
+
+            
+
+            queryCompany += ` GROUP BY a.name ORDER BY counter DESC`;
 
             let querySearchResult = await connection.resources.query(queryCompany,{
                 type: connection.Sequelize.QueryTypes.SELECT,
@@ -2344,7 +2348,20 @@ const findLayout = (layout) => {
     return layoutID
 }
 
+const ArrayInterString = (data) => {
+    const result = Object.entries(data).reduce((r, [k, o]) => {
+        r[k] = Object.entries(o).reduce((r, [k, v]) => {
+            let _v = Number(v);
+            if(!Number.isNaN(_v)) { v = _v; }
+            return (r[k] = v, r);
+        }, {});
+        return r;
+    }, {});
+    return result
+}
+
 const helper = {};
+helper.ArrayInterString = ArrayInterString;
 helper.getXML = getXML;
 helper.findMaxMin = findMaxMin;
 helper.findLayout = findLayout;
