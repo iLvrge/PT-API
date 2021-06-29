@@ -8,7 +8,11 @@ const Organisations = connection.business.define('organisation',{
         type: Sequelize.INTEGER,
         primaryKey: true,
         autoIncrement: true
-    },        
+    },  
+    uuid:{
+        type: Sequelize.STRING.BINARY,
+        allowNull: true,
+    },       
     name:{
         type: Sequelize.INTEGER,
         allowNull: false,

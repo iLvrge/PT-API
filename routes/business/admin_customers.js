@@ -189,17 +189,27 @@ route.delete("/users/:user_id", [authJWT.verifyToken, authJWT.isAdmin], async (r
  * Get customer by ID
  */
 
-route.get("/customers/:id", [authJWT.verifyToken, authJWT.isAdmin], (req, res, next) => {
+route.get("/customers/:id", [authJWT.verifyToken, authJWT.isAdmin], async(req, res, next) => {
     (async () => {
         try{
             let organisationID = req.params.id;
             if(organisationID > 0){
-                let org = await helpers.findOrganisationbyID( organisationID );
+
+                const query = "SELECT BIN_TO_UUID(`uuid`) AS `standard`, `organisation_id`, `name`, `address`, `team`, `phone_number`, `email_address`, `logo`, `linkedin_url`, `zipcode`, `city`, `state`, `country_id`, `type`, `status` FROM db_business.`organisation` AS `organisation` WHERE `organisation`.`organisation_id` = :organisationID";   
+
+                const org =  await connection.resources.query(query,{
+                    type: connection.Sequelize.QueryTypes.SELECT,
+                    replacements: { organisationID: organisationID },
+                    raw: true,
+                    plain: true,
+                    logging: console.log,
+                    }
+                );               
                 if(org != null && org.organisation_id > 0) {
-                    res.status(200).json({name: org.name, organisation_id: org.organisation_id, logo: org.logo});
+                    res.status(200).json({name: org.name, organisation_id: org.organisation_id, logo: org.logo, standard: org.standard});
                 } else {
                     res.status(402).send("Not found");
-                }
+                } 
             } else {
                 res.status(402).send("Not found ");
             } 
@@ -817,6 +827,15 @@ route.post("/customers", [authJWT.verifyToken, authJWT.isAdmin], async (req, res
                 /**
                  * Run script for creating database
                  */
+                const query = "UPDATE db_business.organisation SET uuid=UUID_TO_BIN(UUID()) WHERE organisation_id = :organisation_id"
+                
+                await connection.resources.query(query,{
+                    type: connection.Sequelize.QueryTypes.SELECT,
+                    replacements: { organisation_id: organisationID },
+                    raw: true,
+                    logging: console.log,
+                });
+
                 console.log(`php -f /var/www/html/trash/script_create_customer_db.php "${organisationID}"`);
                 await exec(`php -f /var/www/html/trash/script_create_customer_db.php "${organisationID}"`, async (error, std, stderr) => {
                     console.log("script_create_customer_db");
