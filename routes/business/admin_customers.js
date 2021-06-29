@@ -196,7 +196,7 @@ route.get("/customers/:id", [authJWT.verifyToken, authJWT.isAdmin], (req, res, n
             if(organisationID > 0){
                 let org = await helpers.findOrganisationbyID( organisationID );
                 if(org != null && org.organisation_id > 0) {
-                    res.status(200).json({name: org.name, organisation_id: org.organisation_id, logo: org.logo});
+                    res.status(200).json({name: org.name, organisation_id: org.organisation_id, logo: org.logo, standard: org.get('standard')});
                 } else {
                     res.status(402).send("Not found");
                 }
@@ -814,6 +814,12 @@ route.post("/customers", [authJWT.verifyToken, authJWT.isAdmin], async (req, res
             }
             if(org != null && org.organisation_id > 0){
                 let organisationID = org.organisation_id;
+                await connection.resources.query(`UPDATE organisation SET uuid=UUID_TO_BIN(UUID()) WHERE organisation_id = :organisation_id`,{
+                    type: connection.Sequelize.QueryTypes.SELECT,
+                    replacements: { organisation_id: organisationID },
+                    raw: true,
+                    logging: console.log,
+                });
                 /**
                  * Run script for creating database
                  */

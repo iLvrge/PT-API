@@ -522,6 +522,7 @@ let findEntityAssets = async (assignorAssigneeID) => {
 
 let findOrganisationbyID = async (organisationID) => {
     return await Organisations.findOne({
+                    attributes: [[connection.Sequelize.fn('BIN_TO_UUID', connection.Sequelize.col('uuid')), 'standard'], 'organisation_id', 'name', 'address', 'team', 'phone_number', 'email_address', 'logo', 'linkedin_url', 'zipcode', 'city', 'state', 'country_id', 'type', 'status'], 
                     where: {organisation_id: organisationID}
                 });
 }
