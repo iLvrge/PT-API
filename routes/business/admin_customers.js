@@ -824,11 +824,12 @@ route.post("/customers", [authJWT.verifyToken, authJWT.isAdmin], async (req, res
             }
             if(org != null && org.organisation_id > 0){
                 let organisationID = org.organisation_id;
+               
                 /**
                  * Run script for creating database
                  */
                 const query = "UPDATE db_business.organisation SET uuid=UUID_TO_BIN(UUID()) WHERE organisation_id = :organisation_id"
-                
+
                 await connection.resources.query(query,{
                     type: connection.Sequelize.QueryTypes.SELECT,
                     replacements: { organisation_id: organisationID },
