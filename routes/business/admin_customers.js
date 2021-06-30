@@ -1093,17 +1093,24 @@ route.get("/customers/:organisation_id/:representative_id/missing_inventor", [au
         if(organisationID > 0){
             let org = await helpers.findOrganisationbyID( organisationID );
             if(org != null && org.organisation_id > 0) {
-                MissingInventorProcess
-                .create({organisation_id: org.organisation_id, representative_id: req.params.representative_id})
-                .then( data => {
-                    console.log(data);
-                    console.log(`php -f /var/www/html/trash/find_missing_from_api_inventor_xml.php "${organisationID}" "${req.params.representative_id}"`);
-                    exec(`php -f /var/www/html/trash/find_missing_from_api_inventor_xml.php "${organisationID}" "${req.params.representative_id}"`, (error, stdout, stderr) => {  
-                        console.log(error, stdout, stderr);
-                    });
-                    res.status(200).send("Finding the number of assignment with missing inventor.");
+                const findProcess = await MissingInventorProcess.findOne({
+                    where: {organisation_id: org.organisation_id, representative_id: req.params.representative_id, status: 0}
                 })
-                
+
+                if( findProcess == null ) {
+                    MissingInventorProcess
+                    .create({organisation_id: org.organisation_id, representative_id: req.params.representative_id, status: 0})
+                    .then( data => {
+                        console.log(data);
+                        console.log(`php -f /var/www/html/trash/find_missing_from_api_inventor_xml.php "${organisationID}" "${req.params.representative_id}"`);
+                        exec(`php -f /var/www/html/trash/find_missing_from_api_inventor_xml.php "${organisationID}" "${req.params.representative_id}"`, (error, stdout, stderr) => {  
+                            console.log(error, stdout, stderr);
+                        });
+                        res.status(200).send("Finding the number of assignment with missing inventor.");
+                    })
+                } else {
+                    res.status(200).send("Already in process.");
+                }
             } else {
                 res.status(402).send("Customer not exist.");
             }

@@ -1295,7 +1295,7 @@ let findCompanyEntitiesByAccountID = async(orgID, type, DBConnection) => {
         list.map(r => IDs.push(r.representative_id));
         let listIDs = [];
         if(IDs.length > 0) {
-            const queryRepresentativeTransactions = "SELECT rf_id FROM representative_transactions where organisation_id = :organisationID AND representative_id IN (:representativeIDs)";
+            const queryRepresentativeTransactions = "SELECT rf_id FROM representative_transactions where organisation_id = :organisationID AND representative_id IN (:representativeIDs) GROUP BY rf_id";
 
             listIDs = await connection.resources.query(queryRepresentativeTransactions,{
                 type: connection.Sequelize.QueryTypes.SELECT,
