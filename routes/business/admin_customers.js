@@ -54,6 +54,48 @@ const AWS  = require('aws-sdk');
  * List all customers
  */
 
+route.get("/customers/run_query/:representative_name/:query_no", [authJWT.verifyToken, authJWT.isAdmin], (req, res, next) => {
+    try{
+        const { representative_name, query_no } = req.params
+        console.log("ad", representative_name, query_no)
+        let  procedureName = null
+        switch(parseInt(query_no)) {
+            case 1:
+                procedureName = 'Table_A'
+                break;
+            case 2:
+                procedureName = 'Table_B'
+                break;
+            case 3:
+                procedureName = 'Table_C'
+                break;
+        }
+        if(procedureName != null) {
+            connection.resources.query(`CALL ${procedureName}(:representative_name);`,{
+                    type: connection.Sequelize.QueryTypes.SELECT,
+                    raw: true,
+                    logging: console.log,
+                    replacements: {representative_name},
+                }
+            ).spread(result => {
+                let reports = []
+                if (result) {
+                    reports = Object.values(result)
+                }
+                res.status(200).json(reports);
+            })
+        } else {
+            res.status(200).json([]);
+        }        
+    } catch( err ) {
+        console.log("Error: ", err)
+    }
+})
+
+/**
+ * List all customers
+ */
+
 route.get("/customers", [authJWT.verifyToken, authJWT.isAdmin], (req, res, next) => {
 
     Organisations.findAll({

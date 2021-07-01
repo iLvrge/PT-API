@@ -212,7 +212,7 @@ let searchCompany = async(query, t) => {
             let querySearchResult = await connection.resources.query(queryCompany,{
                 type: connection.Sequelize.QueryTypes.SELECT,
                 raw: true,
-                replacements: { search: search, year: 2000 },
+                replacements: { search: search, year: 1997 },
                 logging: console.log,
             }); 
             //let querySearchResult = [];
@@ -368,7 +368,7 @@ let searchCompanyByAddress = async( address ) => {
         searchResult = await connection.resources.query(queryCompany,{
             type: connection.Sequelize.QueryTypes.SELECT,
             raw: true,
-            replacements: { address: address, flag: 0, year: 2000},
+            replacements: { address: address, flag: 0, year: 1997},
             logging: console.log,
           }
         );
@@ -380,12 +380,19 @@ let searchCompanyByAddress = async( address ) => {
 let getAddressListByCompanyID = async( ID ) => {
     let addresses = [];
     if(ID > 0) {
-        const queryFindIDS = "SELECT ee_address_1 as address, rf_id FROM assignee WHERE ee_address_1 <> '' AND assignor_and_assignee_id = :ID GROUP BY ee_address_1 UNION SELECT ee_address_2 as address, rf_id FROM assignee WHERE ee_address_2 <> '' AND assignor_and_assignee_id = :ID GROUP BY ee_address_2";
+        const queryFindIDS = `SELECT address, rf_id FROM (SELECT ee_address_1 as address, assignee.rf_id FROM assignee 
+        INNER JOIN assignment ON assignment.rf_id = assignee.rf_id
+        WHERE  date_format(assignment.record_dt, '%Y') >= :year AND ee_address_1 <> '' AND assignor_and_assignee_id = :ID GROUP BY ee_address_1
+        UNION 
+    SELECT ee_address_2 as address, assignee.rf_id FROM assignee 
+        INNER JOIN assignment ON assignment.rf_id = assignee.rf_id
+        WHERE  date_format(assignment.record_dt, '%Y') >= :year AND ee_address_2 <> '' AND assignor_and_assignee_id = :ID 
+        GROUP BY ee_address_2) as temp GROUP BY address  ORDER BY address ASC`;
 
         addresses = await connection.resources.query(queryFindIDS,{
             type: connection.Sequelize.QueryTypes.SELECT,
             raw: true,
-            replacements: { ID: ID },
+            replacements: { ID: ID, year: 1997 },
             logging: console.log,
           }
         );
@@ -405,12 +412,12 @@ let searchCompanyIDByAddress = async( addresses ) => {
             } else {
                 listAddress.push('"'+ addresses + '"')
             }
-            const queryCompany = "SELECT a.assignor_and_assignee_id as id, a.assignor_and_assignee_id, a.name, a.instances as counter, c.representative_name as normalize_name, (select rr.representative_name FROM representative as rr WHERE rr.representative_name = a.name GROUP BY rr.representative_name) as representative_company, (SELECT concat(assign.reel_no,'-', assign.frame_no) FROM assignee as ee INNER JOIN assignment as assign ON assign.rf_id = ee.rf_id WHERE ee.assignor_and_assignee_id = a.assignor_and_assignee_id LIMIT 1) as assigneeRFID, (SELECT concat(asss.reel_no,'-', asss.frame_no) FROM assignor as assi INNER JOIN assignment as asss ON asss.rf_id = assi.rf_id WHERE assi.assignor_and_assignee_id = a.assignor_and_assignee_id LIMIT 1) as assignorRFID  FROM assignor_and_assignee as a LEFT JOIN representative as c ON c.representative_id = a.representative_id INNER JOIN assignee as ass ON ass.assignor_and_assignee_id = a.assignor_and_assignee_id INNER JOIN assignment ON ass.rf_id = assignment.rf_id WHERE date_format(assignment.record_dt, '%Y') >= :year AND MATCH(ass.ee_address_1, ass.ee_address_2) AGAINST (:address IN BOOLEAN MODE)  GROUP BY a.name ORDER BY counter DESC ";
+            const queryCompany = "SELECT a.assignor_and_assignee_id as id, a.assignor_and_assignee_id, a.name, a.instances as counter, c.representative_name as normalize_name, (select rr.representative_name FROM representative as rr WHERE rr.representative_name = a.name GROUP BY rr.representative_name) as representative_company, (SELECT concat(assign.reel_no,'-', assign.frame_no) FROM assignee as ee INNER JOIN assignment as assign ON assign.rf_id = ee.rf_id WHERE ee.assignor_and_assignee_id = a.assignor_and_assignee_id AND date_format(assign.record_dt, '%Y') >= :year  LIMIT 1) as assigneeRFID, (SELECT concat(asss.reel_no,'-', asss.frame_no) FROM assignor as assi INNER JOIN assignment as asss ON asss.rf_id = assi.rf_id WHERE assi.assignor_and_assignee_id = a.assignor_and_assignee_id AND date_format(asss.record_dt, '%Y') >= :year LIMIT 1) as assignorRFID  FROM assignor_and_assignee as a LEFT JOIN representative as c ON c.representative_id = a.representative_id INNER JOIN assignee as ass ON ass.assignor_and_assignee_id = a.assignor_and_assignee_id INNER JOIN assignment ON ass.rf_id = assignment.rf_id WHERE date_format(assignment.record_dt, '%Y') >= :year AND MATCH(ass.ee_address_1, ass.ee_address_2) AGAINST (:address IN BOOLEAN MODE)  GROUP BY a.name ORDER BY counter DESC ";
         
             searchResult = await connection.resources.query(queryCompany,{
                 type: connection.Sequelize.QueryTypes.SELECT,
                 raw: true,
-                replacements: { address: listAddress.join(' '), flag: 0, year: 2000},
+                replacements: { address: listAddress.join(' '), flag: 0, year: 1997},
                 logging: console.log,
                 }
             );      
