@@ -180,16 +180,16 @@ route.post("/assets/cpc", [authJWT.verifyToken], async(req, res, next) => {
 
                 if( range != undefined && range == 'undefined' && range != null) {
                     switch(parseInt(range)) {
-                        case 1:
+                        case 5:
                             rangeConcat = 'section'
                             break;
-                        case 2:
+                        case 4:
                             rangeConcat = 'CONCAT(section, class)'
                             break;
-                        case 4:
+                        case 2:
                             rangeConcat = 'CONCAT(section, class, sub_class, main_group)'
                             break;
-                        case 5:
+                        case 1:
                             rangeConcat = 'CONCAT(section, class, sub_class, main_group, sub_group)'
                             break;
                         default:
