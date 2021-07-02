@@ -86,6 +86,21 @@ route.get("/company/search/all/", [authJWT.verifyToken, authJWT.isAdmin], async 
     }
 });
 
+route.get("/lawfirm/:ID/search/address", [authJWT.verifyToken, authJWT.isAdmin], async (req, res, next) => {
+    try {
+        let lawfirmAddress = [];
+        const {ID} = req.params;	
+        // search by id
+        if(ID != null && ID != undefined && ID.length > 0) {            
+            lawfirmAddress  = await helpers.getAddressListByLawfirmID(ID);
+        }
+        res.status(200).json(lawfirmAddress);           
+    } catch(e) {
+        console.log(e);
+        res.status(402).send("Not found ");
+    } 
+});
+
 route.get("/company/:ID/search/address", [authJWT.verifyToken, authJWT.isAdmin], async (req, res, next) => {
     try {
         let companyAddress = [];
@@ -95,6 +110,22 @@ route.get("/company/:ID/search/address", [authJWT.verifyToken, authJWT.isAdmin],
             companyAddress  = await helpers.getAddressListByCompanyID(companyID);
         }
         res.status(200).json(companyAddress);           
+    } catch(e) {
+        console.log(e);
+        res.status(402).send("Not found ");
+    }
+});
+
+route.post("/lawfirm/:ID/search/address/all", [authJWT.verifyToken, authJWT.isAdmin], async (req, res, next) => {
+    try {
+        let searchCompanies = [];
+        let address = req.body['address[]']
+        const {ID} = req.params;	
+        
+        if(ID != null && ID != undefined && address.length > 0) {    
+            searchCompanies  = await helpers.searchLawfirmIDByAddress(address, 1);
+        }
+        res.status(200).json(searchCompanies);           
     } catch(e) {
         console.log(e);
         res.status(402).send("Not found ");

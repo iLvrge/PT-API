@@ -401,6 +401,54 @@ let getAddressListByCompanyID = async( ID ) => {
 }
 
 
+let getAddressListByLawfirmID = async( ID ) => {
+    let addresses = [];
+    if(ID > 0) {
+        const queryFindIDS = `SELECT TRIM(CONCAT(caddress_7, " ", caddress_5, " ", caddress_6, " ", caddress_3, " ", caddress_4)) AS address, rf_id FROM assignment 
+        WHERE  date_format(assignment.record_dt, '%Y') >= :year AND law_firm_id = :ID 
+        GROUP BY caddress_7, caddress_5, caddress_6, caddress_3, caddress_4
+        ORDER BY address ASC`;
+
+        addresses = await connection.resources.query(queryFindIDS,{
+                type: connection.Sequelize.QueryTypes.SELECT,
+                raw: true,
+                replacements: { ID: ID, year: 1997 },
+                logging: console.log,
+            }
+        );
+    }
+    return addresses;
+}
+
+let searchLawfirmIDByAddress = async( addresses ) => {
+    let searchResult = [];
+    try{
+        if(addresses.length > 0) {
+            const listAddress = []
+            if(typeof addresses.map === 'function' ) {
+                const promise = addresses.map(address => listAddress.push('"'+ address + '"'))
+                Promise.all(promise)
+            } else {
+                listAddress.push('"'+ addresses + '"')
+            }
+            const queryCompany = "SELECT a.assignor_and_assignee_id as id, a.assignor_and_assignee_id, a.name, a.instances as counter, c.representative_name as normalize_name, (select rr.representative_name FROM representative as rr WHERE rr.representative_name = a.name GROUP BY rr.representative_name) as representative_company, (SELECT concat(assign.reel_no,'-', assign.frame_no) FROM assignee as ee INNER JOIN assignment as assign ON assign.rf_id = ee.rf_id WHERE ee.assignor_and_assignee_id = a.assignor_and_assignee_id AND date_format(assign.record_dt, '%Y') >= :year  LIMIT 1) as assigneeRFID, (SELECT concat(asss.reel_no,'-', asss.frame_no) FROM assignor as assi INNER JOIN assignment as asss ON asss.rf_id = assi.rf_id WHERE assi.assignor_and_assignee_id = a.assignor_and_assignee_id AND date_format(asss.record_dt, '%Y') >= :year LIMIT 1) as assignorRFID  FROM assignor_and_assignee as a LEFT JOIN representative as c ON c.representative_id = a.representative_id INNER JOIN assignee as ass ON ass.assignor_and_assignee_id = a.assignor_and_assignee_id INNER JOIN assignment ON ass.rf_id = assignment.rf_id WHERE date_format(assignment.record_dt, '%Y') >= :year AND MATCH(assignment.caddress_7, assignment.caddress_5, assignment.caddress_6, assignment.caddress_3, assignment.caddress_4) AGAINST (:address IN BOOLEAN MODE)  GROUP BY a.name ORDER BY counter DESC ";
+        
+            searchResult = await connection.resources.query(queryCompany,{
+                type: connection.Sequelize.QueryTypes.SELECT,
+                raw: true,
+                replacements: { address: listAddress.join(' '), flag: 0, year: 1997},
+                logging: console.log,
+                }
+            );      
+        }
+    } catch (e) {
+        console.log(e)
+    }
+    
+    return searchResult;
+}
+
+
 let searchCompanyIDByAddress = async( addresses ) => {
     let searchResult = [];
     try{
@@ -2384,7 +2432,9 @@ helper.getCompanyListByOther = getCompanyListByOther;
 helper.searchCompany = searchCompany;
 helper.searchCompanyByAddress = searchCompanyByAddress;
 helper.searchCompanyIDByAddress = searchCompanyIDByAddress;
+helper.searchLawfirmIDByAddress = searchLawfirmIDByAddress;
 helper.getAddressListByCompanyID = getAddressListByCompanyID;
+helper.getAddressListByLawfirmID = getAddressListByLawfirmID;
 helper.checkRepresentativeCompany = checkRepresentativeCompany;
 helper.checkCustomerCompany = checkCustomerCompany;
 helper.getAllUsers = getAllUsers;
