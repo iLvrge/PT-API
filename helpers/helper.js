@@ -424,6 +424,14 @@ let getAddressListByLawfirmID = async( ID ) => {
             SELECT caddress_4 as address, assignment.rf_id FROM assignment 
             WHERE  date_format(assignment.record_dt, '%Y') >= :year AND law_firm_id = :ID AND caddress_4 <> '' 
             GROUP BY caddress_4
+            UNION
+            SELECT caddress_1 as address, assignment.rf_id FROM assignment 
+            WHERE  date_format(assignment.record_dt, '%Y') >= :year AND law_firm_id = :ID AND caddress_1 <> '' 
+            GROUP BY caddress_1
+            UNION
+            SELECT caddress_2 as address, assignment.rf_id FROM assignment 
+            WHERE  date_format(assignment.record_dt, '%Y') >= :year AND law_firm_id = :ID AND caddress_2 <> '' 
+            GROUP BY caddress_2
         ) as temp GROUP BY address  ORDER BY address ASC`;
 
         addresses = await connection.resources.query(queryFindIDS,{
@@ -449,7 +457,7 @@ let searchLawfirmIDByAddress = async( addresses ) => {
                 listAddress.push('"'+ addresses + '"')
             }
 
-            const queryCompany = "SELECT law_firm_id, name, (SELECT COUNT(assignment.rf_id) FROM db_uspto.assignment AS assignment WHERE assignment.law_firm_id = law_firms.law_firm_id) AS counter, instances AS total_occurences, representative_law_firm.representative_id, representative_law_firm.representative_name FROM db_uspto.law_firm AS law_firms LEFT JOIN db_uspto.representative_law_firm AS representative_law_firm ON representative_law_firm.representative_id =  law_firms.representative_id WHERE law_firm_id IN (SELECT law_firm_id FROM assignment WHERE date_format(assignment.record_dt, '%Y') >= :year AND MATCH(assignment.caddress_7, assignment.caddress_5, assignment.caddress_6, assignment.caddress_3, assignment.caddress_4) AGAINST (:address IN BOOLEAN MODE) GROUP BY law_firm_id ) ORDER BY counter DESC ";
+            const queryCompany = "SELECT law_firm_id, name, (SELECT COUNT(assignment.rf_id) FROM db_uspto.assignment AS assignment WHERE assignment.law_firm_id = law_firms.law_firm_id) AS counter, instances AS total_occurences, representative_law_firm.representative_id, representative_law_firm.representative_name FROM db_uspto.law_firm AS law_firms LEFT JOIN db_uspto.representative_law_firm AS representative_law_firm ON representative_law_firm.representative_id =  law_firms.representative_id WHERE law_firm_id IN (SELECT law_firm_id FROM assignment WHERE date_format(assignment.record_dt, '%Y') >= :year AND MATCH(assignment.caddress_7, assignment.caddress_5, assignment.caddress_6, assignment.caddress_3, assignment.caddress_4, assignment.caddress_2, assignment.caddress_1) AGAINST (:address IN BOOLEAN MODE) GROUP BY law_firm_id ) ORDER BY counter DESC ";
        
             searchResult = await connection.resources.query(queryCompany,{
                 type: connection.Sequelize.QueryTypes.SELECT,
