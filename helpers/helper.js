@@ -404,10 +404,27 @@ let getAddressListByCompanyID = async( ID ) => {
 let getAddressListByLawfirmID = async( ID ) => {
     let addresses = [];
     if(ID > 0) {
-        const queryFindIDS = `SELECT TRIM(CONCAT(caddress_7, " ", caddress_5, " ", caddress_6, " ", caddress_3, " ", caddress_4)) AS address, rf_id FROM assignment 
-        WHERE  date_format(assignment.record_dt, '%Y') >= :year AND law_firm_id = :ID 
-        GROUP BY caddress_7, caddress_5, caddress_6, caddress_3, caddress_4
-        ORDER BY address ASC`;
+        const queryFindIDS = `SELECT address, rf_id FROM (
+            SELECT caddress_7 as address, assignment.rf_id FROM assignment 
+            WHERE  date_format(assignment.record_dt, '%Y') >= :year AND law_firm_id = :ID AND caddress_7 <> '' 
+            GROUP BY caddress_7
+            UNION
+            SELECT caddress_5 as address, assignment.rf_id FROM assignment 
+            WHERE  date_format(assignment.record_dt, '%Y') >= :year AND law_firm_id = :ID AND caddress_5 <> '' 
+            GROUP BY caddress_5
+            UNION
+            SELECT caddress_6 as address, assignment.rf_id FROM assignment 
+            WHERE  date_format(assignment.record_dt, '%Y') >= :year AND law_firm_id = :ID AND caddress_6 <> '' 
+            GROUP BY caddress_6
+            UNION
+            SELECT caddress_3 as address, assignment.rf_id FROM assignment 
+            WHERE  date_format(assignment.record_dt, '%Y') >= :year AND law_firm_id = :ID AND caddress_3 <> '' 
+            GROUP BY caddress_3
+            UNION
+            SELECT caddress_4 as address, assignment.rf_id FROM assignment 
+            WHERE  date_format(assignment.record_dt, '%Y') >= :year AND law_firm_id = :ID AND caddress_4 <> '' 
+            GROUP BY caddress_4
+        ) as temp GROUP BY address  ORDER BY address ASC`;
 
         addresses = await connection.resources.query(queryFindIDS,{
                 type: connection.Sequelize.QueryTypes.SELECT,
