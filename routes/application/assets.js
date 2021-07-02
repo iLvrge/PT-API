@@ -178,7 +178,7 @@ route.post("/assets/cpc", [authJWT.verifyToken], async(req, res, next) => {
 
                 let rangeConcat = 'CONCAT(section, class, sub_class)'
 
-                if( range != undefined && range == 'undefined' && range != null) {
+                if( range != undefined && range != 'undefined' && range != null) {
                     switch(parseInt(range)) {
                         case 5:
                             rangeConcat = 'section'
@@ -198,23 +198,21 @@ route.post("/assets/cpc", [authJWT.verifyToken], async(req, res, next) => {
                     }
                 }
 
+                console.log( "POSTDATA", range, scope, rangeConcat)
+
                 let scopeCondition = '';
+                const replacements = {list, date: 2000}
 
                 if( scope != undefined && scope != 'undefined' && scope != null) {
-                    scopeCondition = ' AND CONCAT(section, class, sub_class) IN (:scopeList) '
+                    scopeCondition = ` AND ${rangeConcat} IN (:scopeList) `
+                    replacements.scopeList = JSON.parse(scope)
                 }
 
                 const query = `SELECT REPLACE_STRING FROM ( SELECT temp.grant_doc_num AS patent_number, temp.appno_doc_num AS application_number, date_format(temp.appno_date, '%Y') AS fillingYear, ${rangeConcat} AS cpc_code, (SELECT GROUP_CONCAT(distinct ee_name SEPARATOR '@@ ') FROM db_uspto.assignee INNER JOIN db_uspto.assignment_conveyance ON assignment_conveyance.rf_id = assignee.rf_id WHERE assignee.rf_id IN (     SELECT rf_id FROM db_uspto.documentid WHERE documentid.appno_doc_num = application_cpc.application_number) AND assignment_conveyance.employer_assign = 1 ) AS origin FROM db_patent_grant_bibliographic.application_cpc AS application_cpc INNER JOIN (SELECT DISTINCT documentid.appno_doc_num, documentid.grant_doc_num, documentid.appno_date FROM db_uspto.documentid AS documentid WHERE date_format(documentid.appno_date, '%Y') >= :date AND documentid.appno_doc_num IN(:list) ) AS temp ON temp.appno_doc_num = application_cpc.application_number WHERE application_cpc.type = 0  ${scopeCondition} GROUP BY temp.appno_doc_num ) AS temp1 GROUP_STRING `
 
                 const listQuery =  query.replace('REPLACE_STRING', "COUNT(if(patent_number != '' AND application_number >0  , patent_number, '')) AS patent_number, COUNT(CASE WHEN patent_number = '' AND application_number > 0  THEN application_number END ) AS application_number, COUNT(if(patent_number != '', patent_number, application_number)) AS countAssets,   fillingYear, cpc_code, GROUP_CONCAT(distinct origin SEPARATOR '@@ ') AS group_name ").replace('GROUP_STRING', "GROUP BY fillingYear, cpc_code ")
 
-                const replacements = {list, date: 2000}
-
-                if( scope != undefined && scope != 'undefined' && scope != null) {
-                    replacements.scopeList = JSON.parse(scope)
-                }
-
-
+                
                 getList = await connection.applicationNew.query(listQuery, {
                     type: connection.Sequelize.QueryTypes.SELECT,
                     replacements: replacements,
