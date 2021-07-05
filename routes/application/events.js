@@ -14,7 +14,9 @@ const MaintainenceCode = require("../../model/maintainence/MaintainenceCode"),
     
     MaintainenceFees = require("../../model/maintainence/MaintainenceFees"),
     
-    Documentid = require("../../model/application/DocumentIds");
+    Documentid = require("../../model/application/DocumentIds"),
+
+    Representatives = require("../../model/client/Representatives");
 
 const SvgIconsContent = {
         1: `<svg version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" x="0px" y="0px" width="25px"
@@ -2145,17 +2147,16 @@ route.get("/events/tabs/:tabID/companies/:representativeID/customers/:customerID
     }
 });
 
-route.post("/events/assets", [authJWT.verifyToken], async(req, res, next) => {
+route.post("/events/assets", [authJWT.verifyToken, clientDBConnection.connect], async(req, res, next) => {
     try{
-        let { list } = req.body, assetsLifeSpan = [], timelineSpan = []
+        let { list } = req.body, assetsLifeSpan = [], timelineSpan = [];
 
         if( list != '' ) {
             list = JSON.parse(list)
-
             if( list.length > 0 ) {
-                const query = "SELECT documentid.appno_doc_num AS application, documentid.grant_doc_num AS patent, documentid.status AS `status`,  documentid.appno_date AS appno_date FROM activity_parties_transactions INNER JOIN db_uspto.documentid AS documentid ON documentid.rf_id = activity_parties_transactions.rf_id WHERE documentid.appno_doc_num IN (:list) AND date_format(documentid.appno_date, '%Y') > 1999 GROUP BY documentid.appno_doc_num"
+                const query = "SELECT assets.company_id, assets.organisation_id, documentid.appno_doc_num AS application, documentid.grant_doc_num AS patent, documentid.status AS `status`,  documentid.appno_date AS appno_date FROM activity_parties_transactions INNER JOIN db_uspto.documentid AS documentid ON documentid.rf_id = activity_parties_transactions.rf_id INNER JOIN db_new_application.assets AS assets ON assets.appno_doc_num = documentid.appno_doc_num WHERE assets.organisation_id = :organisation_id AND documentid.appno_doc_num IN (:list) AND date_format(documentid.appno_date, '%Y') > 1999 GROUP BY assets.company_id, assets.organisation_id, documentid.appno_doc_num"
 
-                const replacements = {list}
+                const replacements = {list, organisation_id: req.orgId}
                 getList = await connection.applicationNew.query(query, {
                     type: connection.Sequelize.QueryTypes.SELECT,
                     replacements: replacements,
@@ -2165,21 +2166,31 @@ route.post("/events/assets", [authJWT.verifyToken], async(req, res, next) => {
 
                 const ASSETS_LIFE_SPAN_DATE_FORMAT = 'YYYY';
                 if(getList.length > 0) {                
-                    const applicationNumberAdded = [], dateAdded = [];
+                    const applicationNumberAdded = [], dateAdded = [], companyIDs = [];
                     const promises = getList.map( async item => {
-                        if(!applicationNumberAdded.includes(item.application)){
+                        if(!applicationNumberAdded.includes(`${item.company_id}${item.organisation_id}${item.application}`)){
+                            if(!companyIDs.includes(item.company_id)) {
+                                companyIDs.push(item.company_id)
+                            }
                             const startYear = moment(new Date(item.appno_date)).format(ASSETS_LIFE_SPAN_DATE_FORMAT);
                             let endYear = moment(new Date(item.appno_date)).add(20, 'years').format(ASSETS_LIFE_SPAN_DATE_FORMAT);
                             for(let i = parseInt(startYear); i <= parseInt(endYear); i++) {
-                                timelineSpan.push({year: i, count: 1, application: item.application, patent: item.patent});
+                                timelineSpan.push({year: i, count: 1, application: item.application, patent: item.patent, company_id: item.company_id});
                             }
-                            applicationNumberAdded.push(item.application);
+                            applicationNumberAdded.push(`${item.company_id}${item.organisation_id}${item.application}`);
                             dateAdded.push(item.appno_date);
                         } 
                         return item;                            
                     });            
                     await Promise.all(promises);
-                    assetsLifeSpan = await helpers.findMaxMin(timelineSpan)        
+                    const Representative = req.connection_db.define('Representatives', Representatives.mainStructure, Representatives.options);
+                    const where = { representative_id: companyIDs }
+                    companies = await Representative.findAll( {
+                        attributes: ['representative_id', 'representative_name', 'parent_id'],
+                        where
+                    })
+                    /* assetsLifeSpan = await helpers.findMaxMin(timelineSpan)   */   
+                    assetsLifeSpan = await helpers.findMaxMinWithCompanies(companies, timelineSpan)    
                 }
             }
         }

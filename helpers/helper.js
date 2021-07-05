@@ -2324,6 +2324,41 @@ const findMaxMin = async(timelineSpan) => {
     return assetsLifeSpan
 }
 
+const findMaxMinWithCompanies = async(companies, timelineSpan) => {
+    let assetsLifeSpan = []
+
+    const {max, min} = await minMax2DArray(timelineSpan, 'year');
+        
+    for(let i = min; i < max; i++) {
+        const companiesYear = []
+        companiesYear.push(i)
+        const promise = companies.map(async company => {
+            let Counter = 0
+            let getList = await timelineSpan.filter( item => {
+                return i == parseInt(item.year) && item.company_id === company.representative_id  ? item : undefined;
+            });
+            if(getList != undefined && getList.length > 0) {            
+                Counter = await getList.reduce((a, b) => +a + +b.count, 0);                
+            }
+            companiesYear.push(Counter)
+            return company;
+            //.push({ year: i, company, count: Counter });
+        })
+        await Promise.all(promise)   
+        if(i === min) {
+            const labels = ['year'];
+            const labelPromise = companies.map( company => {
+                labels.push(company.representative_name)
+            })
+
+            await Promise.all(labelPromise)   
+            assetsLifeSpan.push(labels)  
+        }
+        assetsLifeSpan.push(companiesYear)     
+    }
+    return assetsLifeSpan
+}
+
 const findRfIDsBySearchString = async(req) => {
     
     const { search_string } = req.params
@@ -2445,6 +2480,7 @@ const helper = {};
 helper.ArrayInterString = ArrayInterString;
 helper.getXML = getXML;
 helper.findMaxMin = findMaxMin;
+helper.findMaxMinWithCompanies = findMaxMinWithCompanies;
 helper.findLayout = findLayout;
 helper.allAssignments = allAssignments;
 helper.allAssignmentsByRepresentativeIDs = allAssignmentsByRepresentativeIDs;

@@ -187,10 +187,10 @@ route.post("/assets/cpc", [authJWT.verifyToken], async(req, res, next) => {
                             rangeConcat = 'CONCAT(section, class)'
                             break;
                         case 2:
-                            rangeConcat = 'CONCAT(section, class, sub_class, main_group)'
+                            rangeConcat = 'CONCAT(section, class, sub_class, main_group, "/00")'
                             break;
                         case 1:
-                            rangeConcat = 'CONCAT(section, class, sub_class, main_group, sub_group)'
+                            rangeConcat = 'CONCAT(section, class, sub_class, main_group, "/", sub_group)'
                             break;
                         default:
                             rangeConcat = 'CONCAT(section, class, sub_class)'
