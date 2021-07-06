@@ -2359,6 +2359,7 @@ const findMaxMinWithCompanies = async(companies, timelineSpan) => {
                 Counter = await getList.reduce((a, b) => +a + +b.count, 0);                
             }
             companiesYear.push(Counter)
+            companiesYear.push('stroke-width:1;stroke-color:#50719C;fill-color:#395270;')
             return company;
             //.push({ year: i, company, count: Counter });
         })
@@ -2367,11 +2368,13 @@ const findMaxMinWithCompanies = async(companies, timelineSpan) => {
             const labels = ['year'];
             const labelPromise = companies.map( company => {
                 labels.push(company.representative_name)
+                labels.push({role: 'style', type: 'string'})
             })
-
+            //labels.push({role: 'style', type: 'string'})
             await Promise.all(labelPromise)   
             assetsLifeSpan.push(labels)  
         }
+        
         assetsLifeSpan.push(companiesYear)     
     }
     return assetsLifeSpan
