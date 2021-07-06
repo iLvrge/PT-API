@@ -360,7 +360,7 @@ let searchCompany = async(query, t) => {
 }
 
 let searchLenders = async( search ) => {
-    const queryLender = `SELECT a.assignor_and_assignee_id as id, a.assignor_and_assignee_id, a.name, a.instances as counter, c.representative_name as normalize_name, (select rr.representative_name FROM representative as rr WHERE rr.representative_name = a.name GROUP BY rr.representative_name) as representative_company, concat(assignment.reel_no,'-', assignment.frame_no) as assigneeRFID, '' as assignorRFID  FROM assignor_and_assignee as a 
+    const queryLender = `SELECT a.assignor_and_assignee_id as id, a.assignor_and_assignee_id, a.name, COUNT(a.name) AS counter, c.representative_name AS normalize_name, (select rr.representative_name FROM representative as rr WHERE rr.representative_name = a.name GROUP BY rr.representative_name) as representative_company, concat(assignment.reel_no,'-', assignment.frame_no) as assigneeRFID, '' as assignorRFID  FROM assignor_and_assignee as a 
     LEFT JOIN representative as c ON c.representative_id = a.representative_id 
     INNER JOIN assignee ON assignee.assignor_and_assignee_id = a.assignor_and_assignee_id
     INNER JOIN assignment ON assignment.rf_id = assignee.rf_id
