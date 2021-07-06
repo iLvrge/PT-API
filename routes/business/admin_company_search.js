@@ -571,6 +571,59 @@ route.put("/company/transactions/:customerID", [authJWT.verifyToken, authJWT.isA
     }
 });
 
+route.get("/company/lender", [authJWT.verifyToken, authJWT.isAdmin], async (req, res, next) => {
+    try {        
+        
+       const  { search } = req.query;
+       let searchLenders = []
+        if(search != null && search != undefined && search.length > 0) {            
+            searchLenders  = await helpers.searchLenders(search);            
+        }
+        res.status(200).json(searchLenders);     
+    } catch(e) {
+        console.log(e);
+        res.status(402).send("Unable to retrieve data.");
+    }
+});
+
+route.get("/company/lenders/:id/companies", [authJWT.verifyToken, authJWT.isAdmin], async (req, res, next) => {
+    try{
+        const {id} = req.params
+        let querySearchResult = []
+
+        const query = `SELECT assignor_and_assignee_id FROM db_uspto.assignor_and_assignee AS assignor_and_assignee WHERE assignor_and_assignee.representative_id IN (SELECT representative.representative_id FROM db_uspto.representative AS representative INNER JOIN db_uspto.assignor_and_assignee AS assignor_and_assignee ON representative.representative_id = assignor_and_assignee.representative_id WHERE assignor_and_assignee.assignor_and_assignee_id = :assignor_and_assignee_id) AND assignor_and_assignee.representative_id > 0 GROUP BY assignor_and_assignee_id`
+
+        const findAllLenders = await connection.resources.query(query,{
+                type: connection.Sequelize.QueryTypes.SELECT,
+                raw: true,
+                replacements: { assignor_and_assignee_id: id },
+                logging: console.log,
+            }
+        );
+
+        if( findAllLenders.length > 0 ) {
+            const firmIDs = []
+            const promise = findAllLenders.map( lender => firmIDs.push(lender.assignor_and_assignee_id))
+
+            await Promise.all(promise)
+
+            if( firmIDs.length > 0 ) {
+                const  queryCompany = `SELECT a.assignor_and_assignee_id as id, a.assignor_and_assignee_id, a.name, count(assignor.assignor_and_assignee_id) as counter, a.instances as total_occurences, c.representative_name as normalize_name, (select rr.representative_name FROM representative as rr WHERE rr.representative_name = a.name GROUP BY rr.representative_name) as representative_company, concat(assignment.reel_no,'-', assignment.frame_no) as assignorRFID, '' as assigneeRFID  FROM assignor_and_assignee as a LEFT JOIN representative as c ON c.representative_id = a.representative_id INNER JOIN assignor ON assignor.assignor_and_assignee_id = a.assignor_and_assignee_id INNER JOIN assignment ON assignment.rf_id = assignor.rf_id INNER JOIN representative_assignment_conveyance ON assignment.rf_id = representative_assignment_conveyance.rf_id WHERE representative_assignment_conveyance.convey_ty IN (:conveyanceTypes) AND date_format(assignment.record_dt, '%Y') >= :year AND assignor.rf_id IN (SELECT rf_id FROM assignee WHERE assignor_and_assignee_id  IN (:assignorAndAssigneeIDs)) GROUP BY a.name ORDER BY counter DESC`;
+
+                querySearchResult = await connection.resources.query(queryCompany,{
+                    type: connection.Sequelize.QueryTypes.SELECT,
+                    raw: true,
+                    replacements: { assignorAndAssigneeIDs: firmIDs, year: 1997, conveyanceTypes: ['security', 'restatedsecurity'] },
+                    logging: console.log,
+                });
+            }
+        }
+        res.status(200).json(querySearchResult);
+    } catch(e) {
+        console.log(e);
+        res.status(402).send("Unable to retrieve data.");
+    }
+})
 
 
 route.get("/company/law_firms", [authJWT.verifyToken, authJWT.isAdmin], async (req, res, next) => {

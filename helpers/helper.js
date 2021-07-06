@@ -359,6 +359,24 @@ let searchCompany = async(query, t) => {
     }
 }
 
+let searchLenders = async( search ) => {
+    const queryLender = `SELECT a.assignor_and_assignee_id as id, a.assignor_and_assignee_id, a.name, a.instances as counter, c.representative_name as normalize_name, (select rr.representative_name FROM representative as rr WHERE rr.representative_name = a.name GROUP BY rr.representative_name) as representative_company, concat(assignment.reel_no,'-', assignment.frame_no) as assigneeRFID, '' as assignorRFID  FROM assignor_and_assignee as a 
+    LEFT JOIN representative as c ON c.representative_id = a.representative_id 
+    INNER JOIN assignee ON assignee.assignor_and_assignee_id = a.assignor_and_assignee_id
+    INNER JOIN assignment ON assignment.rf_id = assignee.rf_id
+    INNER JOIN representative_assignment_conveyance ON assignment.rf_id = representative_assignment_conveyance.rf_id
+    WHERE representative_assignment_conveyance.convey_ty IN (:conveyanceType) AND date_format(assignment.record_dt, '%Y') >= :year AND MATCH(a.name) AGAINST (:search IN BOOLEAN MODE) GROUP BY a.name ORDER BY counter DESC ` ;
+
+    const querySearchResult = await connection.resources.query(queryLender,{
+        type: connection.Sequelize.QueryTypes.SELECT,
+        raw: true,
+        replacements: { search: search, year: 1997, conveyanceType: ['security', 'restatedsecurity'] },
+        logging: console.log,
+    });
+
+    return querySearchResult;
+}
+
 let searchCompanyByAddress = async( address ) => {
     let searchResult = [];
     if(address.length > 1) {
@@ -2492,6 +2510,7 @@ helper.getCompanyListByOwnership = getCompanyListByOwnership;
 helper.getCompanyListBySecurity = getCompanyListBySecurity;
 helper.getCompanyListByOther = getCompanyListByOther;
 helper.searchCompany = searchCompany;
+helper.searchLenders = searchLenders;
 helper.searchCompanyByAddress = searchCompanyByAddress;
 helper.searchCompanyIDByAddress = searchCompanyIDByAddress;
 helper.searchLawfirmIDByAddress = searchLawfirmIDByAddress;
