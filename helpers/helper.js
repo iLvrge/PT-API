@@ -2346,10 +2346,12 @@ const findMaxMinWithCompanies = async(companies, timelineSpan) => {
     let assetsLifeSpan = []
 
     const {max, min} = await minMax2DArray(timelineSpan, 'year');
-        
+    const currentYear = moment(new Date()).format('YYYY');
+    let entered = false
     for(let i = min; i < max; i++) {
         const companiesYear = []
         companiesYear.push(i)
+        companiesYear.push(null)
         const promise = companies.map(async company => {
             let Counter = 0
             let getList = await timelineSpan.filter( item => {
@@ -2365,7 +2367,8 @@ const findMaxMinWithCompanies = async(companies, timelineSpan) => {
         })
         await Promise.all(promise)   
         if(i === min) {
-            const labels = ['year'];
+            const labels = ['year', {type: 'string', role: 'annotation'}];
+            
             const labelPromise = companies.map( company => {
                 labels.push(company.representative_name)
                 labels.push({role: 'style', type: 'string'})
@@ -2373,9 +2376,27 @@ const findMaxMinWithCompanies = async(companies, timelineSpan) => {
             //labels.push({role: 'style', type: 'string'})
             await Promise.all(labelPromise)   
             assetsLifeSpan.push(labels)  
-        }
-        
+        } 
         assetsLifeSpan.push(companiesYear)     
+        if(currentYear == i) {
+            const currentLabel = [currentYear, '']
+            const labelPromise = companies.map( company => {
+                currentLabel.push(0)
+                currentLabel.push(null)
+            })
+            await Promise.all(labelPromise)   
+            assetsLifeSpan.push(currentLabel)  
+            entered = true
+        }        
+    }
+    if(entered === false) {
+        const currentLabel = [currentYear, '']
+        const labelPromise = companies.map( company => {
+            currentLabel.push(0)
+            currentLabel.push(null)
+        })
+        await Promise.all(labelPromise)   
+        assetsLifeSpan.push(currentLabel)  
     }
     return assetsLifeSpan
 }
