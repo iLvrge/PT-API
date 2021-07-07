@@ -2362,6 +2362,7 @@ const findMaxMinWithCompanies = async(companies, timelineSpan) => {
             }
             companiesYear.push(Counter)
             companiesYear.push('stroke-width:1;stroke-color:#50719C;fill-color:#395270;')
+            companiesYear.push(`Year: ${i}\nOwner: ${company.representative_name}\nNumber of Assets: ${Counter}`)
             return company;
             //.push({ year: i, company, count: Counter });
         })
@@ -2371,7 +2372,8 @@ const findMaxMinWithCompanies = async(companies, timelineSpan) => {
             
             const labelPromise = companies.map( company => {
                 labels.push(company.representative_name)
-                labels.push({role: 'style', type: 'string'})
+                labels.push({type: 'string', role: 'style'})
+                labels.push({type: 'string', role: 'tooltip', 'p': {'html': true}})
             })
             //labels.push({role: 'style', type: 'string'})
             await Promise.all(labelPromise)   
@@ -2383,6 +2385,7 @@ const findMaxMinWithCompanies = async(companies, timelineSpan) => {
             const labelPromise = companies.map( company => {
                 currentLabel.push(0)
                 currentLabel.push(null)
+                currentLabel.push(null)
             })
             await Promise.all(labelPromise)   
             assetsLifeSpan.push(currentLabel)  
@@ -2393,6 +2396,7 @@ const findMaxMinWithCompanies = async(companies, timelineSpan) => {
         const currentLabel = [currentYear, '']
         const labelPromise = companies.map( company => {
             currentLabel.push(0)
+            currentLabel.push(null)
             currentLabel.push(null)
         })
         await Promise.all(labelPromise)   
