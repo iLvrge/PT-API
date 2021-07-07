@@ -2154,7 +2154,7 @@ route.post("/events/assets", [authJWT.verifyToken, clientDBConnection.connect], 
         if( list != '' ) {
             list = JSON.parse(list)
             if( list.length > 0 ) {
-                const query = "SELECT assets.company_id, assets.organisation_id, documentid.appno_doc_num AS application, documentid.grant_doc_num AS patent, documentid.status AS `status`,  documentid.appno_date AS appno_date FROM activity_parties_transactions INNER JOIN db_uspto.documentid AS documentid ON documentid.rf_id = activity_parties_transactions.rf_id INNER JOIN db_new_application.assets AS assets ON assets.appno_doc_num = documentid.appno_doc_num WHERE assets.organisation_id = :organisation_id AND documentid.appno_doc_num IN (:list) AND date_format(documentid.appno_date, '%Y') > 1999 GROUP BY assets.company_id, assets.organisation_id, documentid.appno_doc_num"
+                const query = "SELECT assets.company_id, assets.organisation_id, documentid.appno_doc_num AS application, documentid.grant_doc_num AS patent, documentid.status AS `status`,  documentid.appno_date AS appno_date FROM db_new_application.assets AS assets INNER JOIN db_uspto.documentid AS documentid ON assets.appno_doc_num = documentid.appno_doc_num WHERE assets.organisation_id = :organisation_id AND documentid.appno_doc_num IN (:list) AND date_format(documentid.appno_date, '%Y') > 1999 GROUP BY assets.company_id, assets.organisation_id, documentid.appno_doc_num"
 
                 const replacements = {list, organisation_id: req.orgId}
                 getList = await connection.applicationNew.query(query, {
