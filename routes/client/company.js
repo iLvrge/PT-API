@@ -117,6 +117,91 @@ route.get("/summary", [authJWT.verifyToken, clientDBConnection.connect], async(r
 
 })
 
+route.get("/:companyID/list", [authJWT.verifyToken, clientDBConnection.connect], async(req, res, next) => {
+    try{
+        if(typeof req.connection_db != "undefined" && req.connection_db != null ) {
+            const { offset, limit } = req.query;
+            const {companyID} = req.params
+            const Representative = req.connection_db.define('Representatives', Representatives.mainStructure, Representatives.options);
+
+            const where = {
+                        where: {                            
+                            [connection.Op.or]: [
+                                {
+                                    representative_id: companyID
+                                },
+                                {
+                                    parent_id: companyID, 
+                                    child: 1,
+                                }
+                            ]
+                        }
+                    };
+
+            const total_records = await Representative.count( where );
+
+            where.order = [
+                ['original_name', 'ASC'],
+                ['representative_name', 'ASC']
+            ];
+            where.attributes = ['representative_id', 'original_name', 'representative_name'];
+
+            const list = await Representative.findAll( where )
+
+            const companiesList = []
+
+            if(list.length > 0) {
+                const representativeNames = []
+
+                const promises = list.map( representative => {
+                    representativeNames.push(representative.representative_name)
+                })
+    
+                await Promise.all(promises)
+
+                const findReports = await RepresentativeReport.findAll({
+                    attributes: ['representative_name', 'no_of_assets', 'no_of_transactions', 'no_of_parties', 'no_of_inventor', 'no_of_activities'],
+                    where: {representative_name: representativeNames},
+                    order: [['representative_name', 'ASC']]
+                })
+
+                const findAdminReports = await AdminRepresentativeReport.findAll({
+                    attributes: ['representative_name', 'no_of_transactions', 'no_of_parties'],
+                    where: {representative_name: representativeNames},
+                    order: [['representative_name', 'ASC']]
+                })
+
+                if( findReports.length > 0 ) {
+                    const promiseReport = list.map( representative => {
+                        let representaitveJSON = representative.toJSON();
+                        const findIndex = findReports.findIndex( r => r.representative_name == representative.representative_name)
+                        if( findIndex !== -1) {
+                            representaitveJSON = {...representaitveJSON, no_of_assets: findReports[findIndex]['no_of_assets'], no_of_transactions: findReports[findIndex]['no_of_transactions'], no_of_parties: findReports[findIndex]['no_of_parties'], no_of_inventor: findReports[findIndex]['no_of_inventor'], no_of_activities: findReports[findIndex]['no_of_activities']}
+                            let product = 0;
+                            const findAdminIndex = findAdminReports.findIndex( r => r.representative_name == representative.representative_name)
+
+                            if( findAdminIndex !== -1) {
+                                product = findAdminReports[findAdminIndex]['no_of_parties'] - findAdminReports[findAdminIndex]['no_of_transactions']
+                            }
+                            representaitveJSON['product'] = product
+                        }
+                        companiesList.push(representaitveJSON)
+                        return representative
+                    })
+                    await Promise.all(promiseReport)
+                }
+            }            
+
+            res.status(200).json({list: companiesList, total_records});
+        } else {
+            res.status(401).send("Unable to retrieve companies");
+        }
+    } catch (err) {
+        console.log(err);
+        res.status(500).json({message: "Unable to retrieve companies"})
+    }
+})
+
 /**Get all companies */
 route.get("/list", [authJWT.verifyToken, clientDBConnection.connect], async(req, res, next) => {
     try{
