@@ -77,7 +77,7 @@ route.get("/share/:code/:type", async (req, res) =>{
                     plain: true
                 })    
                 console.log('findCompanyLogo', findCompanyLogo)            
-                res.status(200).json({list: share, logo: findCompanyLogo != null ? findCompanyLogo.logo : ''})
+                res.status(200).json({list: share, total_records: share.length, logo: findCompanyLogo != null ? findCompanyLogo.logo : ''})
             } else {
                 res.status(500).send("Invalid url.");
             }
