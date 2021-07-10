@@ -16,10 +16,13 @@ const config = require("../../config/db.config");
 
 const User = require("../../model/business/Users");
 
-route.get("/authenticate/:code", async(req, res, next) => {
+route.get("/authenticate/:code/:type", async(req, res, next) => {
 
     try{
-        const query = `SELECT organisation_id FROM db_business.organisation WHERE uuid = UUID_TO_BIN(:binToUUID) AND status = 0`
+        let query = `SELECT organisation_id FROM db_business.organisation WHERE uuid = UUID_TO_BIN(:binToUUID) AND status = 0`
+        if(parseInt(req.params.type) === 1) {
+            query = `SELECT organisation_id FROM db_business.organisation WHERE status = 0 AND organisation_id IN (SELECT organisation_id FROM db_new_application.share WHERE code = :binToUUID AND type = 2)`
+        }        
 
         const replacements = { binToUUID : req.params.code  }
     

@@ -21,6 +21,9 @@ const Share = connection.applicationNew.define('share',{
     user_id:{
         type: Sequelize.INTEGER
     },   
+    type: {
+        type: Sequelize.INTEGER
+    },
     created_at:{
         type: Sequelize.DATE,
         defaultValue: Sequelize.DATE

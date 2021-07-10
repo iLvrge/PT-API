@@ -1922,7 +1922,7 @@ let getNewCode = async () => {
     let run =  true;
     for (let i = 0; i < retryLimit; i++) {
         if(run === true){
-            const code = (Math.random()*1e32).toString(36).substr(0,10);
+            const code = uuidv4() + (Math.random()*1e32).toString(36).substr(0,10);
             await Share.findOne({
                 where:{code: code},
                 attributes: ['share_id']
@@ -1948,10 +1948,11 @@ let shareURL = async (params) => {
         let insertRecord = await Share.create({
             code: params.code,
             organisation_id: params.organisation_id,        
-            user_id: params.user_id
+            user_id: params.user_id,
+            type: params.type
         });
         if(insertRecord != null && insertRecord.share_id > 0) {      
-    
+            
             const bulkData = []
             const promises = assets.map(asset => bulkData.push({asset, share_id: insertRecord.share_id}))
     
@@ -1959,8 +1960,8 @@ let shareURL = async (params) => {
     
             const addBulkData = await ShareLists.bulkCreate(bulkData, { ignoreDuplicates: true })
     
-            if(addBulkData) {
-                return "https://share.patentrack.com/"+params.code;
+            if(addBulkData) {                
+                return `https://${params.type == 2 ? 'sample.app' : 'share'}.patentrack.com/${params.code}`;
             } else {
                 return '';
             }
@@ -1972,14 +1973,20 @@ let shareURL = async (params) => {
     }    
 };
 
-let getShareList = async (code) => {
-	const query = "SELECT  `share_lists`.`asset` AS asset FROM `share` AS `share` INNER JOIN `share_list` AS `share_lists` ON `share`.`share_id` = `share_lists`.`share_id` WHERE `share`.`code` = :code"
+let getShareList = async (code, type) => {
+    let query = "SELECT  `share_lists`.`asset` AS asset FROM `share` AS `share` INNER JOIN `share_list` AS `share_lists` ON `share`.`share_id` = `share_lists`.`share_id` WHERE `share`.`code` = :code"
+    
+    if(type !== 'undefined' && type !== undefined && parseInt(type) === 2) {
+        query = "SELECT appno_doc_num, grant_doc_num, CASE WHEN grant_doc_num = '' THEN appno_doc_num ELSE grant_doc_num END AS asset, CASE WHEN grant_doc_num = '' THEN 1 ELSE 0 END AS asset_type, '' AS channel, 0 AS child_count  FROM db_uspto.documentid INNER JOIN  ( SELECT  `share_lists`.`asset` AS asset FROM `share` AS `share` INNER JOIN `share_list` AS `share_lists` ON `share`.`share_id` = `share_lists`.share_id` WHERE `share`.`code` = :code AND type = :type) AS temp ON temp.asset = documentid.appno_doc_num OR temp.asset = documentid.grant_doc_num GROUP BY appno_doc_num"
+    } else {
+        query += " AND type <> :type"
+    }
 
     return await connection.applicationNew.query(query,{
         type: connection.Sequelize.QueryTypes.SELECT,
         raw: true,
         logging: console.log,
-        replacements: {code},
+        replacements: {code, type},
         }
     );
 }

@@ -61,11 +61,11 @@ route.get("/share/illustration/:asset/:code",  async (req, res) =>{
     }
 });
 
-route.get("/share/:code", async (req, res) =>{     
-    const { code } = req.params;
+route.get("/share/:code/:type", async (req, res) =>{     
+    const { code, type } = req.params;
     try {
         if( code != "") {
-            const share = await helpers.getShareList(code);
+            const share = await helpers.getShareList(code, type);
             if( share != null ) {
                 const query = `SELECT logo FROM db_business.organisation WHERE organisation_id IN (SELECT organisation_id FROM db_new_application.share WHERE code = :code)`
                 
