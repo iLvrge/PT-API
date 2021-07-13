@@ -108,6 +108,9 @@ route.get("/customers/run_query/:representative_name/:query_no", [authJWT.verify
             case 3:
                 procedureName = 'Table_C'
                 break;
+            case 4:
+                procedureName = 'Table_D'
+                break;
         }
         if(procedureName != null) {
             connection.resources.query(`CALL ${procedureName}(:representative_name);`,{
