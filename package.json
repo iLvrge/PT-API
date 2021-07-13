@@ -1,0 +1,38 @@
+{
+  "name": "dashboard_patentrack",
+  "version": "1.0.0",
+  "description": "patentrack dashboard api",
+  "main": "app.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "env-cmd node app.js --no-deprecation"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@sentry/node": "^5.28.0",
+    "@sentry/tracing": "^5.28.0",
+    "@slack/web-api": "^5.14.0",
+    "aws-sdk": "^2.797.0",
+    "bcrypt": "^4.0.1",
+    "body-parser": "^1.19.0",
+    "cors": "^2.8.5",
+    "csv-stringify": "^5.6.0",
+    "env-cmd": "^10.1.0",
+    "express": "^4.17.1",
+    "express-fileupload": "^1.1.7-alpha.3",
+    "full-text-search-query": "^1.0.3-beta.1",
+    "googleapis": "^66.0.0",
+    "jsdom": "^16.4.0",
+    "jsonwebtoken": "^8.5.1",
+    "moment": "^2.29.1",
+    "mysql2": "^2.1.0",
+    "nodemailer": "^6.4.8",
+    "nodemon": "^2.0.4",
+    "request": "^2.88.2",
+    "sequelize": "^5.21.11",
+    "uuidv4": "^6.1.0",
+    "xmlbuilder2": "^2.4.1"
+  }
+}
