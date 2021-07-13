@@ -57,7 +57,7 @@ route.put("/customers/:organisation_id/buttons", [authJWT.verifyToken, authJWT.i
         const { organisation_id } = req.params;
         const { button_id, status } = req.body;
 
-        const findButton = await AdminAccountProcess.findOne({
+        let findButton = await AdminAccountProcess.findOne({
             where: { organisation_id, button_id}
         })
 
@@ -65,7 +65,7 @@ route.put("/customers/:organisation_id/buttons", [authJWT.verifyToken, authJWT.i
             findButton.status = status
             buttonData = await findButton.save()
         } else {
-            findButton = await AdminAccountProcess.create({organisation_id, button_id, status })           
+            findButton = await AdminAccountProcess.create({organisation_id, button_id, status: 1 })           
         }
         res.status(200).json(findButton);
     } catch(err) {
