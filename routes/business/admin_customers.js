@@ -20,35 +20,74 @@ const connection = require("../../config/db.config");
 
 //require the Model
 
-const Organisations = require("../../model/business/Organisations");
+const Organisations = require("../../model/business/Organisations"),
 
-const Users = require("../../model/business/Users");
+    Users = require("../../model/business/Users"),
 
-const Documentids = require("../../model/application/DocumentIds");
+    Documentids = require("../../model/application/DocumentIds"),
 
-const Assignees = require("../../model/resources/Assignees");
+    Assignees = require("../../model/resources/Assignees"),
 
-const Assignors = require("../../model/resources/Assignors");
+    Assignors = require("../../model/resources/Assignors"),
 
-const MissingInventorProcess = require("../../model/resources/MissingInventorProcess");
+    AdminAccountProcess = require("../../model/resources/AdminAccountProcess"),
 
-const authJWT = require("../../helpers/verifyJwtToken");
+    MissingInventorProcess = require("../../model/resources/MissingInventorProcess"),
 
-const userExist = require("../../helpers/verifySignUp");
+    authJWT = require("../../helpers/verifyJwtToken"),
 
-const helpers = require("../../helpers/helper");
+    userExist = require("../../helpers/verifySignUp"),
 
-const clientDBConnection = require("../../helpers/clientDBConnection");
+    helpers = require("../../helpers/helper"),
 
-const ClientUsers = require("../../model/client/Users");
+    clientDBConnection = require("../../helpers/clientDBConnection"),
 
-const ProfessionalUsers = require("../../model/client/Professionals");
+    ClientUsers = require("../../model/client/Users"),
 
-const Firms = require("../../model/client/Firms");
+    ProfessionalUsers = require("../../model/client/Professionals"),
 
-const config = require("../../config/db.config");
+    Firms = require("../../model/client/Firms"),
 
-const AWS  = require('aws-sdk');
+    config = require("../../config/db.config"),
+
+    AWS  = require('aws-sdk');
+
+route.put("/customers/:organisation_id/buttons", [authJWT.verifyToken, authJWT.isAdmin], async(req, res, next) => {
+    try{
+        const { organisation_id } = req.params;
+        const { button_id, status } = req.body;
+
+        const findButton = await AdminAccountProcess.findOne({
+            where: { organisation_id, button_id}
+        })
+
+        if( findButton != null ) {
+            findButton.status = status
+            buttonData = await findButton.save()
+        } else {
+            findButton = await AdminAccountProcess.create({organisation_id, button_id, status })           
+        }
+        res.status(200).json(findButton);
+    } catch(err) {
+        console.log(err);
+        res.status(400).send("Bad inputs");
+    }
+})
+
+route.get("/customers/:organisation_id/buttons" , [authJWT.verifyToken, authJWT.isAdmin], async(req, res, next) => {
+    try{
+        const { organisation_id } = req.params;
+
+        const findButtons = await AdminAccountProcess.findAll({
+            where: { organisation_id}
+        })
+        
+        res.status(200).json(findButtons);
+    } catch(err) {
+        console.log(err);
+        res.status(400).send("Bad inputs");
+    }
+})
 
 /**
  * List all customers
