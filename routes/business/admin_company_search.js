@@ -650,7 +650,7 @@ route.get("/company/law_firms", [authJWT.verifyToken, authJWT.isAdmin], async (r
         });
         */
 
-        const query = `SELECT law_firm_id, name, (SELECT COUNT(assignment.rf_id) FROM db_uspto.assignment AS assignment WHERE assignment.law_firm_id = law_firms.law_firm_id) AS counter, instances AS total_occurences, representative_law_firm.representative_id, representative_law_firm.representative_name FROM db_uspto.law_firm AS law_firms LEFT JOIN db_uspto.representative_law_firm AS representative_law_firm ON representative_law_firm.representative_id =  law_firms.representative_id WHERE MATCH(name) AGAINST(:search IN BOOLEAN MODE)`
+        const query = `SELECT law_firm_id, name, (SELECT COUNT(assignment.rf_id) FROM db_uspto.assignment AS assignment WHERE assignment.law_firm_id = law_firms.law_firm_id) AS counter, (SELECT SUM(instances) FROM db_uspto.law_firm WHERE representative_id = representative_law_firm.representative_id AND representative_law_firm.representative_id IS NOT NULL) AS total_occurences, representative_law_firm.representative_id, representative_law_firm.representative_name FROM db_uspto.law_firm AS law_firms LEFT JOIN db_uspto.representative_law_firm AS representative_law_firm ON representative_law_firm.representative_id =  law_firms.representative_id WHERE MATCH(name) AGAINST(:search IN BOOLEAN MODE)`
 
         const findAllLawFirms = await connection.resources.query(query,{
             type: connection.Sequelize.QueryTypes.SELECT,
