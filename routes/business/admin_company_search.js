@@ -101,13 +101,14 @@ route.get("/lawfirm/:ID/search/address", [authJWT.verifyToken, authJWT.isAdmin],
     } 
 });
 
-route.get("/company/:ID/search/address", [authJWT.verifyToken, authJWT.isAdmin], async (req, res, next) => {
+route.get("/company/:ID/search/address/:type", [authJWT.verifyToken, authJWT.isAdmin], async (req, res, next) => {
     try {
         let companyAddress = [];
-        const companyID = req.params.ID;	
+        const {ID, type} = req.params;	
 
-        if(companyID != null && companyID != undefined && companyID.length > 0) {            
-            companyAddress  = await helpers.getAddressListByCompanyID(companyID);
+        if(ID != null && ID != undefined && ID.length > 0) {   
+            console.log(ID, type)         
+            companyAddress  = await helpers.getAddressListByCompanyID(ID, type);
         }
         res.status(200).json(companyAddress);           
     } catch(e) {
@@ -123,7 +124,7 @@ route.post("/lawfirm/:ID/search/address/all", [authJWT.verifyToken, authJWT.isAd
         const {ID} = req.params;	
         
         if(ID != null && ID != undefined && address.length > 0) {    
-            searchCompanies  = await helpers.searchLawfirmIDByAddress(address, 1);
+            searchCompanies  = await helpers.searchLawfirmIDByAddress(address);
         }
         res.status(200).json(searchCompanies);           
     } catch(e) {
@@ -132,14 +133,14 @@ route.post("/lawfirm/:ID/search/address/all", [authJWT.verifyToken, authJWT.isAd
     }
 });
 
-route.post("/company/:ID/search/address/all", [authJWT.verifyToken, authJWT.isAdmin], async (req, res, next) => {
+route.post("/company/:ID/search/address/all/:type", [authJWT.verifyToken, authJWT.isAdmin], async (req, res, next) => {
     try {
         let searchCompanies = [];
         let address = req.body['address[]']
-        const companyID = req.params.ID
+        const {ID, type} = req.params;	
         
-        if(companyID != null && companyID != undefined && address.length > 0) {    
-            searchCompanies  = await helpers.searchCompanyIDByAddress(address, 1);
+        if(ID != null && ID != undefined && address.length > 0) {    
+            searchCompanies  = await helpers.searchCompanyIDByAddress(address, type);
         }
         res.status(200).json(searchCompanies);           
     } catch(e) {
