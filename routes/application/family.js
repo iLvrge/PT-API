@@ -4,13 +4,39 @@ const express = require("express"),
 
     authJWT = require("../../helpers/verifyJwtToken"),
 
-    connection = require("../../config/db.config");
+    connection = require("../../config/db.config"),
+
+    epo = require('../../helpers/epo.js'),
+
+    xml2js = require('xml2js');
 
 
 //require the Model
 const PatentFamilyMember = require("../../model/resources/PatentFamilyMember");
 const PatentFamilyRelation = require("../../model/resources/PatentFamilyRelation");
 const Documentid = require("../../model/application/DocumentIds");
+
+route.get('/family/list/:grantNumber', [authJWT.verifyToken], async (req, res) =>{
+    const token = await epo.readToken('HedCET')
+    
+    if(token !== 'undefined' && token != '') {
+        let getFamilyData = await epo.runUrl(token,'family','publication','docdb',`US${req.params.grantNumber}B1`);
+        if( !getFamilyData ) {
+            getFamilyData = await epo.runUrl(token,'family','publication','docdb',`US${req.params.grantNumber}B2`);
+        }
+        if( getFamilyData ) {
+            const parser = new xml2js.Parser
+            const result = await new Promise((resolve, reject) => parser.parseString(getFamilyData, (err, result) => {
+                if (err){
+                    reject(err);
+                } else {
+                    resolve(result);
+                }
+            }));
+            console.log('result', JSON.stringify(result))
+        }
+    }
+})
 
 route.get("/family/:applicationNumber", [authJWT.verifyToken], async (req, res) =>{  
 
