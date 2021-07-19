@@ -19,7 +19,8 @@ route.get("/user_company_selection", [authJWT.verifyToken], async (req, res, nex
     try{
         const list = await UserCompanySelection.findAll({
             attributes: ['user_company_selection_id', 'user_id', 'organisation_id', 'representative_id'],
-            where: {user_id: req.userId, organisation_id: req.orgId}
+            where: {user_id: req.userId, organisation_id: req.orgId},
+            group: ['organisation_id', 'representative_id']
         })
         res.status(200).json({list});
     } catch( e ) {
