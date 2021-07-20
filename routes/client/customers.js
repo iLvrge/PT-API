@@ -64,7 +64,7 @@ route.get("/timeline", [authJWT.verifyToken], async(req, res, next) => {
     let {companies, tabs, customers, rf_ids, layout, exclude, limit, offset } = req.query, list = [], groups = []
     try {                
         
-        const replacements = { organisation_id: req.orgId, year: 2000 }
+        const replacements = { organisation_id: req.orgId, year: 1997 }
 
         if(typeof companies != 'undefined' && companies != '') {            
             companies = JSON.parse(companies)
@@ -93,7 +93,7 @@ route.get("/timeline", [authJWT.verifyToken], async(req, res, next) => {
             transactionQuery += " AND assets.layout_id IN (:layout)"
         }
 
-        let query = "SELECT activity_parties_transactions.rf_id as id, exec_dt, assignor_and_assignee.name AS customerName, activity_id AS tab_id, (CASE WHEN (activity_id = 8 OR activity_id = 9 OR activity_id = 14) THEN 1 WHEN (activity_id = 5 OR activity_id = 11 OR activity_id = 12 OR activity_id = 13) THEN 2 WHEN (activity_id = 3 OR activity_id = 4) THEN 3 WHEN (activity_id = 1 OR activity_id = 2 OR activity_id = 6 OR activity_id = 7) THEN 4 WHEN (activity_id = 10) THEN 5 END) AS `group`, company_id AS `company`, (SELECT count(distinct assets.appno_doc_num) FROM assets WHERE assets.appno_doc_num IN ( " + transactionQuery + " ) AS totalAssets FROM activity_parties_transactions INNER JOIN db_uspto.assignor_and_assignee AS assignor_and_assignee ON assignor_and_assignee.assignor_and_assignee_id = activity_parties_transactions.assignor_and_assignee_id WHERE activity_parties_transactions.organisation_id = :organisation_id AND date_format(activity_parties_transactions.exec_dt, '%Y') >= :year"
+        let query = "SELECT activity_parties_transactions.rf_id as id, exec_dt, assignor_and_assignee.name AS customerName, activity_id AS tab_id, (CASE WHEN (activity_id = 8 OR activity_id = 9 OR activity_id = 14) THEN 1 WHEN (activity_id = 5 OR activity_id = 11 OR activity_id = 12 OR activity_id = 13) THEN 2 WHEN (activity_id = 3 OR activity_id = 4) THEN 3 WHEN (activity_id = 1 OR activity_id = 2 OR activity_id = 6 OR activity_id = 7) THEN 4 WHEN (activity_id = 10) THEN 5 END) AS `group`, company_id AS `company`, (SELECT count(distinct assets.appno_doc_num) FROM assets WHERE assets.appno_doc_num IN ( " + transactionQuery + " ) AS totalAssets FROM activity_parties_transactions INNER JOIN db_uspto.assignor_and_assignee AS assignor_and_assignee ON assignor_and_assignee.assignor_and_assignee_id = activity_parties_transactions.assignor_and_assignee_id WHERE activity_parties_transactions.organisation_id = :organisation_id "
 
         let groupQuery = "SELECT activity_id AS `group` FROM activity_parties_transactions WHERE activity_parties_transactions.organisation_id = :organisation_id "
                 
@@ -126,9 +126,9 @@ route.get("/timeline", [authJWT.verifyToken], async(req, res, next) => {
             groupQuery += " AND activity_parties_transactions.rf_id IN (:rf_ids)"
             replacements.rf_ids = rf_ids
         } else {
-            query += " AND activity_parties_transactions.rf_id IN (SELECT documentid.rf_id FROM db_uspto.documentid AS documentid WHERE documentid.appno_doc_num IN (SELECT assets.appno_doc_num FROM assets WHERE assets.organisation_id = :organisation_id "
+            query += " AND activity_parties_transactions.rf_id IN (SELECT documentid.rf_id FROM db_uspto.documentid AS documentid WHERE date_format(documentid.appno_date, '%Y') > :year AND documentid.appno_doc_num IN (SELECT assets.appno_doc_num FROM assets WHERE assets.organisation_id = :organisation_id "
 
-            groupQuery += " AND activity_parties_transactions.rf_id IN (SELECT documentid.rf_id FROM db_uspto.documentid AS documentid WHERE documentid.appno_doc_num IN (SELECT assets.appno_doc_num FROM assets WHERE assets.organisation_id = :organisation_id "
+            groupQuery += " AND activity_parties_transactions.rf_id IN (SELECT documentid.rf_id FROM db_uspto.documentid AS documentid WHERE date_format(documentid.appno_date, '%Y') > :year AND documentid.appno_doc_num IN (SELECT assets.appno_doc_num FROM assets WHERE assets.organisation_id = :organisation_id "
 
 
             if( typeof layout != 'undefined' ) {

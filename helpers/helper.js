@@ -202,10 +202,18 @@ let searchCompany = async(query, t) => {
                 Select assignor.assignor_and_assignee_id from assignment
                 INNER JOIN assignor ON assignor.rf_id = assignment.rf_id
                 WHERE date_format(assignment.record_dt, '%Y') >= :year AND assignor.assignor_and_assignee_id = a.assignor_and_assignee_id
-                GROUP BY assignor.or_name) as tempAssignorAndAssignee 
-            WHERE MATCH(a.name) AGAINST (:search IN BOOLEAN MODE) ` ;
+                GROUP BY assignor.or_name) as tempAssignorAndAssignee ` ;
+                
+            if(search.length == 1) {
+                queryCompany += ` WHERE trim(a.name) = :search `
+            } else {
+                queryCompany += ` WHERE MATCH(a.name) AGAINST (:search IN BOOLEAN MODE) `
+            }
+                
 
-            
+            if( t == 0 ) {
+                queryCompany += `  AND a.assignor_and_assignee_id NOT IN (SELECT assignor_and_assignee_id FROM db_uspto.inventors)`;
+            }
 
             queryCompany += ` GROUP BY a.name ORDER BY counter DESC`;
 
