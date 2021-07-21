@@ -110,9 +110,9 @@ route.get("/timeline", [authJWT.verifyToken], async(req, res, next) => {
             replacements.tabs = tabs
         }
 
-        if(exclude == undefined || exclude == 'undefined') {
-            query += " AND activity_parties_transactions.activity_id NOT IN (10)"
-            groupQuery += " AND activity_parties_transactions.activity_id NOT IN (10)"
+        if(tabs.length == 0 || tabs.includes(1)) {
+            query += " AND activity_parties_transactions.activity_id <> 10 "
+            groupQuery += " AND activity_parties_transactions.activity_id <> 10 "
         }
 
         if( customers.length > 0 ) {
