@@ -1871,19 +1871,19 @@ let getAssignmentDataByrfID = async (rfID, t = 0) => {
 	const assigneeQuery = 'SELECT a.*, aaa.name as ee_name, r.representative_name as normalize_name, aaa.assignor_and_assignee_id as id FROM assignee as a INNER JOIN assignor_and_assignee as aaa ON aaa.assignor_and_assignee_id = a.assignor_and_assignee_id LEFT JOIN representative as r ON r.representative_id = aaa.representative_id WHERE a.rf_id = :rfID  GROUP BY aaa.name, normalize_name';
 	const assignmentQuery = 'SELECT ac.*, acc.convey_ty, acc.employer_assign FROM assignment as ac INNER JOIN assignment_conveyance as acc ON acc.rf_id = ac.rf_id WHERE ac.rf_id = :rfID';
 	const documentQuery = 'SELECT * FROM documentid WHERE rf_id = :rfID';
-	let assignee = await connection.application.query(assigneeQuery,{
+	let assignee = await connection.resources.query(assigneeQuery,{
 		type: connection.Sequelize.QueryTypes.SELECT,
 		raw: true,
 		logging: console.log,
 		replacements: { rfID: rfID },
 	});
-	let assignor = await connection.application.query(assignorQuery,{
+	let assignor = await connection.resources.query(assignorQuery,{
 		type: connection.Sequelize.QueryTypes.SELECT,
 		raw: true,
 		logging: console.log,
 		replacements: { rfID: rfID },
 	});
-	let assignment = await connection.application.query(assignmentQuery,{
+	let assignment = await connection.resources.query(assignmentQuery,{
 		type: connection.Sequelize.QueryTypes.SELECT,
 		raw: true,
 		logging: console.log,
@@ -1893,7 +1893,7 @@ let getAssignmentDataByrfID = async (rfID, t = 0) => {
     let properties = []
     
     if( t === 0 ) {
-        properties = await connection.application.query(documentQuery,{
+        properties = await connection.resources.query(documentQuery,{
             type: connection.Sequelize.QueryTypes.SELECT,
             raw: true,
             logging: console.log,
