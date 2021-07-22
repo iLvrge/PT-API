@@ -425,12 +425,20 @@ route.get("/assets/:patentNumber/files/:channelID/slack/:token", [authJWT.verify
                         const params = {
                             pageSize: 1000,
                             fields: 'nextPageToken, files(id, name, mimeType, webContentLink, webViewLink, iconLink, thumbnailLink, exportLinks, createdTime, owners)',
-                            q: `'${getRepo.container_id}' in parents`,
+                            q: `'${getRepo.container_id}' in parents and mimeType != 'application/vnd.google-apps.folder'`,
                             orderBy: 'folder,name'
                         }
         
-                        const {data} = await drive.files.list(params);
-                        document_files = data.files
+                        const {data} = await drive.files.list(params)
+                        if(data.files.length > 0 ) {
+                            const promise = data.files.map( file => {
+                                const owners = file.owners
+                                const documentFile = {...file, ...owners[0]}
+                                delete documentFile.owners
+                                document_files.push(documentFile)
+                            })
+                            await Promise.all(promise)
+                        }
                     }
                 }
             }

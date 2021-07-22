@@ -25,6 +25,8 @@ const Validity = require("../../model/application/Validity");
 
 const Transactions = require("../../model/application/Transactions");
 
+const Repository = require("../../model/application/Repository");
+
 const TreeParties = require("../../model/application/TreeParties");
 
 const TreePartiesCollections = require("../../model/application/TreePartiesCollections");
@@ -42,6 +44,12 @@ const connection = require("../../config/db.config");
 const clientDBConnection = require("../../helpers/clientDBConnection");
 
 const {google} = require('googleapis');
+
+const oauth2Client = new google.auth.OAuth2(
+    process.env.GOOGLE_CLIENT_ID,
+    process.env.GOOGLE_SECRET_KEY,
+    process.env.REDIRECT_URL
+);
 
 
 /**Get all companies */
@@ -90,32 +98,65 @@ route.get("/summary", [authJWT.verifyToken, clientDBConnection.connect], async(r
     })
 
 
-    if(typeof user_account != 'undefined') {
+    if(typeof user_account != 'undefined' && typeof access_token !== 'undefined' && access_token != '' && user_account != '') {
         let getRepo = await Repository.findOne({
             where: { organisation_id: req.orgId, user_account: user_account}
         })     
 
-        if(getRepo != null) {
+        if(getRepo != null && getRepo.container_id != '') {
+            let credentials = {"scope": process.env.GOOGLE_SCOPE}
+            credentials.access_token = access_token
+            oauth2Client.setCredentials(credentials)
+            try{
+                const drive = google.drive({version: 'v3', auth:oauth2Client});
+
+                if(drive != null && drive != undefined) {
             
+                    const params = {
+                        pageSize: 1000,
+                        fields: 'nextPageToken, files(id)',
+                        q: `'${getRepo.container_id}' in parents and mimeType != 'application/vnd.google-apps.folder'`,
+                        orderBy: 'folder,name'
+                    }
+    
+                    const getList = await retrieveAllFilesInFolder(drive, params)
+    
+                    console.log('getList', getList)
+                    report.documents =  getList.length
+                    
+                }
+            } catch(err) {
+                console.log('Company Summary Document error', err)
+            }            
         }
     }
-
-    /* if( access_token != '' && access_token != null && access_token != 'undefined' ) {
-        const oauth2Client = new google.auth.OAuth2(
-            process.env.GOOGLE_CLIENT_ID,
-            process.env.GOOGLE_SECRET_KEY,
-            process.env.REDIRECT_URL
-        );
-
-        const credentials = {"scope": process.env.GOOGLE_SCOPE, access_token: access_token}
-        oauth2Client.setCredentials(credentials)
-        const oauth2 = google.oauth2({ version: "v2", auth: oauth2Client }) 
-    } */
-
-
     res.status(200).json(report)
-
 })
+
+const  retrieveAllFilesInFolder = async (drive, params) => {
+    const filesPromise = new Promise((resolve, reject) => {
+        let retrievePageOfChildren = async (resp, result) => {
+            let { data } = await resp
+            if( data !== undefined && data !== 'undefined' && data !== null && data.hasOwnProperty('files') ) {
+                result = result.concat(data.files);
+                let nextPageToken = data.nextPageToken;
+                if (nextPageToken) {
+                    params.pageToken = nextPageToken
+                    request = drive.files.list(params);
+                    retrievePageOfChildren(request, result);
+                } else {
+                    resolve(result);
+                }
+            } else {
+                resolve([]);
+            }            
+        }
+        const initialRequest = drive.files.list(params);
+        retrievePageOfChildren(initialRequest, []);
+    });
+    return filesPromise
+}
+
 
 route.get("/:companyID/list", [authJWT.verifyToken, clientDBConnection.connect], async(req, res, next) => {
     try{
