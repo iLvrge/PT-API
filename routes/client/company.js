@@ -87,7 +87,7 @@ route.get("/summary", [authJWT.verifyToken, clientDBConnection.connect], async(r
 
     await Promise.all(promises)
 
-    const query = `SELECT ${allCompanies.length} as companies, sum(no_of_activities) as activites, sum(no_of_parties) as parties,  sum(no_of_inventor) as inventors, sum(no_of_transactions) as transactions, sum(no_of_assets) as assets, 0 as documents, (SELECT sum(no_of_parties) - sum(no_of_transactions) FROM admin_representative_reports WHERE representative_name IN (:representativeName)) as arrows FROM representative_reports WHERE representative_name IN (:representativeName)`
+    const query = `SELECT ${allCompanies.length} as companies, sum(no_of_activities) as activites, sum(no_of_parties) as parties,  sum(no_of_inventor) as employees, sum(no_of_transactions) as transactions, sum(no_of_assets) as assets, (SELECT sum(no_of_parties) - sum(no_of_transactions) FROM admin_representative_reports WHERE representative_name IN (:representativeName)) as arrows, 0 as documents  FROM representative_reports WHERE representative_name IN (:representativeName)`
 
     report = await connection.resources.query(query,{
         type: connection.Sequelize.QueryTypes.SELECT,
@@ -268,13 +268,19 @@ route.get("/list", [authJWT.verifyToken, clientDBConnection.connect], async(req,
             const companiesList = []
 
             if(list.length > 0) {
-                const representativeNames = []
+                const representativeNames = [], representativeIDs = []
 
                 const promises = list.map( representative => {
                     representativeNames.push(representative.representative_name)
+                    representativeIDs.push(representative.representative_id)
                 })
     
                 await Promise.all(promises)
+
+                const findChild = await Representative.findAll({
+                    attributes: ['representative_id', 'parent_id'],
+                    where: {parent_id: representativeIDs, child: 1},
+                })
 
                 const findReports = await RepresentativeReport.findAll({
                     attributes: ['representative_name', 'no_of_assets', 'no_of_transactions', 'no_of_parties', 'no_of_inventor', 'no_of_activities'],
@@ -292,8 +298,12 @@ route.get("/list", [authJWT.verifyToken, clientDBConnection.connect], async(req,
                     const promiseReport = list.map( representative => {
                         let representaitveJSON = representative.toJSON();
                         const findIndex = findReports.findIndex( r => r.representative_name == representative.representative_name)
+                        let child = []
+                        if(findChild.length > 0) {
+                            child = findChild.filter( row => row.parent_id == representative.representative_id).map(obj => obj.representative_id)
+                        }
                         if( findIndex !== -1) {
-                            representaitveJSON = {...representaitveJSON, no_of_assets: findReports[findIndex]['no_of_assets'], no_of_transactions: findReports[findIndex]['no_of_transactions'], no_of_parties: findReports[findIndex]['no_of_parties'], no_of_inventor: findReports[findIndex]['no_of_inventor'], no_of_activities: findReports[findIndex]['no_of_activities']}
+                            representaitveJSON = {...representaitveJSON, child: JSON.stringify(child) , no_of_assets: findReports[findIndex]['no_of_assets'], no_of_transactions: findReports[findIndex]['no_of_transactions'], no_of_parties: findReports[findIndex]['no_of_parties'], no_of_inventor: findReports[findIndex]['no_of_inventor'], no_of_activities: findReports[findIndex]['no_of_activities']}
                             let product = 0;
                             const findAdminIndex = findAdminReports.findIndex( r => r.representative_name == representative.representative_name)
 
