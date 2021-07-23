@@ -537,7 +537,35 @@ let searchCompanyIDByAddress = async( addresses, type ) => {
                 replacements: { address: listAddress.join(' '), flag: 0, year: 1997, conveyanceType: ['security', 'restatedsecurity']},
                 logging: console.log,
                 }
-            );      
+            );   
+            
+            if(searchResult.length == 0) {
+                let  replacements = {flag: 0, year: 1997}
+
+                if(isNaN(type) === false && type == 1) {
+                    replacements.conveyanceType = ['security', 'restatedsecurity']
+                }
+                queryCompany = ''
+                const promise = addresses.map( (address, index) => {
+                    replacements[`address${index}`] = address
+                    if(isNaN(type) === false && type == 1) {
+                        queryCompany += `SELECT a.assignor_and_assignee_id as id, a.assignor_and_assignee_id, a.name, a.instances AS counter, c.representative_name AS normalize_name, (select rr.representative_name FROM representative AS rr WHERE rr.representative_name = a.name GROUP BY rr.representative_name) AS representative_company, concat(assignment.reel_no,'-', assignment.frame_no) AS assigneeRFID,  null AS assignorRFID  FROM assignor_and_assignee AS a LEFT JOIN representative AS c ON c.representative_id = a.representative_id INNER JOIN assignee AS ass ON ass.assignor_and_assignee_id = a.assignor_and_assignee_id INNER JOIN assignment ON ass.rf_id = assignment.rf_id INNER JOIN representative_assignment_conveyance ON assignment.rf_id = representative_assignment_conveyance.rf_id WHERE representative_assignment_conveyance.convey_ty IN (:conveyanceType) AND date_format(assignment.record_dt, '%Y') >= :year AND (ass.ee_address_1 = :address${index} OR ass.ee_address_2 = :address${index}) UNION `
+                    } else {
+                        queryCompany += `SELECT a.assignor_and_assignee_id as id, a.assignor_and_assignee_id, a.name, a.instances AS counter, c.representative_name AS normalize_name, (select rr.representative_name FROM representative AS rr WHERE rr.representative_name = a.name GROUP BY rr.representative_name) AS representative_company, concat(assignment.reel_no,'-', assignment.frame_no) AS assigneeRFID,  null AS assignorRFID  FROM assignor_and_assignee AS a LEFT JOIN representative AS c ON c.representative_id = a.representative_id INNER JOIN assignee AS ass ON ass.assignor_and_assignee_id = a.assignor_and_assignee_id INNER JOIN assignment ON ass.rf_id = assignment.rf_id WHERE date_format(assignment.record_dt, '%Y') >= :year AND (ass.ee_address_1 = :address${index} OR ass.ee_address_2 = :address${index}) UNION `
+                    }                   
+                })
+                Promise.all(promise)
+                queryCompany = queryCompany.substr(0, queryCompany.length - 6)
+                queryCompany = `SELECT id, assignor_and_assignee_id, name, counter, normalize_name, representative_company, assigneeRFID, assignorRFID FROM (${queryCompany}) as temp GROUP BY name ORDER BY counter DESC`
+                searchResult = await connection.resources.query(queryCompany,{
+                    type: connection.Sequelize.QueryTypes.SELECT,
+                    raw: true,
+                    replacements: replacements,
+                    logging: console.log,
+                    }
+                );  
+
+            }
         }
     } catch (e) {
         console.log(e)
