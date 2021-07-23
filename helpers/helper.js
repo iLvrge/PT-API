@@ -537,7 +537,45 @@ let searchCompanyIDByAddress = async( addresses, type ) => {
                 replacements: { address: listAddress.join(' '), flag: 0, year: 1997, conveyanceType: ['security', 'restatedsecurity']},
                 logging: console.log,
                 }
-            );      
+            );   
+            
+            if(searchResult.length == 0) {
+                let  replacements = {flag: 0, year: 1997}
+
+                if(isNaN(type) === false && type == 1) {
+                    replacements.conveyanceType = ['security', 'restatedsecurity']
+                }
+                queryCompany = ''
+                if(typeof addresses.map === 'function' ) {
+                    const promise = addresses.map( (address, index) => {
+                        replacements[`address${index}`] = address
+                        if(isNaN(type) === false && type == 1) {
+                            queryCompany += `SELECT a.assignor_and_assignee_id as id, a.assignor_and_assignee_id, a.name, a.instances AS counter, c.representative_name AS normalize_name, (select rr.representative_name FROM representative AS rr WHERE rr.representative_name = a.name GROUP BY rr.representative_name) AS representative_company, concat(assignment.reel_no,'-', assignment.frame_no) AS assigneeRFID,  null AS assignorRFID  FROM assignor_and_assignee AS a LEFT JOIN representative AS c ON c.representative_id = a.representative_id INNER JOIN assignee AS ass ON ass.assignor_and_assignee_id = a.assignor_and_assignee_id INNER JOIN assignment ON ass.rf_id = assignment.rf_id INNER JOIN representative_assignment_conveyance ON assignment.rf_id = representative_assignment_conveyance.rf_id WHERE representative_assignment_conveyance.convey_ty IN (:conveyanceType) AND date_format(assignment.record_dt, '%Y') >= :year AND (ass.ee_address_1 = :address${index} OR ass.ee_address_2 = :address${index}) UNION `
+                        } else {
+                            queryCompany += `SELECT a.assignor_and_assignee_id as id, a.assignor_and_assignee_id, a.name, a.instances AS counter, c.representative_name AS normalize_name, (select rr.representative_name FROM representative AS rr WHERE rr.representative_name = a.name GROUP BY rr.representative_name) AS representative_company, concat(assignment.reel_no,'-', assignment.frame_no) AS assigneeRFID,  null AS assignorRFID  FROM assignor_and_assignee AS a LEFT JOIN representative AS c ON c.representative_id = a.representative_id INNER JOIN assignee AS ass ON ass.assignor_and_assignee_id = a.assignor_and_assignee_id INNER JOIN assignment ON ass.rf_id = assignment.rf_id WHERE date_format(assignment.record_dt, '%Y') >= :year AND (ass.ee_address_1 = :address${index} OR ass.ee_address_2 = :address${index}) UNION `
+                        }                   
+                    })
+                    Promise.all(promise)
+                    queryCompany = queryCompany.substr(0, queryCompany.length - 6)
+                } else {    
+                    replacements[`address`] = addresses
+                    if(isNaN(type) === false && type == 1) {
+                        queryCompany += `SELECT a.assignor_and_assignee_id as id, a.assignor_and_assignee_id, a.name, a.instances AS counter, c.representative_name AS normalize_name, (select rr.representative_name FROM representative AS rr WHERE rr.representative_name = a.name GROUP BY rr.representative_name) AS representative_company, concat(assignment.reel_no,'-', assignment.frame_no) AS assigneeRFID,  null AS assignorRFID  FROM assignor_and_assignee AS a LEFT JOIN representative AS c ON c.representative_id = a.representative_id INNER JOIN assignee AS ass ON ass.assignor_and_assignee_id = a.assignor_and_assignee_id INNER JOIN assignment ON ass.rf_id = assignment.rf_id INNER JOIN representative_assignment_conveyance ON assignment.rf_id = representative_assignment_conveyance.rf_id WHERE representative_assignment_conveyance.convey_ty IN (:conveyanceType) AND date_format(assignment.record_dt, '%Y') >= :year AND (ass.ee_address_1 = :address OR ass.ee_address_2 = :address${index}) UNION `
+                    } else {
+                        queryCompany += `SELECT a.assignor_and_assignee_id as id, a.assignor_and_assignee_id, a.name, a.instances AS counter, c.representative_name AS normalize_name, (select rr.representative_name FROM representative AS rr WHERE rr.representative_name = a.name GROUP BY rr.representative_name) AS representative_company, concat(assignment.reel_no,'-', assignment.frame_no) AS assigneeRFID,  null AS assignorRFID  FROM assignor_and_assignee AS a LEFT JOIN representative AS c ON c.representative_id = a.representative_id INNER JOIN assignee AS ass ON ass.assignor_and_assignee_id = a.assignor_and_assignee_id INNER JOIN assignment ON ass.rf_id = assignment.rf_id WHERE date_format(assignment.record_dt, '%Y') >= :year AND (ass.ee_address_1 = :address OR ass.ee_address_2 = :address${index}) UNION `
+                    } 
+                }
+                
+                queryCompany = `SELECT id, assignor_and_assignee_id, name, counter, normalize_name, representative_company, assigneeRFID, assignorRFID FROM (${queryCompany}) as temp GROUP BY name ORDER BY counter DESC`
+                searchResult = await connection.resources.query(queryCompany,{
+                    type: connection.Sequelize.QueryTypes.SELECT,
+                    raw: true,
+                    replacements: replacements,     
+                    logging: console.log,
+                    }
+                );  
+
+            }
         }
     } catch (e) {
         console.log(e)
@@ -1869,21 +1907,21 @@ let getCollectionByID = async(Collection, CollectionCompany, collectionID) => {
 let getAssignmentDataByrfID = async (rfID, t = 0) => {
 	const assignorQuery = 'SELECT aaa.name as or_name, r.representative_name as normalize_name, date_format(a.exec_dt,"%Y-%m-%d %h:%i:%s") as exec_dt, aaa.assignor_and_assignee_id as id FROM assignor as a INNER JOIN assignor_and_assignee as aaa ON aaa.assignor_and_assignee_id = a.assignor_and_assignee_id LEFT JOIN representative as r ON r.representative_id = aaa.representative_id WHERE a.rf_id = :rfID  GROUP BY aaa.name, normalize_name ORDER BY a.exec_dt ASC';
 	const assigneeQuery = 'SELECT a.*, aaa.name as ee_name, r.representative_name as normalize_name, aaa.assignor_and_assignee_id as id FROM assignee as a INNER JOIN assignor_and_assignee as aaa ON aaa.assignor_and_assignee_id = a.assignor_and_assignee_id LEFT JOIN representative as r ON r.representative_id = aaa.representative_id WHERE a.rf_id = :rfID  GROUP BY aaa.name, normalize_name';
-	const assignmentQuery = 'SELECT ac.*, acc.convey_ty, acc.employer_assign FROM assignment as ac INNER JOIN assignment_conveyance as acc ON acc.rf_id = ac.rf_id WHERE ac.rf_id = :rfID';
+	const assignmentQuery = 'SELECT ac.*, acc.convey_ty, acc.employer_assign FROM assignment as ac INNER JOIN representative_assignment_conveyance as acc ON acc.rf_id = ac.rf_id WHERE ac.rf_id = :rfID';
 	const documentQuery = 'SELECT * FROM documentid WHERE rf_id = :rfID';
-	let assignee = await connection.application.query(assigneeQuery,{
+	let assignee = await connection.resources.query(assigneeQuery,{
 		type: connection.Sequelize.QueryTypes.SELECT,
 		raw: true,
 		logging: console.log,
 		replacements: { rfID: rfID },
 	});
-	let assignor = await connection.application.query(assignorQuery,{
+	let assignor = await connection.resources.query(assignorQuery,{
 		type: connection.Sequelize.QueryTypes.SELECT,
 		raw: true,
 		logging: console.log,
 		replacements: { rfID: rfID },
 	});
-	let assignment = await connection.application.query(assignmentQuery,{
+	let assignment = await connection.resources.query(assignmentQuery,{
 		type: connection.Sequelize.QueryTypes.SELECT,
 		raw: true,
 		logging: console.log,
@@ -1893,7 +1931,7 @@ let getAssignmentDataByrfID = async (rfID, t = 0) => {
     let properties = []
     
     if( t === 0 ) {
-        properties = await connection.application.query(documentQuery,{
+        properties = await connection.resources.query(documentQuery,{
             type: connection.Sequelize.QueryTypes.SELECT,
             raw: true,
             logging: console.log,

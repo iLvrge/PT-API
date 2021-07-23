@@ -25,6 +25,8 @@ const Validity = require("../../model/application/Validity");
 
 const Transactions = require("../../model/application/Transactions");
 
+const Repository = require("../../model/application/Repository");
+
 const TreeParties = require("../../model/application/TreeParties");
 
 const TreePartiesCollections = require("../../model/application/TreePartiesCollections");
@@ -42,6 +44,12 @@ const connection = require("../../config/db.config");
 const clientDBConnection = require("../../helpers/clientDBConnection");
 
 const {google} = require('googleapis');
+
+const oauth2Client = new google.auth.OAuth2(
+    process.env.GOOGLE_CLIENT_ID,
+    process.env.GOOGLE_SECRET_KEY,
+    process.env.REDIRECT_URL
+);
 
 
 /**Get all companies */
@@ -79,7 +87,7 @@ route.get("/summary", [authJWT.verifyToken, clientDBConnection.connect], async(r
 
     await Promise.all(promises)
 
-    const query = `SELECT ${allCompanies.length} as companies, sum(no_of_activities) as activites, sum(no_of_parties) as parties,  sum(no_of_inventor) as inventors, sum(no_of_transactions) as transactions, sum(no_of_assets) as assets, 0 as documents, (SELECT sum(no_of_parties) - sum(no_of_transactions) FROM admin_representative_reports WHERE representative_name IN (:representativeName)) as arrows FROM representative_reports WHERE representative_name IN (:representativeName)`
+    const query = `SELECT ${allCompanies.length} as companies, sum(no_of_activities) as activites, sum(no_of_parties) as parties,  sum(no_of_inventor) as employees, sum(no_of_transactions) as transactions, sum(no_of_assets) as assets, (SELECT sum(no_of_parties) - sum(no_of_transactions) FROM admin_representative_reports WHERE representative_name IN (:representativeName)) as arrows, 0 as documents  FROM representative_reports WHERE representative_name IN (:representativeName)`
 
     report = await connection.resources.query(query,{
         type: connection.Sequelize.QueryTypes.SELECT,
@@ -90,32 +98,65 @@ route.get("/summary", [authJWT.verifyToken, clientDBConnection.connect], async(r
     })
 
 
-    if(typeof user_account != 'undefined') {
+    if(typeof user_account != 'undefined' && typeof access_token !== 'undefined' && access_token != '' && user_account != '') {
         let getRepo = await Repository.findOne({
             where: { organisation_id: req.orgId, user_account: user_account}
         })     
 
-        if(getRepo != null) {
+        if(getRepo != null && getRepo.container_id != '') {
+            let credentials = {"scope": process.env.GOOGLE_SCOPE}
+            credentials.access_token = access_token
+            oauth2Client.setCredentials(credentials)
+            try{
+                const drive = google.drive({version: 'v3', auth:oauth2Client});
+
+                if(drive != null && drive != undefined) {
             
+                    const params = {
+                        pageSize: 1000,
+                        fields: 'nextPageToken, files(id)',
+                        q: `'${getRepo.container_id}' in parents and mimeType != 'application/vnd.google-apps.folder'`,
+                        orderBy: 'folder,name'
+                    }
+    
+                    const getList = await retrieveAllFilesInFolder(drive, params)
+    
+                    console.log('getList', getList)
+                    report.documents =  getList.length
+                    
+                }
+            } catch(err) {
+                console.log('Company Summary Document error', err)
+            }            
         }
     }
-
-    /* if( access_token != '' && access_token != null && access_token != 'undefined' ) {
-        const oauth2Client = new google.auth.OAuth2(
-            process.env.GOOGLE_CLIENT_ID,
-            process.env.GOOGLE_SECRET_KEY,
-            process.env.REDIRECT_URL
-        );
-
-        const credentials = {"scope": process.env.GOOGLE_SCOPE, access_token: access_token}
-        oauth2Client.setCredentials(credentials)
-        const oauth2 = google.oauth2({ version: "v2", auth: oauth2Client }) 
-    } */
-
-
     res.status(200).json(report)
-
 })
+
+const  retrieveAllFilesInFolder = async (drive, params) => {
+    const filesPromise = new Promise((resolve, reject) => {
+        let retrievePageOfChildren = async (resp, result) => {
+            let { data } = await resp
+            if( data !== undefined && data !== 'undefined' && data !== null && data.hasOwnProperty('files') ) {
+                result = result.concat(data.files);
+                let nextPageToken = data.nextPageToken;
+                if (nextPageToken) {
+                    params.pageToken = nextPageToken
+                    request = drive.files.list(params);
+                    retrievePageOfChildren(request, result);
+                } else {
+                    resolve(result);
+                }
+            } else {
+                resolve([]);
+            }            
+        }
+        const initialRequest = drive.files.list(params);
+        retrievePageOfChildren(initialRequest, []);
+    });
+    return filesPromise
+}
+
 
 route.get("/:companyID/list", [authJWT.verifyToken, clientDBConnection.connect], async(req, res, next) => {
     try{
@@ -227,13 +268,19 @@ route.get("/list", [authJWT.verifyToken, clientDBConnection.connect], async(req,
             const companiesList = []
 
             if(list.length > 0) {
-                const representativeNames = []
+                const representativeNames = [], representativeIDs = []
 
                 const promises = list.map( representative => {
                     representativeNames.push(representative.representative_name)
+                    representativeIDs.push(representative.representative_id)
                 })
     
                 await Promise.all(promises)
+
+                const findChild = await Representative.findAll({
+                    attributes: ['representative_id', 'parent_id'],
+                    where: {parent_id: representativeIDs, child: 1},
+                })
 
                 const findReports = await RepresentativeReport.findAll({
                     attributes: ['representative_name', 'no_of_assets', 'no_of_transactions', 'no_of_parties', 'no_of_inventor', 'no_of_activities'],
@@ -251,8 +298,12 @@ route.get("/list", [authJWT.verifyToken, clientDBConnection.connect], async(req,
                     const promiseReport = list.map( representative => {
                         let representaitveJSON = representative.toJSON();
                         const findIndex = findReports.findIndex( r => r.representative_name == representative.representative_name)
+                        let child = []
+                        if(findChild.length > 0) {
+                            child = findChild.filter( row => row.parent_id == representative.representative_id).map(obj => obj.representative_id)
+                        }
                         if( findIndex !== -1) {
-                            representaitveJSON = {...representaitveJSON, no_of_assets: findReports[findIndex]['no_of_assets'], no_of_transactions: findReports[findIndex]['no_of_transactions'], no_of_parties: findReports[findIndex]['no_of_parties'], no_of_inventor: findReports[findIndex]['no_of_inventor'], no_of_activities: findReports[findIndex]['no_of_activities']}
+                            representaitveJSON = {...representaitveJSON, child: JSON.stringify(child) , no_of_assets: findReports[findIndex]['no_of_assets'], no_of_transactions: findReports[findIndex]['no_of_transactions'], no_of_parties: findReports[findIndex]['no_of_parties'], no_of_inventor: findReports[findIndex]['no_of_inventor'], no_of_activities: findReports[findIndex]['no_of_activities']}
                             let product = 0;
                             const findAdminIndex = findAdminReports.findIndex( r => r.representative_name == representative.representative_name)
 
