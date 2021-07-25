@@ -299,7 +299,7 @@ route.get("/assets/:patentNumber/files/:channelID/slack/:token", [authJWT.verify
             } */
 
 
-            let query = 'SELECT assignment.rf_id as id, "usptodrive" as external_type, date_format(assignor.exec_dt, "%m-%d-%Y") as title, CASE WHEN representative_assignment_conveyance.convey_ty = "assignment" THEN "Ownership" WHEN representative_assignment_conveyance.convey_ty = "addresschg" THEN "Address Change" WHEN representative_assignment_conveyance.convey_ty = "namechg" THEN "Name Change" WHEN representative_assignment_conveyance.convey_ty = "partialassignment" THEN "Ownership" WHEN representative_assignment_conveyance.convey_ty = "release" THEN "Security Release"  ELSE representative_assignment_conveyance.convey_ty END as convey_ty, CASE WHEN assignment.status = 1 THEN CONCAT("https://s3-us-west-1.amazonaws.com/static.patentrack.com/assignments/var/www/html/beta/resources/shared/data/assignment-pat-",reel_no,"-",frame_no,".pdf") ELSE CONCAT("https://legacy-assignments.uspto.gov/assignments/assignment-pat-",reel_no,"-",frame_no,".pdf") END as url_private, (SELECT sum(no_of_parties) FROM report_representative_assets_transactions_parties WHERE report_representative_assets_transactions_parties.rf_id = assignment.rf_id GROUP BY report_representative_assets_transactions_parties.rf_id ) as count_parties, (SELECT assignee FROM report_representative_assets_transactions WHERE report_representative_assets_transactions.rf_id = assignment.rf_id LIMIT 1) as assignee, (SELECT assignor FROM report_representative_assets_transactions WHERE report_representative_assets_transactions.rf_id = assignment.rf_id LIMIT 1) as assignor FROM assignment INNER JOIN assignor ON assignor.rf_id = assignment.rf_id INNER JOIN documentid ON documentid.rf_id = assignment.rf_id INNER JOIN representative_assignment_conveyance ON representative_assignment_conveyance.rf_id = assignment.rf_id'
+            let query = 'SELECT assignment.rf_id as id, "usptodrive" as external_type, date_format(assignor.exec_dt, "%m-%d-%Y") as date, CASE WHEN representative_assignment_conveyance.convey_ty = "assignment" THEN "Ownership" WHEN representative_assignment_conveyance.convey_ty = "addresschg" THEN "Address Change" WHEN representative_assignment_conveyance.convey_ty = "namechg" THEN "Name Change" WHEN representative_assignment_conveyance.convey_ty = "partialassignment" THEN "Ownership" WHEN representative_assignment_conveyance.convey_ty = "release" THEN "Security Release"  ELSE representative_assignment_conveyance.convey_ty END as convey_ty, CASE WHEN assignment.status = 1 THEN CONCAT("https://s3-us-west-1.amazonaws.com/static.patentrack.com/assignments/var/www/html/beta/resources/shared/data/assignment-pat-",reel_no,"-",frame_no,".pdf") ELSE CONCAT("https://legacy-assignments.uspto.gov/assignments/assignment-pat-",reel_no,"-",frame_no,".pdf") END as url_private, (SELECT sum(no_of_parties) FROM report_representative_assets_transactions_parties WHERE report_representative_assets_transactions_parties.rf_id = assignment.rf_id GROUP BY report_representative_assets_transactions_parties.rf_id ) as count_parties, (SELECT assignee FROM report_representative_assets_transactions WHERE report_representative_assets_transactions.rf_id = assignment.rf_id LIMIT 1) as assignee, (SELECT assignor FROM report_representative_assets_transactions WHERE report_representative_assets_transactions.rf_id = assignment.rf_id LIMIT 1) as assignor FROM assignment INNER JOIN assignor ON assignor.rf_id = assignment.rf_id INNER JOIN documentid ON documentid.rf_id = assignment.rf_id INNER JOIN representative_assignment_conveyance ON representative_assignment_conveyance.rf_id = assignment.rf_id'
 
             if(type == 0) {
                 query += ' WHERE appno_doc_num =:appno_doc_num '                
@@ -309,7 +309,7 @@ route.get("/assets/:patentNumber/files/:channelID/slack/:token", [authJWT.verify
                 where.grant_doc_num = findNumber.grant_doc_num 
             }
 
-            query +=' GROUP BY assignment.rf_id'
+            query +=' GROUP BY assignment.rf_id ORDER BY date ASC'
 
             assets_files =  await connection.resources.query(query,{
                     type: connection.Sequelize.QueryTypes.SELECT,
@@ -383,7 +383,7 @@ route.get("/assets/:patentNumber/files/:channelID/slack/:token", [authJWT.verify
                 }               
             }
 
-            query += '   GROUP BY assignment.rf_id'
+            query += '   GROUP BY assignment.rf_id  ORDER BY date ASC'
 
             assets_files =  await connection.resources.query(query,{
                     type: connection.Sequelize.QueryTypes.SELECT,

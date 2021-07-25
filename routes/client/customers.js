@@ -110,7 +110,7 @@ route.get("/timeline", [authJWT.verifyToken], async(req, res, next) => {
             replacements.tabs = tabs
         }
 
-        if(tabs.length == 0 || tabs.includes(1)) {
+        if((tabs.length == 0 || !tabs.includes(10)) && exclude != 'true') {
             query += " AND activity_parties_transactions.activity_id <> 10 "
             groupQuery += " AND activity_parties_transactions.activity_id <> 10 "
         }
@@ -768,61 +768,36 @@ route.post("/transactions/queues/name", [authJWT.verifyToken, clientDBConnection
         if( group_ids != '' ) {
             group_ids = JSON.parse(group_ids)
 
-            if( typeof new_name !== 'undefined' && new_name !== ''  && new_name !== undefined && new_name !== 'undefined') {
-                const query = `SELECT assignment.rf_id AS id, IF( assignee.original_name != '', assignee.original_name, assignee.ee_name ) AS name, TRIM(CONCAT(assignee.ee_address_1, " ", assignee.ee_address_2, " ", assignee.ee_city, " ", assignee.ee_state, " ", assignee.ee_postcode, " ", assignee.ee_country )) AS current_address, "${new_name.toString().toUpperCase()}" as new_name, assignment_conveyance.convey_ty, (SELECT date_format(assignor.exec_dt, "%b %d, %Y") FROM db_uspto.assignor AS assignor WHERE assignor.rf_id = assignment.rf_id LIMIT 1)  AS exec_dt, date_format(record_dt, "%b %d, %Y") AS record_dt, (SELECT COUNT(documentid.appno_doc_num) FROM db_uspto.documentid AS documentid WHERE documentid.rf_id =  assignment.rf_id) AS assets, IF(cname != '', cname, caddress_1) AS original_correspondence FROM db_uspto.assignment AS assignment INNER JOIN db_uspto.assignment_conveyance AS assignment_conveyance ON assignment_conveyance.rf_id = assignment.rf_id INNER JOIN db_uspto.assignee AS assignee ON assignee.rf_id = assignment.rf_id WHERE assignee.assignor_and_assignee_id IN (SELECT assignor_and_assignee_id FROM db_uspto.list1 WHERE company_id = :companyIDs AND organisation_id = :organisation_id) AND assignment.rf_id IN (:rfIDs)`
-
-
-                const replacements = { organisation_id: req.orgId, companyIDs: company_ids, rfIDs: group_ids}
-
-                getList = await connection.applicationNew.query(query,{
-                    type: connection.Sequelize.QueryTypes.SELECT,
-                    raw: true,
-                    logging: console.log,
-                    replacements: replacements,
+            if( group_ids.length > 0) {
+                if( new_name == undefined || new_name == 'undefined') {
+                    const Representative = req.connection_db.define('Representatives', Representatives.mainStructure, Representatives.options);
+    
+                    const getNameData = await Representative.findOne({
+                        attributes: ['representative_name'],
+                        where:{ representative_id: company_ids}                        
+                    });
+                    if(getNameData != null) {
+                        new_name = getNameData.get('representative_name')
                     }
-                )
-                res.status(200).json(getList);
-            } else {
-                company_ids = JSON.parse(company_ids)
-                const Representative = req.connection_db.define('Representatives', Representatives.mainStructure, Representatives.options);
-
-                const getNameData = await Representative.findAll({
-                    attributes: ['representative_id', 'representative_name'],
-                    where:{ representative_id: company_ids}                        
-                });
-
-                if(getNameData.length > 0) {
-                    const query = `SELECT assignment.rf_id AS id, list1.company_id, IF( assignee.original_name != '', assignee.original_name, assignee.ee_name ) AS name, TRIM(CONCAT(assignee.ee_address_1, " ", assignee.ee_address_2, " ", assignee.ee_city, " ", assignee.ee_state, " ", assignee.ee_postcode, " ", assignee.ee_country )) AS current_address, "" as new_name, assignment_conveyance.convey_ty, (SELECT date_format(assignor.exec_dt, "%b %d, %Y") FROM db_uspto.assignor AS assignor WHERE assignor.rf_id = assignment.rf_id LIMIT 1)  AS exec_dt, date_format(record_dt, "%b %d, %Y") AS record_dt, (SELECT COUNT(documentid.appno_doc_num) FROM db_uspto.documentid AS documentid WHERE documentid.rf_id =  assignment.rf_id) AS assets, IF(cname != '', cname, caddress_1) AS original_correspondence FROM db_uspto.assignment AS assignment INNER JOIN db_uspto.assignment_conveyance AS assignment_conveyance ON assignment_conveyance.rf_id = assignment.rf_id INNER JOIN db_uspto.assignee AS assignee ON assignee.rf_id = assignment.rf_id 
-                    INNER JOIN db_uspto.list1 AS list1 ON list1.assignor_and_assignee_id = assignee.assignor_and_assignee_id  WHERE list1.company_id IN (:companyIDs) AND list1.organisation_id = :organisation_id AND assignment.rf_id IN (:rfIDs)`
-
+                }            
+                if( new_name != null && new_name != '' && new_name != 'undefined') {
+                    
+                    const query = `SELECT assignment.rf_id AS id, IF( assignee.original_name != '', assignee.original_name, assignee.ee_name ) AS name, TRIM(CONCAT(assignee.ee_address_1, " ", assignee.ee_address_2, " ", assignee.ee_city, " ", assignee.ee_state, " ", assignee.ee_postcode, " ", assignee.ee_country )) AS current_address, "${new_name.toString().toUpperCase()}" as new_name, assignment_conveyance.convey_ty, (SELECT date_format(assignor.exec_dt, "%b %d, %Y") FROM db_uspto.assignor AS assignor WHERE assignor.rf_id = assignment.rf_id LIMIT 1)  AS exec_dt, date_format(record_dt, "%b %d, %Y") AS record_dt, (SELECT COUNT(documentid.appno_doc_num) FROM db_uspto.documentid AS documentid WHERE documentid.rf_id =  assignment.rf_id) AS assets, IF(cname != '', cname, caddress_1) AS original_correspondence FROM db_uspto.assignment AS assignment INNER JOIN db_uspto.assignment_conveyance AS assignment_conveyance ON assignment_conveyance.rf_id = assignment.rf_id INNER JOIN db_uspto.assignee AS assignee ON assignee.rf_id = assignment.rf_id WHERE assignee.assignor_and_assignee_id IN (SELECT assignor_and_assignee_id FROM db_uspto.list1 WHERE company_id = :companyIDs AND organisation_id = :organisation_id) AND assignment.rf_id IN (:rfIDs)`
+    
+    
                     const replacements = { organisation_id: req.orgId, companyIDs: company_ids, rfIDs: group_ids}
     
-                    const getList = await connection.applicationNew.query(query,{
+                    getList = await connection.applicationNew.query(query,{
                         type: connection.Sequelize.QueryTypes.SELECT,
                         raw: true,
                         logging: console.log,
                         replacements: replacements,
                         }
                     )
-
-                    if(getList.length > 0) {
-                        const promiseRepresentative = getList.map( (assignment, index) => {
-                            const findIndex = getNameData.findIndex( representative => representative.get('representative_id') == assignment.company_id)
-                            if(findIndex !== -1) {
-                                getList[index].new_name = getNameData[findIndex].get('representative_name')
-                            }
-                        })
-                        await Promise.all(promiseRepresentative)
-                        console.log('getList', getList)
-                    }
-                    res.status(200).json(getList);
-                } else {
-                    res.status(200).json(getList);
                 }
             }
-        } else {
-            res.status(200).json(getList);
-        }        
+        }
+        res.status(200).json(getList);
     } catch (err) {
         console.log("/transactions/queues/address", err)
         res.status(500).send("Internal server error.")
