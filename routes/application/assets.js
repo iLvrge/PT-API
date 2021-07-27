@@ -239,14 +239,36 @@ route.post("/assets/cpc", [authJWT.verifyToken], async(req, res, next) => {
 
 route.post("/assets/cpc/:year/:cpcCode", [authJWT.verifyToken], async(req, res, next) => {
     try {
-        let { list } = req.body, getList = []
+        let { list, range } = req.body, getList = []
 
         if( list != '' ) {
             list = JSON.parse(list)
 
             if( list.length > 0 ) {
 
-                const query = "SELECT ROW_NUMBER() OVER () AS id, CASE WHEN grant_doc_num != '' THEN grant_doc_num ELSE appno_doc_num END AS asset, CASE WHEN grant_doc_num = '' THEN 1 ELSE 0 END AS asset_type, grant_doc_num, appno_doc_num, title, temp1.cpc_code AS cpc_code, (SELECT title FROM db_patent_grant_bibliographic.cpc_defination AS cpc_defination WHERE cpc_defination.cpc_code = temp1.cpc_code) AS defination FROM ( SELECT temp.grant_doc_num , temp.appno_doc_num, temp.title, CONCAT(section, class, sub_class, main_group, '/', sub_group) AS cpc_code FROM db_patent_grant_bibliographic.application_cpc AS application_cpc INNER JOIN (SELECT documentid.grant_doc_num, documentid.appno_doc_num, documentid.appno_date, documentid.title FROM db_uspto.documentid AS documentid WHERE date_format(appno_date, '%Y') = :year AND documentid.appno_doc_num IN(:list) GROUP BY documentid.appno_doc_num) AS temp ON temp.appno_doc_num = application_cpc.application_number WHERE application_cpc.type = 0 AND concat(section, class, sub_class) = :cpcCode GROUP BY temp.appno_doc_num ) AS temp1 GROUP BY appno_doc_num"
+                let rangeConcat = 'CONCAT(section, class, sub_class)'
+
+                if( range != undefined && range != 'undefined' && range != null) {
+                    switch(parseInt(range)) {
+                        case 5:
+                            rangeConcat = 'section'
+                            break;
+                        case 4:
+                            rangeConcat = 'CONCAT(section, class)'
+                            break;
+                        case 2:
+                            rangeConcat = 'CONCAT(section, class, sub_class, main_group, "/00")'
+                            break;
+                        case 1:
+                            rangeConcat = 'CONCAT(section, class, sub_class, main_group, "/", sub_group)'
+                            break;
+                        default:
+                            rangeConcat = 'CONCAT(section, class, sub_class)'
+                            break;
+                    }
+                }
+
+                const query = `SELECT ROW_NUMBER() OVER () AS id, CASE WHEN grant_doc_num != '' THEN grant_doc_num ELSE appno_doc_num END AS asset, CASE WHEN grant_doc_num = '' THEN 1 ELSE 0 END AS asset_type, grant_doc_num, appno_doc_num, title, temp1.cpc_code AS cpc_code, (SELECT title FROM db_patent_grant_bibliographic.cpc_defination AS cpc_defination WHERE cpc_defination.cpc_code = temp1.cpc_code) AS defination FROM ( SELECT temp.grant_doc_num , temp.appno_doc_num, temp.title, ${rangeConcat} AS cpc_code FROM db_patent_grant_bibliographic.application_cpc AS application_cpc INNER JOIN (SELECT documentid.grant_doc_num, documentid.appno_doc_num, documentid.appno_date, documentid.title FROM db_uspto.documentid AS documentid WHERE date_format(appno_date, '%Y') = :year AND documentid.appno_doc_num IN(:list) GROUP BY documentid.appno_doc_num) AS temp ON temp.appno_doc_num = application_cpc.application_number WHERE application_cpc.type = 0 AND ${rangeConcat} = :cpcCode GROUP BY temp.appno_doc_num ) AS temp1 GROUP BY appno_doc_num`
 
                 const replacements = { cpcCode: req.params.cpcCode, year: req.params.year, list }
 
