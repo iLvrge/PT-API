@@ -626,6 +626,37 @@ route.get("/company/lenders/:id/companies", [authJWT.verifyToken, authJWT.isAdmi
     }
 })
 
+route.get("/company/:companyID/law_firms", [authJWT.verifyToken, authJWT.isAdmin], async (req, res, next) => {
+    try {        
+        
+        const query = `SELECT law_firms.law_firm_id, law_firms.name,  COUNT(assignment.law_firm_id) AS counter, law_firms.instances AS total_occurences, representative_law_firm.representative_id, representative_law_firm.representative_name 
+        FROM db_uspto.law_firm AS law_firms 
+        LEFT JOIN db_uspto.representative_law_firm AS representative_law_firm ON representative_law_firm.representative_id =  law_firms.representative_id 
+                INNER JOIN assignment ON assignment.law_firm_id = law_firms.law_firm_id
+                INNER JOIN assignee ON assignee.rf_id = assignment.rf_id 
+                WHERE assignee.assignor_and_assignee_id IN (SELECT assignor_and_assignee.assignor_and_assignee_id FROM  assignor_and_assignee WHERE
+                  assignor_and_assignee.representative_id IN(
+                  Select representative.representative_id FROM assignor_and_assignee 
+                  INNER JOIN representative ON representative.representative_id = assignor_and_assignee.representative_id
+                    WHERE assignor_and_assignee.assignor_and_assignee_id = '2679631'
+        ))
+        GROUP BY law_firms.law_firm_id`
+
+        const findAllLawFirms = await connection.resources.query(query,{
+            type: connection.Sequelize.QueryTypes.SELECT,
+            raw: true,
+            replacements: { companyID: req.params.companyID },
+            logging: console.log,
+            }
+        );
+
+        res.status(200).json(findAllLawFirms);
+    } catch(e) {
+        console.log(e);
+        res.status(402).send("Unable to retrieve data.");
+    }
+});
+
 
 route.get("/company/law_firms", [authJWT.verifyToken, authJWT.isAdmin], async (req, res, next) => {
     try {        

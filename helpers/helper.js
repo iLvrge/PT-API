@@ -408,23 +408,43 @@ let getAddressListByCompanyID = async( ID, type ) => {
     if(ID > 0) {
         let queryFindIDS = `SELECT address, rf_id FROM (SELECT ee_address_1 as address, assignee.rf_id FROM assignee 
         INNER JOIN assignment ON assignment.rf_id = assignee.rf_id
-        WHERE  date_format(assignment.record_dt, '%Y') >= :year AND ee_address_1 <> '' AND assignor_and_assignee_id = :ID GROUP BY ee_address_1
+        WHERE  date_format(assignment.record_dt, '%Y') >= :year AND ee_address_1 <> '' AND assignor_and_assignee_id IN (SELECT assignor_and_assignee.assignor_and_assignee_id FROM  assignor_and_assignee WHERE
+            assignor_and_assignee.representative_id IN(
+            Select representative.representative_id FROM assignor_and_assignee 
+            INNER JOIN representative ON representative.representative_id = assignor_and_assignee.representative_id
+              WHERE assignor_and_assignee.assignor_and_assignee_id = :ID
+  ))  GROUP BY ee_address_1
         UNION 
     SELECT ee_address_2 as address, assignee.rf_id FROM assignee 
         INNER JOIN assignment ON assignment.rf_id = assignee.rf_id
-        WHERE  date_format(assignment.record_dt, '%Y') >= :year AND ee_address_2 <> '' AND assignor_and_assignee_id = :ID 
+        WHERE  date_format(assignment.record_dt, '%Y') >= :year AND ee_address_2 <> '' AND assignor_and_assignee_id  IN (SELECT assignor_and_assignee.assignor_and_assignee_id FROM  assignor_and_assignee WHERE
+            assignor_and_assignee.representative_id IN(
+            Select representative.representative_id FROM assignor_and_assignee 
+            INNER JOIN representative ON representative.representative_id = assignor_and_assignee.representative_id
+              WHERE assignor_and_assignee.assignor_and_assignee_id = :ID
+  )) 
         GROUP BY ee_address_2) as temp GROUP BY address  ORDER BY address ASC`;
 
-        if(isNaN(type) === false && type == 1) {
+        if(isNaN(type) === false && type == 1) { 
             queryFindIDS = `SELECT address, rf_id FROM (SELECT ee_address_1 as address, assignee.rf_id FROM assignee 
                 INNER JOIN assignment ON assignment.rf_id = assignee.rf_id
                 INNER JOIN representative_assignment_conveyance ON assignment.rf_id = representative_assignment_conveyance.rf_id
-                WHERE representative_assignment_conveyance.convey_ty IN (:conveyanceType) AND date_format(assignment.record_dt, '%Y') >= :year AND ee_address_1 <> '' AND assignor_and_assignee_id = :ID GROUP BY ee_address_1
+                WHERE representative_assignment_conveyance.convey_ty IN (:conveyanceType) AND date_format(assignment.record_dt, '%Y') >= :year AND ee_address_1 <> '' AND assignor_and_assignee_id IN (SELECT assignor_and_assignee.assignor_and_assignee_id FROM  assignor_and_assignee WHERE
+                    assignor_and_assignee.representative_id IN(
+                    Select representative.representative_id FROM assignor_and_assignee 
+                    INNER JOIN representative ON representative.representative_id = assignor_and_assignee.representative_id
+                      WHERE assignor_and_assignee.assignor_and_assignee_id = :ID
+          )) GROUP BY ee_address_1
                 UNION 
             SELECT ee_address_2 as address, assignee.rf_id FROM assignee 
                 INNER JOIN assignment ON assignment.rf_id = assignee.rf_id
                 INNER JOIN representative_assignment_conveyance ON assignment.rf_id = representative_assignment_conveyance.rf_id
-                WHERE representative_assignment_conveyance.convey_ty IN (:conveyanceType) AND date_format(assignment.record_dt, '%Y') >= :year AND ee_address_2 <> '' AND assignor_and_assignee_id = :ID 
+                WHERE representative_assignment_conveyance.convey_ty IN (:conveyanceType) AND date_format(assignment.record_dt, '%Y') >= :year AND ee_address_2 <> '' AND assignor_and_assignee_id IN (SELECT assignor_and_assignee.assignor_and_assignee_id FROM  assignor_and_assignee WHERE
+                    assignor_and_assignee.representative_id IN(
+                    Select representative.representative_id FROM assignor_and_assignee 
+                    INNER JOIN representative ON representative.representative_id = assignor_and_assignee.representative_id
+                      WHERE assignor_and_assignee.assignor_and_assignee_id = :ID
+          )) 
                 GROUP BY ee_address_2) as temp GROUP BY address  ORDER BY address ASC`;
         }
 
