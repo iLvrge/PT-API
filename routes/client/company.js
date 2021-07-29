@@ -87,7 +87,7 @@ route.get("/summary", [authJWT.verifyToken, clientDBConnection.connect], async(r
 
     await Promise.all(promises)
 
-    const query = `SELECT ${allCompanies.length} as companies, sum(no_of_activities) as activites, sum(no_of_parties) as parties,  sum(no_of_inventor) as employees, sum(no_of_transactions) as transactions, sum(no_of_assets) as assets, (SELECT sum(no_of_parties) - sum(no_of_transactions) FROM admin_representative_reports WHERE representative_name IN (:representativeName)) as arrows, 0 as documents  FROM representative_reports WHERE representative_name IN (:representativeName)`
+    const query = `SELECT ${allCompanies.length} as companies, sum(no_of_activities) as activites, sum(no_of_parties) as parties,  sum(no_of_inventor) as employees, sum(no_of_transactions) as transactions, sum(no_of_assets) as assets, (SELECT sum(no_of_parties) - sum(no_of_transactions) FROM admin_representative_reports WHERE representative_name IN (:representativeName)) as rights, 0 as documents  FROM representative_reports WHERE representative_name IN (:representativeName)`
 
     report = await connection.resources.query(query,{
         type: connection.Sequelize.QueryTypes.SELECT,
@@ -311,6 +311,8 @@ route.get("/list", [authJWT.verifyToken, clientDBConnection.connect], async(req,
                                 product = findAdminReports[findAdminIndex]['no_of_parties'] - findAdminReports[findAdminIndex]['no_of_transactions']
                             }
                             representaitveJSON['product'] = product
+                        } else {
+                            representaitveJSON = {...representaitveJSON, child: JSON.stringify(child) , no_of_assets: 0, no_of_transactions:0, no_of_parties: 0, no_of_inventor: 0, no_of_activities: 0, product: 0}
                         }
                         companiesList.push(representaitveJSON)
                         return representative
