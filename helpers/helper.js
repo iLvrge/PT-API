@@ -406,7 +406,7 @@ let searchCompanyByAddress = async( address ) => {
 let getAddressListByCompanyID = async( ID, type ) => {
     let addresses = [];
     if(ID > 0) {
-        const query = `SELECT representative_id FROM assignor_and_assignee WHERE assignor_and_assignee_id = :ID`
+        const query = `SELECT representative_id, name FROM assignor_and_assignee WHERE assignor_and_assignee_id = :ID`
 
         const representative = await connection.resources.query(query,{
             type: connection.Sequelize.QueryTypes.SELECT,
@@ -419,12 +419,25 @@ let getAddressListByCompanyID = async( ID, type ) => {
 
         let representativeQuery = ''
 
-        if(representative != null && representative.representative_id > 0) {
-            representativeQuery = `SELECT assignor_and_assignee.assignor_and_assignee_id FROM  assignor_and_assignee WHERE
-            assignor_and_assignee.representative_id IN(
-            Select representative.representative_id FROM assignor_and_assignee 
-            INNER JOIN representative ON representative.representative_id = assignor_and_assignee.representative_id
-              WHERE assignor_and_assignee.assignor_and_assignee_id = :ID ) GROUP BY assignor_and_assignee.assignor_and_assignee_id`
+        const replacements = { ID: ID, year: 1997, conveyanceType: ['security', 'restatedsecurity'] };
+
+        if(representative !== null && representative.representative_id > 0) {
+            const representativeNameQuery =  `SELECT representative_id FROM representative WHERE representative_name = :name`;
+            const representativeName = await connection.resources.query(representativeNameQuery,{
+                type: connection.Sequelize.QueryTypes.SELECT,
+                raw: true,
+                replacements: { name: representative.name },
+                logging: console.log,
+                plain: true
+              }
+            );
+            if(representativeName !== null && representativeName.representative_id > 0) {
+                replacements.representativeID = representativeName.representative_id
+                representativeQuery = `SELECT assignor_and_assignee.assignor_and_assignee_id FROM  assignor_and_assignee WHERE
+                assignor_and_assignee.representative_id = :representativeID GROUP BY assignor_and_assignee.assignor_and_assignee_id`
+            } else {
+                representativeQuery = `:ID`
+            }
         } else {
             representativeQuery = `:ID`
         }
