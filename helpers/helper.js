@@ -413,7 +413,7 @@ let getAddressListByCompanyID = async( ID, type ) => {
             Select representative.representative_id FROM assignor_and_assignee 
             INNER JOIN representative ON representative.representative_id = assignor_and_assignee.representative_id
               WHERE assignor_and_assignee.assignor_and_assignee_id = :ID
-  ))  GROUP BY ee_address_1
+  ) OR assignor_and_assignee.assignor_and_assignee_id = :ID GROUP BY assignor_and_assignee.assignor_and_assignee_id)  GROUP BY ee_address_1
         UNION 
     SELECT ee_address_2 as address, assignee.rf_id FROM assignee 
         INNER JOIN assignment ON assignment.rf_id = assignee.rf_id
@@ -422,7 +422,7 @@ let getAddressListByCompanyID = async( ID, type ) => {
             Select representative.representative_id FROM assignor_and_assignee 
             INNER JOIN representative ON representative.representative_id = assignor_and_assignee.representative_id
               WHERE assignor_and_assignee.assignor_and_assignee_id = :ID
-  )) 
+  ) OR assignor_and_assignee.assignor_and_assignee_id = :ID GROUP BY assignor_and_assignee.assignor_and_assignee_id) 
         GROUP BY ee_address_2) as temp GROUP BY address  ORDER BY address ASC`;
 
         if(isNaN(type) === false && type == 1) { 
@@ -434,7 +434,7 @@ let getAddressListByCompanyID = async( ID, type ) => {
                     Select representative.representative_id FROM assignor_and_assignee 
                     INNER JOIN representative ON representative.representative_id = assignor_and_assignee.representative_id
                       WHERE assignor_and_assignee.assignor_and_assignee_id = :ID
-          )) GROUP BY ee_address_1
+          ) OR assignor_and_assignee.assignor_and_assignee_id = :ID GROUP BY assignor_and_assignee.assignor_and_assignee_id) GROUP BY ee_address_1
                 UNION 
             SELECT ee_address_2 as address, assignee.rf_id FROM assignee 
                 INNER JOIN assignment ON assignment.rf_id = assignee.rf_id
@@ -444,7 +444,7 @@ let getAddressListByCompanyID = async( ID, type ) => {
                     Select representative.representative_id FROM assignor_and_assignee 
                     INNER JOIN representative ON representative.representative_id = assignor_and_assignee.representative_id
                       WHERE assignor_and_assignee.assignor_and_assignee_id = :ID
-          )) 
+          ) OR assignor_and_assignee.assignor_and_assignee_id = :ID GROUP BY assignor_and_assignee.assignor_and_assignee_id) 
                 GROUP BY ee_address_2) as temp GROUP BY address  ORDER BY address ASC`;
         }
 

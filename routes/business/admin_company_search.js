@@ -638,7 +638,7 @@ route.get("/company/:companyID/law_firms", [authJWT.verifyToken, authJWT.isAdmin
                   assignor_and_assignee.representative_id IN(
                   Select representative.representative_id FROM assignor_and_assignee 
                   INNER JOIN representative ON representative.representative_id = assignor_and_assignee.representative_id
-                    WHERE assignor_and_assignee.assignor_and_assignee_id = '2679631'
+                    WHERE assignor_and_assignee.assignor_and_assignee_id = :companyID
         ))
         GROUP BY law_firms.law_firm_id`
 
