@@ -85,9 +85,65 @@ SheetsHelper.prototype.createSpreadsheet = function(title, callback) {
       }
       return callback(null, spreadsheet);
     });
-
   });
 };
+
+
+SheetsHelper.prototype.createProductSpreadsheet = function(title, sheets, sheetHeaders, callback) {
+  var self = this;
+  var request = {
+    resource: {
+      properties: {
+        title
+      },
+      sheets
+    }
+  };
+
+
+  self.service.spreadsheets.create(request, function(err, response) {
+    if (!err) {
+      var spreadsheet = response.data;
+      // Add header to each sheet rows.
+
+      spreadsheet.sheets.map( (sheet, index) => {
+        var requests = [
+          buildHeaderRowRequest(sheet.properties.sheetId, sheetHeaders[index]),
+        ];
+        var request = {
+          spreadsheetId: spreadsheet.spreadsheetId,
+          resource: {
+            requests: requests
+          }
+        };
+        self.service.spreadsheets.batchUpdate(request, function(err, response) {
+          if (err) {
+            //return callback(err);
+          }
+          //return callback(null, spreadsheet);
+        });
+      })
+      callback(spreadsheet) ;
+    } else {
+      console.log('createProductSpreadsheet', err)
+      callback(null) 
+    }
+  });
+}
+
+SheetsHelper.prototype.getData = function(request, callback) {
+  var self = this;
+  self.service.spreadsheets.values.get(request, function(err, response) {
+    if(!err) {
+      callback(response.data) ;
+    } else {
+      console.log('SpreadsheetgetData', err)
+      callback({values: []}) 
+    }    
+  })
+}
+
+
 
 var COLUMNS = [
 	{ field: 'patent', header: 'Patent' },
@@ -99,8 +155,9 @@ var COLUMNS = [
  * @param  {string} sheetId The ID of the sheet.
  * @return {Object}         The reqeuest.
  */
-function buildHeaderRowRequest(sheetId) {
-  var cells = COLUMNS.map(function(column) {
+function buildHeaderRowRequest(sheetId, cols) {
+  var sheetColumns = typeof cols !== 'undefined' ? cols : COLUMNS
+  var cells = sheetColumns.map(function(column) {
     return {
       userEnteredValue: {
         stringValue: column.header

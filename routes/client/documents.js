@@ -857,6 +857,164 @@ route.get("/drive", authJWT.verifyToken, async(req, res, next) => {
     }
 })
 
+route.post("/product_sheet", [authJWT.verifyToken], async(req, res, next) =>{
+    try {
+        const { access_token, refresh_token, user_account } = req.body
+        const sheetHelper = new SheetsHelper(access_token), title =  'Product_Technology_Competitor'
+        const sheets = [
+            {
+                properties: {
+                    title: 'Our Products',
+                    gridProperties: {
+                        frozenRowCount: 1
+                    }
+                }
+            },
+            {
+                properties: {
+                    title: 'Our Technology',
+                    gridProperties: {
+                        frozenRowCount: 1
+                    }
+                }
+            },
+            {
+                properties: {
+                    title: 'Our Competitors',
+                    gridProperties: {
+                        frozenRowCount: 1
+                    }
+                }
+            },
+            {
+                properties: {
+                    title: 'Products',
+                    gridProperties: {
+                        frozenRowCount: 1,
+                        columnCount: 1,
+                    }
+                }
+            },
+            {
+                properties: {
+                    title: 'Technology',
+                    gridProperties: {
+                        frozenRowCount: 1,
+                        columnCount: 1,
+                    }
+                }
+            },
+            {
+                properties: {
+                    title: 'Competitors',
+                    gridProperties: {
+                        frozenRowCount: 1,
+                        columnCount: 1,
+                    }
+                }
+            }
+        ]
+        
+        const sheetHeaders = [
+            [
+                { field: 'assets', header: 'Asset' }
+            ],
+            [
+                { field: 'assets', header: 'Asset' }
+            ],
+            [
+                { field: 'assets', header: 'Asset' }
+            ],
+            [
+                { field: 'product', header: 'Product' }
+            ],
+            [
+                { field: 'technology', header: 'Technology' }
+            ],
+            [
+                { field: 'competitor', header: 'Competitor' }
+            ]
+        ]
+        sheetHelper.createProductSpreadsheet(title, sheets, sheetHeaders, async function(spreadsheet){
+            if( spreadsheet !== null ) {
+                const model = {
+                    file_container_id: spreadsheet.spreadsheetId,
+                    file_container_child1_id: spreadsheet.sheets[3].properties.sheetId,
+                    file_container_child2_id: spreadsheet.sheets[4].properties.sheetId,
+                    file_container_child3_id: spreadsheet.sheets[5].properties.sheetId,
+                }
+
+                let getRepo = await Repository.findOne({
+                    where: { organisation_id: req.orgId, user_account: user_account}
+                }) 
+                if(getRepo != null) {
+                    oauth2Client.setCredentials({ access_token})
+                    const drive = google.drive({version: 'v3', auth:oauth2Client});
+
+                    if(drive != null && drive != undefined) {
+                        const response = await drive.files.update({
+                                                fileId: model.file_container_id,
+                                                addParents: getRepo.container_id
+                                            })
+                        getRepo.file_container_id =  model.file_container_id         
+                        getRepo.file_container_child1_id =  model.file_container_child1_id       
+                        getRepo.file_container_child2_id =  model.file_container_child2_id   
+                        getRepo.file_container_child3_id =  model.file_container_child3_id     
+                        await getRepo.save()                   
+                    }                    
+                } else {
+                    getRepo = await Repository.create(model)
+                } 
+                res.status(200).send("File system created");               
+            } else {
+                res.status(401).send("Unable to create file system");           
+            }
+        })
+    } catch(err) {
+        console.log("Error in product_sheet", err)
+        res.status(500).send("Unable to create file system");   
+    }
+})
+
+route.put("/sheet/:type", [authJWT.verifyToken], async(req, res, next) =>{
+
+})
+
+route.post("/sheet/:type", [authJWT.verifyToken], async(req, res, next) =>{
+    try{
+        const { access_token, refresh_token, user_account } = req.body
+        const { type } = req.params
+        if(typeof access_token !== 'undefined' && access_token !== '' && typeof user_account !== 'undefined' && user_account !== '') {
+            let getRepo = await Repository.findOne({
+                where: { organisation_id: req.orgId, user_account: user_account}
+            }) 
+            if(getRepo != null) {
+                if(getRepo.file_container_id != '' && getRepo.file_container_id !== null) {
+                    let range = type === 'technology' ? 'Technology' : type === 'competitors' ? 'Competitors' : 'Products'
+                    const sheetHelper = new SheetsHelper(access_token)
+                    await sheetHelper.getData({
+                        spreadsheetId: getRepo.file_container_id,
+                        majorDimension: 'COLUMNS',
+                        range
+                    }, function( list ){
+                        res.status(200).json(list.values);               
+                    })
+                } else {
+                    res.status(402).send("No file created");               
+                }
+            } else {
+                res.status(402).send("No file created");           
+            }
+        } else {
+            res.status(401).send("Invalid token");           
+        }        
+    } catch (err) {
+        console.log("Error reteriving products", err)
+        res.status(500).send("Unable to retrieve data");   
+    }
+})
+
+
 route.post("/transaction", [authJWT.verifyToken], async(req, res, next) =>{
     try{
         

@@ -602,7 +602,7 @@ let searchCompanyIDByAddress = async( addresses, type ) => {
                     } 
                 }
                 queryCompany = queryCompany.substr(0, queryCompany.length - 6)
-                queryCompany = `SELECT id, assignor_and_assignee_id, name, counter, normalize_name, representative_company, assigneeRFID, assignorRFID FROM (${queryCompany}) as temp GROUP BY name ORDER BY counter DESC`
+                queryCompany = `SELECT id, assignor_and_assignee_id, name, counter, COUNT(name) AS total_occurences, normalize_name, representative_company, assigneeRFID, assignorRFID FROM (${queryCompany}) as temp GROUP BY name ORDER BY counter DESC`
                 searchResult = await connection.resources.query(queryCompany,{
                     type: connection.Sequelize.QueryTypes.SELECT,
                     raw: true,

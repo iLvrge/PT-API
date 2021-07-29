@@ -42,6 +42,34 @@ const Repository = connection.applicationNew.define('repositories',{
         type: Sequelize.STRING,
         allowNull: true,
     },
+    file_container_id:{
+        type: Sequelize.STRING,
+        allowNull: true,
+    },
+    file_container_child1_id:{
+        type: Sequelize.STRING,
+        allowNull: true,
+    },
+    file_container_child2_id:{
+        type: Sequelize.STRING,
+        allowNull: true,
+    },
+    file_container_child3_id:{
+        type: Sequelize.STRING,
+        allowNull: true,
+    },
+    file_container_child4_id:{
+        type: Sequelize.STRING,
+        allowNull: true,
+    },
+    file_container_child5_id:{
+        type: Sequelize.STRING,
+        allowNull: true,
+    },
+    file_container_child6_id:{
+        type: Sequelize.STRING,
+        allowNull: true,
+    }
 },
 {
     underscored: true,
