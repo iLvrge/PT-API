@@ -467,7 +467,7 @@ let getAddressListByCompanyID = async( ID, type ) => {
         addresses = await connection.resources.query(queryFindIDS,{
             type: connection.Sequelize.QueryTypes.SELECT,
             raw: true,
-            replacements: { ID: ID, year: 1997, conveyanceType: ['security', 'restatedsecurity'] },
+            replacements: replacements,
             logging: console.log,
           }
         );
