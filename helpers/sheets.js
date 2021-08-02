@@ -143,6 +143,27 @@ SheetsHelper.prototype.getData = function(request, callback) {
   })
 }
 
+SheetsHelper.prototype.filterData = function(request, callback) {
+  this.service.spreadsheets.values.batchGetByDataFilter(request, function(err, response) {
+    if(!err) {
+      callback(response.data) ;
+    } else {
+      console.log('SpreadsheetgetData', err)
+      callback({}) 
+    }
+  })
+}
+
+SheetsHelper.prototype.batchUpdate = function(request, callback) {
+  this.service.spreadsheets.batchUpdate(request, function(err, response) {
+    if(!err) {
+      callback(response.data) ;
+    } else {
+      console.log('SpreadsheetbatchUpdate', err)
+      callback({}) 
+    }
+  })
+}
 
 
 var COLUMNS = [

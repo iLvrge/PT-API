@@ -10,6 +10,8 @@ const {google} = require('googleapis');
 
 const { create } = require('xmlbuilder2');
 
+const util = require('util');
+
 //require the Model
 
 const Assignments = require("../../model/resources/Assignments");
@@ -856,7 +858,7 @@ route.get("/drive", authJWT.verifyToken, async(req, res, next) => {
         res.status(200).json({list, message})   
     }
 })
-
+//Create sheet
 route.post("/product_sheet", [authJWT.verifyToken], async(req, res, next) =>{
     try {
         const { access_token, refresh_token, user_account } = req.body
@@ -939,9 +941,12 @@ route.post("/product_sheet", [authJWT.verifyToken], async(req, res, next) =>{
             if( spreadsheet !== null ) {
                 const model = {
                     file_container_id: spreadsheet.spreadsheetId,
-                    file_container_child1_id: spreadsheet.sheets[3].properties.sheetId,
-                    file_container_child2_id: spreadsheet.sheets[4].properties.sheetId,
-                    file_container_child3_id: spreadsheet.sheets[5].properties.sheetId,
+                    file_container_child1_id: spreadsheet.sheets[0].properties.sheetId,
+                    file_container_child2_id: spreadsheet.sheets[1].properties.sheetId,
+                    file_container_child3_id: spreadsheet.sheets[2].properties.sheetId,
+                    file_container_child4_id: spreadsheet.sheets[3].properties.sheetId,
+                    file_container_child5_id: spreadsheet.sheets[4].properties.sheetId,
+                    file_container_child6_id: spreadsheet.sheets[5].properties.sheetId,                    
                 }
 
                 let getRepo = await Repository.findOne({
@@ -960,6 +965,9 @@ route.post("/product_sheet", [authJWT.verifyToken], async(req, res, next) =>{
                         getRepo.file_container_child1_id =  model.file_container_child1_id       
                         getRepo.file_container_child2_id =  model.file_container_child2_id   
                         getRepo.file_container_child3_id =  model.file_container_child3_id     
+                        getRepo.file_container_child4_id =  model.file_container_child4_id     
+                        getRepo.file_container_child5_id =  model.file_container_child5_id     
+                        getRepo.file_container_child6_id =  model.file_container_child6_id     
                         await getRepo.save()                   
                     }                    
                 } else {
@@ -975,11 +983,136 @@ route.post("/product_sheet", [authJWT.verifyToken], async(req, res, next) =>{
         res.status(500).send("Unable to create file system");   
     }
 })
-
+//Update sheet
 route.put("/sheet/:type", [authJWT.verifyToken], async(req, res, next) =>{
+    try{
+        const { access_token, refresh_token, user_account, asset, values } = req.body
 
+        const { type } = req.params
+        if(typeof access_token !== 'undefined' && access_token !== '' && typeof user_account !== 'undefined' && user_account !== '') {
+            let getRepo = await Repository.findOne({
+                where: { organisation_id: req.orgId, user_account: user_account}
+            }) 
+            if(getRepo != null) {
+                console.log("getRepo.file_container_id", getRepo.file_container_id)
+                if(getRepo.file_container_id !== '' && getRepo.file_container_id !== null) {
+                    let range = type === 'technology' ? getRepo.file_container_child2_id : type === 'competitors' ? getRepo.file_container_child3_id : getRepo.file_container_child1_id
+                    const sheetHelper = new SheetsHelper(access_token)
+                    await sheetHelper.filterData({
+                        spreadsheetId: getRepo.file_container_id,
+                        resource: {
+                            dataFilters: [
+                                {
+                                    gridRange:{
+                                        sheetId: range  
+                                    }
+                                }
+                            ]
+                        }
+                    }, async function(response) {
+                        let findIndex = -1
+                        if(Object.keys(response).length > 0) {
+                            const assetsList = response.valueRanges[0].valueRange.values
+                            if(assetsList.length > 0) {
+                                findIndex = assetsList.findIndex( ass => ass[0] == asset)
+                            }
+                            const sheetFormulaList = []
+                            const sourceListRange = type === 'technology' ? 'Technology' : type === 'competitors' ? 'Competitors' : 'Products'
+                            await sheetHelper.getData({
+                                spreadsheetId: getRepo.file_container_id,
+                                majorDimension: 'COLUMNS',
+                                range: sourceListRange
+                            }, async function( sourceList ){
+                                const deleteCols = []
+                                if(Object.keys(sourceList).length > 0 && typeof sourceList.values !== 'undefined' && sourceList.values.length > 0 && sourceList.values[0].length > 0) {
+                                    let addToList = JSON.parse(values)
+                                    if(typeof addToList === 'string') {
+                                        addToList = JSON.parse(addToList)
+                                    }
+                                    if(addToList.length > 0) {
+                                        const promises = addToList.map( item => {
+                                            const itemIndex = sourceList.values[0].findIndex( sourceItem => sourceItem == item)
+                                            if(itemIndex !== -1) {
+                                                sheetFormulaList.push(itemIndex + 1)
+                                            }
+                                        })
+                                        await Promise.all(promises)
+                                    }
+                                }
+                                if(findIndex !== -1 && (sheetFormulaList.length < assetsList[findIndex].length - 1)) {
+                                    for(let i = 0; i < ((assetsList[findIndex].length - 1) - sheetFormulaList.length); i++) {
+                                        deleteCols.push('')
+                                    }
+                                }
+                                var cells = []
+                                cells.push({
+                                    userEnteredValue: {
+                                        stringValue: asset
+                                    }
+                                })
+
+                                sheetFormulaList.forEach(cellNo => {
+                                    cells.push({
+                                        userEnteredValue: {
+                                            formulaValue: `=${sourceListRange}!A${cellNo}`
+                                        }
+                                    })
+                                })
+
+                                if(deleteCols.length > 0) {
+                                    deleteCols.forEach( cell => {
+                                        cells.push({
+                                            userEnteredValue: {
+                                                stringValue: cell
+                                            }
+                                        })
+                                    })
+                                }
+
+                                var request = {
+                                    spreadsheetId: getRepo.file_container_id,
+                                    resource: {
+                                        requests: [
+                                            {
+                                                updateCells: {
+                                                    start: {
+                                                        sheetId: range,
+                                                        rowIndex: findIndex !== -1 ? findIndex : assetsList.length,
+                                                        columnIndex: 0
+                                                    },
+                                                    rows: [
+                                                        {
+                                                            values: cells
+                                                        }
+                                                    ],
+                                                    fields: 'userEnteredValue'
+                                                }
+                                            }
+                                        ]
+                                    }
+                                };
+                                console.log('request', request)
+                                await sheetHelper.batchUpdate(request, function(updateData){
+                                    res.status(200).send("Update data");   
+                                })
+                            })
+                        }                        
+                    })
+                } else {
+                    res.status(401).send("Create sheet first");
+                }
+            } else {
+                res.status(401).send("Create sheet first");
+            }
+        } else {
+            res.status(402).send("Invalid token");
+        }
+    } catch (err) {
+        console.log("Error update sheet data", err)
+        res.status(500).send("Unable to update data");   
+    }
 })
-
+//List
 route.post("/sheet/:type", [authJWT.verifyToken], async(req, res, next) =>{
     try{
         const { access_token, refresh_token, user_account } = req.body
@@ -997,7 +1130,13 @@ route.post("/sheet/:type", [authJWT.verifyToken], async(req, res, next) =>{
                         majorDimension: 'COLUMNS',
                         range
                     }, function( list ){
-                        res.status(200).json(list.values);               
+                        if(typeof list.values !== 'undefined' && list.values.length > 0 && list.values[0].length > 0){
+                            const items = list.values[0]
+                            items.splice(0,1) //remove heading
+                            res.status(200).json(items);               
+                        } else {
+                            res.status(200).json([]);               
+                        }
                     })
                 } else {
                     res.status(402).send("No file created");               
@@ -1009,11 +1148,68 @@ route.post("/sheet/:type", [authJWT.verifyToken], async(req, res, next) =>{
             res.status(401).send("Invalid token");           
         }        
     } catch (err) {
-        console.log("Error reteriving products", err)
+        console.log("Error reteriving sheet data", err)
         res.status(500).send("Unable to retrieve data");   
     }
 })
-
+//Get selected Products
+route.post("/sheet/:type/:asset", [authJWT.verifyToken], async(req, res, next) =>{
+    try{
+        const { access_token, refresh_token, user_account } = req.body
+        let { type, asset } = req.params
+        asset = decodeURIComponent(asset)
+        console.log('asset', asset)
+        if(typeof access_token !== 'undefined' && access_token !== '' && typeof user_account !== 'undefined' && user_account !== '') {
+            let getRepo = await Repository.findOne({
+                where: { organisation_id: req.orgId, user_account: user_account}
+            }) 
+            if(getRepo != null) {
+                if(getRepo.file_container_id != '' && getRepo.file_container_id !== null) {
+                    let range = type === 'technology' ? 'Our Technology!A:A' : type === 'competitors' ? 'Our Competitors!A:A' : 'Our Products!A:A'
+                    const sheetHelper = new SheetsHelper(access_token)
+                    let request = {
+                        spreadsheetId: getRepo.file_container_id,
+                        majorDimension: 'ROWS',
+                        range
+                    };
+                    await sheetHelper.getData(request, async function( list ){
+                        if(typeof list.values !== 'undefined' && list.values.length > 0) {
+                            const findIndex = list.values.findIndex(row => row == asset)
+                            console.log('findIndex', findIndex)
+                            if(findIndex !== -1) {
+                                range = type === 'technology' ? 'Our Technology!B' : type === 'competitors' ? 'Our Competitors!B' : 'Our Products!B'
+                                range = `${range}${findIndex + 1}:ZZZ${findIndex + 1}`
+                                request = {
+                                    spreadsheetId: getRepo.file_container_id,
+                                    majorDimension: 'ROWS',
+                                    range
+                                };
+                                await sheetHelper.getData(request, function( list ){
+                                    if(typeof list.values !== 'undefined' && list.values.length > 0 && list.values[0].length > 0) {
+                                        res.status(200).json(list.values[0]);     
+                                    }
+                                })
+                            } else {
+                                res.status(200).json([]);     
+                            }                            
+                        } else {
+                            res.status(200).json([]);     
+                        }
+                    })                    
+                } else {
+                    res.status(402).send("No file created");               
+                }
+            } else {
+                res.status(402).send("No file created");           
+            }
+        } else {
+            res.status(401).send("Invalid token");           
+        }        
+    } catch (err) {
+        console.log("Error reteriving sheet data", err)
+        res.status(500).send("Unable to retrieve data");   
+    }
+})
 
 route.post("/transaction", [authJWT.verifyToken], async(req, res, next) =>{
     try{
