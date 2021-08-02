@@ -211,9 +211,9 @@ let searchCompany = async(query, t) => {
             }
                 
 
-            if( t == 0 ) {
+            /* if( t == 0 ) {
                 queryCompany += `  AND a.assignor_and_assignee_id NOT IN (SELECT assignor_and_assignee_id FROM db_uspto.inventors)`;
-            }
+            } */
 
             queryCompany += ` GROUP BY a.name ORDER BY counter DESC`;
 

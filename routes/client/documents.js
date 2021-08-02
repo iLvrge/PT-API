@@ -928,13 +928,16 @@ route.post("/product_sheet", [authJWT.verifyToken], async(req, res, next) =>{
                 { field: 'assets', header: 'Asset' }
             ],
             [
-                { field: 'product', header: 'Product' }
+                { field: 'product', header: 'Product' },
+                { field: 'description', header: 'Description' }
             ],
             [
-                { field: 'technology', header: 'Technology' }
+                { field: 'technology', header: 'Technology' },
+                { field: 'description', header: 'Description' }
             ],
             [
-                { field: 'competitor', header: 'Competitor' }
+                { field: 'competitor', header: 'Competitor' },
+                { field: 'description', header: 'Description' }
             ]
         ]
         sheetHelper.createProductSpreadsheet(title, sheets, sheetHeaders, async function(spreadsheet){
