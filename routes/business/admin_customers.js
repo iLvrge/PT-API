@@ -922,13 +922,13 @@ route.post("/customers", [authJWT.verifyToken, authJWT.isAdmin], async (req, res
                 });
 
                 console.log(`php -f /var/www/html/trash/script_create_customer_db.php "${organisationID}"`);
-                await exec(`php -f /var/www/html/trash/script_create_customer_db.php "${organisationID}"`, async (error, std, stderr) => {
+                exec(`php -f /var/www/html/trash/script_create_customer_db.php "${organisationID}"`, async (error, std, stderr) => {
                     console.log("script_create_customer_db");
                     console.log(error);
                     console.log(stderr);
                     console.log(std);
-                    res.status(200).json(org);   
-                });                                            
+                });        
+                res.status(200).json(org);                                       
             } else {
                 res.status(500).send("Internal server error");
             }

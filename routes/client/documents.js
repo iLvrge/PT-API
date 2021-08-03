@@ -986,6 +986,74 @@ route.post("/product_sheet", [authJWT.verifyToken], async(req, res, next) =>{
         res.status(500).send("Unable to create file system");   
     }
 })
+route.post("/sheet", [authJWT.verifyToken], async(req, res, next) =>{
+    try{
+        const { access_token, refresh_token, user_account  } = req.body
+        let name = []
+        const { type } = req.params
+        if(typeof access_token !== 'undefined' && access_token !== '' && typeof user_account !== 'undefined' && user_account !== '') {
+            let getRepo = await Repository.findOne({
+                where: { organisation_id: req.orgId, user_account: user_account}
+            }) 
+            if(getRepo != null) {
+                console.log("getRepo.file_container_id", getRepo.file_container_id)
+                if(getRepo.file_container_id !== '' && getRepo.file_container_id !== null) {
+                    const fileIDs = [getRepo.file_container_child1_id, getRepo.file_container_child2_id, getRepo.file_container_child3_id]
+                    let ID = type === 'technology' ? getRepo.file_container_child5_id : type === 'competitors' ? getRepo.file_container_child6_id : getRepo.file_container_child4_id
+                    const sheetHelper = new SheetsHelper(access_token)
+                    await sheetHelper.get({
+                        spreadsheetId: getRepo.file_container_id                       
+                    }, async function(response) {
+                        if(response !== null && Object.keys(response).length > 0 && typeof response.sheets !== 'undefined' && response.sheets.length > 0) {
+                            const promise = fileIDs.map( (ID, index) => {
+                                const findIndex = response.sheets.findIndex( item => item.properties.sheetId == ID)
+                                if(findIndex !== -1) {
+                                    name.push(`Associate to ${response.sheets[findIndex].properties.title}`)
+                                } else {
+                                    name.push(index == 0 ? 'Associate to Our Products' : index == 1 ? 'Associate to Our Technologies' : index == 2 ? 'Associate to Our Compeitors' : '')
+                                }
+                            })
+                            await Promise.all(promise)
+                            res.status(200).json(name);               
+                        }
+                    })
+                } else {
+                    res.status(200).json([]);
+                }
+            } else {
+                res.status(200).json([]);
+            }
+        } else {
+            res.status(200).json([]);
+        }        
+    } catch(err) {
+        console.log("Error in product_sheet", err)
+        res.status(500).send("Unable to create file system");   
+    }
+})
+route.post("/sheet/:type/url", [authJWT.verifyToken], async(req, res, next) =>{
+    try{
+        const { user_account } = req.body
+        let fileURL = ''
+        const { type } = req.params
+        if(typeof user_account !== 'undefined' && user_account !== '') {
+            let getRepo = await Repository.findOne({
+                where: { organisation_id: req.orgId, user_account: user_account}
+            }) 
+            if(getRepo != null) {
+                console.log("getRepo.file_container_id", getRepo.file_container_id)
+                if(getRepo.file_container_id !== '' && getRepo.file_container_id !== null) {
+                    let ID = type === 'technology' ? getRepo.file_container_child5_id : type === 'competitors' ? getRepo.file_container_child6_id : getRepo.file_container_child4_id
+                    fileURL = `https://docs.google.com/spreadsheets/d/${getRepo.file_container_id}/edit?rm=minimal#gid=${ID}`
+                }
+            }
+        }
+        res.status(200).send(fileURL);               
+    } catch(err) {
+        console.log("Error in product_sheet", err)
+        res.status(500).send("Unable to create file system");   
+    }
+})
 //Update sheet
 route.put("/sheet/:type", [authJWT.verifyToken], async(req, res, next) =>{
     try{
