@@ -1102,9 +1102,12 @@ route.put("/sheet/:type", [authJWT.verifyToken], async(req, res, next) =>{
                                     }
                                     if(addToList.length > 0) {
                                         const promises = addToList.map( item => {
-                                            const itemIndex = sourceList.values[0].findIndex( sourceItem => sourceItem == item)
+                                            const itemIndex = sourceList.values[0].findIndex( sourceItem => sourceItem == item.name)
                                             if(itemIndex !== -1) {
-                                                sheetFormulaList.push(itemIndex + 1)
+                                                sheetFormulaList.push({
+                                                    index: itemIndex + 1,
+                                                    score: item.score
+                                                })
                                             }
                                         })
                                         await Promise.all(promises)
@@ -1122,12 +1125,52 @@ route.put("/sheet/:type", [authJWT.verifyToken], async(req, res, next) =>{
                                     }
                                 })
 
-                                sheetFormulaList.forEach(cellNo => {
-                                    cells.push({
+                                sheetFormulaList.forEach(cell => {
+                                    const item = {
                                         userEnteredValue: {
-                                            formulaValue: `=${sourceListRange}!A${cellNo}`
+                                            formulaValue: `=${sourceListRange}!A${cell.index}`
                                         }
-                                    })
+                                    }
+                                    if(cell.score != '') {
+                                        let red = 1, green = 1, blue = 1
+                                        switch(parseInt(cell.score)) {
+                                            case 1:
+                                                red = 0.12941177
+                                                green = 0.5882353
+                                                blue = 0.9529412
+                                            break;
+                                            case 2:
+                                                red = 0.11764706
+                                                green = 0.53333336
+                                                blue = 0.8980392
+                                            break;
+                                            case 3:
+                                                red = 0.09803922
+                                                green = 0.4627451
+                                                blue = 0.8235294
+                                            break;
+                                            case 4:
+                                                red = 0.08235294
+                                                green = 0.39607844
+                                                blue = 0.7529412
+                                            break;
+                                            case 5:
+                                                red = 0.050980393
+                                                green = 0.2784314
+                                                blue = 0.6313726
+                                            break;
+                                        }
+                                        item.userEnteredFormat = {
+                                                textFormat: {
+                                                foregroundColor: {
+                                                    red,
+                                                    green,
+                                                    blue
+                                                }
+                                            }
+                                        }
+                                    }
+                                    cells.push(item)
                                 })
 
                                 if(deleteCols.length > 0) {
@@ -1156,7 +1199,7 @@ route.put("/sheet/:type", [authJWT.verifyToken], async(req, res, next) =>{
                                                             values: cells
                                                         }
                                                     ],
-                                                    fields: 'userEnteredValue'
+                                                    fields: 'userEnteredValue, userEnteredFormat.textFormat.foregroundColor'
                                                 }
                                             }
                                         ]
@@ -1198,12 +1241,14 @@ route.post("/sheet/:type", [authJWT.verifyToken], async(req, res, next) =>{
                     const sheetHelper = new SheetsHelper(access_token)
                     await sheetHelper.getData({
                         spreadsheetId: getRepo.file_container_id,
-                        majorDimension: 'COLUMNS',
+                        majorDimension: 'ROWS',
                         range
                     }, function( list ){
-                        if(typeof list.values !== 'undefined' && list.values.length > 0 && list.values[0].length > 0){
-                            const items = list.values[0]
+                        if(typeof list.values !== 'undefined' && list.values.length > 0 && list.values[0].length > 0){                            
+                            const items = list.values
+                            console.log(items)
                             items.splice(0,1) //remove heading
+                            console.log(items)
                             res.status(200).json(items);               
                         } else {
                             res.status(200).json([]);               
@@ -1248,16 +1293,46 @@ route.post("/sheet/:type/:asset", [authJWT.verifyToken], async(req, res, next) =
                             const findIndex = list.values.findIndex(row => row == asset)
                             console.log('findIndex', findIndex)
                             if(findIndex !== -1) {
-                                range = type === 'technology' ? 'Our Technology!B' : type === 'competitors' ? 'Our Competitors!B' : 'Our Products!B'
-                                range = `${range}${findIndex + 1}:ZZZ${findIndex + 1}`
+                                let ranges = type === 'technology' ? 'Our Technology!B' : type === 'competitors' ? 'Our Competitors!B' : 'Our Products!B'
+                                ranges = `${ranges}${findIndex + 1}:ZZZ${findIndex + 1}`
                                 request = {
                                     spreadsheetId: getRepo.file_container_id,
-                                    majorDimension: 'ROWS',
-                                    range
+                                    includeGridData: true,
+                                    ranges
                                 };
-                                await sheetHelper.getData(request, function( list ){
-                                    if(typeof list.values !== 'undefined' && list.values.length > 0 && list.values[0].length > 0) {
-                                        res.status(200).json(list.values[0]);     
+                                
+                                await sheetHelper.get(request, async function( response ){
+                                    if(typeof response.sheets !== 'undefined' && response.sheets.length > 0 && typeof response.sheets[0].data !== 'undefined') {
+                                        const rowData = response.sheets[0].data[0].rowData[0].values 
+                                        const selectedProducts = []
+                                        if(rowData.length > 0) {
+                                            const promise = rowData.map( row => {
+                                                let score = ''
+                                                if(typeof row.userEnteredFormat !== 'undefined' && typeof row.userEnteredFormat.textFormat !== 'undefined' && typeof row.userEnteredFormat.textFormat.foregroundColor !== 'undefined') {
+                                                    const {red, green, blue} = row.userEnteredFormat.textFormat.foregroundColor
+
+                                                    if(red == '0.12941177' && green == '0.5882353' && blue == '0.9529412') {
+                                                        score = 1
+                                                    } else if(red == '0.11764706' && green == '0.53333336' && blue == '0.8980392') {
+                                                        score = 2   
+                                                    } else if(red == '0.09803922' && green == '0.4627451' && blue == '0.8235294') {
+                                                        score = 3
+                                                    } else if(red == '0.08235294' && green == '0.39607844' && blue == '0.7529412') {
+                                                        score = 4
+                                                    } else if(red == '0.050980393' && green == '0.2784314' && blue == '0.6313726') {
+                                                        score = 5
+                                                    }
+                                                }
+                                                selectedProducts.push({
+                                                    name: row.formattedValue,
+                                                    score
+                                                })
+                                            })
+                                            await Promise.all(promise)
+                                        }
+                                        res.status(200).json(selectedProducts);    
+                                    } else {
+                                        res.status(200).json([]);     
                                     }
                                 })
                             } else {
