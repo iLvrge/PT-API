@@ -389,7 +389,7 @@ let searchCompanyByAddress = async( address ) => {
     let searchResult = [];
     if(address.length > 1) {
 
-        const queryCompany = "SELECT a.assignor_and_assignee_id as id, a.assignor_and_assignee_id, a.name, a.instances as counter, c.representative_name as normalize_name, (select rr.representative_name FROM representative as rr WHERE rr.representative_name = a.name GROUP BY rr.representative_name) as representative_company, (SELECT concat(assign.reel_no,'-', assign.frame_no) FROM assignee as ee INNER JOIN assignment as assign ON assign.rf_id = ee.rf_id WHERE ee.assignor_and_assignee_id = a.assignor_and_assignee_id LIMIT 1) as assigneeRFID, (SELECT concat(asss.reel_no,'-', asss.frame_no) FROM assignor as assi INNER JOIN assignment as asss ON asss.rf_id = assi.rf_id WHERE assi.assignor_and_assignee_id = a.assignor_and_assignee_id LIMIT 1) as assignorRFID  FROM assignor_and_assignee as a LEFT JOIN representative as c ON c.representative_id = a.representative_id INNER JOIN assignee as ass ON ass.assignor_and_assignee_id = a.assignor_and_assignee_id INNER JOIN assignment ON ass.rf_id = assignment.rf_id WHERE date_format(assignment.record_dt, '%Y') >= :year AND MATCH(ass.ee_address_1, ass.ee_address_2) AGAINST (:address IN BOOLEAN MODE)  GROUP BY a.name ORDER BY counter DESC ";
+        const queryCompany = "SELECT a.assignor_and_assignee_id as id, a.assignor_and_assignee_id, a.name, a.instances as counter, c.representative_name as normalize_name, (select rr.representative_name FROM representative as rr WHERE rr.representative_name = a.name GROUP BY rr.representative_name) as representative_company, CONCAT(assignment.reel_no,'-', assignment.frame_no) AS assigneeRFID, null as assignorRFID  FROM assignor_and_assignee as a LEFT JOIN representative as c ON c.representative_id = a.representative_id INNER JOIN assignee as ass ON ass.assignor_and_assignee_id = a.assignor_and_assignee_id INNER JOIN assignment ON ass.rf_id = assignment.rf_id WHERE date_format(assignment.record_dt, '%Y') >= :year AND MATCH(ass.ee_address_1, ass.ee_address_2) AGAINST (:address IN BOOLEAN MODE)  GROUP BY a.name ORDER BY counter DESC ";
 
         searchResult = await connection.resources.query(queryCompany,{
             type: connection.Sequelize.QueryTypes.SELECT,
@@ -479,40 +479,73 @@ let getAddressListByCompanyID = async( ID, type ) => {
 let getAddressListByLawfirmID = async( ID ) => {
     let addresses = [];
     if(ID > 0) {
+        const query = `SELECT representative_id, name FROM law_firm WHERE law_firm_id = :ID`
+
+        const representative = await connection.resources.query(query,{
+            type: connection.Sequelize.QueryTypes.SELECT,
+            raw: true,
+            replacements: { ID },
+            logging: console.log,
+            plain: true
+          }
+        );
+
+        let representativeQuery = ''
+        const replacements = { ID: ID, year: 1997 };
+        if(representative !== null && representative.representative_id > 0) {
+            const representativeNameQuery =  `SELECT representative_id FROM representative_law_firm WHERE representative_name = :name`;
+            const representativeName = await connection.resources.query(representativeNameQuery,{
+                type: connection.Sequelize.QueryTypes.SELECT,
+                raw: true,
+                replacements: { name: representative.name },
+                logging: console.log,
+                plain: true
+              }
+            );
+            if(representativeName !== null && representativeName.representative_id > 0) {
+                replacements.representativeID = representativeName.representative_id
+                representativeQuery = `SELECT law_firm_id FROM  law_firm WHERE
+                representative_id = :representativeID GROUP BY law_firm_id`
+            } else {
+                representativeQuery = `:ID`
+            }
+        } else {
+            representativeQuery = `:ID`
+        }
         const queryFindIDS = `SELECT address, rf_id FROM (
             SELECT caddress_7 as address, assignment.rf_id FROM assignment 
-            WHERE  date_format(assignment.record_dt, '%Y') >= :year AND law_firm_id = :ID AND caddress_7 <> '' 
+            WHERE  date_format(assignment.record_dt, '%Y') >= :year AND law_firm_id IN (${representativeQuery})  AND caddress_7 <> '' 
             GROUP BY caddress_7
             UNION
             SELECT caddress_5 as address, assignment.rf_id FROM assignment 
-            WHERE  date_format(assignment.record_dt, '%Y') >= :year AND law_firm_id = :ID AND caddress_5 <> '' 
+            WHERE  date_format(assignment.record_dt, '%Y') >= :year AND law_firm_id IN (${representativeQuery})  AND caddress_5 <> '' 
             GROUP BY caddress_5
             UNION
             SELECT caddress_6 as address, assignment.rf_id FROM assignment 
-            WHERE  date_format(assignment.record_dt, '%Y') >= :year AND law_firm_id = :ID AND caddress_6 <> '' 
+            WHERE  date_format(assignment.record_dt, '%Y') >= :year AND law_firm_id IN (${representativeQuery})  AND caddress_6 <> '' 
             GROUP BY caddress_6
             UNION
             SELECT caddress_3 as address, assignment.rf_id FROM assignment 
-            WHERE  date_format(assignment.record_dt, '%Y') >= :year AND law_firm_id = :ID AND caddress_3 <> '' 
+            WHERE  date_format(assignment.record_dt, '%Y') >= :year AND law_firm_id IN (${representativeQuery})  AND caddress_3 <> '' 
             GROUP BY caddress_3
             UNION
             SELECT caddress_4 as address, assignment.rf_id FROM assignment 
-            WHERE  date_format(assignment.record_dt, '%Y') >= :year AND law_firm_id = :ID AND caddress_4 <> '' 
+            WHERE  date_format(assignment.record_dt, '%Y') >= :year AND law_firm_id IN (${representativeQuery})  AND caddress_4 <> '' 
             GROUP BY caddress_4
             UNION
             SELECT caddress_1 as address, assignment.rf_id FROM assignment 
-            WHERE  date_format(assignment.record_dt, '%Y') >= :year AND law_firm_id = :ID AND caddress_1 <> '' 
+            WHERE  date_format(assignment.record_dt, '%Y') >= :year AND law_firm_id IN (${representativeQuery})  AND caddress_1 <> '' 
             GROUP BY caddress_1
             UNION
             SELECT caddress_2 as address, assignment.rf_id FROM assignment 
-            WHERE  date_format(assignment.record_dt, '%Y') >= :year AND law_firm_id = :ID AND caddress_2 <> '' 
+            WHERE  date_format(assignment.record_dt, '%Y') >= :year AND law_firm_id IN (${representativeQuery})   AND caddress_2 <> '' 
             GROUP BY caddress_2
         ) as temp GROUP BY address  ORDER BY address ASC`;
 
         addresses = await connection.resources.query(queryFindIDS,{
                 type: connection.Sequelize.QueryTypes.SELECT,
                 raw: true,
-                replacements: { ID: ID, year: 1997 },
+                replacements: replacements,
                 logging: console.log,
             }
         );
@@ -742,7 +775,7 @@ let allAssignments = async (customerID, req) => {
                 let representativeID = [];
                 findRepresentative.map(e => representativeID.push(e.representative_id));
 
-                queryAllAssignments = "Select a.rf_id as id, a.convey_text as text, CONCAT(a.reel_no, '/', a.frame_no) as reel_frame, a.frame_no, a.reel_no , ac.convey_ty, rac.convey_ty as updated_convey_ty,  CASE  WHEN rac.convey_ty = 'assignment' THEN 0 WHEN rac.convey_ty = 'addresschg' THEN 1	 WHEN rac.convey_ty = 'correct' THEN 2	 WHEN rac.convey_ty = 'courtappointment' THEN 3	 WHEN rac.convey_ty = 'courtorder' THEN 4	 WHEN rac.convey_ty = 'employee' THEN 5	 WHEN rac.convey_ty = 'govern' THEN 6	 WHEN rac.convey_ty = 'license' THEN 7	 WHEN rac.convey_ty = 'licenseend' THEN 8	 WHEN rac.convey_ty = 'missing' THEN 9	 WHEN rac.convey_ty = 'merger' THEN 10	 WHEN rac.convey_ty = 'namechg' THEN 11	 WHEN rac.convey_ty = 'option' THEN 12	 WHEN rac.convey_ty = 'other' THEN 13	 WHEN rac.convey_ty = 'partialassignment' THEN 14	 WHEN rac.convey_ty = 'release' THEN 15	 WHEN rac.convey_ty = 'restatedsecurity' THEN 16	 WHEN rac.convey_ty = 'security' THEN 17  WHEN rac.convey_ty='correspondchange' THEN 18	 ELSE '' END as assignment_convey_ty FROM db_uspto.assignment as a INNER JOIN db_uspto.assignment_conveyance as ac ON ac.rf_id = a.rf_id LEFT JOIN db_uspto.representative_assignment_conveyance as rac ON rac.rf_id = a.rf_id WHERE a.convey_text <> '' AND a.convey_text IS NOT NULL AND a.rf_id IN (SELECT d.rf_id FROM db_uspto.documentid as d WHERE appno_doc_num <> '' AND  d.rf_id IN (SELECT rf_id FROM db_uspto.representative_transactions WHERE organisation_id = :organisationID AND representative_id IN (:representativeID)) GROUP BY d.rf_id)"; 
+                queryAllAssignments = "Select a.rf_id as id, a.convey_text as text, CONCAT(a.reel_no, '/', a.frame_no) as reel_frame, a.frame_no, a.reel_no , ac.convey_ty, rac.convey_ty as updated_convey_ty,  CASE  WHEN rac.convey_ty = 'assignment' THEN 0 WHEN rac.convey_ty = 'addresschg' THEN 1	 WHEN rac.convey_ty = 'correct' THEN 2	 WHEN rac.convey_ty = 'courtappointment' THEN 3	 WHEN rac.convey_ty = 'courtorder' THEN 4	 WHEN rac.convey_ty = 'employee' THEN 5	 WHEN rac.convey_ty = 'govern' THEN 6	 WHEN rac.convey_ty = 'license' THEN 7	 WHEN rac.convey_ty = 'licenseend' THEN 8	 WHEN rac.convey_ty = 'missing' THEN 9	 WHEN rac.convey_ty = 'merger' THEN 10	 WHEN rac.convey_ty = 'namechg' THEN 11	 WHEN rac.convey_ty = 'option' THEN 12	 WHEN rac.convey_ty = 'other' THEN 13	 WHEN rac.convey_ty = 'partialassignment' THEN 14	 WHEN rac.convey_ty = 'release' THEN 15	 WHEN rac.convey_ty = 'restatedsecurity' THEN 16	 WHEN rac.convey_ty = 'security' THEN 17  WHEN rac.convey_ty='correspondchange' THEN 18	 ELSE '' END as assignment_convey_ty FROM db_uspto.assignment as a INNER JOIN db_uspto.assignment_conveyance as ac ON ac.rf_id = a.rf_id LEFT JOIN db_uspto.representative_assignment_conveyance as rac ON rac.rf_id = a.rf_id WHERE a.rf_id IN (SELECT d.rf_id FROM db_uspto.documentid as d WHERE appno_doc_num <> '' AND  d.rf_id IN (SELECT rf_id FROM db_uspto.representative_transactions WHERE organisation_id = :organisationID AND representative_id IN (:representativeID)) GROUP BY d.rf_id)"; 
 
                 /* queryAllAssignments = "SELECT a.rf_id as id, a.convey_text as text, CONCAT(a.reel_no, '/', a.frame_no) as reel_frame, a.frame_no, a.reel_no , ac.convey_ty, rac.convey_ty as updated_convey_ty, CASE WHEN rac.convey_ty = 'assignment' THEN 0 WHEN rac.convey_ty = 'addresschg' THEN 1 WHEN rac.convey_ty = 'correct' THEN 2 WHEN rac.convey_ty = 'courtappointment' THEN 3 WHEN rac.convey_ty = 'courtorder' THEN 4 WHEN rac.convey_ty = 'employee' THEN 5 WHEN rac.convey_ty = 'govern' THEN 6 WHEN rac.convey_ty = 'license' THEN 7 WHEN rac.convey_ty = 'licenseend' THEN 8 WHEN rac.convey_ty = 'missing' THEN 9 WHEN rac.convey_ty = 'merger' THEN 10 WHEN rac.convey_ty = 'namechg' THEN 11 WHEN rac.convey_ty = 'option' THEN 12 WHEN rac.convey_ty = 'other' THEN 13 WHEN rac.convey_ty = 'partialassignment' THEN 14 WHEN rac.convey_ty = 'release' THEN 15  WHEN rac.convey_ty = 'restatedsecurity' THEN 16 WHEN rac.convey_ty = 'security' THEN 17 ELSE '' END as assignment_convey_ty FROM db_application.assignment as a INNER JOIN db_application.assignment_conveyance as ac ON ac.rf_id = a.rf_id LEFT JOIN db_uspto.representative_assignment_conveyance as rac ON rac.rf_id = a.rf_id WHERE a.convey_text <> '' AND a.convey_text IS NOT NULL AND a.rf_id IN (SELECT d.rf_id FROM db_application.documentid as d WHERE appno_doc_num <> '' AND d.rf_id IN (SELECT rf_id FROM assignee WHERE rf_id IN (SELECT rf_id FROM db_uspto.representative_transactions WHERE organisation_id = :organisationID AND representative_id IN (:representativeID))) OR d.rf_id IN(SELECT rf_id FROM assignor WHERE rf_id IN (SELECT rf_id FROM db_uspto.representative_transactions WHERE organisation_id = :organisationID AND representative_id IN (:representativeID))) GROUP BY d.rf_id)"; */
 
