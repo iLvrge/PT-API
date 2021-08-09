@@ -715,7 +715,7 @@ let allTransactionEntities = async( conveyanceType) => {
                 });
                 if(getList != undefined && getList.length > 0){
                     let getCounter = await getList.reduce((a, b) => +a + +b.counter, 0);
-                    list.push({id: getList[0].assignor_and_assignee_id , name: getList[0].name, normalize_name: getList[0].normalize_name, counter: getCounter, representative_company: getList[0].representative_company});
+                    list.push({id: getList[0].assignor_and_assignee_id, assignor_and_assignee_id: getList[0].assignor_and_assignee_id, name: getList[0].name, normalize_name: getList[0].normalize_name, counter: getCounter, representative_company: getList[0].representative_company});
                 }
                 return id;
             });
