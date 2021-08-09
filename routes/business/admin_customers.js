@@ -909,18 +909,6 @@ route.post("/customers", [authJWT.verifyToken, authJWT.isAdmin], async (req, res
             if(org != null && org.organisation_id > 0){
                 let organisationID = org.organisation_id;
                
-                /**
-                 * Run script for creating database
-                 */
-                const query = "UPDATE db_business.organisation SET uuid=UUID_TO_BIN(UUID()) WHERE organisation_id = :organisation_id"
-
-                await connection.resources.query(query,{
-                    type: connection.Sequelize.QueryTypes.SELECT,
-                    replacements: { organisation_id: organisationID },
-                    raw: true,
-                    logging: console.log,
-                });
-
                 console.log(`php -f /var/www/html/trash/script_create_customer_db.php "${organisationID}"`);
                 exec(`php -f /var/www/html/trash/script_create_customer_db.php "${organisationID}"`, async (error, std, stderr) => {
                     console.log("script_create_customer_db");
@@ -928,6 +916,20 @@ route.post("/customers", [authJWT.verifyToken, authJWT.isAdmin], async (req, res
                     console.log(stderr);
                     console.log(std);
                 });        
+
+                
+                /**
+                 * Run script for creating database
+                 */
+                const query = "UPDATE db_business.organisation SET uuid=UUID_TO_BIN(UUID()) WHERE organisation_id = :organisation_id"
+
+                connection.resources.query(query,{
+                    type: connection.Sequelize.QueryTypes.SELECT,
+                    replacements: { organisation_id: organisationID },
+                    raw: true,
+                    logging: console.log,
+                });
+
                 res.status(200).json(org);                                       
             } else {
                 res.status(500).send("Internal server error");
