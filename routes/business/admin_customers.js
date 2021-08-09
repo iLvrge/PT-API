@@ -921,14 +921,14 @@ route.post("/customers", [authJWT.verifyToken, authJWT.isAdmin], async (req, res
                 /**
                  * Run script for creating database
                  */
-                const query = "UPDATE db_business.organisation SET uuid=UUID_TO_BIN(UUID()) WHERE organisation_id = :organisation_id"
+                /* const query = "UPDATE db_business.organisation SET uuid=UUID_TO_BIN(UUID()) WHERE organisation_id = :organisation_id"
 
                 connection.resources.query(query,{
                     type: connection.Sequelize.QueryTypes.SELECT,
                     replacements: { organisation_id: organisationID },
                     raw: true,
                     logging: console.log,
-                });
+                }); */
 
                 res.status(200).json(org);                                       
             } else {
