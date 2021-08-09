@@ -14,7 +14,7 @@ const Organisations = connection.business.define('organisation',{
         allowNull: true,
     },       
     name:{
-        type: Sequelize.INTEGER,
+        type: Sequelize.STRING,
         allowNull: false,
     },
     address:{
