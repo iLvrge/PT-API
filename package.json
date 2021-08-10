@@ -24,6 +24,7 @@
     "express-fileupload": "^1.1.7-alpha.3",
     "full-text-search-query": "^1.0.3-beta.1",
     "googleapis": "^66.0.0",
+    "html-entities": "^2.3.2",
     "jsdom": "^16.4.0",
     "jsonwebtoken": "^8.5.1",
     "moment": "^2.29.1",

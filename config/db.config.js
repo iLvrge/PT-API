@@ -78,7 +78,8 @@ const bucketConfig = {
   accessKeyId: process.env.BUCKET_ACCESS_KEY,
   secretAccessKey: process.env.BUCKET_SECRET_KEY,
   s3Url: process.env.BUCKET_URL, /* optional */
-  documentDir: process.env.BUCKET_DOCUMENT_DIR
+  documentDir: process.env.BUCKET_DOCUMENT_DIR,
+  figuresDir: process.env.BUCKET_FIGURES_DIR,
 }
 
 const slackConfig = {

@@ -8,22 +8,33 @@ const express = require("express"),
 
     epo = require('../../helpers/epo.js'),
 
-    xml2js = require('xml2js');
+    xml2js = require('xml2js'),
+    
+    fs = require('fs');
 
+const { decode } = require('html-entities');
+const AWS  = require('aws-sdk');
 
+const { exec, spawn  } = require('child_process');
 //require the Model
 const PatentFamilyMember = require("../../model/resources/PatentFamilyMember");
 const PatentFamilyRelation = require("../../model/resources/PatentFamilyRelation");
 const Documentid = require("../../model/application/DocumentIds");
+
+const mainFolderPath = process.env.MAIN_FOLDER_PATH , extraDiskPath =   process.env.EXTRA_DISK_PATH
 
 route.get('/family/list/:grantNumber', [authJWT.verifyToken], async (req, res) =>{
     const familyData = []
     try {
         const token = await epo.readToken('HedCET')    
         if(token !== 'undefined' && token != '') {
-            let getFamilyData = await epo.runUrl(token,'family','publication','docdb',`US${req.params.grantNumber}`);
+            let { grantNumber } = req.params
+            if(grantNumber.indexOf('US') === -1) {
+                grantNumber = `US${grantNumber}`
+            }
+            let getFamilyData = await epo.runUrl(token,'family','publication','docdb',`${grantNumber}`);
             if( !getFamilyData ) {
-                getFamilyData = await epo.runUrl(token,'family','publication','epodoc',`US${req.params.grantNumber}`);
+                getFamilyData = await epo.runUrl(token,'family','publication','epodoc',`${grantNumber}`);
             }        
             if( getFamilyData ) {
                 const parser = new xml2js.Parser
@@ -34,8 +45,10 @@ route.get('/family/list/:grantNumber', [authJWT.verifyToken], async (req, res) =
                         resolve(result);
                     }
                 }));
-                //const xmlData = JSON.stringify(result)    
+                
                 if( xmlData.hasOwnProperty('ops:world-patent-data') ){
+                    
+                    fs.writeFileSync(`${mainFolderPath}FAMILY/${grantNumber}.XML`, xmlData);
                     console.log('IN ops:world-patent-data')
                     const worldPatentData = xmlData['ops:world-patent-data']
                     if(worldPatentData.hasOwnProperty('ops:patent-family')) {
@@ -72,6 +85,7 @@ route.get('/family/list/:grantNumber', [authJWT.verifyToken], async (req, res) =
                                                 assigments: null,
                                                 images: null,
                                                 abstracts: null,
+                                                specification: null,
                                                 claims: null,
                                                 inventors: null,
                                                 assignee: null,
@@ -91,6 +105,7 @@ route.get('/family/list/:grantNumber', [authJWT.verifyToken], async (req, res) =
                                     assigments: null,
                                     images: null,
                                     abstracts: null,
+                                    specification: null,
                                     claims: null,
                                     inventors: null,
                                     assignee: null,
@@ -100,7 +115,7 @@ route.get('/family/list/:grantNumber', [authJWT.verifyToken], async (req, res) =
                             }
                        }
                     }
-                }
+                } 
             }
         }
     } catch( err ) {
@@ -123,10 +138,8 @@ route.get("/family/:applicationNumber", [authJWT.verifyToken], async (req, res) 
             where: {appno_doc_num: applicationNumber}
         })
     
-        if(findPatent != null && findPatent.rf_id > 0 && findPatent.grant_doc_num != null && findPatent.grant_doc_num != '') {
-            /**
-            * Custom SubQuery
-            */
+        /* if(findPatent != null && findPatent.rf_id > 0 && findPatent.grant_doc_num != null && findPatent.grant_doc_num != '') {
+           
     
             const queryFamily = 'SELECT * FROM patent_family_member WHERE family_id = (SELECT family_id FROM patent_family_member WHERE patent_number = :patentNumber AND family_id > 0 LIMIT 1) OR (patent_number = :patentNumber AND family_id = 0)';
     
@@ -136,7 +149,7 @@ route.get("/family/:applicationNumber", [authJWT.verifyToken], async (req, res) 
                 logging: console.log,
                 replacements: {patentNumber: findPatent.grant_doc_num}
             });
-        }      
+        } */      
         if( getFamily.length === 0 ) {
             const token = await epo.readToken('HedCET')    
             if(token !== 'undefined' && token != '') {
@@ -159,6 +172,8 @@ route.get("/family/:applicationNumber", [authJWT.verifyToken], async (req, res) 
                     }));
                     //const xmlData = JSON.stringify(result)    
                     if( xmlData.hasOwnProperty('ops:world-patent-data') ){
+                        
+                        fs.writeFileSync(`${mainFolderPath}FAMILY/${grantNumber}.XML`, xmlData);
                         const worldPatentData = xmlData['ops:world-patent-data']
                         if(worldPatentData.hasOwnProperty('ops:patent-family')) {
                             const patentFamily =  worldPatentData['ops:patent-family']
@@ -197,6 +212,7 @@ route.get("/family/:applicationNumber", [authJWT.verifyToken], async (req, res) 
                                                         assigments: null,
                                                         images: null,
                                                         abstracts: null,
+                                                        specification: null,
                                                         claims: null,
                                                         inventors: null,
                                                         assignee: null,
@@ -229,6 +245,7 @@ route.get("/family/:applicationNumber", [authJWT.verifyToken], async (req, res) 
                             abstracts: null,
                             claims: null,
                             inventors: null,
+                            specification: null,
                             assignee: null,
                             applicants: [],
                             title: findPatent != null ? findPatent.title : ''
@@ -244,29 +261,275 @@ route.get("/family/:applicationNumber", [authJWT.verifyToken], async (req, res) 
     }
 });
 
+let findXMLFile = async (pgPubDocNum, t) => {
+    return new Promise( function(resolve, reject) {
+        let findFile = ''
+        const child = spawn('find', [`${t === 1 ? extraDiskPath : mainFolderPath}XML/`, '-name', `*${pgPubDocNum}*.XML`]);
+        child.stdout.on('data', (data) => {
+            console.log(`child.stdout: ${data}`)
+            const files = data.toString().split('\n')  
+            findFile = files
+        });
+        child.stderr.on('data', (data) => {
+            reject('')
+        });
+        child.on('close', (code) => {
+            resolve(findFile)    
+        })  
+    })
+}
+
+let getFileContent = async (filePath) => {
+    return new Promise ((resolve, reject) => {
+        fs.readFile(filePath, async function(err,data){
+            if (!err) {
+                try {            
+                    let xmlData = ''
+                    let findIndex = data.indexOf('<us-patent-application')
+                    if(findIndex !== -1) {                
+                        xmlData = data.toString().substring(findIndex, data.length)
+                    } else {
+                        findIndex = data.indexOf('<patent-application-publication')
+                        if(findIndex !== -1) {                
+                            xmlData = data.toString().substring(findIndex, data.length)
+                        }
+                    }
+                    resolve(xmlData)
+                } catch (err) {
+                    reject('')
+                }
+            }
+        })
+    })
+}
+
+const getContentFromXML = async (fileContent, contentType) => {
+    let content = '';
+    const parser = new xml2js.Parser
+    const xmlData = await new Promise((resolve, reject) => parser.parseString(fileContent, (err, result) => {
+        if (err){
+            reject(err);
+        } else {
+            resolve(result);
+        }
+    }));
+
+    if(contentType === 'abstract') {
+        if( xmlData.hasOwnProperty('patent-application-publication') ){
+            const usBibliographic = xmlData['patent-application-publication']
+            let content = usBibliographic['subdoc-abstract']
+            if(typeof content === 'object'){
+                if(typeof content['paragraph'] !== 'undefined') {
+                    content = content['paragraph']['#text']
+                }
+            }
+        } else if( xmlData.hasOwnProperty('us-patent-application') ){ 
+            const usBibliographic = xmlData['us-patent-application']
+            if( usBibliographic.hasOwnProperty('abstract') ){ 
+                content = usBibliographic.abstract        
+                if(typeof content === 'object'){
+                    if(typeof content['p'] !== 'undefined') {
+                        content = content['p']['#text']
+                    }
+                }
+            }
+        }
+    } else if(contentType === 'specifications') {
+        content = []
+        if( xmlData.hasOwnProperty('patent-application-publication') ){
+            const usBibliographic = xmlData['patent-application-publication']
+            let description = usBibliographic['subdoc-description']['summary-of-invention']['section']
+            if(Array.isArray(description)) {
+                description.forEach( item => {
+                    if(typeof item === 'object') {
+                        if(Array.isArray(item['paragraph'])) {
+                            item['paragraph'].forEach( p => {
+                                content.push({
+                                    claims: decode(p['#text'], {level: 'xml'})
+                                })
+                            })
+                        } else if(typeof item['paragraph'] === 'object') {
+                            content.push({
+                                claims: decode(item['paragraph']['#text'], {level: 'xml'})
+                            })
+                        }                                        
+                    }
+                })
+            }
+            description = xmlToJSON['patent-application-publication']['subdoc-description']['detailed-description']['section']
+                            
+            if(Array.isArray(description)) {
+                description.forEach( item => {
+                    if(typeof item === 'object') {
+                        if(Array.isArray(item['paragraph'])) {
+                            item['paragraph'].forEach( p => {
+                                content.push({
+                                    claims: decode(p['#text'], {level: 'xml'})
+                                })
+                            })
+                        } else if(typeof item['paragraph'] === 'object') {
+                            content.push({
+                                claims: decode(item['paragraph']['#text'], {level: 'xml'})
+                            })
+                        } 
+                    }
+                })
+            }
+        } else if( xmlData.hasOwnProperty('us-patent-application') ){ 
+            const usBibliographic = xmlData['us-patent-application']
+            description = usBibliographic.description.p
+            if(Array.isArray(description)) {
+                description.forEach( item => {
+                    if(typeof item === 'object') {
+                        content.push({
+                            claims: decode(item['#text'], {level: 'xml'})
+                        })
+                    }
+                })
+            }
+        }
+    } else if(contentType === 'claims') {
+        content = []
+        if( xmlData.hasOwnProperty('patent-application-publication') ){
+            const usBibliographic = xmlData['patent-application-publication']
+            let usClaims = usBibliographic['subdoc-claims'].claim
+            if(Array.isArray(usClaims)) {
+                if(usClaims.length > 0) {
+                    const promiseClaims = usClaims.map( async claim => {
+                        let text = '';
+                        const recursiveClaim = async (element) => {
+                            if(typeof element === 'object') {
+                                text += `\n ${element['#text']}`
+                                if(typeof element.hasOwnProperty('claim-text')) {
+                                    if(Array.isArray(element['claim-text'])) {
+                                        element['claim-text'].forEach(async claimText => {
+                                            text += await recursiveClaim(claimText)
+                                        })
+                                    } else if(typeof element['claim-text'] === 'string'){
+                                        text += `\n ${element['claim-text']}`
+                                    }
+                                }
+                            } else if(typeof element === 'string') {
+                                text += `\n ${element}`
+                            }
+                            return text
+                        }
+                        
+                        text = await recursiveClaim(claim['claim-text'])
+                       
+                        content.push({
+                            claims: decode(text, {level: 'xml'})
+                        })
+                    })
+                    await Promise.all(promiseClaims)
+                }
+            }
+        } else if( xmlData.hasOwnProperty('us-patent-application') ) { 
+            const usBibliographic = xmlData['us-patent-application']
+            let usClaims = usBibliographic.claims.claim
+            if(Array.isArray(usClaims)) {
+                if(usClaims.length > 0) {
+                    const promiseClaims = usClaims.map( async claim => {
+                        let text = '';
+                        const recursiveClaim = async (element) => {
+                            if(typeof element === 'object') {
+                                text += `\n ${element['#text']}`
+                                if(typeof element.hasOwnProperty('claim-text')) {
+                                    if(Array.isArray(element['claim-text'])) {
+                                        element['claim-text'].forEach(async claimText => {
+                                            text += await recursiveClaim(claimText)
+                                        })
+                                    } else if(typeof element['claim-text'] === 'string'){
+                                        text += `\n ${element['claim-text']}`
+                                    }
+                                }
+                            } else if(typeof element === 'string') {
+                                text += `\n ${element}`
+                            }
+                            return text
+                        }
+                        
+                        text = await recursiveClaim(claim['claim-text'])
+                       
+                        content.push({
+                            claims: decode(text, {level: 'xml'})
+                        })
+                    })
+                    await Promise.all(promiseClaims)
+                }
+            }
+        }
+    } else if(contentType === 'figures') {
+        content = []
+        const bucketConfig = connection.bucketConfig;  
+        if( xmlData.hasOwnProperty('patent-application-publication') ){
+            const usBibliographic = xmlData['patent-application-publication']
+            const figure = typeof usBibliographic['subdoc-drawings'] !== 'undefined' ? usBibliographic['subdoc-drawings'].figure : []
+            if(Array.isArray(figure)) {
+                if(figure.length > 0) {
+                    figure.forEach( item => {
+                        const target = item['image']['@_file'].toString().replace('.TIF', '.png')
+                        content.push(`https://s3-${bucketConfig.region}.amazonaws.com/${bucketConfig.bucketName}/${bucketConfig.figuresDir}/${target}`)
+                    })
+                }
+            }
+        } else if( xmlData.hasOwnProperty('us-patent-application') ) { 
+            const usBibliographic = xmlData['us-patent-application']
+            let figure = typeof usBibliographic.drawings !== 'undefined' ? usBibliographic.drawings.figure : []
+            if(Array.isArray(figure)) {
+                if(figure.length > 0) {
+                    figure.forEach( item => {
+                        const target = item['img']['@_file'].toString().replace('.TIF', '.png')
+                        content.push(`https://s3-${bucketConfig.region}.amazonaws.com/${bucketConfig.bucketName}/${bucketConfig.figuresDir}/${target}`)
+                    })
+                }
+            }
+        }
+    }
+    return content;
+
+}
+
 route.get("/family/abstract/:applicationNumber", [authJWT.verifyToken], async (req, res) =>{  
     try{
-        const applicationNumber = req.params.applicationNumber;
+        const applicationNumber = req.params.applicationNumber;        
+        let asset = applicationNumber.toString().substr(2, applicationNumber.length)
+        const indexing = /[a-z]/i.exec(asset)
+        if(indexing != null && indexing.index >= 0) {
+            asset = asset.substr(0,indexing.index)
+        }
         
         const findPatent = await Documentid.findOne({
-            attributes: ['rf_id', 'grant_doc_num'],
+            attributes: ['rf_id', 'grant_doc_num', 'pgpub_doc_num', 'pgpub_date'],
             where: {appno_doc_num: applicationNumber}
         })
         let abstractData = '', query = '', replacements = {applicationNumber}
-        if(findPatent != null && findPatent.rf_id > 0 && findPatent.grant_doc_num != null && findPatent.grant_doc_num != '') {
-            query = 'SELECT abstracts FROM patent_family_member WHERE application_number = :applicationNumber OR patent_number = :patentNumber LIMIT 1'
-            replacements.patentNumber = findPatent.grant_doc_num
-        } else {
-            query = 'SELECT abstracts FROM patent_family_member WHERE application_number = :applicationNumber LIMIT 1'
+        
+        let pgPubDocNum = ''
+
+        if( findPatent != null && findPatent.pgpub_doc_num !== '' ) {
+            pgPubDocNum = `US${findPatent.pgpub_doc_num}`
+        } else if( req.query.publication_number !== '') {
+            pgPubDocNum = req.query.publication_number 
         }
-        abstractData = await connection.resources.query(query,{
-            type: connection.Sequelize.QueryTypes.SELECT,
-            raw: true,
-            logging: console.log,
-            replacements: replacements,
-            plain: true
-        });        
-        if(abstractData == null || (abstractData.hasOwnProperty('abstracts') && (abstractData.abstracts == null ||  abstractData.abstracts.toString().trim() == ''))) {
+
+        if( pgPubDocNum !== '' ) {
+            let filePath = await findXMLFile(pgPubDocNum, 0)
+
+            if( filePath !== '') {
+                filePath = await findXMLFile(pgPubDocNum, 1)
+            }
+
+            if( filePath !== '') {
+                
+                const getXMLData = await getFileContent(filePath)
+                
+                if( getXMLData !== '' ) {
+                    abstractData = await getContentFromXML(getXMLData, 'abstract')
+                }
+            }
+        } 
+        if(abstractData == '' || abstractData == null || (abstractData.hasOwnProperty('abstracts') && (abstractData.abstracts == null ||  abstractData.abstracts.toString().trim() == ''))) {
             const token = await epo.readToken('HedCET')    
             if(token !== 'undefined' && token != '') {
                 const asset = applicationNumber
@@ -320,7 +583,7 @@ route.get("/family/abstract/:applicationNumber", [authJWT.verifyToken], async (r
                     }                    
                 }
             }
-        }
+        }   
         res.status(200).json(abstractData);
     } catch( err ) {
         console.log('ERROR IN Abstract', err);
@@ -406,32 +669,35 @@ route.get("/family/claims/:applicationNumber", [authJWT.verifyToken], async (req
                 asset = asset.substr(0,indexing.index)
             }
             const findPatent = await Documentid.findOne({
-                attributes: ['rf_id', 'grant_doc_num'],
+                attributes: ['rf_id', 'grant_doc_num', 'pgpub_doc_num', 'pgpub_date'],
                 where: {appno_doc_num: asset}
             })
             let query = '', replacements = {applicationNumber: asset}
-            if(findPatent != null && findPatent.rf_id > 0 && findPatent.grant_doc_num != null && findPatent.grant_doc_num != '') {
-                query = 'SELECT claims FROM patent_family_member WHERE application_number = :applicationNumber OR patent_number = :patentNumber LIMIT 1'
-                replacements.patentNumber = findPatent.grant_doc_num
-            } else {
-                query = 'SELECT claims FROM patent_family_member WHERE application_number = :applicationNumber LIMIT 1'
-            }
-            claimsData = await connection.resources.query(query,{
-                type: connection.Sequelize.QueryTypes.SELECT,
-                raw: true,
-                logging: console.log,
-                replacements: replacements,
-                plain: true
-            });
-            
-            if(claimsData == null || (claimsData.hasOwnProperty('claims') && (claimsData.claims == null ||  claimsData.claims.toString().trim() == '' || claimsData.claims != '{}' || claimsData.claims !='[]'))) {
-                query = 'SELECT text AS claims FROM db_patent_grant_bibliographic.application_claims WHERE appno_doc_num = :applicationNumber '
-                claimsData = await connection.resources.query(query,{
-                    type: connection.Sequelize.QueryTypes.SELECT,
-                    raw: true,
-                    logging: console.log,
-                    replacements: replacements,
-                });
+            if(findPatent != null && findPatent.rf_id > 0 && findPatent.pgpub_doc_num != null && findPatent.pgpub_doc_num != '') {
+                let pgPubDocNum = ''
+
+                if( findPatent != null && findPatent.pgpub_doc_num !== '' ) {
+                    pgPubDocNum = `US${findPatent.pgpub_doc_num}`
+                } else if( req.query.publication_number !== '') {
+                    pgPubDocNum = req.query.publication_number 
+                }
+
+                if( pgPubDocNum !== '' ) {
+                    let filePath = await findXMLFile(pgPubDocNum, 0)
+
+                    if( filePath !== '') {
+                        filePath = await findXMLFile(pgPubDocNum, 1)
+                    }
+
+                    if( filePath !== '') {
+                        
+                        const getXMLData = await getFileContent(filePath)
+                        
+                        if( getXMLData !== '' ) {
+                            claimsData = await getContentFromXML(getXMLData, 'claims')
+                        }
+                    }
+                } 
             }
         }
         res.status(200).json(claimsData);
@@ -441,31 +707,100 @@ route.get("/family/claims/:applicationNumber", [authJWT.verifyToken], async (req
     }
 })
 
+
+route.get("/family/specifications/:applicationNumber", [authJWT.verifyToken], async (req, res) =>{
+    try{
+        let specificationsData = []
+        const applicationNumber = req.params.applicationNumber;  
+        let asset = applicationNumber.toString().substr(2, applicationNumber.length)
+        const indexing = /[a-z]/i.exec(asset)
+        if(indexing != null && indexing.index >= 0) {
+            asset = asset.substr(0,indexing.index)
+        }
+        const findPatent = await Documentid.findOne({
+            attributes: ['rf_id', 'grant_doc_num', 'pgpub_doc_num', 'pgpub_date'],
+            where: {appno_doc_num: asset}
+        })
+        let query = '', replacements = {applicationNumber: asset}
+        if(findPatent != null && findPatent.rf_id > 0 && findPatent.pgpub_doc_num != null && findPatent.pgpub_doc_num != '') {
+            let pgPubDocNum = ''
+
+            if( findPatent != null && findPatent.pgpub_doc_num !== '' ) {
+                pgPubDocNum = `US${findPatent.pgpub_doc_num}`
+            } else if( req.query.publication_number !== '') {
+                pgPubDocNum = req.query.publication_number 
+            }
+
+            if( pgPubDocNum !== '' ) {
+                let filePath = await findXMLFile(pgPubDocNum, 0)
+
+                if( filePath !== '') {
+                    filePath = await findXMLFile(pgPubDocNum, 1)
+                }
+
+                if( filePath !== '') {
+                    
+                    const getXMLData = await getFileContent(filePath)
+                    
+                    if( getXMLData !== '' ) {
+                        specificationsData = await getContentFromXML(getXMLData, 'specifications')
+                    }
+                }
+            } 
+        }      
+        if(specificationsData.length == 0) {
+            // find from epo XML
+
+        } 
+        res.status(200).json(specificationsData);
+    } catch( err ) {
+        console.log('ERROR IN Claims', err);
+        res.status(500).send("Internal server error.");
+    }
+})
+
 route.get("/family/images/:applicationNumber", [authJWT.verifyToken], async (req, res) =>{
     try{
         const applicationNumber = req.params.applicationNumber;
-        const asset = applicationNumber.toString().substr(2, applicationNumber.length)
+        let asset = applicationNumber.toString().substr(2, applicationNumber.length)
+        const indexing = /[a-z]/i.exec(asset)
+        if(indexing != null && indexing.index >= 0) {
+            asset = asset.substr(0,indexing.index)
+        }
         const findPatent = await Documentid.findOne({
-            attributes: ['rf_id', 'grant_doc_num'],
+            attributes: ['rf_id', 'grant_doc_num', 'pgpub_doc_num', 'pgpub_date'],
             where: {appno_doc_num: asset}
         })
-        let imagesList = '', query = '', replacements = {applicationNumber: asset}
-        if(findPatent != null && findPatent.rf_id > 0 && findPatent.grant_doc_num != null && findPatent.grant_doc_num != '') {
-            query = 'SELECT images FROM patent_family_member WHERE application_number = :applicationNumber OR patent_number = :patentNumber LIMIT 1'
-            replacements.patentNumber = findPatent.grant_doc_num
-        } else {
-            query = 'SELECT images FROM patent_family_member WHERE application_number = :applicationNumber LIMIT 1'
-        }
-        imagesData = await connection.resources.query(query,{
-            type: connection.Sequelize.QueryTypes.SELECT,
-            raw: true,
-            logging: console.log,
-            replacements: replacements,
-            plain: true
-        });
+        let imagesList = [], query = '', replacements = {applicationNumber: asset}
+        if(findPatent != null && findPatent.rf_id > 0 && findPatent.pgpub_doc_num != null && findPatent.pgpub_doc_num != '') {
+            let pgPubDocNum = ''
 
-        if(imagesData == null || (typeof imagesData == 'object' && imagesData.hasOwnProperty('images') && (imagesData.images == '' || imagesData.images == null || imagesData.images == '[]'))){
-            /* const token = await epo.readToken('HedCET')    
+            if( findPatent != null && findPatent.pgpub_doc_num !== '' ) {
+                pgPubDocNum = `US${findPatent.pgpub_doc_num}`
+            } else if( req.query.publication_number !== '') {
+                pgPubDocNum = req.query.publication_number 
+            }
+
+            if( pgPubDocNum !== '' ) {
+                let filePath = await findXMLFile(pgPubDocNum, 0)
+
+                if( filePath !== '') {
+                    filePath = await findXMLFile(pgPubDocNum, 1)
+                }
+
+                if( filePath !== '') {
+                    
+                    const getXMLData = await getFileContent(filePath)
+                    
+                    if( getXMLData !== '' ) {
+                        imagesList = await getContentFromXML(getXMLData, 'figures')
+                    }
+                }
+            }
+        }
+
+        if(imagesList.length == 0){
+            const token = await epo.readToken('HedCET')    
             if(token !== 'undefined' && token != '') {
                 const asset = applicationNumber
                 let publication = 'publication';
@@ -480,7 +815,7 @@ route.get("/family/images/:applicationNumber", [authJWT.verifyToken], async (req
                         }
                     }
                 }
-                //abstract = await epo.singleUrl(token, `published-data/publication/epodoc/US${asset}/biblio`);
+                
                 if( image ) {
                     const parser = new xml2js.Parser
                     const xmlData = await new Promise((resolve, reject) => parser.parseString(image, (err, result) => {
@@ -490,38 +825,66 @@ route.get("/family/images/:applicationNumber", [authJWT.verifyToken], async (req
                             resolve(result);
                         }
                     }));
+
                     if( xmlData.hasOwnProperty('ops:world-patent-data') ){
                         const worldPatentData = xmlData['ops:world-patent-data']
                         if(worldPatentData.hasOwnProperty('ops:document-inquiry')) {
                             const documentInquiry = worldPatentData['ops:document-inquiry']
                             if( documentInquiry.length > 0 && documentInquiry[0].hasOwnProperty('ops:inquiry-result')) {
-                                const inquiryResult = fullTextDocuments[0]['ops:inquiry-result']
+                                const inquiryResult = documentInquiry[0]['ops:inquiry-result']
                                 if(inquiryResult.length > 0 && inquiryResult[0].hasOwnProperty('ops:document-instance')){
                                     const documentInstance = inquiryResult[0]['ops:document-instance']
-                                    const mapDoc = documentInstance.map( document => {
+
+                                    const mapData = await documentInstance.map( async document => {
+
                                         if( document.$['desc'] == "Drawing" || document.$['desc'] == "FirstPageClipping" ) {
                                             const pages = document.$['number-of-pages'], link = document.$['link']
                                             for( let i = 1; i <= pages; i++) {
-                                                let imageData = await epo.singleUrl(token, `${link}.pdf?Range=${i}`);
-                                                if( imageData != null && imageData.hasOwnProperty('data') && imageData.data != '' ) {
-                                                    const fileName = `${applicationNumber}_${link.split("/").pop()}_${document.$['desc']}_${i}.pdf`
-                                                }
+                                                imagesList.push(`http://localhost:3600/family/single/file?link=${link}.pdf?Range=${i}`)                                               
                                             }   
                                         }
+                                        return document
                                     })
+                                    await Promise.all(mapData)
                                 }
                             }
                         }
-                    }
+                    } 
                 }
-            } */
-        } else {
-            imagesList = JSON.parse(imagesData.images)
+            } 
         }
+        res.status(200).json(imagesList);
     } catch (err) {
-
+        console.log('ERROR retreiving images', err)
+        res.status(500).send("Internal server error.");
     }
 })
+
+route.get("/family/single/file/", async (req, res) =>{
+    try{
+        let {link} = req.query
+        console.log('link', link)
+        if(link  !== '') {
+            const range = link.split('?')[1].split('=')
+            const token = await epo.readToken('HedCET')    
+            if(token !== 'undefined' && token != '') {
+                
+                exec(`php -f /var/www/html/trash/get_epo_thumbnail.php "${link}"`, async (error, std, stderr) => {
+                    console.log("get_epo_thumbnail");
+                    console.log(error);
+                    console.log(stderr);
+                    console.log(std);
+                    fs.writeFileSync(`${range}.pdf`, std);
+                });
+            }
+        }
+    } catch (err) {
+        res.status(200).send('');
+    }
+})
+
+
+
 
 route.get("/family/single/:applicationNumber", [authJWT.verifyToken], async (req, res) =>{  
 
