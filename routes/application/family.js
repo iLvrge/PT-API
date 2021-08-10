@@ -874,7 +874,12 @@ route.get("/family/single/file/", async (req, res) =>{
                     console.log(error);
                     console.log(stderr);
                     console.log(std);
-                    fs.writeFileSync(`${range}.pdf`, std);
+                    const file = fs.readFileSync(std)
+                    const stat = fs.statSync(std)
+                    res.setHeader('Content-Length', stat.size);
+                    res.setHeader('Content-disposition', `inline; filename="${range}.pdf"`);
+                    res.setHeader('Content-type', 'application/pdf');
+                    res.send(file);
                 });
             }
         }
