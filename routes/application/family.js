@@ -283,7 +283,8 @@ let getFileContent = async (filePath) => {
     return new Promise ((resolve, reject) => {
         fs.readFile(filePath, async function(err,data){
             if (!err) {
-                try {            
+                try {     
+                    console.log(`FILE STRING - ${data}`)       
                     let xmlData = ''
                     let findIndex = data.indexOf('<us-patent-application')
                     if(findIndex !== -1) {                
