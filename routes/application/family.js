@@ -268,7 +268,7 @@ let findXMLFile = async (pgPubDocNum, t) => {
         child.stdout.on('data', (data) => {
             console.log(`child.stdout: ${data}`)
             const files = data.toString().split('\n')  
-            findFile = files
+            findFile = files[0]
         });
         child.stderr.on('data', (data) => {
             reject('')
@@ -295,9 +295,12 @@ let getFileContent = async (filePath) => {
                         }
                     }
                     resolve(xmlData)
-                } catch (err) {
+                } catch (error) {
+                    console.log(`Error while reading - 1 - ${error}`)
                     reject('')
                 }
+            } else {
+                console.log(`Error while reading - ${err}`)
             }
         })
     })
