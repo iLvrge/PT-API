@@ -344,12 +344,12 @@ const getContentFromXML = async (fileContent, contentType) => {
                         if(Array.isArray(item['paragraph'])) {
                             item['paragraph'].forEach( p => {
                                 content.push({
-                                    claims: decode(p['#text'], {level: 'xml'})
+                                    text: decode(p['#text'], {level: 'xml'})
                                 })
                             })
                         } else if(typeof item['paragraph'] === 'object') {
                             content.push({
-                                claims: decode(item['paragraph']['#text'], {level: 'xml'})
+                                text: decode(item['paragraph']['#text'], {level: 'xml'})
                             })
                         }                                        
                     }
@@ -363,12 +363,12 @@ const getContentFromXML = async (fileContent, contentType) => {
                         if(Array.isArray(item['paragraph'])) {
                             item['paragraph'].forEach( p => {
                                 content.push({
-                                    claims: decode(p['#text'], {level: 'xml'})
+                                    text: decode(p['#text'], {level: 'xml'})
                                 })
                             })
                         } else if(typeof item['paragraph'] === 'object') {
                             content.push({
-                                claims: decode(item['paragraph']['#text'], {level: 'xml'})
+                                text: decode(item['paragraph']['#text'], {level: 'xml'})
                             })
                         } 
                     }
@@ -381,7 +381,7 @@ const getContentFromXML = async (fileContent, contentType) => {
                 description.forEach( item => {
                     if(typeof item === 'object') {
                         content.push({
-                            claims: decode(item['#text'], {level: 'xml'})
+                            text: decode(item['#text'], {level: 'xml'})
                         })
                     }
                 })
@@ -417,7 +417,7 @@ const getContentFromXML = async (fileContent, contentType) => {
                         text = await recursiveClaim(claim['claim-text'])
                        
                         content.push({
-                            claims: decode(text, {level: 'xml'})
+                            text: decode(text, {level: 'xml'})
                         })
                     })
                     await Promise.all(promiseClaims)
@@ -453,7 +453,7 @@ const getContentFromXML = async (fileContent, contentType) => {
                         text = await recursiveClaim(claim['claim-text'])
                        
                         content.push({
-                            claims: decode(text, {level: 'xml'})
+                            text: decode(text, {level: 'xml'})
                         })
                     })
                     await Promise.all(promiseClaims)
