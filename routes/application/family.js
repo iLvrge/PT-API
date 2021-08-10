@@ -431,6 +431,7 @@ const getContentFromXML = async (fileContent, contentType) => {
             console.log('Second')
             const usBibliographic = xmlData['us-patent-application']
             let usClaims = usBibliographic.claims.claim
+            console.log(JSON.stringify(usBibliographic.claims))
             if(Array.isArray(usClaims)) {
                 console.log('IS array')
                 if(usClaims.length > 0) {
