@@ -689,7 +689,7 @@ route.get("/family/claims/:applicationNumber", [authJWT.verifyToken], async (req
                     if( filePath !== '') {
                         
                         const getXMLData = await getFileContent(filePath)
-                        
+                        console.log('received file contentadadadad da dd ', getXMLData)
                         if( getXMLData !== '' ) {
                             claimsData = await getContentFromXML(getXMLData, 'claims')
                         }
