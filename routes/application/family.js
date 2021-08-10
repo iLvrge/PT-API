@@ -283,8 +283,7 @@ let getFileContent = async (filePath) => {
     return new Promise ((resolve, reject) => {
         fs.readFile(filePath, async function(err,data){
             if (!err) {
-                try {     
-                    console.log(`FILE STRING - ${data}`)       
+                try {          
                     let xmlData = ''
                     let findIndex = data.indexOf('<us-patent-application')
                     if(findIndex !== -1) {                
@@ -689,8 +688,8 @@ route.get("/family/claims/:applicationNumber", [authJWT.verifyToken], async (req
                     if( filePath !== '') {
                         
                         const getXMLData = await getFileContent(filePath)
-                        console.log('received file contentadadadad da dd ', getXMLData)
                         if( getXMLData !== '' ) {
+                            console.log('FIND XMl Content')
                             claimsData = await getContentFromXML(getXMLData, 'claims')
                         }
                     }
