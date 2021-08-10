@@ -514,11 +514,7 @@ route.get("/family/abstract/:applicationNumber", [authJWT.verifyToken], async (r
         }
 
         if( pgPubDocNum !== '' ) {
-            let filePath = await findXMLFile(pgPubDocNum, 0)
-
-            if( filePath !== '') {
-                filePath = await findXMLFile(pgPubDocNum, 1)
-            }
+            let filePath = await findXMLFile(pgPubDocNum, 1)
 
             if( filePath !== '') {
                 
@@ -683,11 +679,7 @@ route.get("/family/claims/:applicationNumber", [authJWT.verifyToken], async (req
                 }
 
                 if( pgPubDocNum !== '' ) {
-                    let filePath = await findXMLFile(pgPubDocNum, 0)
-
-                    if( filePath !== '') {
-                        filePath = await findXMLFile(pgPubDocNum, 1)
-                    }
+                    let filePath = await findXMLFile(pgPubDocNum, 1)
 
                     if( filePath !== '') {
                         
@@ -732,11 +724,7 @@ route.get("/family/specifications/:applicationNumber", [authJWT.verifyToken], as
             }
 
             if( pgPubDocNum !== '' ) {
-                let filePath = await findXMLFile(pgPubDocNum, 0)
-
-                if( filePath !== '') {
-                    filePath = await findXMLFile(pgPubDocNum, 1)
-                }
+                let filePath = await findXMLFile(pgPubDocNum, 1)
 
                 if( filePath !== '') {
                     
@@ -782,11 +770,7 @@ route.get("/family/images/:applicationNumber", [authJWT.verifyToken], async (req
             }
 
             if( pgPubDocNum !== '' ) {
-                let filePath = await findXMLFile(pgPubDocNum, 0)
-
-                if( filePath !== '') {
-                    filePath = await findXMLFile(pgPubDocNum, 1)
-                }
+                let filePath = await findXMLFile(pgPubDocNum, 1)
 
                 if( filePath !== '') {
                     
@@ -840,7 +824,7 @@ route.get("/family/images/:applicationNumber", [authJWT.verifyToken], async (req
                                         if( document.$['desc'] == "Drawing" || document.$['desc'] == "FirstPageClipping" ) {
                                             const pages = document.$['number-of-pages'], link = document.$['link']
                                             for( let i = 1; i <= pages; i++) {
-                                                imagesList.push(`https://betapp.patentrack.com/family/single/file?link=${link}.pdf?Range=${i}`)                                               
+                                                imagesList.push(`https://betapp.patentrack.com/family/single/file?link=${link}.tif?Range=${i}`)                                               
                                             }   
                                         }
                                         return document
@@ -881,7 +865,7 @@ route.get("/family/single/file/", async (req, res) =>{
                             console.log(`Convert Error - ${data} - ${file}`)
                         });
                         tif2png.on('close', (code) => {
-                            const outputFile = std.replace('tiff', 'png')
+                            const outputFile = std.replace('tif', 'png')
                             const file = fs.readFileSync(outputFile)
                             const stat = fs.statSync(outputFile)
                             res.setHeader('Content-Length', stat.size);
