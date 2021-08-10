@@ -430,8 +430,8 @@ const getContentFromXML = async (fileContent, contentType) => {
         } else if( xmlData.hasOwnProperty('us-patent-application') ) { 
             console.log('Second')
             const usBibliographic = xmlData['us-patent-application']
-            let usClaims = usBibliographic.claims.claim
-            console.log(JSON.stringify(usBibliographic.claims))
+            let usClaims = usBibliographic.claims[0].claim
+            //console.log(JSON.stringify(usBibliographic.claims))
             if(Array.isArray(usClaims)) {
                 console.log('IS array')
                 if(usClaims.length > 0) {
