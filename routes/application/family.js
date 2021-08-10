@@ -840,7 +840,7 @@ route.get("/family/images/:applicationNumber", [authJWT.verifyToken], async (req
                                         if( document.$['desc'] == "Drawing" || document.$['desc'] == "FirstPageClipping" ) {
                                             const pages = document.$['number-of-pages'], link = document.$['link']
                                             for( let i = 1; i <= pages; i++) {
-                                                imagesList.push(`http://localhost:3600/family/single/file?link=${link}.pdf?Range=${i}`)                                               
+                                                imagesList.push(`https://betapp.patentrack.com/family/single/file?link=${link}.pdf?Range=${i}`)                                               
                                             }   
                                         }
                                         return document
@@ -867,21 +867,25 @@ route.get("/family/single/file/", async (req, res) =>{
         if(link  !== '') {
             const range = link.split('?')[1].split('=')
             const token = await epo.readToken('HedCET')    
-            if(token !== 'undefined' && token != '') {
-                
+            if(token !== 'undefined' && token != '') {                
                 exec(`php -f /var/www/html/trash/get_epo_thumbnail.php "${link}"`, async (error, std, stderr) => {
-                    console.log("get_epo_thumbnail");
                     console.log(error);
                     console.log(stderr);
                     console.log(std);
-                    const file = fs.readFileSync(std)
-                    const stat = fs.statSync(std)
-                    res.setHeader('Content-Length', stat.size);
-                    res.setHeader('Content-disposition', `inline; filename="${range}.pdf"`);
-                    res.setHeader('Content-type', 'application/pdf');
-                    res.send(file);
+                    if(!error) {
+                        const file = fs.readFileSync(std)
+                        const stat = fs.statSync(std)
+                        res.setHeader('Content-Length', stat.size);
+                        res.setHeader('Content-disposition', `inline; filename="${range}.pdf"`);
+                        res.setHeader('Content-type', 'application/pdf');
+                        res.send(file);
+                    }                    
                 });
+            } else{
+                res.status(200).send('');
             }
+        } else {
+            res.status(200).send('');
         }
     } catch (err) {
         res.status(200).send('');
