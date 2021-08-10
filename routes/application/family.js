@@ -393,9 +393,7 @@ const getContentFromXML = async (fileContent, contentType) => {
         }
     } else if(contentType === 'claims') {
         content = []
-        console.log('Reteive claim data')
         if( xmlData.hasOwnProperty('patent-application-publication') ){
-            console.log('First')
             const usBibliographic = xmlData['patent-application-publication']
             let usClaims = usBibliographic['subdoc-claims'].claim
             if(Array.isArray(usClaims)) {
@@ -434,6 +432,7 @@ const getContentFromXML = async (fileContent, contentType) => {
             const usBibliographic = xmlData['us-patent-application']
             let usClaims = usBibliographic.claims.claim
             if(Array.isArray(usClaims)) {
+                console.log('IS array')
                 if(usClaims.length > 0) {
                     const promiseClaims = usClaims.map( async claim => {
                         let text = '';
@@ -463,6 +462,8 @@ const getContentFromXML = async (fileContent, contentType) => {
                     })
                     await Promise.all(promiseClaims)
                 }
+            } else {
+                console.log(JSON.stringify(usClaims))
             }
         }
     } else if(contentType === 'figures') {
