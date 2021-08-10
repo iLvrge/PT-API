@@ -48,7 +48,7 @@ route.get('/family/list/:grantNumber', [authJWT.verifyToken], async (req, res) =
                 
                 if( xmlData.hasOwnProperty('ops:world-patent-data') ){
                     
-                    fs.writeFileSync(`${mainFolderPath}FAMILY/${grantNumber}.XML`, xmlData);
+                    fs.writeFileSync(`${extraDiskPath}FAMILY/${grantNumber}.XML`, xmlData);
                     console.log('IN ops:world-patent-data')
                     const worldPatentData = xmlData['ops:world-patent-data']
                     if(worldPatentData.hasOwnProperty('ops:patent-family')) {
@@ -173,7 +173,7 @@ route.get("/family/:applicationNumber", [authJWT.verifyToken], async (req, res) 
                     //const xmlData = JSON.stringify(result)    
                     if( xmlData.hasOwnProperty('ops:world-patent-data') ){
                         
-                        fs.writeFileSync(`${mainFolderPath}FAMILY/${grantNumber}.XML`, xmlData);
+                        fs.writeFileSync(`${extraDiskPath}FAMILY/${grantNumber}.XML`, xmlData);
                         const worldPatentData = xmlData['ops:world-patent-data']
                         if(worldPatentData.hasOwnProperty('ops:patent-family')) {
                             const patentFamily =  worldPatentData['ops:patent-family']
@@ -512,6 +512,7 @@ route.get("/family/abstract/:applicationNumber", [authJWT.verifyToken], async (r
         } else if( req.query.publication_number !== '') {
             pgPubDocNum = req.query.publication_number 
         }
+        pgPubDocNum = '20200053026'
 
         if( pgPubDocNum !== '' ) {
             let filePath = await findXMLFile(pgPubDocNum, 1)
@@ -677,7 +678,7 @@ route.get("/family/claims/:applicationNumber", [authJWT.verifyToken], async (req
                 } else if( req.query.publication_number !== '') {
                     pgPubDocNum = req.query.publication_number 
                 }
-
+                pgPubDocNum = '20200053026'
                 if( pgPubDocNum !== '' ) {
                     let filePath = await findXMLFile(pgPubDocNum, 1)
 
@@ -722,7 +723,7 @@ route.get("/family/specifications/:applicationNumber", [authJWT.verifyToken], as
             } else if( req.query.publication_number !== '') {
                 pgPubDocNum = req.query.publication_number 
             }
-
+            pgPubDocNum = '20200053026'
             if( pgPubDocNum !== '' ) {
                 let filePath = await findXMLFile(pgPubDocNum, 1)
 
@@ -768,7 +769,7 @@ route.get("/family/images/:applicationNumber", [authJWT.verifyToken], async (req
             } else if( req.query.publication_number !== '') {
                 pgPubDocNum = req.query.publication_number 
             }
-
+            pgPubDocNum = '20200053026'
             if( pgPubDocNum !== '' ) {
                 let filePath = await findXMLFile(pgPubDocNum, 1)
 
