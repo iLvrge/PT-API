@@ -9,6 +9,8 @@ const express = require("express"),
     epo = require('../../helpers/epo.js'),
 
     xml2js = require('xml2js'),
+
+    parser = require('fast-xml-parser'),
     
     fs = require('fs');
 
@@ -308,15 +310,9 @@ let getFileContent = async (filePath) => {
 
 const getContentFromXML = async (fileContent, contentType) => {
     let content = '';
-    const parser = new xml2js.Parser
-    const xmlData = await new Promise((resolve, reject) => parser.parseString(fileContent, (err, result) => {
-        if (err){
-            reject(err);
-        } else {
-            resolve(result);
-        }
-    }));
-
+    //const parser = new xml2js.Parser
+    const xmlData = parser.parse( fileContent, {ignoreAttributes: false});
+    
     if(contentType === 'abstract') {
         if( xmlData.hasOwnProperty('patent-application-publication') ){
             const usBibliographic = xmlData['patent-application-publication']
@@ -430,10 +426,9 @@ const getContentFromXML = async (fileContent, contentType) => {
         } else if( xmlData.hasOwnProperty('us-patent-application') ) { 
             console.log('Second')
             const usBibliographic = xmlData['us-patent-application']
-            let usClaims = usBibliographic.claims[0].claim
+            let usClaims = usBibliographic.claims.claim
             //console.log(JSON.stringify(usBibliographic.claims))
             if(Array.isArray(usClaims)) {
-                console.log('IS array')
                 if(usClaims.length > 0) {
                     const promiseClaims = usClaims.map( async claim => {
                         let text = '';
