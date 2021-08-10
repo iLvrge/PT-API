@@ -873,12 +873,24 @@ route.get("/family/single/file/", async (req, res) =>{
                     console.log(stderr);
                     console.log(std);
                     if(!error) {
-                        const file = fs.readFileSync(std)
-                        const stat = fs.statSync(std)
-                        res.setHeader('Content-Length', stat.size);
-                        res.setHeader('Content-disposition', `inline; filename="${range}.pdf"`);
-                        res.setHeader('Content-type', 'application/pdf');
-                        res.send(file);
+                        const tif2png = spawn('tiff2png', ['-force', '-destdir', `/var/www/html/trash/`, std]);
+                        tif2png.stdout.on('data', (data) => {
+                            console.log(`Convert DONE - ${data}`)
+                        });
+                        tif2png.stderr.on('data', (data) => {
+                            console.log(`Convert Error - ${data} - ${file}`)
+                        });
+                        tif2png.on('close', (code) => {
+                            const outputFile = std.replace('tiff', 'png')
+                            const file = fs.readFileSync(outputFile)
+                            const stat = fs.statSync(outputFile)
+                            res.setHeader('Content-Length', stat.size);
+                            res.setHeader('Content-disposition', `inline; filename="${range}.png"`);
+                            res.setHeader('Content-type', 'image/png');
+                            res.send(file);
+                        })
+                    } else {
+                        res.status(200).send('');
                     }                    
                 });
             } else{
