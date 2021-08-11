@@ -171,6 +171,7 @@ route.get("/family/:applicationNumber", [authJWT.verifyToken], async (req, res) 
             let getFamilyData = '', fileExist = false
             if (fs.existsSync(`${extraDiskPath}FAMILY/${asset}.XML`)) {
                 //file exists
+                console.log('FILE EXIST')
                 fileExist = true
                 getFamilyData = await fs.promises.readFile(`${extraDiskPath}FAMILY/${asset}.XML`, 'utf8');
             } else {
