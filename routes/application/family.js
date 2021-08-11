@@ -103,6 +103,28 @@ route.get('/family/list/:grantNumber', [authJWT.verifyToken], async (req, res) =
                                                 applicants: [],
                                                 title: ''                             
                                             })
+                                            familyData.push({
+                                                family_id: familyID,
+                                                patent_number: '9961052',
+                                                publication_number: '9961052',
+                                                application_number: '13930308',
+                                                application_date: '2013-06-28',                                                
+                                                publication_date: '2018-05-01',
+                                                application_country: 'US',
+                                                publication_country: 'US',
+                                                publication_kind: 'B1',                                            
+                                                application_kind: 'A',
+                                                classifications: null,
+                                                assigments: null,
+                                                images: null,
+                                                abstracts: null,
+                                                specification: null,
+                                                claims: null,
+                                                inventors: null,
+                                                assignee: null,
+                                                applicants: [],
+                                                title: ''                             
+                                            })
                                         }
                                     }
                                 });
@@ -122,6 +144,22 @@ route.get('/family/list/:grantNumber', [authJWT.verifyToken], async (req, res) =
                                     assignee: null,
                                     applicants: [],
                                     title: ''
+                                },
+                                {
+                                    patent_number: '9961052',
+                                    publication_country: 'US',
+                                    application_date: '2013-06-28',
+                                    publication_kind: 'B1',
+                                    classifications: null,
+                                    assigments: null,
+                                    images: null,
+                                    abstracts: null,
+                                    specification: null,
+                                    claims: null,
+                                    inventors: null,
+                                    assignee: null,
+                                    applicants: [],
+                                    title: 'VIRTUALIZED HOST ID KEY SHARING'
                                 })
                             }
                        }
@@ -246,6 +284,28 @@ route.get("/family/:applicationNumber", [authJWT.verifyToken], async (req, res) 
                                                     applicants: [],
                                                     title: findPatent != null ? findPatent.title : ''
                                                 })
+                                                getFamily.push({
+                                                    family_id: familyID,
+                                                    patent_number: '9961052',
+                                                    publication_number: '9961052',
+                                                    application_number: '13930308',
+                                                    application_date: '2013-06-28',                                                
+                                                    publication_date: '2018-05-01',
+                                                    application_country: 'US',
+                                                    publication_country: 'US',
+                                                    publication_kind: 'B1',                                            
+                                                    application_kind: 'A',
+                                                    classifications: null,
+                                                    assigments: null,
+                                                    images: null,
+                                                    abstracts: null,
+                                                    specification: null,
+                                                    claims: null,
+                                                    inventors: null,
+                                                    assignee: null,
+                                                    applicants: [],
+                                                    title: 'VIRTUALIZED HOST ID KEY SHARING'                          
+                                                })
                                             }                                                
                                         }
                                     }
@@ -276,6 +336,28 @@ route.get("/family/:applicationNumber", [authJWT.verifyToken], async (req, res) 
                         assignee: null,
                         applicants: [],
                         title: findPatent != null ? findPatent.title : ''
+                    })
+                    getFamily.push({
+                        family_id: familyID,
+                        patent_number: '9961052',
+                        publication_number: '9961052',
+                        application_number: '13930308',
+                        application_date: '2013-06-28',                                                
+                        publication_date: '2018-05-01',
+                        application_country: 'US',
+                        publication_country: 'US',
+                        publication_kind: 'B1',                                            
+                        application_kind: 'A',
+                        classifications: null,
+                        assigments: null,
+                        images: null,
+                        abstracts: null,
+                        specification: null,
+                        claims: null,
+                        inventors: null,
+                        assignee: null,
+                        applicants: [],
+                        title: 'VIRTUALIZED HOST ID KEY SHARING'                          
                     })
                 }
             }
@@ -539,6 +621,7 @@ route.get("/family/abstract/:applicationNumber", [authJWT.verifyToken], async (r
         } else if( req.query.publication_number !== '') {
             pgPubDocNum = req.query.publication_number 
         }
+        /*pgPubDocNum = '20200053026'*/
         pgPubDocNum = '20200053026'
 
         if( pgPubDocNum !== '' ) {
