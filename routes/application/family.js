@@ -103,28 +103,6 @@ route.get('/family/list/:grantNumber', [authJWT.verifyToken], async (req, res) =
                                                 applicants: [],
                                                 title: ''                             
                                             })
-                                            familyData.push({
-                                                family_id: familyID,
-                                                patent_number: '9961052',
-                                                publication_number: '9961052',
-                                                application_number: '13930308',
-                                                application_date: '2013-06-28',                                                
-                                                publication_date: '2018-05-01',
-                                                application_country: 'US',
-                                                publication_country: 'US',
-                                                publication_kind: 'B1',                                            
-                                                application_kind: 'A',
-                                                classifications: null,
-                                                assigments: null,
-                                                images: null,
-                                                abstracts: null,
-                                                specification: null,
-                                                claims: null,
-                                                inventors: null,
-                                                assignee: null,
-                                                applicants: [],
-                                                title: ''                             
-                                            })
                                         }
                                     }
                                 });
@@ -144,22 +122,6 @@ route.get('/family/list/:grantNumber', [authJWT.verifyToken], async (req, res) =
                                     assignee: null,
                                     applicants: [],
                                     title: ''
-                                },
-                                {
-                                    patent_number: '9961052',
-                                    publication_country: 'US',
-                                    application_date: '2013-06-28',
-                                    publication_kind: 'B1',
-                                    classifications: null,
-                                    assigments: null,
-                                    images: null,
-                                    abstracts: null,
-                                    specification: null,
-                                    claims: null,
-                                    inventors: null,
-                                    assignee: null,
-                                    applicants: [],
-                                    title: 'VIRTUALIZED HOST ID KEY SHARING'
                                 })
                             }
                        }
@@ -284,28 +246,6 @@ route.get("/family/:applicationNumber", [authJWT.verifyToken], async (req, res) 
                                                     applicants: [],
                                                     title: findPatent != null ? findPatent.title : ''
                                                 })
-                                                getFamily.push({
-                                                    family_id: familyID,
-                                                    patent_number: '9961052',
-                                                    publication_number: '9961052',
-                                                    application_number: '13930308',
-                                                    application_date: '2013-06-28',                                                
-                                                    publication_date: '2018-05-01',
-                                                    application_country: 'US',
-                                                    publication_country: 'US',
-                                                    publication_kind: 'B1',                                            
-                                                    application_kind: 'A',
-                                                    classifications: null,
-                                                    assigments: null,
-                                                    images: null,
-                                                    abstracts: null,
-                                                    specification: null,
-                                                    claims: null,
-                                                    inventors: null,
-                                                    assignee: null,
-                                                    applicants: [],
-                                                    title: 'VIRTUALIZED HOST ID KEY SHARING'                          
-                                                })
                                             }                                                
                                         }
                                     }
@@ -336,28 +276,6 @@ route.get("/family/:applicationNumber", [authJWT.verifyToken], async (req, res) 
                         assignee: null,
                         applicants: [],
                         title: findPatent != null ? findPatent.title : ''
-                    })
-                    getFamily.push({
-                        family_id: 0,
-                        patent_number: '9961052',
-                        publication_number: '9961052',
-                        application_number: '13930308',
-                        application_date: '2013-06-28',                                                
-                        publication_date: '2018-05-01',
-                        application_country: 'US',
-                        publication_country: 'US',
-                        publication_kind: 'B1',                                            
-                        application_kind: 'A',
-                        classifications: null,
-                        assigments: null,
-                        images: null,
-                        abstracts: null,
-                        specification: null,
-                        claims: null,
-                        inventors: null,
-                        assignee: null,
-                        applicants: [],
-                        title: 'VIRTUALIZED HOST ID KEY SHARING'                          
                     })
                 }
             }
@@ -608,10 +526,16 @@ route.get("/family/abstract/:applicationNumber", [authJWT.verifyToken], async (r
             asset = asset.substr(0,indexing.index)
         }
         
-        const findPatent = await Documentid.findOne({
+        let findPatent = await Documentid.findOne({
             attributes: ['rf_id', 'grant_doc_num', 'pgpub_doc_num', 'pgpub_date'],
             where: {appno_doc_num: applicationNumber}
         })
+        if(findPatent === null) {
+            findPatent = await Documentid.findOne({
+                attributes: ['rf_id', 'grant_doc_num', 'pgpub_doc_num', 'pgpub_date'],
+                where: {grant_doc_num: asset}
+            })
+        }
         let abstractData = '', query = '', replacements = {applicationNumber}
         
         let pgPubDocNum = ''
@@ -775,10 +699,16 @@ route.get("/family/claims/:applicationNumber", [authJWT.verifyToken], async (req
             if(indexing != null && indexing.index >= 0) {
                 asset = asset.substr(0,indexing.index)
             }
-            const findPatent = await Documentid.findOne({
+            let findPatent = await Documentid.findOne({
                 attributes: ['rf_id', 'grant_doc_num', 'pgpub_doc_num', 'pgpub_date'],
                 where: {appno_doc_num: asset}
             })
+            if(findPatent === null) {
+                findPatent = await Documentid.findOne({
+                    attributes: ['rf_id', 'grant_doc_num', 'pgpub_doc_num', 'pgpub_date'],
+                    where: {grant_doc_num: asset}
+                })
+            }
             let query = '', replacements = {applicationNumber: asset}
             if(findPatent != null && findPatent.rf_id > 0 && findPatent.pgpub_doc_num != null && findPatent.pgpub_doc_num != '') {
                 let pgPubDocNum = ''
@@ -820,10 +750,16 @@ route.get("/family/specifications/:applicationNumber", [authJWT.verifyToken], as
         if(indexing != null && indexing.index >= 0) {
             asset = asset.substr(0,indexing.index)
         }
-        const findPatent = await Documentid.findOne({
+        let findPatent = await Documentid.findOne({
             attributes: ['rf_id', 'grant_doc_num', 'pgpub_doc_num', 'pgpub_date'],
             where: {appno_doc_num: asset}
         })
+        if(findPatent === null) {
+            findPatent = await Documentid.findOne({
+                attributes: ['rf_id', 'grant_doc_num', 'pgpub_doc_num', 'pgpub_date'],
+                where: {grant_doc_num: asset}
+            })
+        }
         let query = '', replacements = {applicationNumber: asset}
         if(findPatent != null && findPatent.rf_id > 0 && findPatent.pgpub_doc_num != null && findPatent.pgpub_doc_num != '') {
             let pgPubDocNum = ''
@@ -866,10 +802,16 @@ route.get("/family/images/:applicationNumber", [authJWT.verifyToken], async (req
         if(indexing != null && indexing.index >= 0) {
             asset = asset.substr(0,indexing.index)
         }
-        const findPatent = await Documentid.findOne({
+        let findPatent = await Documentid.findOne({
             attributes: ['rf_id', 'grant_doc_num', 'pgpub_doc_num', 'pgpub_date'],
             where: {appno_doc_num: asset}
         })
+        if(findPatent === null) {
+            findPatent = await Documentid.findOne({
+                attributes: ['rf_id', 'grant_doc_num', 'pgpub_doc_num', 'pgpub_date'],
+                where: {grant_doc_num: asset}
+            })
+        }
         let imagesList = [], query = '', replacements = {applicationNumber: asset}
         if(findPatent != null && findPatent.rf_id > 0 && findPatent.pgpub_doc_num != null && findPatent.pgpub_doc_num != '') {
             let pgPubDocNum = ''
