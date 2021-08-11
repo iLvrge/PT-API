@@ -34,11 +34,19 @@ route.get('/family/list/:grantNumber', [authJWT.verifyToken], async (req, res) =
             if(grantNumber.indexOf('US') === -1) {
                 grantNumber = `US${grantNumber}`
             }
-            let getFamilyData = await epo.runUrl(token,'family','publication','docdb',`${grantNumber}`);
-            if( !getFamilyData ) {
-                getFamilyData = await epo.runUrl(token,'family','publication','epodoc',`${grantNumber}`);
-            }        
-            if( getFamilyData ) {
+            let getFamilyData = '', fileExist = false
+            if (fs.existsSync(`${extraDiskPath}FAMILY/${grantNumber}.XML`)) {
+                //file exists
+                fileExist = true
+                getFamilyData = await fs.promises.readFile(`${extraDiskPath}FAMILY/${grantNumber}.XML`, 'utf8');
+            } else {
+                getFamilyData = await epo.runUrl(token,'family','publication','docdb',`${grantNumber}`);
+                if( !getFamilyData ) {
+                    getFamilyData = await epo.runUrl(token,'family','publication','epodoc',`${grantNumber}`);
+                }
+            }
+                    
+            if( getFamilyData !== '' ) {
                 const parser = new xml2js.Parser
                 const xmlData = await new Promise((resolve, reject) => parser.parseString(getFamilyData, (err, result) => {
                     if (err){
@@ -49,8 +57,9 @@ route.get('/family/list/:grantNumber', [authJWT.verifyToken], async (req, res) =
                 }));
                 
                 if( xmlData.hasOwnProperty('ops:world-patent-data') ){
-                    
-                    fs.writeFileSync(`${extraDiskPath}FAMILY/${grantNumber}.XML`, xmlData);
+                    if(fileExist === false) {
+                        fs.writeFileSync(`${extraDiskPath}FAMILY/${grantNumber}.XML`, xmlData);
+                    }
                     console.log('IN ops:world-patent-data')
                     const worldPatentData = xmlData['ops:world-patent-data']
                     if(worldPatentData.hasOwnProperty('ops:patent-family')) {
