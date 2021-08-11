@@ -166,7 +166,7 @@ route.get("/family/:applicationNumber", [authJWT.verifyToken], async (req, res) 
         asset = `US${asset}`
 
           
-        if(asset !== null && token !== '') {
+        if(asset !== null && asset !== '') {
                         
             let getFamilyData = '', fileExist = false
             if (fs.existsSync(`${extraDiskPath}FAMILY/${asset}.XML`)) {
