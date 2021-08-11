@@ -38,7 +38,7 @@ route.get("/search/:search_string/:type", [ authJWT.verifyToken ], async (req, r
                 }
             );
         }
-        res.status(200).json(getList);
+        res.status(200).json(getList); 
     } catch ( err ) {
         console.log('entity=>search ', err )
         res.status(500).send("Error while search.");
