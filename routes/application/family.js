@@ -199,7 +199,7 @@ route.get("/family/:applicationNumber", [authJWT.verifyToken], async (req, res) 
                 if( xmlData.hasOwnProperty('ops:world-patent-data') ){
                     
                     if(fileExist === false) {
-                        fs.writeFileSync(`${extraDiskPath}FAMILY/${asset}.XML`, xmlData);
+                        fs.writeFileSync(`${extraDiskPath}FAMILY/${asset}.XML`, getFamilyData);
                     }
                     const worldPatentData = xmlData['ops:world-patent-data']
                     if(worldPatentData.hasOwnProperty('ops:patent-family')) {
