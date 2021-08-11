@@ -167,14 +167,7 @@ route.get("/family/:applicationNumber", [authJWT.verifyToken], async (req, res) 
 
           
         if(asset !== null && token !== '') {
-            
-            const publication = findPatent != null && findPatent.grant_doc_num != null && findPatent.grant_doc_num != '' ? 'publication' : 'application'
-            
-            let getFamilyData = await epo.runUrl(token,'family', publication,'docdb', asset)
-            if( getFamilyData.indexOf('EntityNotFound') !== -1) {
-                getFamilyData = await epo.runUrl(token,'family', publication,'epodoc', asset)
-            }       
-            
+                        
             let getFamilyData = '', fileExist = false
             if (fs.existsSync(`${extraDiskPath}FAMILY/${asset}.XML`)) {
                 //file exists
@@ -183,6 +176,7 @@ route.get("/family/:applicationNumber", [authJWT.verifyToken], async (req, res) 
             } else {
                 const token = await epo.readToken('HedCET') 
                 if(token !== 'undefined' && token != '') {
+                    const publication = findPatent != null && findPatent.grant_doc_num != null && findPatent.grant_doc_num != '' ? 'publication' : 'application'
                     getFamilyData = await epo.runUrl(token, 'family', publication, 'docdb', `${asset}`);
                     if( !getFamilyData  || getFamilyData.indexOf('EntityNotFound') !== -1) {
                         getFamilyData = await epo.runUrl(token, 'family', publication,' epodoc', `${asset}`);
