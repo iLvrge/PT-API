@@ -338,7 +338,7 @@ route.get("/family/:applicationNumber", [authJWT.verifyToken], async (req, res) 
                         title: findPatent != null ? findPatent.title : ''
                     })
                     getFamily.push({
-                        family_id: familyID,
+                        family_id: 0,
                         patent_number: '9961052',
                         publication_number: '9961052',
                         application_number: '13930308',
