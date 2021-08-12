@@ -1197,6 +1197,63 @@ let getCompaniesCount = async (DBConnection) => {
  * @param {} DBConnection 
  */
 
+let getCompaniesListWithReports = async (DBConnection) => {
+    const Representative = DBConnection.define('ClientRepesentative', ClientRepesentative.mainStructure, ClientRepesentative.options);
+
+    const getList =  await Representative.findAll({
+        where: {parent_id: 0}
+    });
+
+    if(getList.length > 0) {
+        const representativeList = [], representativeNames = []
+
+        const promiseList = getList.map( representative => {
+            representativeNames.push(representative.representative_name)
+        })
+        await Promise.all(promiseList)
+
+        const queryRepresentativeReports = `SELECT representative_id, representative_name, no_of_assets as assets, no_of_transactions, no_of_parties, (no_of_parties - no_of_transactions) as product FROM representative_reports WHERE representative_name IN (:representativeNames)`
+
+        let reports = await connection.resources.query(queryRepresentativeReports,{
+                type: connection.Sequelize.QueryTypes.SELECT,
+                replacements: { representativeNames},
+                raw: true,
+                logging: console.log,
+            }
+        ); 
+
+        if(reports.length > 0) {
+            const updatePromise = getList.map( representative => {
+                const company = representative.toJSON()
+                const filter = reports.filter( row => row.representative_name == representative.representative_name)
+                if(filter.length > 0) {
+                    company.assets = filter[0].assets
+                    company.no_of_transactions = filter[0].no_of_transactions
+                    company.no_of_parties = filter[0].no_of_parties
+                    company.product = filter[0].product
+                } else {
+                    company.assets = 0
+                    company.no_of_transactions = 0
+                    company.no_of_parties = 0
+                    company.product = 0
+                }
+                representativeList.push(company)
+            })
+            await Promise.all(updatePromise)
+            return representativeList
+        } else {
+            return getList
+        }
+    } else {
+        return getList
+    }
+}
+
+/**
+ * Find Customer parent companies list
+ * @param {} DBConnection 
+ */
+
 let getCompaniesList = async (DBConnection) => {
     const Representative = DBConnection.define('ClientRepesentative', ClientRepesentative.mainStructure, ClientRepesentative.options);
 
@@ -2716,5 +2773,6 @@ helper.findEntityAssets = findEntityAssets;
 helper.findAssetsTimeSpan = findAssetsTimeSpan
 helper.findAllAssetsTimeSpan = findAllAssetsTimeSpan
 helper.findAssetsTimeSpanByTransactionById = findAssetsTimeSpanByTransactionById
-helper.findRfIDsBySearchString = findRfIDsBySearchString
+helper.findRfIDsBySearchString = findRfIDsBySearchString 
+helper.getCompaniesListWithReports = getCompaniesListWithReports
 module.exports = helper;
