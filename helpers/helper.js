@@ -2817,5 +2817,6 @@ helper.findAssetsTimeSpan = findAssetsTimeSpan
 helper.findAllAssetsTimeSpan = findAllAssetsTimeSpan
 helper.findAssetsTimeSpanByTransactionById = findAssetsTimeSpanByTransactionById
 helper.findRfIDsBySearchString = findRfIDsBySearchString 
-helper.getCompaniesListWithReports = getCompaniesListWithReports
+helper.getCompaniesListWithReports = getCompaniesListWithReports 
+helper.getCompaniesListSumWithReports = getCompaniesListSumWithReports 
 module.exports = helper;
