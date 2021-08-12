@@ -141,7 +141,7 @@ route.get("/customers/run_query/:representative_name/:query_no", [authJWT.verify
 route.get("/customers", [authJWT.verifyToken, authJWT.isAdmin], (req, res, next) => {
 
     Organisations.findAll({
-        attributes: [['organisation_id', 'id'], 'name','logo', [connection.Sequelize.literal(0, 'assets'), 'assets'], [connection.Sequelize.literal(0, 'no_of_transactions'),'no_of_transactions'], [connection.Sequelize.literal(0, 'no_of_parties'), 'no_of_parties'], [connection.Sequelize.literal(0, 'product'), 'product']],
+        attributes: [['organisation_id', 'id'], 'name','logo', 'organisation_type', [connection.Sequelize.literal(0, 'assets'), 'assets'], [connection.Sequelize.literal(0, 'no_of_transactions'),'no_of_transactions'], [connection.Sequelize.literal(0, 'no_of_parties'), 'no_of_parties'], [connection.Sequelize.literal(0, 'product'), 'product']],
         where: {type:{[connection.Op.ne]: 2}}
     })
     .then((list)=>{
