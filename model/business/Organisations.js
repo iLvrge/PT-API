@@ -41,6 +41,10 @@ const Organisations = connection.business.define('organisation',{
         type: Sequelize.STRING,
         allowNull: true,
     },
+    organisation_type:{
+        type: Sequelize.INTEGER,
+        allowNull: true,
+    },
     team:{
         type: Sequelize.STRING,
         allowNull: true,

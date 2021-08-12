@@ -279,7 +279,7 @@ route.get("/customers/:id", [authJWT.verifyToken, authJWT.isAdmin], async(req, r
             let organisationID = req.params.id;
             if(organisationID > 0){
 
-                const query = "SELECT BIN_TO_UUID(`uuid`) AS `standard`, `organisation_id`, `name`, `address`, `team`, `phone_number`, `email_address`, `logo`, `linkedin_url`, `zipcode`, `city`, `state`, `country_id`, `type`, `status` FROM db_business.`organisation` AS `organisation` WHERE `organisation`.`organisation_id` = :organisationID";   
+                const query = "SELECT BIN_TO_UUID(`uuid`) AS `standard`, `organisation_id`, `name`, `organisation_type`, `address`, `team`, `phone_number`, `email_address`, `logo`, `linkedin_url`, `zipcode`, `city`, `state`, `country_id`, `type`, `status` FROM db_business.`organisation` AS `organisation` WHERE `organisation`.`organisation_id` = :organisationID";   
 
                 const org =  await connection.resources.query(query,{
                     type: connection.Sequelize.QueryTypes.SELECT,
@@ -290,7 +290,7 @@ route.get("/customers/:id", [authJWT.verifyToken, authJWT.isAdmin], async(req, r
                     }
                 );               
                 if(org != null && org.organisation_id > 0) {
-                    res.status(200).json({name: org.name, organisation_id: org.organisation_id, logo: org.logo, standard: org.standard});
+                    res.status(200).json({name: org.name, organisation_type: org.organisation_type, organisation_id: org.organisation_id, logo: org.logo, standard: org.standard});
                 } else {
                     res.status(402).send("Not found");
                 } 
@@ -904,6 +904,7 @@ route.post("/customers", [authJWT.verifyToken, authJWT.isAdmin], async (req, res
                 org =  await Organisations.create({
                     name: req.body.company_name,
                     country_id:1,
+                    organisation_type: req.body.organisation_type
                 })
             }
             if(org != null && org.organisation_id > 0){
@@ -953,7 +954,8 @@ route.put("/customers" , [authJWT.verifyToken, authJWT.isAdmin], async (req, res
             })
             if(org != null) {
                 await org.update({
-                    name: req.body.company_name
+                    name: req.body.company_name,
+                    organisation_type: req.body.organisation_type
                 });
                 res.status(200).json({name: org.name, logo: org.logo});   
             } else {
