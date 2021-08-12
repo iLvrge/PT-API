@@ -629,27 +629,42 @@ route.get("/company/lenders/:id/companies", [authJWT.verifyToken, authJWT.isAdmi
 route.get("/company/:companyID/law_firms", [authJWT.verifyToken, authJWT.isAdmin], async (req, res, next) => {
     try {        
         
+        const findIDs = `SELECT assignor_and_assignee_id FROM db_uspto.assignor_and_assignee AS assignor_and_assignee WHERE assignor_and_assignee.representative_id IN (SELECT representative.representative_id FROM db_uspto.representative AS representative INNER JOIN db_uspto.assignor_and_assignee AS assignor_and_assignee ON representative.representative_id = assignor_and_assignee.representative_id WHERE assignor_and_assignee.assignor_and_assignee_id = :assignor_and_assignee_id) AND assignor_and_assignee.representative_id > 0 GROUP BY assignor_and_assignee_id`
+
+        const findAllIDs = await connection.resources.query(findIDs,{
+                type: connection.Sequelize.QueryTypes.SELECT,
+                raw: true,
+                replacements: { assignor_and_assignee_id: req.params.companyID },
+                logging: console.log,
+            }
+        );
+
+        const allIDs = []
+
+        if( findAllIDs.length > 0 ) {
+            
+            const promise = findAllIDs.map( c => allIDs.push(c.assignor_and_assignee_id))
+
+            await Promise.all(promise)
+        } else {
+            allIDs.push(req.params.companyID)
+        }
+        
         const query = `SELECT law_firms.law_firm_id, law_firms.name,  COUNT(assignment.law_firm_id) AS counter, law_firms.instances AS total_occurences, representative_law_firm.representative_id, representative_law_firm.representative_name 
         FROM db_uspto.law_firm AS law_firms 
         LEFT JOIN db_uspto.representative_law_firm AS representative_law_firm ON representative_law_firm.representative_id =  law_firms.representative_id 
                 INNER JOIN assignment ON assignment.law_firm_id = law_firms.law_firm_id
                 INNER JOIN assignee ON assignee.rf_id = assignment.rf_id 
-                WHERE assignee.assignor_and_assignee_id IN (SELECT assignor_and_assignee.assignor_and_assignee_id FROM  assignor_and_assignee WHERE
-                  assignor_and_assignee.representative_id IN(
-                  Select representative.representative_id FROM assignor_and_assignee 
-                  INNER JOIN representative ON representative.representative_id = assignor_and_assignee.representative_id
-                    WHERE assignor_and_assignee.assignor_and_assignee_id = :companyID
-        ))
+                WHERE assignee.assignor_and_assignee_id IN (:allIDs)
         GROUP BY law_firms.law_firm_id`
 
         const findAllLawFirms = await connection.resources.query(query,{
             type: connection.Sequelize.QueryTypes.SELECT,
             raw: true,
-            replacements: { companyID: req.params.companyID },
+            replacements: { allIDs },
             logging: console.log,
             }
         );
-
         res.status(200).json(findAllLawFirms);
     } catch(e) {
         console.log(e);
