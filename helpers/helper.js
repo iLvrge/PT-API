@@ -1249,6 +1249,49 @@ let getCompaniesListWithReports = async (DBConnection) => {
     }
 }
 
+
+
+/**
+ * Find Customer parent companies list
+ * @param {} DBConnection 
+ */
+
+let getCompaniesListSumWithReports = async (DBConnection) => {
+    const Representative = DBConnection.define('ClientRepesentative', ClientRepesentative.mainStructure, ClientRepesentative.options);
+
+    const getList =  await Representative.findAll({
+        where: {parent_id: 0}
+    });
+
+    if(getList.length > 0) {
+        const representativeNames = []
+
+        const promiseList = getList.map( representative => {
+            representativeNames.push(representative.representative_name)
+        })
+        await Promise.all(promiseList)
+
+        const queryRepresentativeReports = `SELECT representative_id, representative_name, SUM(no_of_assets) AS assets, SUM(no_of_transactions) AS no_of_transactions, SUM(no_of_parties) AS no_of_parties, (SUM(no_of_parties) - SUM(no_of_transactions)) AS product FROM representative_reports WHERE representative_name IN (:representativeNames)`
+
+        let reports = await connection.resources.query(queryRepresentativeReports,{
+                type: connection.Sequelize.QueryTypes.SELECT,
+                replacements: { representativeNames},
+                raw: true,
+                logging: console.log,
+                plain: true
+            }
+        ); 
+
+        if(reports != null) {            
+            return reports
+        } else {
+            return {}
+        }
+    } else {
+        return {}
+    }
+}
+
 /**
  * Find Customer parent companies list
  * @param {} DBConnection 
