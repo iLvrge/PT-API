@@ -957,7 +957,7 @@ route.put("/customers" , [authJWT.verifyToken, authJWT.isAdmin], async (req, res
                     name: req.body.company_name,
                     organisation_type: req.body.organisation_type
                 });
-                res.status(200).json({name: org.name, logo: org.logo});   
+                res.status(200).json({name: org.name, logo: org.logo, organisation_type: org.organisation_type});   
             } else {
                 res.status(403).send("Client not found");
             }
