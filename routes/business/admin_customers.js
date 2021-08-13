@@ -430,111 +430,113 @@ route.get("/customers/:id/users", [authJWT.verifyToken, authJWT.isAdmin, authJWT
  * Create new user in same organisation
  */
 
-route.post("/customers/:id/users", [authJWT.verifyToken, authJWT.isAdmin, userExist.checkDuplicateUsername, authJWT.addClientID, clientDBConnection.connect], function (req, res, next){
-    (async () => {
-        try{
-            let organisationID = req.params.id;
-            if(organisationID > 0){
-                const organisation  = await helpers.findOrganisationbyID(organisationID);
-                if(organisation != null && organisation.organisation_id > 0){
-                    console.log(req.body);
-                    Users.create({
-                        first_name: req.body.first_name,
-                        last_name: req.body.last_name,
-                        email_address: req.body.email_address,
-                        username: req.body.email_address,						
-                        password: bcrypt.hashSync(req.body.password ? req.body.password : req.body.last_name, 8),
-                        job_title: req.body.job_title,
-                        linkedin_url: req.body.person_linkedin_url,
-                        type: req.body.type,
-                        logo: req.body.logo,
-                        role_id: req.body.type == 0 ? 1 : 2,
-                        organisation_id: organisationID
-                    })
-                    .then(function( user ){
-                        if(user != null) {   
-                            console.log(req.connection_db); 
-                            if(typeof req.connection_db != "undefined" && req.connection_db != null ) {
-                                /** */
-                                (async () => {
-                                    const dbUser = await req.connection_db.define('Users', ClientUsers.mainStructure, ClientUsers.options);
-                                    
-                                    const clientUser = {
-                                        user_id: user.user_id,
-                                        first_name: req.body.first_name,
-                                        last_name: req.body.last_name,
-                                        email_address: req.body.email_address,
-                                        username: req.body.email_address,		
-                                        job_title: req.body.job_title,
-                                        linkedin_url: req.body.person_linkedin_url,
-                                        telephone1: req.body.telephone1,
-                                        telephone: req.body.telephone,
-                                        role_id: req.body.type == 0 ? 1 : 2,
-                                        logo: req.body.logo
-                                    }
+route.post("/customers/:id/users", [authJWT.verifyToken, authJWT.isAdmin, userExist.checkDuplicateUsername, authJWT.addClientID, clientDBConnection.connect], async function (req, res, next){
+    try{
+        let organisationID = req.params.id;
+        if(organisationID > 0){
+            const organisation  = await helpers.findOrganisationbyID(organisationID);
+            if(organisation != null && organisation.organisation_id > 0){
+                console.log(req.body);
+                Users.create({
+                    first_name: req.body.first_name,
+                    last_name: req.body.last_name,
+                    email_address: req.body.email_address,
+                    username: req.body.email_address,						
+                    password: bcrypt.hashSync(req.body.password ? req.body.password : req.body.last_name, 8),
+                    job_title: req.body.job_title,
+                    linkedin_url: req.body.person_linkedin_url,
+                    type: req.body.type,
+                    logo: req.body.logo,
+                    role_id: req.body.type == 0 ? 1 : 2,
+                    organisation_id: organisationID
+                })
+                .then(function( user ){
+                    if(user != null) {   
+                        console.log(req.connection_db); 
+                        if(typeof req.connection_db != "undefined" && req.connection_db != null ) {
+                            /** */
+                            (async () => {
+                                const dbUser = await req.connection_db.define('Users', ClientUsers.mainStructure, ClientUsers.options);
+                                
+                                const clientUser = {
+                                    user_id: user.user_id,
+                                    first_name: req.body.first_name,
+                                    last_name: req.body.last_name,
+                                    email_address: req.body.email_address,
+                                    username: req.body.email_address,		
+                                    job_title: req.body.job_title,
+                                    linkedin_url: req.body.person_linkedin_url,
+                                    telephone1: req.body.telephone1,
+                                    telephone: req.body.telephone,
+                                    role_id: req.body.type == 0 ? 1 : 2,
+                                    logo: req.body.logo
+                                }
 
-                                    const addClientUser = await dbUser.create(clientUser);
-                                    console.log("addClientUser", addClientUser);
+                                const addClientUser = await dbUser.create(clientUser);
+                                console.log("addClientUser", addClientUser);
 
-                                    if(addClientUser != null) {
-                                        const Firm = await req.connection_db.define('Firms', Firms.mainStructure, Firms.options);
+                                if(addClientUser != null) {
+                                    const Firm = await req.connection_db.define('Firms', Firms.mainStructure, Firms.options);
 
-                                        let firmID = 0;
+                                    let firmID = 0;
 
-                                        let findFirm = await Firm.findOne({
-                                                        where: {firm_name: organisation.name}
-                                                    });
+                                    let findFirm = await Firm.findOne({
+                                                    where: {firm_name: organisation.name}
+                                                });
+                                    if(findFirm != null && findFirm.firm_id > 0) {
+                                        firmID = findFirm.firm_id;
+                                    } else {
+                                        findFirm = await Firm.create({firm_name: organisation.name});
                                         if(findFirm != null && findFirm.firm_id > 0) {
                                             firmID = findFirm.firm_id;
-                                        } else {
-                                            findFirm = await Firm.create({firm_name: organisation.name});
-                                            if(findFirm != null && findFirm.firm_id > 0) {
-                                                firmID = findFirm.firm_id;
-                                            }
-                                        } 
-                                        if(firmID > 0) {
-                                            const Professional = await req.connection_db.define('Professionals', ProfessionalUsers.mainStructure, ProfessionalUsers.options);  
-                                            const addUserToProfessional = {
-                                                first_name: req.body.first_name,
-                                                last_name: req.body.last_name,
-                                                email_address: req.body.email_address,
-                                                job_title: req.body.job_title,
-                                                linkedin_url: req.body.person_linkedin_url,
-                                                telephone1: req.body.telephone1,
-                                                telephone: req.body.telephone,
-                                                type: 0,
-                                                profile_logo: req.body.logo,
-                                                firm_id: firmID
-                                            }
-                                            const professionalUser = await Professional.create(addUserToProfessional);
-                                            if(professionalUser != null) {
-                                                console.log("User"+professionalUser.professional_id);
-                                                console.log("User created successfully");
-                                            }
+                                        }
+                                    } 
+                                    if(firmID > 0) {
+                                        const Professional = await req.connection_db.define('Professionals', ProfessionalUsers.mainStructure, ProfessionalUsers.options);  
+                                        const addUserToProfessional = {
+                                            first_name: req.body.first_name,
+                                            last_name: req.body.last_name,
+                                            email_address: req.body.email_address,
+                                            job_title: req.body.job_title,
+                                            linkedin_url: req.body.person_linkedin_url,
+                                            telephone1: req.body.telephone1,
+                                            telephone: req.body.telephone,
+                                            type: 0,
+                                            profile_logo: req.body.logo,
+                                            firm_id: firmID
+                                        }
+                                        const professionalUser = await Professional.create(addUserToProfessional);
+                                        if(professionalUser != null) {
+                                            console.log("User"+professionalUser.professional_id);
+                                            console.log("User created successfully");
                                         }
                                     }
-                                })();
-                            }
-                            console.log("User"+user.user_id);
-                            console.log("User created successfully");
-                            const newUser = user.toJSON();
-                            newUser.id = newUser.user_id;
-                            res.status(200).json(newUser);
-                        }  else {
-                            res.status(400).send("Bad inputs");
-                        }                  
-                    })
-                    .catch(function(err){
-                        console.log(err);
-                        res.status(400).send("Bad inputs");
-                    })
-                }
+                                }
+                            })();
+                        }
+                        console.log("User"+user.user_id);
+                        console.log("User created successfully");
+                        const newUser = user.toJSON();
+                        newUser.id = newUser.user_id;
+                        res.status(200).json(newUser);
+                    }  else {
+                        res.status(401).send("Bad inputs");
+                    }                  
+                })
+                .catch(function(err){
+                    console.log(err);
+                    res.status(401).send("Bad inputs");
+                })
+            } else {
+                res.status(401).send("Bad inputs");
             }
-        } catch( err ) {
-            console.log(err);
-            res.status(400).send("Invalid inputs");
+        } else {
+            res.status(401).send("Bad inputs");
         }
-    })();
+    } catch( err ) {
+        console.log(err);
+        res.status(401).send("Invalid inputs");
+    }
 });
 	
 /**
