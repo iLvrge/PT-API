@@ -998,100 +998,23 @@ route.put("/customers" , [authJWT.verifyToken, authJWT.isAdmin], async (req, res
 
 
 
-route.get("/customers/:id/patents", [authJWT.verifyToken, authJWT.isAdmin, authJWT.addClientID, clientDBConnection.connect], async (req, res, next) => {
+route.get("/customers/:id/patents", [authJWT.verifyToken, authJWT.isAdmin], async (req, res, next) => {
     try{
         let organisationID = req.params.id;
         let patentList = [];
         if(organisationID > 0){
             let org = await helpers.findOrganisationbyID( organisationID );
             if(org != null && org.organisation_id > 0) {
-                const findRepresentative = await helpers.getCompaniesList(req.connection_db);
-                if(findRepresentative != null && findRepresentative.length > 0) {
-                    let representativeID = [];
-                    findRepresentative.map(e => representativeID.push(e.representative_id));
-                    
 
-                    /*let queryFindAssignorAndAssigneeIDs = "SELECT aa.assignor_and_assignee_id, aa.name FROM assignor_and_assignee as aa LEFT JOIN representative as r1 ON r1.representative_id = aa.representative_id where (r1.representative_id=:representativeCompanies)";
-
-                    let listIDs = await connection.application.query(queryFindAssignorAndAssigneeIDs,{
-                        type: connection.Sequelize.QueryTypes.SELECT,
-                        replacements: { representativeCompanies: representativeID },
-                        raw: true,
-                        logging: console.log,
-                        }
-                    );*/
-
-
-                    /*let queryFindMainCompany = "SELECT aa.assignor_and_assignee_id, aa.name FROM assignor_and_assignee as aa LEFT JOIN representative as r1 ON r1.representative_id = aa.representative_id where (aa.name = :name OR r1.representative_name = :name )";
-
-                    let listIDs = await connection.application.query(queryFindMainCompany,{
-                        type: connection.Sequelize.QueryTypes.SELECT,
-                        replacements: { name: org.name },
-                        raw: true,
-                        logging: console.log,
-                        }
-                    );*/
-
-                    let queryFindMainCompany = "SELECT rf_id FROM representative_transactions WHERE organisation_id = :organisationID AND representative_id IN (:representativeID) ";
-
-                    let listIDs = await connection.resources.query(queryFindMainCompany,{
-                        type: connection.Sequelize.QueryTypes.SELECT,
-                        replacements: { organisationID: organisationID, representativeID: representativeID },
-                        raw: true,
-                        logging: console.log,
-                        }
-                    );
-
-                    if(listIDs != null && listIDs.length > 0) {
-                        /*let assgnorAssigneeIDS = [], names = [];*/
-                        let rawRfIDs = [];
-                        listIDs.map(e => rawRfIDs.push(e.rf_id));
-                        /*for(let i = 0; i< listIDs.length; i++){
-                            assgnorAssigneeIDS.push(listIDs[i].assignor_and_assignee_id);
-                            names.push(listIDs[i].name);
-                        }*/
-                        //console.log(assgnorAssigneeIDS);
-                        /** Find Assignors */
+                let queryAllPatentList = 'SELECT grant_doc_num as number, appno_doc_num as application FROM assets WHERE organisation_id = :organisationID AND date_format(grant_date, "%Y") >= :year GROUP BY number, application';
             
-                        let queryAssigneeRFIDs = "SELECT rf_id FROM assignee as ac WHERE ac.rf_id IN (:IDs)";
-            
-                        assigneeRFIDs = await connection.application.query(queryAssigneeRFIDs,{
-                            type: connection.Sequelize.QueryTypes.SELECT,
-                            replacements: { IDs: rawRfIDs },
-                            raw: true,
-                            logging: console.log,
-                            }
-                        );
-            
-                        let queryAssignorRFIDs = "SELECT rf_id FROM assignor as ac WHERE ac.rf_id IN (:IDs)";
-            
-                        assignorRFIDs = await connection.application.query(queryAssignorRFIDs,{
-                            type: connection.Sequelize.QueryTypes.SELECT,
-                            replacements: { IDs: rawRfIDs },
-                            raw: true,
-                            logging: console.log,
-                            }
-                        );
-            
-                        rfIDsList = [...assigneeRFIDs, ...assignorRFIDs];    
-                            
-            
-                        let rfIDs = [];
-                        rfIDsList.map( r => rfIDs.push(r.rf_id));
-
-                        if(rfIDsList.length > 0) {
-                            let queryAllPatentList = 'SELECT grant_doc_num as number, appno_doc_num as application FROM documentid WHERE appno_doc_num IN (SELECT appno_doc_num FROM documentid WHERE appno_doc_num <> "" AND  rf_id IN (:rfIDs)) GROUP BY number, application';
-            
-                            patentList = await connection.application.query(queryAllPatentList,{
-                                type: connection.Sequelize.QueryTypes.SELECT,
-                                replacements: { rfIDs: rfIDs },
-                                raw: true,
-                                logging: console.log,
-                                }
-                            );
-                        }
-                    }  
-                }                
+                patentList = await connection.applicationNew.query(queryAllPatentList,{
+                    type: connection.Sequelize.QueryTypes.SELECT,
+                    replacements: { organisationID, year: 1997 },
+                    raw: true,
+                    logging: console.log,
+                    }
+                );                
             }
         }
         res.status(200).json(patentList);
@@ -1108,67 +1031,16 @@ route.get("/customers/:id/:representativeID/patents", [authJWT.verifyToken, auth
         if(organisationID > 0){
             let org = await helpers.findOrganisationbyID( organisationID );
             if(org != null && org.organisation_id > 0) {
-                if(representativeIDs.length > 0) {
-                    let queryFindMainCompany = "SELECT rf_id FROM representative_transactions WHERE organisation_id = :organisationID AND representative_id IN (:representativeID) ";
 
-                    let listIDs = await connection.resources.query(queryFindMainCompany,{
-                        type: connection.Sequelize.QueryTypes.SELECT,
-                        replacements: { organisationID: organisationID, representativeID: representativeIDs },
-                        raw: true,
-                        logging: console.log,
-                        }
-                    );
-
-                    if(listIDs != null && listIDs.length > 0) {
-                        /*let assgnorAssigneeIDS = [], names = [];*/
-                        let rawRfIDs = [];
-                        listIDs.map(e => rawRfIDs.push(e.rf_id));
-                        /*for(let i = 0; i< listIDs.length; i++){
-                            assgnorAssigneeIDS.push(listIDs[i].assignor_and_assignee_id);
-                            names.push(listIDs[i].name);
-                        }*/
-                        //console.log(assgnorAssigneeIDS);
-                        /** Find Assignors */
+                let queryAllPatentList = 'SELECT grant_doc_num as number, appno_doc_num as application FROM assets WHERE organisation_id = :organisationID AND representative_id IN (representativeIDs) AND date_format(grant_date, "%Y") >= :year GROUP BY number, application';
             
-                        let queryAssigneeRFIDs = "SELECT rf_id FROM assignee as ac WHERE ac.rf_id IN (:IDs)";
-            
-                        assigneeRFIDs = await connection.application.query(queryAssigneeRFIDs,{
-                            type: connection.Sequelize.QueryTypes.SELECT,
-                            replacements: { IDs: rawRfIDs },
-                            raw: true,
-                            logging: console.log,
-                            }
-                        );
-            
-                        let queryAssignorRFIDs = "SELECT rf_id FROM assignor as ac WHERE ac.rf_id IN (:IDs)";
-            
-                        assignorRFIDs = await connection.application.query(queryAssignorRFIDs,{
-                            type: connection.Sequelize.QueryTypes.SELECT,
-                            replacements: { IDs: rawRfIDs },
-                            raw: true,
-                            logging: console.log,
-                            }
-                        );
-            
-                        rfIDsList = [...assigneeRFIDs, ...assignorRFIDs];    
-                            
-            
-                        let rfIDs = [];
-                        rfIDsList.map( r => rfIDs.push(r.rf_id));
-
-                        if(rfIDsList.length > 0) {
-                            let queryAllPatentList = 'SELECT grant_doc_num as number, appno_doc_num as application FROM documentid WHERE appno_doc_num IN (SELECT appno_doc_num FROM documentid WHERE appno_doc_num <> "" AND  rf_id IN (:rfIDs)) GROUP BY number, application';
-            
-                            patentList = await connection.application.query(queryAllPatentList,{
-                                type: connection.Sequelize.QueryTypes.SELECT,
-                                replacements: { rfIDs: rfIDs },
-                                raw: true,
-                                logging: console.log,
-                                }
-                            );
-                        }
-                    } 
-                }            
+                patentList = await connection.applicationNew.query(queryAllPatentList,{
+                    type: connection.Sequelize.QueryTypes.SELECT,
+                    replacements: { organisationID, representativeIDs, year: 1997 },
+                    raw: true,
+                    logging: console.log,
+                    }
+                );                
             }
         }
         res.status(200).json(patentList);

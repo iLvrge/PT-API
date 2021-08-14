@@ -294,31 +294,40 @@ route.get("/list", [authJWT.verifyToken, clientDBConnection.connect], async(req,
                     order: [['representative_name', 'ASC']]
                 })
 
-                if( findReports.length > 0 ) {
-                    const promiseReport = list.map( representative => {
-                        let representaitveJSON = representative.toJSON();
-                        const findIndex = findReports.findIndex( r => r.representative_name == representative.representative_name)
-                        let child = []
-                        if(findChild.length > 0) {
-                            child = findChild.filter( row => row.parent_id == representative.representative_id).map(obj => obj.representative_id)
+                const promiseReport = list.map( representative => {
+                    let representaitveJSON = representative.toJSON();
+                    const findIndex = findReports.findIndex( r => r.representative_name == representative.representative_name)
+                    let child = []
+                    if(findChild.length > 0) {
+                        child = findChild.filter( row => row.parent_id == representative.representative_id).map(obj => obj.representative_id)
+                    }
+                    if( findIndex !== -1) {
+                        representaitveJSON = {
+                            ...representaitveJSON, 
+                            child: JSON.stringify(child), 
+                            no_of_assets: findReports[findIndex]['no_of_assets'], 
+                            no_of_transactions: findReports[findIndex]['no_of_transactions'], 
+                            no_of_parties: findReports[findIndex]['no_of_parties'], 
+                            no_of_inventor: findReports[findIndex]['no_of_inventor'], 
+                            no_of_activities: findReports[findIndex]['no_of_activities']
                         }
-                        if( findIndex !== -1) {
-                            representaitveJSON = {...representaitveJSON, child: JSON.stringify(child) , no_of_assets: findReports[findIndex]['no_of_assets'], no_of_transactions: findReports[findIndex]['no_of_transactions'], no_of_parties: findReports[findIndex]['no_of_parties'], no_of_inventor: findReports[findIndex]['no_of_inventor'], no_of_activities: findReports[findIndex]['no_of_activities']}
-                            let product = 0;
-                            const findAdminIndex = findAdminReports.findIndex( r => r.representative_name == representative.representative_name)
+                        
+                        let product = 0;
+                        const findAdminIndex = findAdminReports.findIndex( r => r.representative_name == representative.representative_name)
 
-                            if( findAdminIndex !== -1) {
-                                product = findAdminReports[findAdminIndex]['no_of_parties'] - findAdminReports[findAdminIndex]['no_of_transactions']
-                            }
-                            representaitveJSON['product'] = product
-                        } else {
-                            representaitveJSON = {...representaitveJSON, child: JSON.stringify(child) , no_of_assets: 0, no_of_transactions:0, no_of_parties: 0, no_of_inventor: 0, no_of_activities: 0, product: 0}
+                        if( findAdminIndex !== -1) {
+                            product = findAdminReports[findAdminIndex]['no_of_parties'] - findAdminReports[findAdminIndex]['no_of_transactions']
                         }
-                        companiesList.push(representaitveJSON)
-                        return representative
-                    })
-                    await Promise.all(promiseReport)
-                }
+                        representaitveJSON['product'] = product
+                    } else {
+                        representaitveJSON = {...representaitveJSON, child: JSON.stringify(child) , no_of_assets: 0, no_of_transactions:0, no_of_parties: 0, no_of_inventor: 0, no_of_activities: 0, product: 0}
+                    }
+                    companiesList.push(representaitveJSON)
+                    return representative
+                })
+                await Promise.all(promiseReport)
+
+                
             }            
 
             res.status(200).json({list: companiesList, total_records});
@@ -737,37 +746,21 @@ route.post("/", [authJWT.verifyToken, clientDBConnection.connect], async(req, re
                             if(addCompanies) {
                                 console.log(`php -f /var/www/html/trash/add_representative_rfids.php "${req.orgId}" "${findName.representative_name}"`);
                                 await exec(`php -f /var/www/html/trash/add_representative_rfids.php "${req.orgId}" "${findName.representative_name}"`, async (error, stdout, stderr) => {
-                                    console.log(error);
-                                    console.log(stdout);
-                                    console.log(stderr);
-                                    console.log(`php -f /var/www/html/trash/tree_script_client.php "${findName.representative_name}"`);
-                                    await exec(`php -f /var/www/html/trash/tree_script_client.php "${findName.representative_name}"`, async (error, stdout, stderr) => {
-                                        console.log(error);
-                                        console.log(stdout);
+                                    
+                                    exec(`php -f /var/www/html/trash/create_data_for_company_db_application.php "${req.orgId}" "${findName.representative_name}"`, (error, stdd, stderr)=> {
+                                        console.log("fill database ....")
+                                        console.log(error); 
                                         console.log(stderr);
-                                        console.log(`php -f /var/www/html/trash/fix_inventor_timeline_tree_transaction_assests_updates.php  "${req.orgId}" "${findName.representative_id}"`);
-                                        await exec(`php -f /var/www/html/trash/fix_inventor_timeline_tree_transaction_assests_updates.php  "${req.orgId}" "${findName.representative_id}"`, async (error, stdd, stderr)=> {    
-                                            console.log(error);
-                                            console.log(stdd);
-                                            console.log(stderr);                                        
-                                            console.log("DONE>>>>>>>>>>>");
-                                            console.log(`php -f /var/www/html/trash/epo_api_retrieve_patent_data.php "${req.orgId}" "${findName.representative_id}"`);
-                                            exec(`php -f /var/www/html/trash/epo_api_retrieve_patent_data.php "${req.orgId}" "${findName.representative_id}"`, (error, stdout, stderr)=> {
-                                                console.log("epo_api_retrieve_patent_data....")
-                                                console.log(error);
-                                                console.log(stderr);
-                                                console.log(stdout);
-                                                console.log("DONE");
-                                            });
-                                            console.log(`php -f /var/www/html/trash/download_all_pdf.php "${findName.representative_name}"`);
-                                            exec(`php -f /var/www/html/trash/download_all_pdf.php "${findName.representative_name}"`, (error, stdd, stderr)=> {
-                                                console.log("donwload_all_pdf....")
-                                                console.log(error); 
-                                                console.log(stderr);
-                                                console.log(stdd);
-                                                console.log("DONE");
-                                            });
-                                        });
+                                        console.log(stdd);
+                                        console.log("DONE");
+                                    });
+
+                                    exec(`php -f /var/www/html/trash/download_all_pdf.php "${findName.representative_name}"`, (error, stdd, stderr)=> {
+                                        console.log("donwload_all_pdf....")
+                                        console.log(error); 
+                                        console.log(stderr);
+                                        console.log(stdd);
+                                        console.log("DONE");
                                     });
                                 });
                                 res.status(200).json(companies);
@@ -889,34 +882,21 @@ route.post("/", [authJWT.verifyToken, clientDBConnection.connect], async(req, re
                                             console.log(error);
                                             console.log(stdout);
                                             console.log(stderr);
-                                            console.log(`php -f /var/www/html/trash/tree_script_client.php "${req.orgId}"  "${company}"`);
-                                            await exec(`php -f /var/www/html/trash/tree_script_client.php "${req.orgId}"  "${company}"`, async (error, stdout, stderr) => {
-                                                console.log(error);
-                                                console.log(stdout);
+                                            exec(`php -f /var/www/html/trash/create_data_for_company_db_application.php "${req.orgId}" "${company}"`, (error, stdd, stderr)=> {
+                                                console.log("fill database ....")
+                                                console.log(error); 
                                                 console.log(stderr);
-                                                console.log(`php -f /var/www/html/trash/fix_inventor_timeline_tree_transaction_assests_updates.php "${req.orgId}" "${parentCompaniesID[index]}"`);
-                                                await exec(`php -f /var/www/html/trash/fix_inventor_timeline_tree_transaction_assests_updates.php "${req.orgId}" "${parentCompaniesID[index]}"`, async (error, std, stderr) => {
-                                                    console.log(error);
-                                                    console.log(std);
-                                                    console.log(stderr);
-                                                    console.log("DONE>>>>>>>>>>>");
-                                                    console.log(`php -f /var/www/html/trash/epo_api_retrieve_patent_data.php "${req.orgId}" "${parentCompaniesID[index]}"`);
-                                                    exec(`php -f /var/www/html/trash/epo_api_retrieve_patent_data.php "${req.orgId}" "${parentCompaniesID[index]}"`, (error, stdout, stderr)=> {
-                                                        console.log("epo_api_retrieve_patent_data....")
-                                                        console.log(error);
-                                                        console.log(stderr);
-                                                        console.log(stdout);
-                                                        console.log("DONE");
-                                                    });
-                                                    exec(`php -f /var/www/html/trash/download_all_pdf.php "${company}"`, (error, stdout, stderr)=> {
-                                                        console.log("donwload_all_pdf....")
-                                                        console.log(error);
-                                                        console.log(stderr);
-                                                        console.log(stdout);
-                                                        console.log("DONE");
-                                                    });
-                                                });
-                                            })
+                                                console.log(stdd);
+                                                console.log("DONE");
+                                            });
+        
+                                            exec(`php -f /var/www/html/trash/download_all_pdf.php "${company}"`, (error, stdd, stderr)=> {
+                                                console.log("donwload_all_pdf....")
+                                                console.log(error); 
+                                                console.log(stderr);
+                                                console.log(stdd);
+                                                console.log("DONE");
+                                            });
                                         });
                                     });
                                 }
