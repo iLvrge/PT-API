@@ -765,7 +765,7 @@ route.post("/", [authJWT.verifyToken, clientDBConnection.connect], async(req, re
                                 });
                                 res.status(200).json(companies);
                             } else {
-                                res.status(500).send("Internal server error");
+                                res.status(500).send("Internal server error"); 
                             }
                         } else {
                             if(tap === true) {
@@ -820,6 +820,8 @@ route.post("/", [authJWT.verifyToken, clientDBConnection.connect], async(req, re
                                 const addParent = await Representative.create({
                                     original_name: companies[i].original_name, representative_name: representativeName, instances: companies[i].instances
                                 });
+
+                                
 
                                 /**
                                  *  For inserting bulk entries for activity log
@@ -963,32 +965,20 @@ route.post("/", [authJWT.verifyToken, clientDBConnection.connect], async(req, re
                                             console.log(error);
                                             console.log(stdout);
                                             console.log(stderr);
-                                            console.log(`php -f /var/www/html/trash/tree_script_client.php "${company}"`);
-                                            await exec(`php -f /var/www/html/trash/tree_script_client.php "${company}"`, async (error, stdout, stderr) => {
-                                                console.log(error);
-                                                console.log(stdout);
+                                            exec(`php -f /var/www/html/trash/create_data_for_company_db_application.php "${req.orgId}" "${company}"`, (error, stdd, stderr)=> {
+                                                console.log("fill database ....")
+                                                console.log(error); 
                                                 console.log(stderr);
-                                                await exec(`php -f /var/www/html/trash/fix_inventor_timeline_tree_transaction_assests_updates.php "${req.orgId}" "${parentCompaniesID[index]}"`, async (error, std, stderr) => {
-                                                    console.log(error);
-                                                    console.log(std);
-                                                    console.log(stderr);
-                                                    console.log("DONE>>>>>>>>>>>");
-                                                    console.log(`php -f /var/www/html/trash/epo_api_retrieve_patent_data.php "${req.orgId}" "${parentCompaniesID[index]}"`);
-                                                    exec(`php -f /var/www/html/trash/epo_api_retrieve_patent_data.php "${req.orgId}" "${parentCompaniesID[index]}"`, (error, stdout, stderr)=> {
-                                                        console.log("epo_api_retrieve_patent_data....")
-                                                        console.log(error);
-                                                        console.log(stderr);
-                                                        console.log(stdout);
-                                                        console.log("DONE");
-                                                    });
-                                                    exec(`php -f /var/www/html/trash/download_all_pdf.php "${company}"`, (error, stdout, stderr)=> {
-                                                        console.log("donwload_all_pdf....")
-                                                        console.log(error);
-                                                        console.log(stderr);
-                                                        console.log(stdout);
-                                                        console.log("DONE");
-                                                    });
-                                                });
+                                                console.log(stdd);
+                                                console.log("DONE");
+                                            });
+        
+                                            exec(`php -f /var/www/html/trash/download_all_pdf.php "${company}"`, (error, stdd, stderr)=> {
+                                                console.log("donwload_all_pdf....")
+                                                console.log(error); 
+                                                console.log(stderr);
+                                                console.log(stdd);
+                                                console.log("DONE");
                                             });
                                         });
                                     });
