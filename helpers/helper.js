@@ -1212,7 +1212,7 @@ let getCompaniesListWithReports = async (DBConnection) => {
         })
         await Promise.all(promiseList)
 
-        const queryRepresentativeReports = `SELECT representative_id, representative_name, no_of_assets as assets, no_of_transactions, no_of_parties, (no_of_parties - no_of_transactions) as product FROM representative_reports WHERE representative_name IN (:representativeNames)`
+        const queryRepresentativeReports = `SELECT representative_name, no_of_assets as assets, no_of_transactions, no_of_parties, (no_of_parties - no_of_transactions) as product FROM representative_reports WHERE representative_name IN (:representativeNames)`
 
         let reports = await connection.resources.query(queryRepresentativeReports,{
                 type: connection.Sequelize.QueryTypes.SELECT,
@@ -1271,7 +1271,7 @@ let getCompaniesListSumWithReports = async (DBConnection) => {
         })
         await Promise.all(promiseList)
 
-        const queryRepresentativeReports = `SELECT representative_id, representative_name, SUM(no_of_assets) AS assets, SUM(no_of_transactions) AS no_of_transactions, SUM(no_of_parties) AS no_of_parties, (SUM(no_of_parties) - SUM(no_of_transactions)) AS product FROM representative_reports WHERE representative_name IN (:representativeNames)`
+        const queryRepresentativeReports = `SELECT representative_name, SUM(no_of_assets) AS assets, SUM(no_of_transactions) AS no_of_transactions, SUM(no_of_parties) AS no_of_parties, (SUM(no_of_parties) - SUM(no_of_transactions)) AS product FROM representative_reports WHERE representative_name IN (:representativeNames)`
 
         let reports = await connection.resources.query(queryRepresentativeReports,{
                 type: connection.Sequelize.QueryTypes.SELECT,
