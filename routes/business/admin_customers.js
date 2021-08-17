@@ -580,14 +580,16 @@ route.put("/customers/:id/users/:user_id", [authJWT.verifyToken, authJWT.isAdmin
                                     const getUser = dbUser.findOne({
                                         where: {username: u.username}
                                     })
-                                    getUser.first_name = req.body.first_name;
-                                    getUser.last_name = req.body.last_name;
-                                    getUser.email_address = req.body.email_address;
-                                    getUser.username = req.body.email_address;
-                                    getUser.linkedin_url = req.body.linkedin_url;
-                                    getUser.save();
+                                    console.log('getUser', getUser)
+                                    if(getUser !== null) {
+                                        getUser.first_name = req.body.first_name;
+                                        getUser.last_name = req.body.last_name;
+                                        getUser.email_address = req.body.email_address;
+                                        getUser.username = req.body.email_address;
+                                        getUser.linkedin_url = req.body.linkedin_url;
+                                        getUser.save();
+                                    }                                    
                                 }
-
                                 res.status(200).send("Updated successfully");
                             })();
                         } else {
