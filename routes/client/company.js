@@ -1075,8 +1075,9 @@ route.delete("/", [authJWT.verifyToken, clientDBConnection.connect], async(req, 
                                 /**
                                  * Delete KPI counter, Tree, Timeline, Error
                                  */
+                                //remove from list 1, list 2, assets, transactions
 
-                                await Validity.destroy({
+                                /* await Validity.destroy({
                                     where: {representative_id: deleteParentCompanies, organisation_id: req.orgId},
                                 });
                                 await Transactions.destroy({
@@ -1094,7 +1095,7 @@ route.delete("/", [authJWT.verifyToken, clientDBConnection.connect], async(req, 
 
                                 await Timelines.destroy({
                                     where: {representative_id: deleteParentCompanies, organisation_id: req.orgId},
-                                });
+                                }); */
                             }
                         }
 
@@ -1123,6 +1124,15 @@ route.delete("/", [authJWT.verifyToken, clientDBConnection.connect], async(req, 
                                             console.log(error);
                                             console.log(std);
                                             console.log(stderr);
+
+
+                                            exec(`php -f /var/www/html/trash/create_data_for_company_db_application.php "${req.orgId}" ""`, (error, stdd, stderr)=> {
+                                                console.log("fill database ....")
+                                                console.log(error); 
+                                                console.log(stderr);
+                                                console.log(stdd);
+                                                console.log("DONE");
+                                            });
                                         });
                                         return company;
                                     });
@@ -1131,11 +1141,11 @@ route.delete("/", [authJWT.verifyToken, clientDBConnection.connect], async(req, 
                                     /**
                                      * Recreate KPI and Tree
                                      */
-                                    exec(`php -f /var/www/html/trash/fix_inventor_timeline_tree_transaction_assests_updates.php "${req.orgId}" ""`, async (error, std, stderr) => {
+                                    /* exec(`php -f /var/www/html/trash/fix_inventor_timeline_tree_transaction_assests_updates.php "${req.orgId}" ""`, async (error, std, stderr) => {
                                         console.log(error);
                                         console.log(std);
                                         console.log(stderr);
-                                    });
+                                    }); */
                                     res.status(200).send("Companies deleted.");
                                 }
                             }
@@ -1144,10 +1154,12 @@ route.delete("/", [authJWT.verifyToken, clientDBConnection.connect], async(req, 
                              * Recreate KPI and Tree
                              */
                             console.log("DELETE");
-                            exec(`php -f /var/www/html/trash/fix_inventor_timeline_tree_transaction_assests_updates.php "${req.orgId}" ""`, async (error, std, stderr) => {
-                                console.log(error);
-                                console.log(std);
+                            exec(`php -f /var/www/html/trash/create_data_for_company_db_application.php "${req.orgId}" ""`, (error, stdd, stderr)=> {
+                                console.log("fill database ....")
+                                console.log(error); 
                                 console.log(stderr);
+                                console.log(stdd);
+                                console.log("DONE");
                             });
                             res.status(200).send("Companies deleted.");
                         }
