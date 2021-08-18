@@ -1695,7 +1695,7 @@ route.get("/company/assets/:entityID", [authJWT.verifyToken, authJWT.isAdmin], a
 route.get("/company/report", [authJWT.verifyToken, authJWT.isAdmin], async (req, res, next) => {
     try {
 
-        const queryReport = `SELECT representative_id, representative_name, no_of_assets as assets, no_of_transactions, no_of_parties, (no_of_parties - no_of_transactions) as product FROM admin_representative_reports`;
+        const queryReport = `SELECT representative_id, representative_name, no_of_assets as assets, no_of_transactions, no_of_parties, (no_of_parties - no_of_transactions) as product, (no_of_transactions / no_of_assets ) as tranaction_assets FROM admin_representative_reports`;
 
         let reports = await connection.resources.query(queryReport,{
                 type: connection.Sequelize.QueryTypes.SELECT,
