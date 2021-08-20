@@ -290,22 +290,33 @@ route.get("/list", [authJWT.verifyToken, clientDBConnection.connect], async(req,
             const companiesList = []
 
             if(list.length > 0) {
-                const representativeNames = [], representativeIDs = []
+                let representativeNames = [], representativeIDs = []
 
                 const promises = list.map( representative => {
-                    representativeNames.push(representative.representative_name)
+                    representativeNames.push(representative.representative_name != '' ? representative.representative_name : representative.original_name)
                     representativeIDs.push(representative.representative_id)
                 })
     
                 await Promise.all(promises)
 
                 const findChild = await Representative.findAll({
-                    attributes: ['representative_id', 'parent_id'],
+                    attributes: ['representative_id', 'parent_id', 'representative_name', 'original_name'],
                     where: {                            
                         parent_id: representativeIDs, 
                         child: 1
                     }
                 })
+
+                const checkGroupsPromise = list.map( representative => {
+                    if(representative.type == 1) {
+                        const childNames = findChild.filter( row => row.parent_id == representative.representative_id).map(obj => obj.representative_name != '' ? obj.representative_name : obj.original_name)
+                        if(childNames.length > 0) {
+                            representativeNames = [...representativeNames, ...childNames]
+                        }
+                    }
+                })
+
+                await Promise.all(checkGroupsPromise)
 
                 const findReports = await RepresentativeReport.findAll({
                     attributes: ['representative_name', 'no_of_assets', 'no_of_transactions', 'no_of_parties', 'no_of_inventor', 'no_of_activities'],
@@ -319,7 +330,7 @@ route.get("/list", [authJWT.verifyToken, clientDBConnection.connect], async(req,
                     order: [['representative_name', 'ASC']]
                 })
 
-                const promiseReport = list.map( representative => {
+                const promiseReport = list.map( async representative => {
                     let representaitveJSON = representative.toJSON();
                    
                     let child = [], product = 0, no_of_assets = 0, no_of_transactions = 0, no_of_parties = 0, no_of_inventor = 0, no_of_activities = 0;
@@ -327,23 +338,59 @@ route.get("/list", [authJWT.verifyToken, clientDBConnection.connect], async(req,
                         child = findChild.filter( row => row.parent_id == representative.representative_id).map(obj => obj.representative_id)
                     }
 
-                    if( findReports.length > 0 ) {
-                        const findIndex = findReports.findIndex( r => r.representative_name == representative.representative_name)
-                        if( findIndex !== -1) {
-                            no_of_assets = findReports[findIndex]['no_of_assets']
-                            no_of_transactions = findReports[findIndex]['no_of_transactions']
-                            no_of_parties = findReports[findIndex]['no_of_parties']
-                            no_of_inventor = findReports[findIndex]['no_of_inventor']
-                            no_of_activities = findReports[findIndex]['no_of_activities']
-                        } 
-                    } 
+                    if(representative.type == 1) {
+                        if(child.length > 0) {
+                            const childNames = findChild.filter( row => row.parent_id == representative.representative_id).map(obj => obj.representative_name != '' ? obj.representative_name : obj.original_name)
 
-                    if( findAdminReports.length > 0 ) {
-                        const findAdminIndex = findAdminReports.findIndex( r => r.representative_name == representative.representative_name)
-                        if( findAdminIndex !== -1) {
-                            product = findAdminReports[findAdminIndex]['no_of_parties'] - findAdminReports[findAdminIndex]['no_of_transactions']
+                            if( findReports.length > 0 ) {
+                                const reportMap = childNames.map( name => {
+                                    const findIndex = findReports.findIndex( r => r.representative_name == name)
+                                    if( findIndex !== -1) {
+                                        no_of_assets += parseInt(findReports[findIndex]['no_of_assets'])
+                                        no_of_transactions += parseInt(findReports[findIndex]['no_of_transactions'])
+                                        no_of_parties += parseInt(findReports[findIndex]['no_of_parties'])
+                                        no_of_inventor += findReports[findIndex]['no_of_inventor'] !== null && findReports[findIndex]['no_of_inventor'] != '' ? parseInt(findReports[findIndex]['no_of_inventor']) : 0
+                                        no_of_activities += parseInt(findReports[findIndex]['no_of_activities'])
+                                    }
+                                })
+
+                                await Promise.all(reportMap)
+                            }
+
+                            if( findAdminReports.length > 0 ) { 
+                                let adminTransactions  = 0, adminParties = 0
+                                const adminReportMap = childNames.map( name => {
+                                    const findIndex = findAdminReports.findIndex( r => r.representative_name == name)
+                                    if( findIndex !== -1) {
+                                        adminTransactions += parseInt(findAdminReports[findIndex]['no_of_transactions'])
+                                        adminParties += parseInt(findAdminReports[findIndex]['no_of_parties'])
+                                    }
+                                })
+                                await Promise.all(adminReportMap)
+                                product = adminParties - adminTransactions
+                            }
                         }
                     } else {
+                        if( findReports.length > 0 ) {
+                            const findIndex = findReports.findIndex( r => r.representative_name == representative.representative_name)
+                            if( findIndex !== -1) {
+                                no_of_assets = findReports[findIndex]['no_of_assets']
+                                no_of_transactions = findReports[findIndex]['no_of_transactions']
+                                no_of_parties = findReports[findIndex]['no_of_parties']
+                                no_of_inventor = findReports[findIndex]['no_of_inventor']
+                                no_of_activities = findReports[findIndex]['no_of_activities']
+                            }
+                        } 
+    
+                        if( findAdminReports.length > 0 ) {
+                            const findAdminIndex = findAdminReports.findIndex( r => r.representative_name == representative.representative_name)
+                            if( findAdminIndex !== -1) {
+                                product = findAdminReports[findAdminIndex]['no_of_parties'] - findAdminReports[findAdminIndex]['no_of_transactions']
+                            }
+                        }
+                    }
+
+                    if(product == 0 && no_of_parties > 0 ) {
                         product = no_of_parties - no_of_transactions
                     }
 
