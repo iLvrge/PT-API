@@ -403,6 +403,7 @@ route.get("/list", [authJWT.verifyToken, clientDBConnection.connect], async(req,
                         no_of_parties: no_of_parties,
                         no_of_inventor: no_of_inventor,
                         no_of_activities: no_of_activities,
+                        product
                     }
                     companiesList.push(representaitveJSON)
                     return representative
