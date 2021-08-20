@@ -460,6 +460,29 @@ route.get("/search/:searchName", [authJWT.verifyToken], async(req, res, next) =>
 });
 
 /**
+ * Add new Group 
+*/
+
+route.post("/group", [authJWT.verifyToken, clientDBConnection.connect], async(req, res, next) => {
+    try{
+        const Representative = req.connection_db.define('Representatives', Representatives.mainStructure, Representatives.options);
+
+        const { group_name } = req.body
+
+        const addGroup = await Representative.create({
+            original_name: group_name,
+            representative_name: group_name,
+            instances: 0,
+            type: 1
+        });
+
+        res.status(200).json(addGroup);
+    } catch( err ) {
+        res.status(500).send("Internal error", err);
+    }
+})
+
+/**
  * Add new company 
  */
 
