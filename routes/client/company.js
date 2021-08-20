@@ -233,7 +233,7 @@ route.get("/:companyID/list", [authJWT.verifyToken, clientDBConnection.connect],
                         const findIndex = findReports.findIndex( r => r.representative_name == representative.representative_name)
                         if( findIndex !== -1) {
                             no_of_assets = findReports[findIndex]['no_of_assets']
-                            no_of_transactions = indReports[findIndex]['no_of_transactions']
+                            no_of_transactions = findReports[findIndex]['no_of_transactions']
                             no_of_parties = findReports[findIndex]['no_of_parties']
                             no_of_inventor = findReports[findIndex]['no_of_inventor']
                             no_of_activities = findReports[findIndex]['no_of_activities']
