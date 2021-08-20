@@ -245,6 +245,8 @@ route.get("/:companyID/list", [authJWT.verifyToken, clientDBConnection.connect],
                         if( findAdminIndex !== -1) {
                             product = findAdminReports[findAdminIndex]['no_of_parties'] - findAdminReports[findAdminIndex]['no_of_transactions']
                         }
+                    } else {
+                        product = no_of_parties - no_of_transactions
                     }
 
                     representaitveJSON = {...representaitveJSON, no_of_assets: no_of_assets, no_of_transactions: no_of_transactions, no_of_parties: no_of_parties, no_of_inventor: no_of_inventor, no_of_activities: no_of_activities, product: product}                                      
@@ -341,6 +343,8 @@ route.get("/list", [authJWT.verifyToken, clientDBConnection.connect], async(req,
                         if( findAdminIndex !== -1) {
                             product = findAdminReports[findAdminIndex]['no_of_parties'] - findAdminReports[findAdminIndex]['no_of_transactions']
                         }
+                    } else {
+                        product = no_of_parties - no_of_transactions
                     }
 
                     representaitveJSON = {
