@@ -165,7 +165,7 @@ route.get("/:companyID/list", [authJWT.verifyToken, clientDBConnection.connect],
             const {companyID} = req.params
             const Representative = req.connection_db.define('Representatives', Representatives.mainStructure, Representatives.options);
 
-            const where = {
+           /*  const where = {
                         where: {                            
                             [connection.Op.or]: [
                                 {
@@ -177,7 +177,21 @@ route.get("/:companyID/list", [authJWT.verifyToken, clientDBConnection.connect],
                                 }
                             ]
                         }
-                    };
+                    }; */
+            const where = {
+                where: {                            
+                    [connection.Op.or]: [
+                        {
+                            parent_id: companyID, 
+                            child: 0,
+                        },
+                        {
+                            parent_id: companyID, 
+                            child: 1,
+                        }
+                    ]
+                }
+            };
 
             const total_records = await Representative.count( where );
 
@@ -185,7 +199,7 @@ route.get("/:companyID/list", [authJWT.verifyToken, clientDBConnection.connect],
                 ['original_name', 'ASC'],
                 ['representative_name', 'ASC']
             ];
-            where.attributes = ['representative_id', 'original_name', 'representative_name'];
+            where.attributes = ['representative_id', 'original_name', 'representative_name', 'type'];
 
             const list = await Representative.findAll( where )
 
@@ -212,27 +226,33 @@ route.get("/:companyID/list", [authJWT.verifyToken, clientDBConnection.connect],
                     order: [['representative_name', 'ASC']]
                 })
 
-                if( findReports.length > 0 ) {
-                    const promiseReport = list.map( representative => {
-                        let representaitveJSON = representative.toJSON();
+                const promiseReport = list.map( representative => {
+                    let representaitveJSON = representative.toJSON();
+                    let product = 0, no_of_assets = 0, no_of_transactions = 0, no_of_parties = 0, no_of_inventor = 0, no_of_activities = 0;
+                    if( findReports.length > 0 ) {
                         const findIndex = findReports.findIndex( r => r.representative_name == representative.representative_name)
                         if( findIndex !== -1) {
-                            representaitveJSON = {...representaitveJSON, no_of_assets: findReports[findIndex]['no_of_assets'], no_of_transactions: findReports[findIndex]['no_of_transactions'], no_of_parties: findReports[findIndex]['no_of_parties'], no_of_inventor: findReports[findIndex]['no_of_inventor'], no_of_activities: findReports[findIndex]['no_of_activities']}
-                            let product = 0;
-                            const findAdminIndex = findAdminReports.findIndex( r => r.representative_name == representative.representative_name)
+                            no_of_assets = findReports[findIndex]['no_of_assets']
+                            no_of_transactions = indReports[findIndex]['no_of_transactions']
+                            no_of_parties = findReports[findIndex]['no_of_parties']
+                            no_of_inventor = findReports[findIndex]['no_of_inventor']
+                            no_of_activities = findReports[findIndex]['no_of_activities']
+                        } 
+                    } 
 
-                            if( findAdminIndex !== -1) {
-                                product = findAdminReports[findAdminIndex]['no_of_parties'] - findAdminReports[findAdminIndex]['no_of_transactions']
-                            }
-                            representaitveJSON['product'] = product
+                    if( findAdminReports.length > 0 ) {
+                        const findAdminIndex = findAdminReports.findIndex( r => r.representative_name == representative.representative_name)
+                        if( findAdminIndex !== -1) {
+                            product = findAdminReports[findAdminIndex]['no_of_parties'] - findAdminReports[findAdminIndex]['no_of_transactions']
                         }
-                        companiesList.push(representaitveJSON)
-                        return representative
-                    })
-                    await Promise.all(promiseReport)
-                }
-            }            
+                    }
 
+                    representaitveJSON = {...representaitveJSON, no_of_assets: no_of_assets, no_of_transactions: no_of_transactions, no_of_parties: no_of_parties, no_of_inventor: no_of_inventor, no_of_activities: no_of_activities, product: product}                                      
+                    companiesList.push(representaitveJSON)
+                    return representative
+                })
+                await Promise.all(promiseReport)
+            }            
             res.status(200).json({list: companiesList, total_records});
         } else {
             res.status(401).send("Unable to retrieve companies");
@@ -261,7 +281,7 @@ route.get("/list", [authJWT.verifyToken, clientDBConnection.connect], async(req,
                 ['original_name', 'ASC'],
                 ['representative_name', 'ASC']
             ];
-            where.attributes = ['representative_id', 'original_name', 'representative_name'];
+            where.attributes = ['representative_id', 'original_name', 'representative_name', 'type'];
 
             const list = await Representative.findAll( where )
 
@@ -279,7 +299,10 @@ route.get("/list", [authJWT.verifyToken, clientDBConnection.connect], async(req,
 
                 const findChild = await Representative.findAll({
                     attributes: ['representative_id', 'parent_id'],
-                    where: {parent_id: representativeIDs, child: 1},
+                    where: {                            
+                        parent_id: representativeIDs, 
+                        child: 1
+                    }
                 })
 
                 const findReports = await RepresentativeReport.findAll({
@@ -296,40 +319,45 @@ route.get("/list", [authJWT.verifyToken, clientDBConnection.connect], async(req,
 
                 const promiseReport = list.map( representative => {
                     let representaitveJSON = representative.toJSON();
-                    const findIndex = findReports.findIndex( r => r.representative_name == representative.representative_name)
-                    let child = []
+                   
+                    let child = [], product = 0, no_of_assets = 0, no_of_transactions = 0, no_of_parties = 0, no_of_inventor = 0, no_of_activities = 0;
                     if(findChild.length > 0) {
                         child = findChild.filter( row => row.parent_id == representative.representative_id).map(obj => obj.representative_id)
                     }
-                    if( findIndex !== -1) {
-                        representaitveJSON = {
-                            ...representaitveJSON, 
-                            child: JSON.stringify(child), 
-                            no_of_assets: findReports[findIndex]['no_of_assets'], 
-                            no_of_transactions: findReports[findIndex]['no_of_transactions'], 
-                            no_of_parties: findReports[findIndex]['no_of_parties'], 
-                            no_of_inventor: findReports[findIndex]['no_of_inventor'], 
-                            no_of_activities: findReports[findIndex]['no_of_activities']
-                        }
-                        
-                        let product = 0;
-                        const findAdminIndex = findAdminReports.findIndex( r => r.representative_name == representative.representative_name)
 
+                    if( findReports.length > 0 ) {
+                        const findIndex = findReports.findIndex( r => r.representative_name == representative.representative_name)
+                        if( findIndex !== -1) {
+                            no_of_assets = findReports[findIndex]['no_of_assets']
+                            no_of_transactions = findReports[findIndex]['no_of_transactions']
+                            no_of_parties = findReports[findIndex]['no_of_parties']
+                            no_of_inventor = findReports[findIndex]['no_of_inventor']
+                            no_of_activities = findReports[findIndex]['no_of_activities']
+                        } 
+                    } 
+
+                    if( findAdminReports.length > 0 ) {
+                        const findAdminIndex = findAdminReports.findIndex( r => r.representative_name == representative.representative_name)
                         if( findAdminIndex !== -1) {
                             product = findAdminReports[findAdminIndex]['no_of_parties'] - findAdminReports[findAdminIndex]['no_of_transactions']
                         }
-                        representaitveJSON['product'] = product
-                    } else {
-                        representaitveJSON = {...representaitveJSON, child: JSON.stringify(child) , no_of_assets: 0, no_of_transactions:0, no_of_parties: 0, no_of_inventor: 0, no_of_activities: 0, product: 0}
+                    }
+
+                    representaitveJSON = {
+                        ...representaitveJSON, 
+                        child: JSON.stringify(child), 
+                        child_total: child.length,
+                        no_of_assets: no_of_assets, 
+                        no_of_transactions: no_of_transactions,
+                        no_of_parties: no_of_parties,
+                        no_of_inventor: no_of_inventor,
+                        no_of_activities: no_of_activities,
                     }
                     companiesList.push(representaitveJSON)
                     return representative
                 })
                 await Promise.all(promiseReport)
-
-                
             }            
-
             res.status(200).json({list: companiesList, total_records});
         } else {
             res.status(401).send("Unable to retrieve companies");

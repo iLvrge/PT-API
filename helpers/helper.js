@@ -1344,7 +1344,7 @@ let getAllCompaniesList = async (DBConnection) => {
 
 let getCompaniesWithChildren = async (DBConnection, organisationID) => {
     let companies = [];
-    const parentCompanyQuery = "SELECT representative_id as id, original_name, representative_name, instances, instances + (Select sum(instances) FROM representative as r1 WHERE r1.parent_id = r.representative_id) as counter FROM representative as r WHERE r.parent_id = 0";
+    const parentCompanyQuery = "SELECT representative_id as id, original_name, representative_name, instances, instances + (Select sum(instances) FROM representative as r1 WHERE r1.parent_id = r.representative_id) as counter, type FROM representative as r WHERE r.parent_id = 0";
 
     companies = await DBConnection.query(parentCompanyQuery,{
         type: connection.Sequelize.QueryTypes.SELECT,
@@ -1369,16 +1369,17 @@ let getCompaniesWithChildren = async (DBConnection, organisationID) => {
         ); 
         if(childCompanies.length == 0) {
             for(let i = 0; i < companies.length; i++) {
-                let newC = {...companies[i]};
+                /* let newC = {...companies[i]};
                 newC.counter = newC.instances;
-                companies[i]['children'] = [newC];
+                companies[i]['children'] = [newC]; */
+                companies[i]['children'] = []
             }
         } else {
             for(let i = 0; i < companies.length; i++) {
                 let children = [];
-                let newC = {...companies[i]};
+                /* let newC = {...companies[i]};
                 newC.counter = newC.instances;
-                children.push(newC);
+                children.push(newC); */
                 for(let j = 0; j< childCompanies.length; j++) {
                     if(parseInt(companies[i].id) === parseInt(childCompanies[j].parent_id)) {
                         children.push({...childCompanies[j]});
