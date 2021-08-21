@@ -674,7 +674,7 @@ route.post("/", [authJWT.verifyToken, clientDBConnection.connect], async(req, re
     
                                        
     
-                                        exec(`php -f /var/www/html/trash/download_all_pdf.php "${company}"`, (error, stdd, stderr)=> {
+                                        exec(`php -f /var/www/html/trash/download_all_pdf.php "${req.orgId}"`, (error, stdd, stderr)=> {
                                             console.log("donwload_all_pdf....")
                                             console.log(error); 
                                             console.log(stderr);
@@ -831,7 +831,7 @@ route.post("/", [authJWT.verifyToken, clientDBConnection.connect], async(req, re
                                             
         
         
-                                            exec(`php -f /var/www/html/trash/download_all_pdf.php "${company}"`, (error, stdd, stderr)=> {
+                                            exec(`php -f /var/www/html/trash/download_all_pdf.php "${req.orgId}"`, (error, stdd, stderr)=> {
                                                 console.log("donwload_all_pdf....")
                                                 console.log(error); 
                                                 console.log(stderr);
@@ -930,7 +930,7 @@ route.post("/", [authJWT.verifyToken, clientDBConnection.connect], async(req, re
         
                                            
         
-                                            exec(`php -f /var/www/html/trash/download_all_pdf.php "${company}"`, (error, stdd, stderr)=> {
+                                            exec(`php -f /var/www/html/trash/download_all_pdf.php "${req.orgId}"`, (error, stdd, stderr)=> {
                                                 console.log("donwload_all_pdf....")
                                                 console.log(error); 
                                                 console.log(stderr);
