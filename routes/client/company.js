@@ -656,13 +656,13 @@ route.post("/", [authJWT.verifyToken, clientDBConnection.connect], async(req, re
                                         console.log("DONE");
                                     });
 
-                                    exec(`php -f /var/www/html/trash/admin_report_represetative_assets_transactions_by_account.php "${req.orgId}" "${findName.representative_name}"`, (error, stdd, stderr)=> {
+                                    exec(`php -f /var/www/html/trash/admin_report_represetative_assets_transactions_by_account.php "${req.orgId}" ""`, (error, stdd, stderr)=> {
                                         console.log("fill admin_report_represetative_assets_transactions_by_account.php ....")
                                         console.log(error); 
                                         console.log(stderr);
                                         console.log(stdd);
                                         console.log("DONE");
-                                        exec(`php -f /var/www/html/trash/report_represetative_assets_transactions_by_account.php "${req.orgId}" "${findName.representative_name}"`, (error, stdd, stderr)=> {
+                                        exec(`php -f /var/www/html/trash/report_represetative_assets_transactions_by_account.php "${req.orgId}" ""`, (error, stdd, stderr)=> {
                                             console.log("fill report_represetative_assets_transactions_by_account.php ....")
                                             console.log(error); 
                                             console.log(stderr);
@@ -810,13 +810,13 @@ route.post("/", [authJWT.verifyToken, clientDBConnection.connect], async(req, re
                                                 console.log("DONE");
                                             });
 
-                                            exec(`php -f /var/www/html/trash/admin_report_represetative_assets_transactions_by_account.php "${req.orgId}" "${findName.representative_name}"`, (error, stdd, stderr)=> {
+                                            exec(`php -f /var/www/html/trash/admin_report_represetative_assets_transactions_by_account.php "${req.orgId}" ""`, (error, stdd, stderr)=> {
                                                 console.log("fill admin_report_represetative_assets_transactions_by_account.php ....")
                                                 console.log(error); 
                                                 console.log(stderr);
                                                 console.log(stdd);
                                                 console.log("DONE");
-                                                exec(`php -f /var/www/html/trash/report_represetative_assets_transactions_by_account.php "${req.orgId}" "${findName.representative_name}"`, (error, stdd, stderr)=> {
+                                                exec(`php -f /var/www/html/trash/report_represetative_assets_transactions_by_account.php "${req.orgId}" ""`, (error, stdd, stderr)=> {
                                                         console.log("fill report_represetative_assets_transactions_by_account.php ....")
                                                         console.log(error); 
                                                         console.log(stderr);
@@ -909,13 +909,13 @@ route.post("/", [authJWT.verifyToken, clientDBConnection.connect], async(req, re
                                                 console.log("DONE");
                                             });
 
-                                            exec(`php -f /var/www/html/trash/admin_report_represetative_assets_transactions_by_account.php "${req.orgId}" "${findName.representative_name}"`, (error, stdd, stderr)=> {
+                                            exec(`php -f /var/www/html/trash/admin_report_represetative_assets_transactions_by_account.php "${req.orgId}" ""`, (error, stdd, stderr)=> {
                                                 console.log("fill admin_report_represetative_assets_transactions_by_account.php ....")
                                                 console.log(error); 
                                                 console.log(stderr);
                                                 console.log(stdd);
                                                 console.log("DONE");
-                                                exec(`php -f /var/www/html/trash/report_represetative_assets_transactions_by_account.php "${req.orgId}" "${findName.representative_name}"`, (error, stdd, stderr)=> {
+                                                exec(`php -f /var/www/html/trash/report_represetative_assets_transactions_by_account.php "${req.orgId}" ""`, (error, stdd, stderr)=> {
                                                     console.log("fill report_represetative_assets_transactions_by_account.php ....")
                                                     console.log(error); 
                                                     console.log(stderr);
@@ -1088,13 +1088,13 @@ route.delete("/", [authJWT.verifyToken, clientDBConnection.connect], async(req, 
                                                 console.log("DONE");
 
                                             });
-                                            exec(`php -f /var/www/html/trash/admin_report_represetative_assets_transactions_by_account.php "${req.orgId}" "${findName.representative_name}"`, (error, stdd, stderr)=> {
+                                            exec(`php -f /var/www/html/trash/admin_report_represetative_assets_transactions_by_account.php "${req.orgId}" ""`, (error, stdd, stderr)=> {
                                                 console.log("fill admin_report_represetative_assets_transactions_by_account.php ....")
                                                 console.log(error); 
                                                 console.log(stderr);
                                                 console.log(stdd);
                                                 console.log("DONE");
-                                                exec(`php -f /var/www/html/trash/report_represetative_assets_transactions_by_account.php "${req.orgId}" "${findName.representative_name}"`, (error, stdd, stderr)=> {
+                                                exec(`php -f /var/www/html/trash/report_represetative_assets_transactions_by_account.php "${req.orgId}" ""`, (error, stdd, stderr)=> {
                                                     console.log("fill report_represetative_assets_transactions_by_account.php ....")
                                                     console.log(error); 
                                                     console.log(stderr);
@@ -1130,13 +1130,13 @@ route.delete("/", [authJWT.verifyToken, clientDBConnection.connect], async(req, 
                                 console.log(stdd);
                                 console.log("DONE");
                             });
-                            exec(`php -f /var/www/html/trash/admin_report_represetative_assets_transactions_by_account.php "${req.orgId}" "${findName.representative_name}"`, (error, stdd, stderr)=> {
+                            exec(`php -f /var/www/html/trash/admin_report_represetative_assets_transactions_by_account.php "${req.orgId}" ""`, (error, stdd, stderr)=> {
                                 console.log("fill admin_report_represetative_assets_transactions_by_account.php ....")
                                 console.log(error); 
                                 console.log(stderr);
                                 console.log(stdd);
                                 console.log("DONE");
-                                exec(`php -f /var/www/html/trash/report_represetative_assets_transactions_by_account.php "${req.orgId}" "${findName.representative_name}"`, (error, stdd, stderr)=> {
+                                exec(`php -f /var/www/html/trash/report_represetative_assets_transactions_by_account.php "${req.orgId}" ""`, (error, stdd, stderr)=> {
                                     console.log("fill report_represetative_assets_transactions_by_account.php ....")
                                     console.log(error); 
                                     console.log(stderr);
