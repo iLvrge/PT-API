@@ -1201,7 +1201,7 @@ let getCompaniesListWithReports = async (DBConnection) => {
     const Representative = DBConnection.define('ClientRepesentative', ClientRepesentative.mainStructure, ClientRepesentative.options);
 
     const getList =  await Representative.findAll({
-        where: {parent_id: 0}
+        where: {parent_id: 0, type: 0}
     });
 
     if(getList.length > 0) {
@@ -1260,7 +1260,7 @@ let getCompaniesListSumWithReports = async (DBConnection) => {
     const Representative = DBConnection.define('ClientRepesentative', ClientRepesentative.mainStructure, ClientRepesentative.options);
 
     const getList =  await Representative.findAll({
-        where: {parent_id: 0}
+        where: {parent_id: 0, type: 0}
     });
 
     if(getList.length > 0) {
@@ -1301,7 +1301,15 @@ let getCompaniesList = async (DBConnection) => {
     const Representative = DBConnection.define('ClientRepesentative', ClientRepesentative.mainStructure, ClientRepesentative.options);
 
     return await Representative.findAll({
-        where: {parent_id: 0}
+        where: {parent_id: 0, type: 0}
+    });
+}
+
+let getCompaniesAllList = async (DBConnection) => {
+    const Representative = DBConnection.define('ClientRepesentative', ClientRepesentative.mainStructure, ClientRepesentative.options);
+
+    return await Representative.findAll({
+        where: {type: 0}
     });
 }
 
@@ -2820,4 +2828,5 @@ helper.findAssetsTimeSpanByTransactionById = findAssetsTimeSpanByTransactionById
 helper.findRfIDsBySearchString = findRfIDsBySearchString 
 helper.getCompaniesListWithReports = getCompaniesListWithReports 
 helper.getCompaniesListSumWithReports = getCompaniesListSumWithReports 
+helper.getCompaniesAllList = getCompaniesAllList 
 module.exports = helper;

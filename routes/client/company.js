@@ -79,7 +79,9 @@ route.get("/summary", [authJWT.verifyToken, clientDBConnection.connect], async(r
      * Total Assets
      */
     const { access_token, user_account } = req.query
-    const companies = await helpers.getCompaniesList(req.connection_db);
+    const companies = await helpers.getCompaniesAllList(req.connection_db);
+
+
 
     const allCompanies = []
 
