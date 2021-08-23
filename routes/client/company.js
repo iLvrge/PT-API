@@ -335,9 +335,18 @@ route.get("/list", [authJWT.verifyToken, clientDBConnection.connect], async(req,
                 const promiseReport = list.map( async representative => {
                     let representaitveJSON = representative.toJSON();
                    
-                    let child = [], product = 0, no_of_assets = 0, no_of_transactions = 0, no_of_parties = 0, no_of_inventor = 0, no_of_activities = 0;
+                    let child = [], childWithName = [], product = 0, no_of_assets = 0, no_of_transactions = 0, no_of_parties = 0, no_of_inventor = 0, no_of_activities = 0;
                     if(findChild.length > 0) {
-                        child = findChild.filter( row => row.parent_id == representative.representative_id).map(obj => obj.representative_id)
+                        child = findChild
+                                .filter( row => row.parent_id == representative.representative_id)
+                                .map(obj => {
+                                    childWithName.push({
+                                        original_name: obj.original_name,
+                                        representative_name: obj.representative_name,
+                                        representative_id: obj.representative_id,
+                                    })
+                                    return obj.representative_id
+                                })
                     }
 
                     if(representative.type == 1) {
@@ -400,6 +409,7 @@ route.get("/list", [authJWT.verifyToken, clientDBConnection.connect], async(req,
                         ...representaitveJSON, 
                         child: JSON.stringify(child), 
                         child_total: child.length,
+                        child_full_detail: JSON.stringify(childWithName),
                         no_of_assets: no_of_assets, 
                         no_of_transactions: no_of_transactions,
                         no_of_parties: no_of_parties,
