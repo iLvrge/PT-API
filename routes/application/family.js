@@ -546,7 +546,7 @@ route.get("/family/abstract/:applicationNumber", [authJWT.verifyToken], async (r
             pgPubDocNum = req.query.publication_number 
         }
         /*pgPubDocNum = '20200053026'*/
-        pgPubDocNum = '20200053026'
+        p
 
         if( pgPubDocNum !== '' ) {
             let filePath = await findXMLFile(pgPubDocNum, 1)
@@ -718,7 +718,7 @@ route.get("/family/claims/:applicationNumber", [authJWT.verifyToken], async (req
                 } else if( req.query.publication_number !== '') {
                     pgPubDocNum = req.query.publication_number 
                 }
-                pgPubDocNum = '20200053026'
+                //pgPubDocNum = '20200053026'
                 if( pgPubDocNum !== '' ) {
                     let filePath = await findXMLFile(pgPubDocNum, 1)
 
@@ -769,7 +769,7 @@ route.get("/family/specifications/:applicationNumber", [authJWT.verifyToken], as
             } else if( req.query.publication_number !== '') {
                 pgPubDocNum = req.query.publication_number 
             }
-            pgPubDocNum = '20200053026'
+            //pgPubDocNum = '20200053026'
             if( pgPubDocNum !== '' ) {
                 let filePath = await findXMLFile(pgPubDocNum, 1)
 
@@ -821,7 +821,7 @@ route.get("/family/images/:applicationNumber", [authJWT.verifyToken], async (req
             } else if( req.query.publication_number !== '') {
                 pgPubDocNum = req.query.publication_number 
             }
-            pgPubDocNum = '20200053026'
+            //pgPubDocNum = '20200053026'
             if( pgPubDocNum !== '' ) {
                 let filePath = await findXMLFile(pgPubDocNum, 1)
 
