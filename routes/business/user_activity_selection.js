@@ -72,7 +72,7 @@ route.post("/user_activity_selection", [authJWT.verifyToken], async (req, res, n
  * Middleware to check authentication code 
  * Delete user company selection to database
  */
-route.delete("/user_activity_selection", [authJWT.verifyToken], async (req, res, next) => {
+route.put("/user_activity_selection", [authJWT.verifyToken], async (req, res, next) => {
     try{
         let { activity_id } = req.body;
 
@@ -81,6 +81,11 @@ route.delete("/user_activity_selection", [authJWT.verifyToken], async (req, res,
             //truncate previous records
             await UserActivitySelection.destroy({
                 where: {user_id: req.userId, organisation_id: req.orgId, activity_id }
+            }) 
+        } else if(activity_id != undefined && activity_id  == 0 ) {
+            //truncate previous records
+            await UserActivitySelection.destroy({
+                where: {user_id: req.userId, organisation_id: req.orgId }
             }) 
         }
         res.status(200).send("Delete selection")
