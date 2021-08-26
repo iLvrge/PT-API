@@ -18,7 +18,7 @@ const UserCompanySelection = require("../../model/business/UserCompanySelection"
 route.get("/user_company_selection", [authJWT.verifyToken], async (req, res, next) => {
     try{
         const list = await UserCompanySelection.findAll({
-            attributes: ['user_company_selection_id', 'user_id', 'organisation_id', 'representative_id'],
+            attributes: ['representative_id'],
             where: {user_id: req.userId, organisation_id: req.orgId},
             group: ['organisation_id', 'representative_id']
         })
@@ -61,7 +61,7 @@ route.post("/user_company_selection", [authJWT.verifyToken], async (req, res, ne
                 const addedRecords = await UserCompanySelection.bulkCreate(addData, { returning: true })
                 if( addedRecords ) {
                     list = await UserCompanySelection.findAll({
-                        attributes: ['user_company_selection_id', 'user_id', 'organisation_id', 'representative_id'],
+                        attributes: ['representative_id'],
                         where: {user_id: req.userId, organisation_id: req.orgId}
                     })
                 }
