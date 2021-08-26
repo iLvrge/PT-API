@@ -629,12 +629,12 @@ route.post("/", [authJWT.verifyToken, clientDBConnection.connect], async(req, re
                                 if(!listedCompanies.includes(company.name)){
 
                                     let instances = company.instances
-                                    if(company.representative_id > 0) {
-                                        const getAllNormalizeQuery = `SELECT sum(a.instances) as counter FROM assignor_and_assignee as a WHERE a.representative_id IN( SELECT representative_id FROM representative WHERE representative_id = :representative_id) GROUP BY a.name`;
+                                    if(company.representative_name  != '') {
+                                        const getAllNormalizeQuery = `SELECT sum(a.instances) as counter FROM assignor_and_assignee as a WHERE a.representative_id IN( SELECT representative_id FROM representative WHERE representative_name = :representative_name) GROUP BY a.representative_id`;
 
                                         const findCounter = await req.connection_db.query(getAllNormalizeQuery,{
                                             type: connection.Sequelize.QueryTypes.SELECT,
-                                            replacements: { representative_id: company.representative_id },
+                                            replacements: { representative_name: company.representative_name },
                                             raw: true,
                                             plain: true,
                                             logging: console.log,
@@ -735,19 +735,21 @@ route.post("/", [authJWT.verifyToken, clientDBConnection.connect], async(req, re
                     if(getList.length > 0) {                
                         getList.forEach( async company => {
                             let representativeName = "", instances = company.instances;
-                            const getAllNormalizeQuery = `SELECT sum(a.instances) as counter FROM assignor_and_assignee as a WHERE a.representative_id IN( SELECT representative_id FROM representative WHERE representative_id = :representative_id) GROUP BY a.name`;
+                            if(company.representative_name  != '') {
+                                const getAllNormalizeQuery = `SELECT sum(a.instances) as counter FROM assignor_and_assignee as a WHERE a.representative_id IN( SELECT representative_id FROM representative WHERE representative_name = :representative_name) GROUP BY a.representative_id`;
 
-                            const findCounter = await req.connection_db.query(getAllNormalizeQuery,{
+                                const findCounter = await req.connection_db.query(getAllNormalizeQuery,{
                                     type: connection.Sequelize.QueryTypes.SELECT,
-                                    replacements: { representative_id: company.representative_id },
+                                    replacements: { representative_name: company.representative_name },
                                     raw: true,
                                     plain: true,
                                     logging: console.log,
+                                    }
+                                ); 
+
+                                if( findCounter != null && findCounter.counter > 0) {
+                                    instances = findCounter.counter
                                 }
-                            ); 
-                            
-                            if( findCounter != null && findCounter.counter > 0) {
-                                instances = findCounter.counter
                             }
 
                             if(company.name != null) {
