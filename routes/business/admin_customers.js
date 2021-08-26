@@ -8,11 +8,13 @@ const express = require("express"),
 
     https = require('https'),
 
-    Stream = require('stream').Transform;
+    Stream = require('stream').Transform,
+    
+    request = require('request');
 
 const { v4: uuidv4  } = require('uuid');
 
-const exec = require("child_process").exec;
+const { exec, spawn  } = require("child_process");
 
 const route = express.Router();
 
@@ -611,19 +613,16 @@ route.put("/customers/:id/users/:user_id", [authJWT.verifyToken, authJWT.isAdmin
 
 let downloadImageFromUrl = async (org, res, url, filename, contentType, callback) => {
     console.log("Calling downloadImageFromUrl.....")
-    var client = http;
+    /* var client = http;
     if (url.toString().indexOf("https") !== -1){
-      client = https;
-      console.log("sending HTTPS request");
+        client = https;
+        console.log("sending HTTPS request");
     }
     
     client.request(url, async (response)=> {  
-       
-        console.log("response chunk", response)
-       const data = new Stream();                                                    
+        const data = new Stream();                                                    
 
-        response.on('data', function(chunk) {  
-            console.log("Logo", chunk)
+        response.on('data', function(chunk) { 
             data.push(chunk);                                                         
         });                                                                         
 
@@ -662,7 +661,52 @@ let downloadImageFromUrl = async (org, res, url, filename, contentType, callback
                 }
             });
         });                                                                         
-    }).end();
+    }).end(); */
+
+    request.head(url, (err, response, body) => {
+        const path = url.split('/').pop(), pathDirectory = '/var/www/html/betapp/'
+        request(url)
+        .pipe(fs.createWriteStream(`${pathDirectory}${path}`))
+        .on('close', () => {
+            const imageData = fs.readFileSync(`${pathDirectory}${path}`, {flag:'r'});
+            if(imageData){
+                const bucketConfig = config.bucketConfig;  
+            
+                filename = filename.replace(/\s+/g, '-');
+               
+                let s3 = new AWS.S3({
+                    credentials: {
+                        accessKeyId: bucketConfig.accessKeyId,
+                        secretAccessKey: bucketConfig.secretAccessKey,
+                    },
+                    region: bucketConfig.region
+                })
+               
+                const params = {
+                    Key: `${bucketConfig.dirName}/${filename}`,
+                    Bucket: bucketConfig.bucketName,
+                    Body: imageData,
+                    ACL: 'public-read',
+                    ContentType: contentType,
+                    ContentDisposition: 'inline'
+                }
+                console.log("params", params)
+                s3.putObject(params, async function(err, data) {
+                    console.log(err, data);
+                    if(err == null) {
+                        filename = `https://s3-${bucketConfig.region}.amazonaws.com/${bucketConfig.bucketName}/${bucketConfig.dirName}/${filename}`;
+                        await org.update({
+                            logo: filename
+                        })
+                        spawn('rm', [`${pathDirectory}${path}`]);
+                        res.status(200).json({name: org.name, logo: org.logo});    
+                    } else {
+                        res.status(200).json({name: org.name, logo: ''});    
+                    }
+                });
+            }
+        })
+    })
 };
 
 route.put("/customers/:id/logo", [authJWT.verifyToken, authJWT.isAdmin], async (req, res)=>{
