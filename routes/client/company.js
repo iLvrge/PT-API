@@ -627,12 +627,31 @@ route.post("/", [authJWT.verifyToken, clientDBConnection.connect], async(req, re
                         if(getList.length > 0) {                
                             getList.forEach(async company => {
                                 if(!listedCompanies.includes(company.name)){
+
+                                    let instances = company.instances
+                                    if(company.representative_id > 0) {
+                                        const getAllNormalizeQuery = `SELECT sum(a.instances) as counter FROM assignor_and_assignee as a WHERE a.representative_id IN( SELECT representative_id FROM representative WHERE representative_id = :representative_id) GROUP BY a.name`;
+
+                                        const findCounter = await req.connection_db.query(getAllNormalizeQuery,{
+                                            type: connection.Sequelize.QueryTypes.SELECT,
+                                            replacements: { representative_id: company.representative_id },
+                                            raw: true,
+                                            plain: true,
+                                            logging: console.log,
+                                            }
+                                        ); 
+
+                                        if( findCounter != null && findCounter.counter > 0) {
+                                            instances = findCounter.counter
+                                        }
+                                    }
+
                                     let nameRepre = company.representative_name != null ? company.representative_name : company.name;
                                     /**
                                      * For inserting bulk entries creating array of companies
                                      */
                                     const arrayObj = {
-                                        original_name: company.name , representative_name: nameRepre, instances: company.instances, parent_id: findName.representative_id
+                                        original_name: company.name , representative_name: nameRepre, instances: instances, parent_id: findName.representative_id
                                     }
 
                                     if(companyList.includes(company.assignor_and_assignee_id)) {
@@ -714,8 +733,23 @@ route.post("/", [authJWT.verifyToken, clientDBConnection.connect], async(req, re
                     let companies = [], originalNames = [], representativeNames = [];
                     const Representative = req.connection_db.define('Representatives', Representatives.mainStructure, Representatives.options);
                     if(getList.length > 0) {                
-                        getList.forEach( company => {
-                            let representativeName = "";
+                        getList.forEach( async company => {
+                            let representativeName = "", instances = company.instances;
+                            const getAllNormalizeQuery = `SELECT sum(a.instances) as counter FROM assignor_and_assignee as a WHERE a.representative_id IN( SELECT representative_id FROM representative WHERE representative_id = :representative_id) GROUP BY a.name`;
+
+                            const findCounter = await req.connection_db.query(getAllNormalizeQuery,{
+                                    type: connection.Sequelize.QueryTypes.SELECT,
+                                    replacements: { representative_id: company.representative_id },
+                                    raw: true,
+                                    plain: true,
+                                    logging: console.log,
+                                }
+                            ); 
+                            
+                            if( findCounter != null && findCounter.counter > 0) {
+                                instances = findCounter.counter
+                            }
+
                             if(company.name != null) {
                                 originalNames.push(company.name);
                             } 
@@ -727,7 +761,7 @@ route.post("/", [authJWT.verifyToken, clientDBConnection.connect], async(req, re
                             }
                             
                             companies.push({
-                                instances: company.instances, representative_id: company.representative_id, original_name: company.name, representative_name: representativeName
+                                instances: instances, representative_id: company.representative_id, original_name: company.name, representative_name: representativeName
                             });
                         });
                     }
@@ -838,9 +872,6 @@ route.post("/", [authJWT.verifyToken, clientDBConnection.connect], async(req, re
                                                     });
                                             });
         
-                                            
-        
-        
                                             exec(`php -f /var/www/html/trash/download_all_pdf.php "${req.orgId}"`, (error, stdd, stderr)=> {
                                                 console.log("donwload_all_pdf....")
                                                 console.log(error); 
@@ -935,10 +966,7 @@ route.post("/", [authJWT.verifyToken, clientDBConnection.connect], async(req, re
                                                     console.log(stdd);
                                                     console.log("DONE");
                                                 });
-            
                                             });
-        
-                                           
         
                                             exec(`php -f /var/www/html/trash/download_all_pdf.php "${req.orgId}"`, (error, stdd, stderr)=> {
                                                 console.log("donwload_all_pdf....")

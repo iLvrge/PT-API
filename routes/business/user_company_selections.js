@@ -41,13 +41,11 @@ route.post("/user_company_selection", [authJWT.verifyToken], async (req, res, ne
 
         if(representative_id != undefined && representative_id != '') {
             representative_id = JSON.parse(representative_id)
-
+            //truncate previous records
+            await UserCompanySelection.destroy({
+                where: {user_id: req.userId, organisation_id: req.orgId}
+            }) 
             if(representative_id.length > 0) {
-                //truncate previous records
-                await UserCompanySelection.destroy({
-                    where: {user_id: req.userId, organisation_id: req.orgId}
-                }) 
-
                 const addData = [];
                 const proimse = representative_id.map( representative => {
                     addData.push({
