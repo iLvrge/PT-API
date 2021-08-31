@@ -632,7 +632,7 @@ route.post("/", [authJWT.verifyToken, clientDBConnection.connect], async(req, re
                                     if(company.representative_name  != '') {
                                         const getAllNormalizeQuery = `SELECT sum(a.instances) as counter FROM assignor_and_assignee as a WHERE a.representative_id IN( SELECT representative_id FROM representative WHERE representative_name = :representative_name) GROUP BY a.representative_id`;
 
-                                        const findCounter = await req.connection_db.query(getAllNormalizeQuery,{
+                                        const findCounter = await connection.resources.query(getAllNormalizeQuery,{
                                             type: connection.Sequelize.QueryTypes.SELECT,
                                             replacements: { representative_name: company.representative_name },
                                             raw: true,
@@ -738,7 +738,7 @@ route.post("/", [authJWT.verifyToken, clientDBConnection.connect], async(req, re
                             if(company.representative_name  != '') {
                                 const getAllNormalizeQuery = `SELECT sum(a.instances) as counter FROM assignor_and_assignee as a WHERE a.representative_id IN( SELECT representative_id FROM representative WHERE representative_name = :representative_name) GROUP BY a.representative_id`;
 
-                                const findCounter = await req.connection_db.query(getAllNormalizeQuery,{
+                                const findCounter = await connection.resources.query(getAllNormalizeQuery,{
                                     type: connection.Sequelize.QueryTypes.SELECT,
                                     replacements: { representative_name: company.representative_name },
                                     raw: true,
