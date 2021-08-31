@@ -586,7 +586,7 @@ route.post("/", [authJWT.verifyToken, clientDBConnection.connect], async(req, re
             let companyList = JSON.parse(subsidaryName);
 
             if(companyList.length > 0) {
-                const querySubsidaryCompany = "SELECT aaa.assignor_and_assignee_id, aaa.name, r.representative_name, aaa.instances, r.representative_id FROM assignor_and_assignee as aaa LEFT JOIN representative as r ON r.representative_id = aaa.representative_id WHERE aaa.assignor_and_assignee_id IN (:IDs)";
+                const querySubsidaryCompany = "SELECT aaa.assignor_and_assignee_id, aaa.name, r.representative_name, aaa.instances, r.representative_id, (SELECT sum(a.instances) as counter FROM assignor_and_assignee as a WHERE a.representative_id IN( SELECT representative_id FROM representative WHERE representative_name = r.representative_name) GROUP BY a.representative_id) as representative_instances FROM assignor_and_assignee as aaa LEFT JOIN representative as r ON r.representative_id = aaa.representative_id WHERE aaa.assignor_and_assignee_id IN (:IDs)";
                     
                 const getList = await connection.resources.query(querySubsidaryCompany,{
                     type: connection.Sequelize.QueryTypes.SELECT,
@@ -623,27 +623,17 @@ route.post("/", [authJWT.verifyToken, clientDBConnection.connect], async(req, re
                         
                         let companies = [], childCompanies = [];
                         let tap = false;
+
+
+
                         
                         if(getList.length > 0) {                
-                            getList.forEach(async company => {
+                            const promiseList = getList.map(async company => {
                                 if(!listedCompanies.includes(company.name)){
 
                                     let instances = company.instances
-                                    if(company.representative_name  != '') {
-                                        const getAllNormalizeQuery = `SELECT sum(a.instances) as counter FROM assignor_and_assignee as a WHERE a.representative_id IN( SELECT representative_id FROM representative WHERE representative_name = :representative_name) GROUP BY a.representative_id`;
-
-                                        const findCounter = await connection.resources.query(getAllNormalizeQuery,{
-                                            type: connection.Sequelize.QueryTypes.SELECT,
-                                            replacements: { representative_name: company.representative_name },
-                                            raw: true,
-                                            plain: true,
-                                            logging: console.log,
-                                            }
-                                        ); 
-
-                                        if( findCounter != null && findCounter.counter > 0) {
-                                            instances = findCounter.counter
-                                        }
+                                    if(company.representative_instances  > 0 ) {
+                                        instances = company.representative_instances
                                     }
 
                                     let nameRepre = company.representative_name != null ? company.representative_name : company.name;
@@ -667,6 +657,7 @@ route.post("/", [authJWT.verifyToken, clientDBConnection.connect], async(req, re
                                     tap = true;
                                 }                            
                             });
+                            await Promise.all(promiseList)
                         }
                         
                         if(companies.length > 0) {
@@ -733,23 +724,10 @@ route.post("/", [authJWT.verifyToken, clientDBConnection.connect], async(req, re
                     let companies = [], originalNames = [], representativeNames = [];
                     const Representative = req.connection_db.define('Representatives', Representatives.mainStructure, Representatives.options);
                     if(getList.length > 0) {                
-                        getList.forEach( async company => {
+                        const promiseList = getList.map( async company => {
                             let representativeName = "", instances = company.instances;
-                            if(company.representative_name  != '') {
-                                const getAllNormalizeQuery = `SELECT sum(a.instances) as counter FROM assignor_and_assignee as a WHERE a.representative_id IN( SELECT representative_id FROM representative WHERE representative_name = :representative_name) GROUP BY a.representative_id`;
-
-                                const findCounter = await connection.resources.query(getAllNormalizeQuery,{
-                                    type: connection.Sequelize.QueryTypes.SELECT,
-                                    replacements: { representative_name: company.representative_name },
-                                    raw: true,
-                                    plain: true,
-                                    logging: console.log,
-                                    }
-                                ); 
-
-                                if( findCounter != null && findCounter.counter > 0) {
-                                    instances = findCounter.counter
-                                }
+                            if(company.representative_instances  > 0 ) {
+                                instances = company.representative_instances
                             }
 
                             if(company.name != null) {
@@ -766,7 +744,9 @@ route.post("/", [authJWT.verifyToken, clientDBConnection.connect], async(req, re
                                 instances: instances, representative_id: company.representative_id, original_name: company.name, representative_name: representativeName
                             });
                         });
+                        await Promise.all(promiseList)
                     }
+                    //console.log('COMPANIES_LIST', companies)
                     if(companies.length > 0) {                    
                         let whereC = "";
                         if(originalNames.length > 0 && representativeNames.length > 0) {
