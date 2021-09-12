@@ -546,8 +546,6 @@ route.get("/family/abstract/:applicationNumber", [authJWT.verifyToken], async (r
             pgPubDocNum = req.query.publication_number 
         }
         /*pgPubDocNum = '20200053026'*/
-        p
-
         if( pgPubDocNum !== '' ) {
             let filePath = await findXMLFile(pgPubDocNum, 1)
 
