@@ -517,6 +517,18 @@ const getContentFromXML = async (fileContent, contentType) => {
 
 }
 
+const getPublicationNumber = async(applicationNumber) => {
+    const query = `SELECT * FROM db_patent_grant_bibliographic.application_publication WHERE appno_doc_num = :applicationNumber`
+    const getPublicationData = await connection.resources.query(query,{
+        type: connection.Sequelize.QueryTypes.SELECT,
+        raw: true,
+        logging: console.log,
+        replacements: {applicationNumber},
+        plain: true
+    })
+    return getPublicationData
+}
+
 route.get("/family/abstract/:applicationNumber", [authJWT.verifyToken], async (req, res) =>{  
     try{
         const applicationNumber = req.params.applicationNumber;        
@@ -525,11 +537,13 @@ route.get("/family/abstract/:applicationNumber", [authJWT.verifyToken], async (r
         if(indexing != null && indexing.index >= 0) {
             asset = asset.substr(0,indexing.index)
         }
-        
-        let findPatent = await Documentid.findOne({
-            attributes: ['rf_id', 'grant_doc_num', 'pgpub_doc_num', 'pgpub_date'],
-            where: {appno_doc_num: asset}
-        })
+        let findPatent = await getPublicationNumber(asset)
+        if(findPatent === null) {
+            findPatent = await Documentid.findOne({
+                attributes: ['rf_id', 'grant_doc_num', 'pgpub_doc_num', 'pgpub_date'],
+                where: {appno_doc_num: asset}
+            })
+        }
         if(findPatent === null) {
             findPatent = await Documentid.findOne({
                 attributes: ['rf_id', 'grant_doc_num', 'pgpub_doc_num', 'pgpub_date'],
@@ -697,39 +711,39 @@ route.get("/family/claims/:applicationNumber", [authJWT.verifyToken], async (req
             if(indexing != null && indexing.index >= 0) {
                 asset = asset.substr(0,indexing.index)
             }
-            let findPatent = await Documentid.findOne({
-                attributes: ['rf_id', 'grant_doc_num', 'pgpub_doc_num', 'pgpub_date'],
-                where: {appno_doc_num: asset}
-            })
+            let findPatent = await getPublicationNumber(asset)
+            if(findPatent === null) {
+                findPatent = await Documentid.findOne({
+                    attributes: ['rf_id', 'grant_doc_num', 'pgpub_doc_num', 'pgpub_date'],
+                    where: {appno_doc_num: asset}
+                })
+            }
             if(findPatent === null) {
                 findPatent = await Documentid.findOne({
                     attributes: ['rf_id', 'grant_doc_num', 'pgpub_doc_num', 'pgpub_date'],
                     where: {grant_doc_num: asset}
                 })
             }
-            let query = '', replacements = {applicationNumber: asset}
-            if(findPatent != null && findPatent.rf_id > 0 && findPatent.pgpub_doc_num != null && findPatent.pgpub_doc_num != '') {
-                let pgPubDocNum = ''
+            let query = '', replacements = {applicationNumber: asset}, pgPubDocNum = ''
 
-                if( findPatent != null && findPatent.pgpub_doc_num !== '' ) {
-                    pgPubDocNum = `US${findPatent.pgpub_doc_num}`
-                } else if( req.query.publication_number !== '') {
-                    pgPubDocNum = req.query.publication_number 
-                }
-                //pgPubDocNum = '20200053026'
-                if( pgPubDocNum !== '' ) {
-                    let filePath = await findXMLFile(pgPubDocNum, 1)
-
-                    if( filePath !== '') {
-                        
-                        const getXMLData = await getFileContent(filePath)
-                        if( getXMLData !== '' ) {
-                            console.log('FIND XMl Content')
-                            claimsData = await getContentFromXML(getXMLData, 'claims')
-                        }
-                    }
-                } 
+            if( findPatent != null && findPatent.pgpub_doc_num !== '' ) {
+                pgPubDocNum = `US${findPatent.pgpub_doc_num}`
+            } else if( req.query.publication_number !== '') {
+                pgPubDocNum = req.query.publication_number 
             }
+            //pgPubDocNum = '20200053026'
+            if( pgPubDocNum !== '' ) {
+                let filePath = await findXMLFile(pgPubDocNum, 1)
+
+                if( filePath !== '') {
+                    
+                    const getXMLData = await getFileContent(filePath)
+                    if( getXMLData !== '' ) {
+                        console.log('FIND XMl Content')
+                        claimsData = await getContentFromXML(getXMLData, 'claims')
+                    }
+                }
+            } 
         }
         res.status(200).json(claimsData);
     } catch( err ) {
@@ -748,39 +762,39 @@ route.get("/family/specifications/:applicationNumber", [authJWT.verifyToken], as
         if(indexing != null && indexing.index >= 0) {
             asset = asset.substr(0,indexing.index)
         }
-        let findPatent = await Documentid.findOne({
-            attributes: ['rf_id', 'grant_doc_num', 'pgpub_doc_num', 'pgpub_date'],
-            where: {appno_doc_num: asset}
-        })
+        let findPatent = await getPublicationNumber(asset)
+        if(findPatent === null) {
+            findPatent = await Documentid.findOne({
+                attributes: ['rf_id', 'grant_doc_num', 'pgpub_doc_num', 'pgpub_date'],
+                where: {appno_doc_num: asset}
+            })
+        }
         if(findPatent === null) {
             findPatent = await Documentid.findOne({
                 attributes: ['rf_id', 'grant_doc_num', 'pgpub_doc_num', 'pgpub_date'],
                 where: {grant_doc_num: asset}
             })
         }
-        let query = '', replacements = {applicationNumber: asset}
-        if(findPatent != null && findPatent.rf_id > 0 && findPatent.pgpub_doc_num != null && findPatent.pgpub_doc_num != '') {
-            let pgPubDocNum = ''
+        let query = '', replacements = {applicationNumber: asset}, pgPubDocNum = ''
 
-            if( findPatent != null && findPatent.pgpub_doc_num !== '' ) {
-                pgPubDocNum = `US${findPatent.pgpub_doc_num}`
-            } else if( req.query.publication_number !== '') {
-                pgPubDocNum = req.query.publication_number 
-            }
-            //pgPubDocNum = '20200053026'
-            if( pgPubDocNum !== '' ) {
-                let filePath = await findXMLFile(pgPubDocNum, 1)
+        if( findPatent != null && findPatent.pgpub_doc_num !== '' ) {
+            pgPubDocNum = `US${findPatent.pgpub_doc_num}`
+        } else if( req.query.publication_number !== '') {
+            pgPubDocNum = req.query.publication_number 
+        }
+        //pgPubDocNum = '20200053026'
+        if( pgPubDocNum !== '' ) {
+            let filePath = await findXMLFile(pgPubDocNum, 1)
 
-                if( filePath !== '') {
-                    
-                    const getXMLData = await getFileContent(filePath)
-                    
-                    if( getXMLData !== '' ) {
-                        specificationsData = await getContentFromXML(getXMLData, 'specifications')
-                    }
+            if( filePath !== '') {
+                
+                const getXMLData = await getFileContent(filePath)
+                
+                if( getXMLData !== '' ) {
+                    specificationsData = await getContentFromXML(getXMLData, 'specifications')
                 }
-            } 
-        }      
+            }
+        }       
         if(specificationsData.length == 0) {
             // find from epo XML
 
@@ -800,36 +814,37 @@ route.get("/family/images/:applicationNumber", [authJWT.verifyToken], async (req
         if(indexing != null && indexing.index >= 0) {
             asset = asset.substr(0,indexing.index)
         }
-        let findPatent = await Documentid.findOne({
-            attributes: ['rf_id', 'grant_doc_num', 'pgpub_doc_num', 'pgpub_date'],
-            where: {appno_doc_num: asset}
-        })
+        let findPatent = await getPublicationNumber(asset)
+        if(findPatent === null) {
+            findPatent = await Documentid.findOne({
+                attributes: ['rf_id', 'grant_doc_num', 'pgpub_doc_num', 'pgpub_date'],
+                where: {appno_doc_num: asset}
+            })
+        }
+        
         if(findPatent === null) {
             findPatent = await Documentid.findOne({
                 attributes: ['rf_id', 'grant_doc_num', 'pgpub_doc_num', 'pgpub_date'],
                 where: {grant_doc_num: asset}
             })
         }
-        let imagesList = [], query = '', replacements = {applicationNumber: asset}
-        if(findPatent != null && findPatent.rf_id > 0 && findPatent.pgpub_doc_num != null && findPatent.pgpub_doc_num != '') {
-            let pgPubDocNum = ''
+        let imagesList = [], query = '', replacements = {applicationNumber: asset}, pgPubDocNum = ''
 
-            if( findPatent != null && findPatent.pgpub_doc_num !== '' ) {
-                pgPubDocNum = `US${findPatent.pgpub_doc_num}`
-            } else if( req.query.publication_number !== '') {
-                pgPubDocNum = req.query.publication_number 
-            }
-            //pgPubDocNum = '20200053026'
-            if( pgPubDocNum !== '' ) {
-                let filePath = await findXMLFile(pgPubDocNum, 1)
+        if( findPatent != null && findPatent.pgpub_doc_num !== '' ) {
+            pgPubDocNum = `US${findPatent.pgpub_doc_num}`
+        } else if( req.query.publication_number !== '') {
+            pgPubDocNum = req.query.publication_number 
+        }
+        //pgPubDocNum = '20200053026'
+        if( pgPubDocNum !== '' ) {
+            let filePath = await findXMLFile(pgPubDocNum, 1)
 
-                if( filePath !== '') {
-                    
-                    const getXMLData = await getFileContent(filePath)
-                    
-                    if( getXMLData !== '' ) {
-                        imagesList = await getContentFromXML(getXMLData, 'figures')
-                    }
+            if( filePath !== '') {
+                
+                const getXMLData = await getFileContent(filePath)
+                
+                if( getXMLData !== '' ) {
+                    imagesList = await getContentFromXML(getXMLData, 'figures')
                 }
             }
         }
