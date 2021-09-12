@@ -528,7 +528,7 @@ route.get("/family/abstract/:applicationNumber", [authJWT.verifyToken], async (r
         
         let findPatent = await Documentid.findOne({
             attributes: ['rf_id', 'grant_doc_num', 'pgpub_doc_num', 'pgpub_date'],
-            where: {appno_doc_num: applicationNumber}
+            where: {appno_doc_num: asset}
         })
         if(findPatent === null) {
             findPatent = await Documentid.findOne({
