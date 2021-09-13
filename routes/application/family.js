@@ -379,7 +379,7 @@ const getContentFromXML = async (fileContent, contentType) => {
                     }
                 })
             }
-            description = xmlToJSON['patent-application-publication']['subdoc-description']['detailed-description']['section']
+            description = xmlData['patent-application-publication']['subdoc-description']['detailed-description']['section']
                             
             if(Array.isArray(description)) {
                 description.forEach( item => {
