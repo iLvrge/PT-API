@@ -573,6 +573,7 @@ route.get("/family/abstract/:applicationNumber", [authJWT.verifyToken], async (r
                 const getXMLData = await getFileContent(filePath)
                 
                 if( getXMLData !== '' ) {
+                    console.log('FINDABSTRACT')
                     abstractData = await getContentFromXML(getXMLData, 'abstract')
                 }
             }
