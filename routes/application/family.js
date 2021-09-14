@@ -531,7 +531,7 @@ const getPublicationNumber = async(applicationNumber) => {
 
 route.get("/family/abstract/:applicationNumber", [authJWT.verifyToken], async (req, res) =>{  
     try{
-        const applicationNumber = req.params.applicationNumber;        
+         const applicationNumber = req.params.applicationNumber;  
         let asset = applicationNumber.toString().substr(2, applicationNumber.length), fileName = ''
         const indexing = /[a-z]/i.exec(asset)
         if(indexing != null && indexing.index >= 0) {
@@ -552,9 +552,7 @@ route.get("/family/abstract/:applicationNumber", [authJWT.verifyToken], async (r
                 where: {grant_doc_num: asset}
             })
         }
-        let abstractData = '', query = '', replacements = {applicationNumber}, type = 1
-        
-        let pgPubDocNum = ''
+        let abstractData = '', query = '', replacements = {applicationNumber}, type = 1, pgPubDocNum = ''
 
         if( findPatent != null && findPatent.pgpub_doc_num !== '' ) {
             pgPubDocNum = `US${findPatent.pgpub_doc_num}`
@@ -569,7 +567,7 @@ route.get("/family/abstract/:applicationNumber", [authJWT.verifyToken], async (r
             } else {
                 filePath = await findXMLFile(pgPubDocNum, type)
             }
-
+            console.log(`FILE PATH: ${filePath}`)
             if( filePath !== '') {
                 
                 const getXMLData = await getFileContent(filePath)
