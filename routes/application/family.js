@@ -577,7 +577,7 @@ route.get("/family/abstract/:applicationNumber", [authJWT.verifyToken], async (r
                 }
             }
         } 
-        if(abstractData == '' || abstractData == null || (abstractData.hasOwnProperty('abstracts') && (abstractData.abstracts == null ||  abstractData.abstracts.toString().trim() == ''))) {
+        /* if(abstractData == '' || abstractData == null || (abstractData.hasOwnProperty('abstracts') && (abstractData.abstracts == null ||  abstractData.abstracts.toString().trim() == ''))) {
             const token = await epo.readToken('HedCET')    
             if(token !== 'undefined' && token != '') {
                 const asset = applicationNumber
@@ -631,7 +631,7 @@ route.get("/family/abstract/:applicationNumber", [authJWT.verifyToken], async (r
                     }                    
                 }
             }
-        }   
+        } */   
         res.status(200).json(abstractData);
     } catch( err ) {
         console.log('ERROR IN Abstract', err);
