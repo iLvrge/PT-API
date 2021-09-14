@@ -338,7 +338,9 @@ const getContentFromXML = async (fileContent, contentType) => {
     const xmlData = parser.parse( fileContent, {ignoreAttributes: false});
     
     if(contentType === 'abstract') {
+        console.log(1)
         if( xmlData.hasOwnProperty('patent-application-publication') ){
+            console.log('A')
             const usBibliographic = xmlData['patent-application-publication']
             let content = usBibliographic['subdoc-abstract']
             if(typeof content === 'object'){
@@ -347,6 +349,7 @@ const getContentFromXML = async (fileContent, contentType) => {
                 }
             }
         } else if( xmlData.hasOwnProperty('us-patent-application') ){ 
+            console.log('B')
             const usBibliographic = xmlData['us-patent-application']
             if( usBibliographic.hasOwnProperty('abstract') ){ 
                 content = usBibliographic.abstract        
