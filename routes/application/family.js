@@ -518,7 +518,7 @@ const getContentFromXML = async (fileContent, contentType) => {
 }
 
 const getPublicationNumber = async(applicationNumber) => {
-    const query = `SELECT * FROM db_patent_grant_bibliographic.application_publication WHERE appno_doc_num = :applicationNumber`
+    const query = `SELECT pgpub_doc_num, appno_doc_num, file_name FROM db_patent_grant_bibliographic.application_publication WHERE appno_doc_num = :applicationNumber`
     const getPublicationData = await connection.resources.query(query,{
         type: connection.Sequelize.QueryTypes.SELECT,
         raw: true,
@@ -532,7 +532,7 @@ const getPublicationNumber = async(applicationNumber) => {
 route.get("/family/abstract/:applicationNumber", [authJWT.verifyToken], async (req, res) =>{  
     try{
         const applicationNumber = req.params.applicationNumber;        
-        let asset = applicationNumber.toString().substr(2, applicationNumber.length)
+        let asset = applicationNumber.toString().substr(2, applicationNumber.length), fileName = ''
         const indexing = /[a-z]/i.exec(asset)
         if(indexing != null && indexing.index >= 0) {
             asset = asset.substr(0,indexing.index)
@@ -543,6 +543,8 @@ route.get("/family/abstract/:applicationNumber", [authJWT.verifyToken], async (r
                 attributes: ['rf_id', 'grant_doc_num', 'pgpub_doc_num', 'pgpub_date'],
                 where: {appno_doc_num: asset}
             })
+        } else {
+            fileName = findPatent.file_name
         }
         if(findPatent === null) {
             findPatent = await Documentid.findOne({
@@ -550,7 +552,7 @@ route.get("/family/abstract/:applicationNumber", [authJWT.verifyToken], async (r
                 where: {grant_doc_num: asset}
             })
         }
-        let abstractData = '', query = '', replacements = {applicationNumber}
+        let abstractData = '', query = '', replacements = {applicationNumber}, type = 1
         
         let pgPubDocNum = ''
 
@@ -561,7 +563,12 @@ route.get("/family/abstract/:applicationNumber", [authJWT.verifyToken], async (r
         }
         /*pgPubDocNum = '20200053026'*/
         if( pgPubDocNum !== '' ) {
-            let filePath = await findXMLFile(pgPubDocNum, 1)
+            let filePath = ''
+            if(fileName !== '') {
+                filePath = `${type === 1 ? extraDiskPath : mainFolderPath}XML/${fileName}`
+            } else {
+                filePath = await findXMLFile(pgPubDocNum, type)
+            }
 
             if( filePath !== '') {
                 
@@ -706,7 +713,7 @@ route.get("/family/claims/:applicationNumber", [authJWT.verifyToken], async (req
                 }
             }
         } else if(applicationNumber.toString().toLowerCase().indexOf('us') !== -1) {
-            let asset = applicationNumber.toString().substr(2, applicationNumber.length)
+            let asset = applicationNumber.toString().substr(2, applicationNumber.length), fileName = ''
             const indexing = /[a-z]/i.exec(asset)
             if(indexing != null && indexing.index >= 0) {
                 asset = asset.substr(0,indexing.index)
@@ -717,6 +724,8 @@ route.get("/family/claims/:applicationNumber", [authJWT.verifyToken], async (req
                     attributes: ['rf_id', 'grant_doc_num', 'pgpub_doc_num', 'pgpub_date'],
                     where: {appno_doc_num: asset}
                 })
+            } else {
+                fileName = findPatent.file_name
             }
             if(findPatent === null) {
                 findPatent = await Documentid.findOne({
@@ -724,7 +733,7 @@ route.get("/family/claims/:applicationNumber", [authJWT.verifyToken], async (req
                     where: {grant_doc_num: asset}
                 })
             }
-            let query = '', replacements = {applicationNumber: asset}, pgPubDocNum = ''
+            let query = '', replacements = {applicationNumber: asset}, pgPubDocNum = '', type = 1
 
             if( findPatent != null && findPatent.pgpub_doc_num !== '' ) {
                 pgPubDocNum = `US${findPatent.pgpub_doc_num}`
@@ -733,7 +742,12 @@ route.get("/family/claims/:applicationNumber", [authJWT.verifyToken], async (req
             }
             //pgPubDocNum = '20200053026'
             if( pgPubDocNum !== '' ) {
-                let filePath = await findXMLFile(pgPubDocNum, 1)
+                let filePath = ''
+                if(fileName !== '') {
+                    filePath = `${type === 1 ? extraDiskPath : mainFolderPath}XML/${fileName}`
+                } else {
+                    filePath = await findXMLFile(pgPubDocNum, type)
+                }
 
                 if( filePath !== '') {
                     
@@ -757,7 +771,7 @@ route.get("/family/specifications/:applicationNumber", [authJWT.verifyToken], as
     try{
         let specificationsData = []
         const applicationNumber = req.params.applicationNumber;  
-        let asset = applicationNumber.toString().substr(2, applicationNumber.length)
+        let asset = applicationNumber.toString().substr(2, applicationNumber.length), fileName = ''
         const indexing = /[a-z]/i.exec(asset)
         if(indexing != null && indexing.index >= 0) {
             asset = asset.substr(0,indexing.index)
@@ -768,6 +782,8 @@ route.get("/family/specifications/:applicationNumber", [authJWT.verifyToken], as
                 attributes: ['rf_id', 'grant_doc_num', 'pgpub_doc_num', 'pgpub_date'],
                 where: {appno_doc_num: asset}
             })
+        } else {
+            fileName = findPatent.file_name
         }
         if(findPatent === null) {
             findPatent = await Documentid.findOne({
@@ -775,7 +791,7 @@ route.get("/family/specifications/:applicationNumber", [authJWT.verifyToken], as
                 where: {grant_doc_num: asset}
             })
         }
-        let query = '', replacements = {applicationNumber: asset}, pgPubDocNum = ''
+        let query = '', replacements = {applicationNumber: asset}, pgPubDocNum = '', type = 1
 
         if( findPatent != null && findPatent.pgpub_doc_num !== '' ) {
             pgPubDocNum = `US${findPatent.pgpub_doc_num}`
@@ -784,7 +800,12 @@ route.get("/family/specifications/:applicationNumber", [authJWT.verifyToken], as
         }
         //pgPubDocNum = '20200053026'
         if( pgPubDocNum !== '' ) {
-            let filePath = await findXMLFile(pgPubDocNum, 1)
+            let filePath = ''
+            if(fileName !== '') {
+                filePath = `${type === 1 ? extraDiskPath : mainFolderPath}XML/${fileName}`
+            } else {
+                filePath = await findXMLFile(pgPubDocNum, type)
+            }
 
             if( filePath !== '') {
                 
@@ -809,7 +830,7 @@ route.get("/family/specifications/:applicationNumber", [authJWT.verifyToken], as
 route.get("/family/images/:applicationNumber", [authJWT.verifyToken], async (req, res) =>{
     try{
         const applicationNumber = req.params.applicationNumber;
-        let asset = applicationNumber.toString().substr(2, applicationNumber.length)
+        let asset = applicationNumber.toString().substr(2, applicationNumber.length), fileName = ''
         const indexing = /[a-z]/i.exec(asset)
         if(indexing != null && indexing.index >= 0) {
             asset = asset.substr(0,indexing.index)
@@ -820,6 +841,8 @@ route.get("/family/images/:applicationNumber", [authJWT.verifyToken], async (req
                 attributes: ['rf_id', 'grant_doc_num', 'pgpub_doc_num', 'pgpub_date'],
                 where: {appno_doc_num: asset}
             })
+        } else {
+            fileName = findPatent.file_name
         }
         
         if(findPatent === null) {
@@ -828,7 +851,7 @@ route.get("/family/images/:applicationNumber", [authJWT.verifyToken], async (req
                 where: {grant_doc_num: asset}
             })
         }
-        let imagesList = [], query = '', replacements = {applicationNumber: asset}, pgPubDocNum = ''
+        let imagesList = [], query = '', replacements = {applicationNumber: asset}, pgPubDocNum = '', type = 1
 
         if( findPatent != null && findPatent.pgpub_doc_num !== '' ) {
             pgPubDocNum = `US${findPatent.pgpub_doc_num}`
@@ -837,7 +860,12 @@ route.get("/family/images/:applicationNumber", [authJWT.verifyToken], async (req
         }
         //pgPubDocNum = '20200053026'
         if( pgPubDocNum !== '' ) {
-            let filePath = await findXMLFile(pgPubDocNum, 1)
+            let filePath = ''
+            if(fileName !== '') {
+                filePath = `${type === 1 ? extraDiskPath : mainFolderPath}XML/${fileName}`
+            } else {
+                filePath = await findXMLFile(pgPubDocNum, type)
+            }
 
             if( filePath !== '') {
                 
