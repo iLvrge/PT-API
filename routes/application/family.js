@@ -353,6 +353,7 @@ const getContentFromXML = async (fileContent, contentType) => {
             const usBibliographic = xmlData['us-patent-application']
             if( usBibliographic.hasOwnProperty('abstract') ){ 
                 content = usBibliographic.abstract        
+                console.log(`content: ${content}`)
                 if(typeof content === 'object'){
                     if(typeof content['p'] !== 'undefined') {
                         content = content['p']['#text']
