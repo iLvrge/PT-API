@@ -192,6 +192,28 @@ let searchCompany = async(query, t) => {
             /* queryCompany = "SELECT a.assignor_and_assignee_id as id, a.assignor_and_assignee_id, a.name, a.instances as counter, c.representative_name as normalize_name, (select rr.representative_name FROM representative as rr WHERE rr.representative_name = a.name GROUP BY rr.representative_name) as representative_company, (SELECT concat(ass.reel_no,'-', ass.frame_no) FROM assignee as ee INNER JOIN assignment as ass ON ass.rf_id = ee.rf_id  WHERE ee.assignor_and_assignee_id = a.assignor_and_assignee_id  LIMIT 1) as assigneeRFID, (SELECT concat(asss.reel_no,'-', asss.frame_no) FROM assignor as assi INNER JOIN assignment as asss ON asss.rf_id = assi.rf_id WHERE assi.assignor_and_assignee_id = a.assignor_and_assignee_id LIMIT 1) as assignorRFID  FROM assignor_and_assignee as a LEFT JOIN representative as c ON c.representative_id = a.representative_id WHERE MATCH(a.name) AGAINST (:search IN BOOLEAN MODE) GROUP BY a.name ORDER BY counter DESC"; */
 
 
+            if(t == 0) {
+                const queryInventor = `  SELECT given_name FROM db_patent_grant_bibliographic.inventor WHERE MATCH(name) AGAINST (:search IN BOOLEAN MODE) GROUP BY given_name`
+
+                let searchInventor = await connection.resources.query(queryInventor,{
+                    type: connection.Sequelize.QueryTypes.SELECT,
+                    raw: true,
+                    replacements: { search: search },
+                    logging: console.log,
+                }); 
+
+                if(searchInventor.length > 0) {
+                    const allInventor = []
+                    const promiseInventor = searchInventor.map( inventor => {
+                        allInventor.push(`-${inventor.given_name}`)
+                    })
+
+                    const inventorJoin = allInventor.join(' ')
+
+                    search += ' '+inventorJoin
+                }
+            }
+
             queryCompany = `SELECT a.assignor_and_assignee_id as id, a.assignor_and_assignee_id, a.name, a.instances as counter, c.representative_name as normalize_name, (select rr.representative_name FROM representative as rr WHERE rr.representative_name = a.name GROUP BY rr.representative_name) as representative_company, (SELECT concat(ass.reel_no,'-', ass.frame_no) FROM assignee as ee INNER JOIN assignment as ass ON ass.rf_id = ee.rf_id  WHERE ee.assignor_and_assignee_id = a.assignor_and_assignee_id  LIMIT 1) as assigneeRFID, (SELECT concat(asss.reel_no,'-', asss.frame_no) FROM assignor as assi INNER JOIN assignment as asss ON asss.rf_id = assi.rf_id WHERE assi.assignor_and_assignee_id = a.assignor_and_assignee_id LIMIT 1) as assignorRFID  FROM assignor_and_assignee as a 
             LEFT JOIN representative as c ON c.representative_id = a.representative_id 
             INNER JOIN LATERAL (Select assignee.assignor_and_assignee_id from assignment
@@ -209,7 +231,8 @@ let searchCompany = async(query, t) => {
             } else {
                 queryCompany += ` WHERE MATCH(a.name) AGAINST (:search IN BOOLEAN MODE) `
             }
-                
+            
+            
 
             /* if( t == 0 ) {
                 queryCompany += `  AND a.assignor_and_assignee_id NOT IN (SELECT assignor_and_assignee_id FROM db_uspto.inventors)`;
