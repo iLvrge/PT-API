@@ -1232,9 +1232,9 @@ let getCompaniesListWithReports = async (DBConnection) => {
     WHERE parent_id IN (SELECT representative_id from representative WHERE type = :groupType)
     UNION
     SELECT representative_id, original_name, representative_name FROM representative 
-    WHERE parent_id = companyParentID AND type = :companyType`
+    WHERE parent_id = :companyParentID AND type = :companyType`
 
-    let getList = await DBConnection.resources.query(queryRepresentatives,{
+    let getList = await DBConnection.query(queryRepresentatives,{
             type: DBConnection.Sequelize.QueryTypes.SELECT,
             replacements: { companyType: 0, companyParentID: 0, groupType: 1},
             raw: true,
@@ -1262,7 +1262,8 @@ let getCompaniesListWithReports = async (DBConnection) => {
 
         if(reports.length > 0) {
             const updatePromise = getList.map( representative => {
-                const company = representative.toJSON()
+               /*  const company = representative.toJSON() */
+               const company = {...representative}
                 const filter = reports.filter( row => row.representative_name == representative.representative_name)
                 if(filter.length > 0) {
                     company.assets = filter[0].assets
