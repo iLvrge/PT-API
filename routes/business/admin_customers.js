@@ -52,6 +52,10 @@ const Organisations = require("../../model/business/Organisations"),
 
     config = require("../../config/db.config"),
 
+    ClientRepesentative = require("../../model/client/Representatives"),
+
+    RepresentativeTransactions = require("../../model/resources/RepresentativeTransactions"),
+
     AWS  = require('aws-sdk');
 
 route.put("/customers/:organisation_id/buttons", [authJWT.verifyToken, authJWT.isAdmin], async(req, res, next) => {
@@ -374,6 +378,205 @@ route.get("/customers/:id/companies", [authJWT.verifyToken, authJWT.isAdmin, aut
         console.log(err);
         res.status(400).send("Invalid inputs");
     } 
+});
+
+/**
+ * Delete Parent Companies
+ */
+route.delete("/customers/:id/companies", [authJWT.verifyToken, authJWT.isAdmin, authJWT.addClientID, clientDBConnection.connect], async(req, res, next) => {
+    try{
+        let IDs = req.query.companies;
+        if(IDs.length > 0) {
+            IDs = JSON.parse(IDs)
+            const Representative = req.connection_db.define('ClientRepesentative', ClientRepesentative.mainStructure, ClientRepesentative.options);
+            const findCompanies = await Representative.findAll({
+                attributes:['representative_id', 'parent_id', 'original_name'],
+                where:{representative_id: IDs},
+                group:['representative_id','parent_id']
+            });
+            const updateKPICompanies=[],  deleteParentCompanies = [], reUpdateCompanies = [], deleteCompanies = [], activityLogs = [], currentDate = moment(new Date()).format('YYYY-MM-DD hh:mm:ss');
+            if(findCompanies.length > 0) {
+                const promise = findCompanies.map(c => {
+                    if(c.parent_id == 0) {
+                        deleteParentCompanies.push(c.representative_id);
+                        updateKPICompanies.push(c.representative_id);
+                    } else {
+                        if(!updateKPICompanies.includes(c.parent_id)){
+                            updateKPICompanies.push(c.parent_id); 
+                            reUpdateCompanies(c.parent_id);
+                        }
+                    }
+                    deleteCompanies.push(c.representative_id);                   
+                    return c;
+                });
+
+                await Promise.all(promise);
+
+                if(deleteParentCompanies.length > 0) {
+                    const findParentSubCompanies = await Representative.findAll({
+                        attributes:['representative_id'],
+                        where:{parent_id: deleteParentCompanies}                        
+                    });
+
+                    if(findParentSubCompanies.length) {
+                        const promise = findParentSubCompanies.map(c => {
+                            deleteCompanies.push(c.representative_id);
+                            return c;
+                        });
+                        await Promise.all(promise);
+                    }
+                }
+
+
+                if(deleteCompanies.length > 0) {
+                    
+                    const destroyAllCompanies = await  Representative.destroy({
+                        where: {representative_id: deleteCompanies},
+                    })
+
+                    if(destroyAllCompanies != null) {
+                        ActivityLogs.bulkCreate(activityLogs);
+                        if(deleteParentCompanies.length > 0) {
+                            const destroyAllTransactions = await RepresentativeTransactions.destroy({
+                                where: {representative_id: deleteParentCompanies, organisation_id: req.orgId},
+                            });
+                            console.log("destroyAllTransactions", destroyAllTransactions);
+                            if(destroyAllTransactions) {
+                                /**
+                                 * Delete KPI counter, Tree, Timeline, Error
+                                 */
+                                //remove from list 1, list 2, assets, transactions
+
+                                /* await Validity.destroy({
+                                    where: {representative_id: deleteParentCompanies, organisation_id: req.orgId},
+                                });
+                                await Transactions.destroy({
+                                    where: {representative_id: deleteParentCompanies, organisation_id: req.orgId},
+                                });
+                                await TreeParties.destroy({
+                                    where: {representative_id: deleteParentCompanies, organisation_id: req.orgId},
+                                });
+                                await TreePartiesCollections.destroy({
+                                    where: {representative_id: deleteParentCompanies, organisation_id: req.orgId},
+                                });
+                                await Errors.destroy({
+                                    where: {representative_id: deleteParentCompanies, organisation_id: req.orgId},
+                                });
+
+                                await Timelines.destroy({
+                                    where: {representative_id: deleteParentCompanies, organisation_id: req.orgId},
+                                }); */
+                            }
+                        }
+
+
+                        if(reUpdateCompanies.length > 0) {
+                            /**
+                             * Delete from Representative Transaction and add transactions again
+                             */
+                            const destroyAllTransactions = await RepresentativeTransactions.destroy({
+                                where: {representative_id: reUpdateCompanies, organisation_id: req.orgId},
+                            });
+
+                            if(destroyAllTransactions) {
+                                const findPCompanies = await Representative.findAll({
+                                    attributes:['original_name'],
+                                    where:{representative_id: reUpdateCompanies, type: 0}                        
+                                });
+
+                                if(findPCompanies.length > 0) {
+                                    const promiseAddRFIDs = findPCompanies.map(async (company, index) => {
+                                        console.log(`php -f /var/www/html/trash/add_representative_rfids.php "${req.orgId}" "${company.original_name}"`);
+                                        await exec(`php -f /var/www/html/trash/add_representative_rfids.php "${req.orgId}" "${company.original_name}"`, async (error, std, stderr) => {
+                                            /*await exec(`php -f /var/www/html/trash/tree_script_client.php "${company.original_name}"`, async (error, stdout, stderr) => {
+
+                                            });*/
+                                            console.log(error);
+                                            console.log(std);
+                                            console.log(stderr);
+
+
+                                            exec(`php -f /var/www/html/trash/create_data_for_company_db_application.php "${req.orgId}" "${company.original_name}"`, (error, stdd, stderr)=> {
+                                                console.log("fill database ....")
+                                                console.log(error); 
+                                                console.log(stderr);
+                                                console.log(stdd);
+                                                console.log("DONE");
+
+                                            });
+                                            exec(`php -f /var/www/html/trash/admin_report_represetative_assets_transactions_by_account.php "${req.orgId}" "${company.original_name}"`, (error, stdd, stderr)=> {
+                                                console.log("fill admin_report_represetative_assets_transactions_by_account.php ....")
+                                                console.log(error); 
+                                                console.log(stderr);
+                                                console.log(stdd);
+                                                console.log("DONE");
+                                                exec(`php -f /var/www/html/trash/report_represetative_assets_transactions_by_account.php "${req.orgId}" "${company.original_name}"`, (error, stdd, stderr)=> {
+                                                    console.log("fill report_represetative_assets_transactions_by_account.php ....")
+                                                    console.log(error); 
+                                                    console.log(stderr);
+                                                    console.log(stdd);
+                                                    console.log("DONE");
+                                                });
+                                            });
+                                        });
+                                        return company;
+                                    });
+                                    await Promise.all(promiseAddRFIDs);
+
+                                    /**
+                                     * Recreate KPI and Tree
+                                     */
+                                    /* exec(`php -f /var/www/html/trash/fix_inventor_timeline_tree_transaction_assests_updates.php "${req.orgId}" ""`, async (error, std, stderr) => {
+                                        console.log(error);
+                                        console.log(std);
+                                        console.log(stderr);
+                                    }); */
+                                    res.status(200).send("Companies deleted.");
+                                }
+                            }
+                        } else {
+                            /**
+                             * Recreate KPI and Tree
+                             */
+                            console.log("DELETE");
+                            exec(`php -f /var/www/html/trash/create_data_for_company_db_application.php "${req.orgId}" ""`, (error, stdd, stderr)=> {
+                                console.log("fill database ....")
+                                console.log(error); 
+                                console.log(stderr);
+                                console.log(stdd);
+                                console.log("DONE");
+                            });
+                            exec(`php -f /var/www/html/trash/admin_report_represetative_assets_transactions_by_account.php "${req.orgId}" ""`, (error, stdd, stderr)=> {
+                                console.log("fill admin_report_represetative_assets_transactions_by_account.php ....")
+                                console.log(error); 
+                                console.log(stderr);
+                                console.log(stdd);
+                                console.log("DONE");
+                                exec(`php -f /var/www/html/trash/report_represetative_assets_transactions_by_account.php "${req.orgId}" ""`, (error, stdd, stderr)=> {
+                                    console.log("fill report_represetative_assets_transactions_by_account.php ....")
+                                    console.log(error); 
+                                    console.log(stderr);
+                                    console.log(stdd);
+                                    console.log("DONE");
+                                });
+                            });
+
+                            res.status(200).send("Companies deleted.");
+                        }
+                    } else {
+                        res.status(500).send("Error while deleting companies.");
+                    }                    
+                } else {
+                    res.status(402).send("No company found");
+                }
+            } else {
+                res.status(402).send("No company found");
+            }
+        }
+    } catch( err ) {
+        console.log(err);
+        res.status(500).json({message: "Error while deleting companies."})
+    }    
 });
 
 route.get("/customers/:id/reports", [authJWT.verifyToken, authJWT.isAdmin, authJWT.addClientID, clientDBConnection.connect], async (req, res, next) => {
