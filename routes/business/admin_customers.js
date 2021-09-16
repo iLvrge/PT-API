@@ -1136,6 +1136,30 @@ route.get("/customers/:organisation_id/flag_automatic", [authJWT.verifyToken, au
     }
 });
 
+route.get("/customers/:organisation_id/transaction_missing_conveyance", [authJWT.verifyToken, authJWT.isAdmin], async(req, res, next) => {
+    try{
+        let organisationID = req.params.organisation_id;
+        if(organisationID > 0){
+            let org = await helpers.findOrganisationbyID( organisationID );
+            if(org != null && org.organisation_id > 0) {
+                
+                console.log(`php -f /var/www/html/trash/update_missing_type.php "${organisationID}"`);
+                exec(`php -f /var/www/html/trash/update_missing_type.php "${organisationID}"`, (error, stdout, stderr) => {  
+                    console.log(error, stdout, stderr);
+                });
+                res.status(200).send("Fixing flag in process");
+            } else {
+                res.status(402).send("Customer not exist.");
+            }
+        } else {
+            res.status(402).send("Invalid parameters.");
+        }
+    }catch(e) {
+        console.log(e);
+        res.status(402).send("Error while updating flag");
+    }
+});
+
 route.get("/customers/:organisation_id/:representative_id/missing_inventor", [authJWT.verifyToken, authJWT.isAdmin], async(req, res, next) => {
     try{
         let organisationID = req.params.organisation_id;
