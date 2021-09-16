@@ -437,7 +437,7 @@ route.delete("/customers/:id/companies", [authJWT.verifyToken, authJWT.isAdmin, 
                     })
 
                     if(destroyAllCompanies != null) {
-                        ActivityLogs.bulkCreate(activityLogs);
+                        
                         if(deleteParentCompanies.length > 0) {
                             const destroyAllTransactions = await RepresentativeTransactions.destroy({
                                 where: {representative_id: deleteParentCompanies, organisation_id: req.orgId},
