@@ -432,7 +432,7 @@ const getContentFromXML = async (fileContent, contentType) => {
                         let text = '';
                         const recursiveClaim = async (element) => {
                             if(typeof element === 'object') {
-                                text += `\n ${element['#text']}`
+                                text += `\n ${element.hasOwnProperty('b') ? element['b'] : ''}${element['#text']}`
                                 if(typeof element.hasOwnProperty('claim-text')) {
                                     if(Array.isArray(element['claim-text'])) {
                                         element['claim-text'].forEach(async claimText => {
@@ -468,7 +468,7 @@ const getContentFromXML = async (fileContent, contentType) => {
                         let text = '';
                         const recursiveClaim = async (element) => {
                             if(typeof element === 'object') {
-                                text += `\n ${element['#text']}`
+                                text += `\n ${element.hasOwnProperty('b') ? element['b'] : ''}${element['#text']}`
                                 if(typeof element.hasOwnProperty('claim-text')) {
                                     if(Array.isArray(element['claim-text'])) {
                                         element['claim-text'].forEach(async claimText => {
