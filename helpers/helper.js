@@ -1222,10 +1222,25 @@ let getCompaniesCount = async (DBConnection) => {
 
 let getCompaniesListWithReports = async (DBConnection) => {
     const Representative = DBConnection.define('ClientRepesentative', ClientRepesentative.mainStructure, ClientRepesentative.options);
-
+    /*
     const getList =  await Representative.findAll({
-        where: {type: 0}
-    });
+        where: {type: 0},
+
+    });*/
+
+    const queryRepresentatives = `SELECT representative_id, original_name, representative_name FROM representative
+    WHERE parent_id IN (SELECT representative_id from representative WHERE type = :groupType)
+    UNION
+    SELECT representative_id, original_name, representative_name FROM representative 
+    WHERE parent_id = companyParentID AND type = :companyType`
+
+    let getList = await DBConnection.resources.query(queryRepresentatives,{
+            type: DBConnection.Sequelize.QueryTypes.SELECT,
+            replacements: { companyType: 0, companyParentID: 0, groupType: 1},
+            raw: true,
+            logging: console.log,
+        }
+    ); 
 
     if(getList.length > 0) {
         const representativeList = [], representativeNames = []
