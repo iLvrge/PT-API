@@ -1694,11 +1694,11 @@ route.get("/company/assets/:entityID", [authJWT.verifyToken, authJWT.isAdmin], a
 route.get("/company/recent_transactions", [authJWT.verifyToken, authJWT.isAdmin], async (req, res, next) => {
     try {
         const queryTransactions = `SELECT records.rf_id, records.reel_frame, records.frame_no, records.reel_no, records.record_dt, rac.convey_ty, records.counter AS assets,
-        (SELECT exec_dt FROM assignor WHERE assignor.rf_id = records.rf_id LIMIT 1) AS exec_dt, 
+        records.exec_dt AS exec_dt, DATEDIFF(records.exec_dt, records.record_dt) AS date_difference, 
         (SELECT GROUP_CONCAT(or_name) FROM assignor WHERE assignor.rf_id = records.rf_id) AS assingor, 
         (SELECT GROUP_CONCAT(ee_name) FROM assignee WHERE assignee.rf_id = records.rf_id) AS assingee
         FROM (
-        SELECT CONCAT(a.reel_no, '/', a.frame_no) AS reel_frame, a.frame_no, a.reel_no,  a.record_dt, a.rf_id, temp.counter FROM assignment AS a
+        SELECT CONCAT(a.reel_no, '/', a.frame_no) AS reel_frame, a.frame_no, a.reel_no,  a.record_dt, a.rf_id, temp.counter, (SELECT exec_dt FROM assignor WHERE assignor.rf_id = a.rf_id LIMIT 1) AS exec_dt FROM assignment AS a
         INNER JOIN (SELECT d.rf_id, count(d.appno_doc_num) as counter FROM documentid as d
         GROUP BY d.rf_id) as temp ON temp.rf_id = a.rf_id
         ORDER BY temp.counter DESC, a.record_dt DESC
