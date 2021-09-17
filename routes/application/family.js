@@ -428,18 +428,18 @@ const getContentFromXML = async (fileContent, contentType) => {
                         let text = '';
                         const recursiveClaim = async (element, t) => {
                             if(typeof element === 'object') {
-                                text += `<div class="claim-text ${t}">${element.hasOwnProperty('b') ? element['b'] : ''}${element['#text']}</div>`
+                                text += `<div class="claim-text ${t} ${element.hasOwnProperty('claim-ref') ? t+'-1' : ''}">${element.hasOwnProperty('b') ? element['b'] : ''}${element['#text']}</div>`
                                 if(typeof element.hasOwnProperty('claim-text')) {
                                     if(Array.isArray(element['claim-text'])) {
                                         element['claim-text'].forEach(async claimText => {
                                             text += await recursiveClaim(claimText, 'patent-text')
                                         })
                                     } else if(typeof element['claim-text'] === 'string'){
-                                        text += `<div class="claim-text ${t}">${element['claim-text']}</div>`
+                                        text += `<div class="claim-text ${t} ${element.hasOwnProperty('claim-ref') ? t+'-1' : ''}">${element['claim-text']}</div>`
                                     }
                                 }
                             } else if(typeof element === 'string') {
-                                text += `<div class="claim-text ${t}">${element}</div>`
+                                text += `<div class="claim-text ${t} ${element.hasOwnProperty('claim-ref') ? t+'-1' : ''}">${element}</div>`
                             }
                             return text
                         }
@@ -464,18 +464,18 @@ const getContentFromXML = async (fileContent, contentType) => {
                         let text = '';
                         const recursiveClaim = async (element, t) => {
                             if(typeof element === 'object') {
-                                text += `<div class="claim-text ${t}">${element.hasOwnProperty('b') ? element['b'] : ''}${element['#text']}</div>`
+                                text += `<div class="claim-text ${t} ${element.hasOwnProperty('claim-ref') ? t+'-1' : ''}">${element.hasOwnProperty('b') ? element['b'] : ''}${element['#text']}</div>`
                                 if(typeof element.hasOwnProperty('claim-text')) {
                                     if(Array.isArray(element['claim-text'])) {
                                         element['claim-text'].forEach(async claimText => {
                                             text += await recursiveClaim(claimText, 'patent-text')
                                         })
                                     } else if(typeof element['claim-text'] === 'string'){
-                                        text += `<div class="claim-text ${t}">${element['claim-text']}</div>`
+                                        text += `<div class="claim-text ${t} ${element.hasOwnProperty('claim-ref') ? t+'-1' : ''}">${element['claim-text']}</div>`
                                     }
                                 }
                             } else if(typeof element === 'string') {
-                                text += `<div class="claim-text ${t}">${element}</div>`
+                                text += `<div class="claim-text ${t} ${element.hasOwnProperty('claim-ref') ? t+'-1' : ''}">${element}</div>`
                             }
                             return text
                         }
