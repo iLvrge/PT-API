@@ -1694,7 +1694,7 @@ route.get("/company/assets/:entityID", [authJWT.verifyToken, authJWT.isAdmin], a
 route.get("/company/recent_transactions", [authJWT.verifyToken, authJWT.isAdmin], async (req, res, next) => {
     try {
         const queryTransactions = `SELECT records.rf_id, records.reel_frame, records.frame_no, records.reel_no, records.record_dt, rac.convey_ty, records.counter AS assets,
-        (SELECT exec_dt FROM assignor WHERE assignor.rf_id = records.rf_id LIMIT 1) AS exec_dt, DATEDIFF(exec_dt, records.record_dt) AS date_difference, 
+        (SELECT exec_dt FROM assignor WHERE assignor.rf_id = records.rf_id LIMIT 1) AS exec_dt, 
         (SELECT GROUP_CONCAT(or_name) FROM assignor WHERE assignor.rf_id = records.rf_id) AS assingor, 
         (SELECT GROUP_CONCAT(ee_name) FROM assignee WHERE assignee.rf_id = records.rf_id) AS assingee
         FROM (
@@ -1704,8 +1704,7 @@ route.get("/company/recent_transactions", [authJWT.verifyToken, authJWT.isAdmin]
         ORDER BY temp.counter DESC, a.record_dt DESC
         LIMIT 100
         ) as records
-        INNER JOIN representative_assignment_conveyance as rac ON rac.rf_id = records.rf_id
-        ;`
+        INNER JOIN representative_assignment_conveyance as rac ON rac.rf_id = records.rf_id`
         let transactions = await connection.resources.query(queryTransactions,{
             type: connection.Sequelize.QueryTypes.SELECT,
             raw: true,
