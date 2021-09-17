@@ -426,25 +426,25 @@ const getContentFromXML = async (fileContent, contentType) => {
                 if(usClaims.length > 0) {
                     const promiseClaims = usClaims.map( async claim => {
                         let text = '';
-                        const recursiveClaim = async (element) => {
+                        const recursiveClaim = async (element, t) => {
                             if(typeof element === 'object') {
-                                text += `<div className="indent">${element.hasOwnProperty('b') ? element['b'] : ''}${element['#text']}</div>`
+                                text += `<div className="indent ${t}">${element.hasOwnProperty('b') ? element['b'] : ''}${element['#text']}</div>`
                                 if(typeof element.hasOwnProperty('claim-text')) {
                                     if(Array.isArray(element['claim-text'])) {
                                         element['claim-text'].forEach(async claimText => {
-                                            text += await recursiveClaim(claimText)
+                                            text += await recursiveClaim(claimText, 1)
                                         })
                                     } else if(typeof element['claim-text'] === 'string'){
-                                        text += `<div className="indent">${element['claim-text']}</div>`
+                                        text += `<div className="indent ${t}">${element['claim-text']}</div>`
                                     }
                                 }
                             } else if(typeof element === 'string') {
-                                text += `<div className="indent">${element}</div>`
+                                text += `<div className="indent ${t}">${element}</div>`
                             }
                             return text
                         }
                         
-                        text = await recursiveClaim(claim['claim-text'])
+                        text = await recursiveClaim(claim['claim-text'], 0)
                        
                         content.push({
                             text: decode(text, {level: 'xml'})
@@ -462,25 +462,25 @@ const getContentFromXML = async (fileContent, contentType) => {
                 if(usClaims.length > 0) {
                     const promiseClaims = usClaims.map( async claim => {
                         let text = '';
-                        const recursiveClaim = async (element) => {
+                        const recursiveClaim = async (element, t) => {
                             if(typeof element === 'object') {
-                                text += `<div className="indent">${element.hasOwnProperty('b') ? element['b'] : ''}${element['#text']}</div>`
+                                text += `<div className="indent ${t}">${element.hasOwnProperty('b') ? element['b'] : ''}${element['#text']}</div>`
                                 if(typeof element.hasOwnProperty('claim-text')) {
                                     if(Array.isArray(element['claim-text'])) {
                                         element['claim-text'].forEach(async claimText => {
-                                            text += await recursiveClaim(claimText)
+                                            text += await recursiveClaim(claimText, 1)
                                         })
                                     } else if(typeof element['claim-text'] === 'string'){
-                                        text += `<div className="indent">${element['claim-text']}</div>`
+                                        text += `<div className="indent ${t}">${element['claim-text']}</div>`
                                     }
                                 }
                             } else if(typeof element === 'string') {
-                                text += `<div className="indent">${element}</div>`
+                                text += `<div className="indent ${t}">${element}</div>`
                             }
                             return text
                         }
                         
-                        text = await recursiveClaim(claim['claim-text'])
+                        text = await recursiveClaim(claim['claim-text'], 0)
                        
                         content.push({
                             text: decode(text, {level: 'xml'})
