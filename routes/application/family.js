@@ -338,9 +338,7 @@ const getContentFromXML = async (fileContent, contentType) => {
     const xmlData = parser.parse( fileContent, {ignoreAttributes: false});
     
     if(contentType === 'abstract') {
-        console.log(1)
         if( xmlData.hasOwnProperty('patent-application-publication') ){
-            console.log('A')
             const usBibliographic = xmlData['patent-application-publication']
             let content = usBibliographic['subdoc-abstract']
             if(typeof content === 'object'){
@@ -349,11 +347,9 @@ const getContentFromXML = async (fileContent, contentType) => {
                 }
             }
         } else if( xmlData.hasOwnProperty('us-patent-application') ){ 
-            console.log('B')
             const usBibliographic = xmlData['us-patent-application']
             if( usBibliographic.hasOwnProperty('abstract') ){ 
-                content = usBibliographic.abstract        
-                console.log(content)
+                content = usBibliographic.abstract    
                 if(typeof content === 'object'){
                     if(Array.isArray(content['p'])) {
                         let paragraph = []
@@ -432,18 +428,18 @@ const getContentFromXML = async (fileContent, contentType) => {
                         let text = '';
                         const recursiveClaim = async (element) => {
                             if(typeof element === 'object') {
-                                text += `\n ${element.hasOwnProperty('b') ? element['b'] : ''}${element['#text']}`
+                                text += `<div className="indent">${element.hasOwnProperty('b') ? element['b'] : ''}${element['#text']}</div>`
                                 if(typeof element.hasOwnProperty('claim-text')) {
                                     if(Array.isArray(element['claim-text'])) {
                                         element['claim-text'].forEach(async claimText => {
                                             text += await recursiveClaim(claimText)
                                         })
                                     } else if(typeof element['claim-text'] === 'string'){
-                                        text += `\n ${element['claim-text']}`
+                                        text += `<div className="indent">${element['claim-text']}</div>`
                                     }
                                 }
                             } else if(typeof element === 'string') {
-                                text += `\n ${element}`
+                                text += `<div className="indent">${element}</div>`
                             }
                             return text
                         }
@@ -468,18 +464,18 @@ const getContentFromXML = async (fileContent, contentType) => {
                         let text = '';
                         const recursiveClaim = async (element) => {
                             if(typeof element === 'object') {
-                                text += `\n ${element.hasOwnProperty('b') ? element['b'] : ''}${element['#text']}`
+                                text += `<div className="indent">${element.hasOwnProperty('b') ? element['b'] : ''}${element['#text']}</div>`
                                 if(typeof element.hasOwnProperty('claim-text')) {
                                     if(Array.isArray(element['claim-text'])) {
                                         element['claim-text'].forEach(async claimText => {
                                             text += await recursiveClaim(claimText)
                                         })
                                     } else if(typeof element['claim-text'] === 'string'){
-                                        text += `\n ${element['claim-text']}`
+                                        text += `<div className="indent">${element['claim-text']}</div>`
                                     }
                                 }
                             } else if(typeof element === 'string') {
-                                text += `\n ${element}`
+                                text += `<div className="indent">${element}</div>`
                             }
                             return text
                         }
