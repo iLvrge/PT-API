@@ -167,7 +167,7 @@ route.get("/assets", [authJWT.verifyToken], async(req, res, next) => {
 
 route.post("/assets/cpc", [authJWT.verifyToken], async(req, res, next) => {
     try{
-        let { list, range, scope } = req.body, getList = [], group = []
+        let { list, range, scope, year } = req.body, getList = [], group = []
 
         if( list != '' ) {
             list = JSON.parse(list)
@@ -198,17 +198,21 @@ route.post("/assets/cpc", [authJWT.verifyToken], async(req, res, next) => {
                     }
                 }
 
-                console.log( "POSTDATA", range, scope, rangeConcat)
+                
 
                 let scopeCondition = '';
-                const replacements = {list, date: 1997}
+                const replacements = {list, date: [1997]}
 
                 if( scope != undefined && scope != 'undefined' && scope != null) {
                     scopeCondition = ` AND ${rangeConcat} IN (:scopeList) `
                     replacements.scopeList = JSON.parse(scope)
                 }
 
-                const query = `SELECT REPLACE_STRING FROM ( SELECT temp.grant_doc_num AS patent_number, temp.appno_doc_num AS application_number, date_format(temp.appno_date, '%Y') AS fillingYear, ${rangeConcat} AS cpc_code, section, class, sub_class, main_group, sub_group, (SELECT GROUP_CONCAT(distinct ee_name SEPARATOR '@@ ') FROM db_uspto.assignee INNER JOIN db_uspto.assignment_conveyance ON assignment_conveyance.rf_id = assignee.rf_id WHERE assignee.rf_id IN (     SELECT rf_id FROM db_uspto.documentid WHERE documentid.appno_doc_num = application_cpc.application_number) AND assignment_conveyance.employer_assign = 1 ) AS origin FROM db_patent_grant_bibliographic.application_cpc AS application_cpc INNER JOIN (SELECT DISTINCT documentid.appno_doc_num, documentid.grant_doc_num, documentid.appno_date FROM db_uspto.documentid AS documentid WHERE date_format(documentid.appno_date, '%Y') >= :date AND documentid.appno_doc_num IN(:list) ) AS temp ON temp.appno_doc_num = application_cpc.application_number WHERE application_cpc.type = 0  ${scopeCondition} GROUP BY temp.appno_doc_num ) AS temp1 GROUP_STRING `
+                if(typeof year !== 'undefined' && year.length > 0) {
+                    replacements.date = JSON.parse(year)
+                }
+
+                const query = `SELECT REPLACE_STRING FROM ( SELECT temp.grant_doc_num AS patent_number, temp.appno_doc_num AS application_number, date_format(temp.appno_date, '%Y') AS fillingYear, ${rangeConcat} AS cpc_code, section, class, sub_class, main_group, sub_group, (SELECT GROUP_CONCAT(distinct ee_name SEPARATOR '@@ ') FROM db_uspto.assignee INNER JOIN db_uspto.assignment_conveyance ON assignment_conveyance.rf_id = assignee.rf_id WHERE assignee.rf_id IN (     SELECT rf_id FROM db_uspto.documentid WHERE documentid.appno_doc_num = application_cpc.application_number) AND assignment_conveyance.employer_assign = 1 ) AS origin FROM db_patent_grant_bibliographic.application_cpc AS application_cpc INNER JOIN (SELECT DISTINCT documentid.appno_doc_num, documentid.grant_doc_num, documentid.appno_date FROM db_uspto.documentid AS documentid WHERE date_format(documentid.appno_date, '%Y') IN (:date) AND documentid.appno_doc_num IN(:list) ) AS temp ON temp.appno_doc_num = application_cpc.application_number WHERE application_cpc.type = 0  ${scopeCondition} GROUP BY temp.appno_doc_num ) AS temp1 GROUP_STRING `
 
                 const listQuery =  query.replace('REPLACE_STRING', "COUNT(if(patent_number != '' AND application_number >0  , patent_number, '')) AS patent_number, COUNT(CASE WHEN patent_number = '' AND application_number > 0  THEN application_number END ) AS application_number, COUNT(if(patent_number != '', patent_number, application_number)) AS countAssets,   fillingYear, cpc_code,  section, class, sub_class, main_group, sub_group, GROUP_CONCAT(distinct origin SEPARATOR '@@ ') AS group_name ").replace('GROUP_STRING', "GROUP BY fillingYear, cpc_code ")
 
