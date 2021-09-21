@@ -334,6 +334,13 @@ let getFileContent = async (filePath) => {
     })
 }
 
+
+const replaceContent = (search, replace, content) => {
+    const regEx = new RegExp(search, "ig");
+    return content.replace(regEx, replace);
+}
+
+
 const getContentFromXML = async (fileContent, contentType) => {
     let content = '';
     //const parser = new xml2js.Parser
@@ -367,10 +374,8 @@ const getContentFromXML = async (fileContent, contentType) => {
         }
     } else if(contentType === 'specifications') {
         content = []
-        let regEx = new RegExp('&lsqb;', "ig");
-        fileContent = fileContent.replace(regEx, '');
-        regEx = new RegExp('&rsqb;', "ig");
-        fileContent = fileContent.replace(regEx, '');            
+        fileContent = replaceContent('&lsqb;', '', fileContent)
+        fileContent = replaceContent('&rsqb;', '', fileContent)
         const document = new xmldoc.XmlDocument(fileContent);
         document.eachChild((child, index, a) => {
             if(child.name === 'description' || child.name === 'subdoc-description') {
@@ -438,18 +443,19 @@ const getContentFromXML = async (fileContent, contentType) => {
         } */
     } else if(contentType === 'claims') {
         content = []
-        let regEx = new RegExp('&lsqb;', "ig");
-        fileContent = fileContent.replace(regEx, '');
-        regEx = new RegExp('&rsqb;', "ig");
-        fileContent = fileContent.replace(regEx, '');            
+        fileContent = replaceContent('&lsqb;', '', fileContent)
+        fileContent = replaceContent('&rsqb;', '', fileContent)         
         const document = new xmldoc.XmlDocument(fileContent);
         document.eachChild((child, index, a) => {
             if(child.name === 'claims' || child.name === 'subdoc-claims') {
                 let claims = child.toString({compressed:true})
-                regEx = new RegExp('<claim', "ig")
-                claims = claims.replace(regEx, '<p')
-                regEx = new RegExp('</claim>', "ig")
-                claims = claims.replace(regEx, '</p>')
+
+                claims = replaceContent('<claim-ref', ' <span', claims)
+                claims = replaceContent('</claim-ref>', '</span>', claims)
+
+                claims = replaceContent('<claim', '<p', claims)
+                claims = replaceContent('</claim>', '</p>', claims)
+               
                 content.push({ text: claims })
             }
         })
