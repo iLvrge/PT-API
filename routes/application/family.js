@@ -445,6 +445,11 @@ const getContentFromXML = async (fileContent, contentType) => {
         const document = new xmldoc.XmlDocument(fileContent);
         document.eachChild((child, index, a) => {
             if(child.name === 'claims' || child.name === 'subdoc-claims') {
+                let claims = child.toString({compressed:true})
+                regEx = new RegExp('<claim', "ig")
+                claims = fileContent.claims(regEx, '<div')
+                regEx = new RegExp('</claim>', "ig")
+                claims = fileContent.claims(regEx, '</div>')
                 content.push({ text: child.toString({compressed:true}) })
             }
         })
