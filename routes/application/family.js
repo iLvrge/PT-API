@@ -450,6 +450,9 @@ const getContentFromXML = async (fileContent, contentType) => {
             if(child.name === 'claims' || child.name === 'subdoc-claims') {
                 let claims = child.toString({compressed:true})
 
+                claims = replaceContent('<claim-text', ' <span', claims)
+                claims = replaceContent('</claim-text>', '</span>', claims)
+
                 claims = replaceContent('<claim-ref', ' <span', claims)
                 claims = replaceContent('</claim-ref>', '</span>', claims)
 
