@@ -204,12 +204,15 @@ let searchCompany = async(query, t) => {
 
                 if(searchInventor.length > 0) {
                     const allInventor = []
+                    const regEx = new RegExp(search, "ig");
                     const promiseInventor = searchInventor.map( inventor => {
-                        allInventor.push(`-${inventor.given_name}`)
+                        const inventorName = inventor.given_name.replace(regEx, '')
+                        if(inventorName.trim() !== '') {
+                            allInventor.push(`-${inventorName.trim()}`)
+                        }                        
                     })
 
-                    const inventorJoin = allInventor.join(' ')
-
+                    const inventorJoin = [...new Set(allInventor)].join(' ')
                     search += ' '+inventorJoin
                 }
             }
