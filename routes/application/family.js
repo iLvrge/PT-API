@@ -447,10 +447,10 @@ const getContentFromXML = async (fileContent, contentType) => {
             if(child.name === 'claims' || child.name === 'subdoc-claims') {
                 let claims = child.toString({compressed:true})
                 regEx = new RegExp('<claim', "ig")
-                claims = fileContent.claims(regEx, '<p')
+                claims = claims.replace(regEx, '<p')
                 regEx = new RegExp('</claim>', "ig")
-                claims = fileContent.claims(regEx, '</p>')
-                content.push({ text: child.toString({compressed:true}) })
+                claims = claims.replace(regEx, '</p>')
+                content.push({ text: claims })
             }
         })
         /* if( xmlData.hasOwnProperty('patent-application-publication') ){
