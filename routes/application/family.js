@@ -11,6 +11,8 @@ const express = require("express"),
     xml2js = require('xml2js'),
 
     parser = require('fast-xml-parser'),
+
+    xmldoc = require('xmldoc'),
     
     fs = require('fs');
 
@@ -365,7 +367,17 @@ const getContentFromXML = async (fileContent, contentType) => {
         }
     } else if(contentType === 'specifications') {
         content = []
-        if( xmlData.hasOwnProperty('patent-application-publication') ){
+        let regEx = new RegExp('&lsqb;', "ig");
+        fileContent = fileContent.replace(regEx, '');
+        regEx = new RegExp('&rsqb;', "ig");
+        fileContent = fileContent.replace(regEx, '');            
+        const document = new xmldoc.XmlDocument(fileContent);
+        document.eachChild((child, index, a) => {
+            if(child.name === 'description' || child.name === 'subdoc-description') {
+                content.push({ text: child.toString({compressed:true}) })
+            }
+        })
+        /* if( xmlData.hasOwnProperty('patent-application-publication') ){
             const usBibliographic = xmlData['patent-application-publication']
             let description = usBibliographic['subdoc-description']['summary-of-invention']['section']
             if(Array.isArray(description)) {
@@ -406,7 +418,14 @@ const getContentFromXML = async (fileContent, contentType) => {
             }
         } else if( xmlData.hasOwnProperty('us-patent-application') ){ 
             const usBibliographic = xmlData['us-patent-application']
-            description = usBibliographic.description.p
+            const descriptionSection = usBibliographic.description
+            if(descriptionSection.hasOwnProperty('summary-of-invention')){
+                content.push({
+                    text: decode(descriptionSection['summary-of-invention'], {level: 'xml'})
+                })
+            }
+            description = description.p
+            
             if(Array.isArray(description)) {
                 description.forEach( item => {
                     if(typeof item === 'object') {
@@ -416,7 +435,7 @@ const getContentFromXML = async (fileContent, contentType) => {
                     }
                 })
             }
-        }
+        } */
     } else if(contentType === 'claims') {
         content = []
         if( xmlData.hasOwnProperty('patent-application-publication') ){
