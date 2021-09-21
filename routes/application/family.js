@@ -438,7 +438,17 @@ const getContentFromXML = async (fileContent, contentType) => {
         } */
     } else if(contentType === 'claims') {
         content = []
-        if( xmlData.hasOwnProperty('patent-application-publication') ){
+        let regEx = new RegExp('&lsqb;', "ig");
+        fileContent = fileContent.replace(regEx, '');
+        regEx = new RegExp('&rsqb;', "ig");
+        fileContent = fileContent.replace(regEx, '');            
+        const document = new xmldoc.XmlDocument(fileContent);
+        document.eachChild((child, index, a) => {
+            if(child.name === 'claims' || child.name === 'subdoc-claims') {
+                content.push({ text: child.toString({compressed:true}) })
+            }
+        })
+        /* if( xmlData.hasOwnProperty('patent-application-publication') ){
             const usBibliographic = xmlData['patent-application-publication']
             let usClaims = usBibliographic['subdoc-claims'].claim
             if(Array.isArray(usClaims)) {
@@ -510,7 +520,7 @@ const getContentFromXML = async (fileContent, contentType) => {
             } else {
                 console.log(JSON.stringify(usClaims))
             }
-        }
+        } */
     } else if(contentType === 'figures') {
         content = []
         const bucketConfig = connection.bucketConfig;  
