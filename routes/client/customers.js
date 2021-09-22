@@ -513,20 +513,55 @@ route.get("/:layout/assets", [authJWT.verifyToken, clientDBConnection.connect], 
             assignments = JSON.parse( assignments )
             replacements.assignments = assignments.join(',')
         }
-        
-        connection.applicationNew.query("CALL `routine_assets`(:companies, :organisationID, :tabs, :customers, :assignments, :layoutID);",{
+
+        if(typeof offset === 'undefined') {
+            offset = 0
+        }
+
+        if(typeof limit === 'undefined') {
+            limit = 1000
+        } else {
+            limit = parseInt(limit) - parseInt(offset)
+        }
+
+        replacements.offset = parseInt(offset)
+        replacements.limit = parseInt(limit)
+
+        connection.applicationNew.query("CALL `routine_assets_count`(:companies, :organisationID, :tabs, :customers, :assignments, :layoutID);",{
                 type: connection.Sequelize.QueryTypes.SELECT,
                 raw: true,
                 logging: console.log,
                 replacements: replacements,
             }
-        ).spread(result => {
-            if (result) {
-                assets.list = Object.values(result)
-                assets.total_records = assets.list.length
+        ).spread(totalRows => {
+            if (totalRows) {
+                const checkRows = Object.values(totalRows)
+                console.log(checkRows, checkRows.length, checkRows[0].total_records)
+                if(checkRows.length > 0 && checkRows[0].total_records > 0) {
+                    connection.applicationNew.query("CALL `routine_assets`(:companies, :organisationID, :tabs, :customers, :assignments, :layoutID, :offset, :limit);",{
+                        type: connection.Sequelize.QueryTypes.SELECT,
+                        raw: true,
+                        logging: console.log,
+                        replacements: replacements,
+                    }
+                    ).spread(result => {
+                        if (result) {
+                            assets.list = Object.values(result)
+                            assets.total_records = checkRows[0].total_records
+                        }
+                        res.status(200).json(assets);
+                    })
+                } else {
+                    res.status(200).json(assets);
+                }                
+            } else {
+                res.status(200).json(assets);
             }
-            res.status(200).json(assets);
         })
+
+
+        
+        
     } catch ( err ) {
         console.log(err);
         res.status(500).send("Internal server error.");
