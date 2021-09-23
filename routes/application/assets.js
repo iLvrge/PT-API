@@ -560,25 +560,22 @@ route.get("/assets/:patentNumber/:type/outsource",[], async (req, res) =>{
     let { patentNumber, type } = req.params;
     
     if(type == 1) {
+        let type = "patNum";
         let record = await Documentids.findOne({
             where:{grant_doc_num: patentNumber},
             attributes:[['grant_doc_num','number']],
         }) 
 
         if( record == null ) {
+            type = "applNum"
             record = await Documentids.findOne({
                 where:{appno_doc_num: patentNumber},
                 attributes:[['appno_doc_num','number']],
             }) 
         }
         if(record !== null) {
-            let type = "applNum";
-            console.log('%j',record); 
-            let data = record.toJSON();
-            if(patentNumber == data.number){
-                patentNumber = data.number;
-                type = "patNum";
-            }      
+            
+            console.log('%j',record);                  
             res.status(200).json({url:`https://assignment.uspto.gov/patent/index.html#/patent/search/resultAbstract?id=${patentNumber}&type=${type}`});
         } else {
             res.status(200).send("");
