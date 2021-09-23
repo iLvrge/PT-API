@@ -521,7 +521,10 @@ route.get("/:layout/assets", [authJWT.verifyToken, clientDBConnection.connect], 
         if(typeof limit === 'undefined') {
             limit = 1000
         } else {
-            limit = parseInt(limit) - parseInt(offset)
+            if(limit > 0) {
+                limit = parseInt(limit) - parseInt(offset)
+            }
+            
         }
 
         replacements.offset = parseInt(offset)
@@ -538,6 +541,9 @@ route.get("/:layout/assets", [authJWT.verifyToken, clientDBConnection.connect], 
                 const checkRows = Object.values(totalRows)
                 console.log(checkRows, checkRows.length, checkRows[0].total_records)
                 if(checkRows.length > 0 && checkRows[0].total_records > 0) {
+                    if(replacements.limit === 0) {
+                        replacements.limit = checkRows[0].total_records
+                    }
                     connection.applicationNew.query("CALL `routine_assets`(:companies, :organisationID, :tabs, :customers, :assignments, :layoutID, :offset, :limit);",{
                         type: connection.Sequelize.QueryTypes.SELECT,
                         raw: true,
