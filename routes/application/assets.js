@@ -560,27 +560,29 @@ route.get("/assets/:patentNumber/:type/outsource",[], async (req, res) =>{
     let { patentNumber, type } = req.params;
     
     if(type == 1) {
-        Documentids.findOne({
-            where:{[connection.Op.or]:[{grant_doc_num: patentNumber},{appno_doc_num: patentNumber}]},
-            attributes:['rf_id',['grant_doc_num','number'], ['appno_doc_num','application']],
-        })
-        .then(p => {
-            if(p != null) {
-                let type = "applNum";
-                console.log('%j',p); 
-                let data = p.toJSON();
-                if(patentNumber == data.number){
-                    patentNumber = data.number;
-                    type = "patNum";
-                }      
-                res.status(200).json({url:`https://assignment.uspto.gov/patent/index.html#/patent/search/resultAbstract?id=${patentNumber}&type=${type}`});
-            } else {
-                res.status(200).send("");
-            }        
-        }).catch(err => {
-            console.log(err);
-            res.status(400).send("Invalid number");
-        })
+        let record = await Documentids.findOne({
+            where:{grant_doc_num: patentNumber},
+            attributes:[['grant_doc_num','number']],
+        }) 
+
+        if( record == null ) {
+            record = await Documentids.findOne({
+                where:{appno_doc_num: patentNumber},
+                attributes:[['appno_doc_num','number']],
+            }) 
+        }
+        if(record !== null) {
+            let type = "applNum";
+            console.log('%j',p); 
+            let data = p.toJSON();
+            if(patentNumber == data.number){
+                patentNumber = data.number;
+                type = "patNum";
+            }      
+            res.status(200).json({url:`https://assignment.uspto.gov/patent/index.html#/patent/search/resultAbstract?id=${patentNumber}&type=${type}`});
+        } else {
+            res.status(200).send("");
+        }
     } else if(type == 0){
         Assignments.findOne({
             where:{rf_id: patentNumber},
