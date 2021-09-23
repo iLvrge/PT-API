@@ -574,7 +574,7 @@ route.get("/assets/:patentNumber/:type/outsource",[], async (req, res) =>{
         if(record !== null) {
             let type = "applNum";
             console.log('%j',p); 
-            let data = p.toJSON();
+            let data = record.toJSON();
             if(patentNumber == data.number){
                 patentNumber = data.number;
                 type = "patNum";
