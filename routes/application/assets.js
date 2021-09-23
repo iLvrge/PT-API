@@ -566,12 +566,12 @@ route.get("/assets/:patentNumber/:type/outsource",[], async (req, res) =>{
         })
         .then(p => {
             if(p != null) {
-                let type = "patNum";
+                let type = "applNum";
                 console.log('%j',p); 
                 let data = p.toJSON();
-                if(patentNumber == data.application){
-                    patentNumber = data.application;
-                    type = "applNum";
+                if(patentNumber == data.number){
+                    patentNumber = data.number;
+                    type = "patNum";
                 }      
                 res.status(200).json({url:`https://assignment.uspto.gov/patent/index.html#/patent/search/resultAbstract?id=${patentNumber}&type=${type}`});
             } else {
