@@ -600,7 +600,7 @@ route.get("/assets/download/:itemID",[authJWT.verifyToken], async (req, res) =>{
             }) 
             downloadFileProcess
             .then(async () => {
-                
+                res.status(200).json({link})
             }).catch(function(err) {
                 console.log(`File not downloaded: ${err}`)
             });
