@@ -34,7 +34,7 @@ let createJSON = async(itemDetails, rfID) => {
         {id:8,name:'License End',tooltip:'License End',color:'#E38B4F',line_type:0,segment:1,order_no:6,explanation:''}
     ];
 
-    let cdnURL = "https://s3-us-west-1.amazonaws.com/static.patentrack.com/assignments/var/www/html/beta/resources/shared/data/"; url = "https://patentrack.com/", sourceID =  "/var/www/html/beta/", mainDocument = "", document_form = "", document_agreement = "", path="resources/shared/data/", rfIDno = "";
+    let cdnURL = "https://s3-us-west-1.amazonaws.com/static.patentrack.com/assignments/var/www/html/beta/resources/shared/data/"; usptoURL = "https://legacy-assignments.uspto.gov/assignments/",  url = "https://patentrack.com/", sourceID =  "/var/www/html/beta/", mainDocument = "", document_form = "", document_agreement = "", path="resources/shared/data/", rfIDno = "";
 
     if(itemDetails !== undefined && itemDetails.assignor.length > 0) {
         rfIDno = "assignment-pat-" + itemDetails.assignment.reel_no + "-" + itemDetails.assignment.frame_no, ext = ".pdf"
@@ -81,9 +81,16 @@ let createJSON = async(itemDetails, rfID) => {
             }
 
             assignors.push(boxName);
-            mainDocument = cdnURL + rfIDno + ext;
-            document_form = cdnURL + rfIDno + "_form" + ext;
-            document_agreement = cdnURL + rfIDno + "_agreement" + ext
+            if(itemDetails.assignment.status === 1) {
+                mainDocument = cdnURL + rfIDno + ext;
+                document_form = cdnURL + rfIDno + "_form" + ext;
+                document_agreement = cdnURL + rfIDno + "_agreement" + ext
+            } else {
+                mainDocument = usptoURL + rfIDno + ext;
+                document_form = mainDocument
+                document_agreement = mainDocument
+            }
+            
             
             /*if (fs.existsSync(sourceID + path + rfIDno + ext)) {
                 mainDocument = url + path + rfIDno + ext;
