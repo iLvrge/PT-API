@@ -547,7 +547,7 @@ route.get("/assets/download/:itemID",[authJWT.verifyToken], async (req, res) =>{
             const downloadFileProcess = new Promise( (resolve, reject) => {
                 request.head(usptoLink, (err, response, body) => {
                     const path = url.split('/').pop(), pathDirectory = '/var/www/html/trash/'
-                    request(url)
+                    request(usptoLink)
                     .pipe(fs.createWriteStream(`${pathDirectory}${path}`))
                     .on('close', () => {
                         const pdfFile = fs.readFileSync(`${pathDirectory}${path}`, {flag:'r'});
