@@ -4,6 +4,8 @@ const route = express.Router();
 
 const connection = require("../../config/db.config");
 
+const request = require('request');
+
 //require the Model
 const { WebClient } = require('@slack/web-api')
 
@@ -526,6 +528,77 @@ route.get("/assets/:patentNumber/files/:channelID/slack/:token", [authJWT.verify
         res.status(200).json({assets_files, document_files});
     }
 });
+
+route.get("/assets/download/:itemID",[authJWT.verifyToken], async (req, res) =>{   
+    let {itemID} = req.params, link = ''
+
+    if(itemID > 0) {
+        const query = 'SELECT reel_no, frame_no FROM assignment WHERE rf_id = :itemID'
+    
+        const assignmentData =  await connection.resources.query(query,{
+            type: connection.Sequelize.QueryTypes.SELECT,
+            replacements: {itemID},
+            raw: true,
+            logging: console.log,
+        })
+
+        if(assignmentData !== null) {
+            const usptoLink = `https://legacy-assignments.uspto.gov/assignments/assignment-pat-${assignmentData.reel_no}-${assignmentData.frame_no}.pdf`
+            const downloadFileProcess = new Promise( (resolve, reject) => {
+                request.head(usptoLink, (err, response, body) => {
+                    const path = url.split('/').pop(), pathDirectory = '/var/www/html/trash/'
+                    request(url)
+                    .pipe(fs.createWriteStream(`${pathDirectory}${path}`))
+                    .on('close', () => {
+                        const pdfFile = fs.readFileSync(`${pathDirectory}${path}`, {flag:'r'});
+                        if(pdfFile) {
+
+                            const bucketConfig = config.bucketConfig;              
+                            filename = filename.replace(/\s+/g, '-');
+                        
+                            let s3 = new AWS.S3({
+                                credentials: {
+                                    accessKeyId: bucketConfig.accessKeyId,
+                                    secretAccessKey: bucketConfig.secretAccessKey,
+                                },
+                                region: bucketConfig.region
+                            })
+
+                            const params = {
+                                Key: `assignments/var/www/html/beta/resources/shared/data//${filename}`,
+                                Bucket: bucketConfig.bucketName,
+                                Body: imageData,
+                                ACL: 'public-read',
+                                ContentType: 'application/pdf',
+                                ContentDisposition: 'inline'
+                            }
+                            s3.putObject(params, async function(err, data) {
+                                console.log(err, data);
+                                if(err == null) {
+                                    link = `https://s3-${bucketConfig.region}.amazonaws.com/${bucketConfig.bucketName}/assignments/var/www/html/beta/resources/shared/data/${filename}`;
+
+                                    resolve('DOWNLOADED/UPLOADED')
+
+                                    Assignments.update({status: 1}, {where: {rf_id: itemID}} )
+                                }  else {
+                                    reject('DOWNLOADED/UPLOADED')
+                                }
+                            });
+                        }  else {
+                            reject('DOWNLOADED/UPLOADED')
+                        }
+                    })
+                })    
+            }) 
+            downloadFileProcess
+            .then(async () => {
+                
+            }).catch(function(err) {
+                console.log(`File not downloaded: ${err}`)
+            });
+        }
+    }
+}) 
 
 /*6*/
 	/**
