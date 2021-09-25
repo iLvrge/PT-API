@@ -539,6 +539,7 @@ route.get("/assets/download/:itemID",[authJWT.verifyToken], async (req, res) =>{
             type: connection.Sequelize.QueryTypes.SELECT,
             replacements: {itemID},
             raw: true,
+            plain: true,
             logging: console.log,
         })
         console.log(assignmentData)
