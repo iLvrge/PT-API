@@ -42,6 +42,8 @@ const clientDBConnection = require("../../helpers/clientDBConnection");
 
 const {google} = require('googleapis');
 
+const  AWS  = require('aws-sdk');
+
 const oauth2Client = new google.auth.OAuth2(
     process.env.GOOGLE_CLIENT_ID,
     process.env.GOOGLE_SECRET_KEY,
