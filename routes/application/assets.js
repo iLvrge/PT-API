@@ -560,7 +560,7 @@ route.get("/assets/download/:itemID",[authJWT.verifyToken], async (req, res) =>{
                         if(pdfFile) {
 
                             const bucketConfig = connection.bucketConfig;              
-                            filename = filename.replace(/\s+/g, '-');
+                            const filename = path.replace(/\s+/g, '-');
                         
                             let s3 = new AWS.S3({
                                 credentials: {
