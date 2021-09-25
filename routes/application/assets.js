@@ -541,12 +541,15 @@ route.get("/assets/download/:itemID",[authJWT.verifyToken], async (req, res) =>{
             raw: true,
             logging: console.log,
         })
-
+        console.log(assignmentData)
         if(assignmentData !== null) {
             const usptoLink = `https://legacy-assignments.uspto.gov/assignments/assignment-pat-${assignmentData.reel_no}-${assignmentData.frame_no}.pdf`
             const downloadFileProcess = new Promise( (resolve, reject) => {
+                console.log(usptoLink)
                 request.head(usptoLink, (err, response, body) => {
-                    const path = url.split('/').pop(), pathDirectory = '/var/www/html/trash/'
+                    console.log(usptoLink)
+                    const path = usptoLink.split('/').pop(), pathDirectory = '/var/www/html/trash/'
+                    console.log(`${pathDirectory}${path}`)
                     request(usptoLink)
                     .pipe(fs.createWriteStream(`${pathDirectory}${path}`))
                     .on('close', () => {
@@ -567,7 +570,7 @@ route.get("/assets/download/:itemID",[authJWT.verifyToken], async (req, res) =>{
                             const params = {
                                 Key: `assignments/var/www/html/beta/resources/shared/data//${filename}`,
                                 Bucket: bucketConfig.bucketName,
-                                Body: imageData,
+                                Body: pdfFile,
                                 ACL: 'public-read',
                                 ContentType: 'application/pdf',
                                 ContentDisposition: 'inline'
