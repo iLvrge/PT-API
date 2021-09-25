@@ -6,7 +6,7 @@ const connection = require("../../config/db.config");
 
 const request = require('request');
 
-const fs = require('fs'),
+const fs = require('fs');
 
 //require the Model
 const { WebClient } = require('@slack/web-api')
