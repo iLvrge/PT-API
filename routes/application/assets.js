@@ -6,6 +6,8 @@ const connection = require("../../config/db.config");
 
 const request = require('request');
 
+const fs = require('fs'),
+
 //require the Model
 const { WebClient } = require('@slack/web-api')
 
@@ -557,7 +559,7 @@ route.get("/assets/download/:itemID",[authJWT.verifyToken], async (req, res) =>{
                         const pdfFile = fs.readFileSync(`${pathDirectory}${path}`, {flag:'r'});
                         if(pdfFile) {
 
-                            const bucketConfig = config.bucketConfig;              
+                            const bucketConfig = connection.bucketConfig;              
                             filename = filename.replace(/\s+/g, '-');
                         
                             let s3 = new AWS.S3({
