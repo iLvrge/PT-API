@@ -571,9 +571,12 @@ route.get("/assets/download/:itemID",[authJWT.verifyToken], async (req, res) =>{
                                 },
                                 region: bucketConfig.region
                             })
+                            const serverDIR = 'assignments/var/www/html/beta/resources/shared/data/'
+                            console.log(pdfFile)
+                            console.log(`${serverDIR}${filename}`)
 
                             const params = {
-                                Key: `assignments/var/www/html/beta/resources/shared/data//${filename}`,
+                                Key: `${serverDIR}${filename}`,
                                 Bucket: bucketConfig.bucketName,
                                 Body: pdfFile,
                                 ACL: 'public-read',
@@ -583,7 +586,7 @@ route.get("/assets/download/:itemID",[authJWT.verifyToken], async (req, res) =>{
                             s3.putObject(params, async function(err, data) {
                                 console.log(err, data);
                                 if(err == null) {
-                                    link = `https://s3-${bucketConfig.region}.amazonaws.com/${bucketConfig.bucketName}/assignments/var/www/html/beta/resources/shared/data/${filename}`;
+                                    link = `https://s3-${bucketConfig.region}.amazonaws.com/${bucketConfig.bucketName}/${serverDIR}${filename}`;
 
                                     resolve('DOWNLOADED/UPLOADED')
 
