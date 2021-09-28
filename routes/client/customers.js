@@ -485,7 +485,8 @@ route.get("/:layout/assets", [authJWT.verifyToken, clientDBConnection.connect], 
                             tabs: '',
                             customers: '',
                             assignments: '',
-                            layoutID: layoutID
+                            layoutID: layoutID,
+                            date: 1997
                         },
             assets = {
                         list: [], 
@@ -530,7 +531,73 @@ route.get("/:layout/assets", [authJWT.verifyToken, clientDBConnection.connect], 
         replacements.offset = parseInt(offset)
         replacements.limit = parseInt(limit)
 
-        connection.applicationNew.query("CALL `routine_assets_count`(:companies, :organisationID, :tabs, :customers, :assignments, :layoutID);",{
+        let query = `SELECT STRING_COLUMNS FROM db_new_application.assets AS assets `
+
+
+        query += ` WHERE date_format(assets.appno_date, '%Y') > :date AND assets.layout_id = :layoutID AND assets.organisation_id = :organisationID `
+		
+
+        if(Array.isArray(companies) && companies.length > 0) {
+            query += ` AND assets.company_id IN (:companies)`
+        }
+
+
+
+        if((Array.isArray(assignments) && assignments.length > 0 ) || (Array.isArray(tabs) && tabs.length > 0) || (Array.isArray(customers) && customers.length > 0)) {
+            query += ` AND assets.rf_id IN ( SELECT activity_parties_transactions.rf_id  FROM db_new_application.activity_parties_transactions WHERE activity_parties_transactions.organisation_id = :organisationID AND activity_parties_transactions.company_id IN (:companies) `
+
+            if(Array.isArray(assignments) && assignments.length > 0 ) {
+                query += ` AND activity_parties_transactions.rf_id IN (:assignments)`
+            }
+
+            if(Array.isArray(tabs) && tabs.length > 0 ) {
+                query += ` AND activity_parties_transactions.activity_id IN (:tabs)`
+            }
+
+            if(Array.isArray(customers) && customers.length > 0 ) {
+                query += ` AND activity_parties_transactions.assignor_and_assignee_id IN (:customers)`
+            }
+
+            query += ` GROUP BY activity_parties_transactions.rf_id ) `
+        }
+
+        query += ` GROUP BY asset `;
+
+        const countReplace = ` CASE WHEN assets.grant_doc_num = '' OR assets.grant_doc_num IS NULL THEN assets.appno_doc_num ELSE assets.grant_doc_num END AS asset `
+
+
+        const countquery = `SELECT COUNT(*) as total_records FROM (${query.replace('STRING_COLUMNS', countReplace)}) AS temp`
+
+
+        const countResult = await connection.applicationNew.query(countquery,{
+            type: connection.Sequelize.QueryTypes.SELECT,
+            raw: true,
+            plain: true,
+            logging: console.log,
+            replacements: replacements,
+        })
+
+        if(countResult !== null) {
+            assets.total_records = countResult.total_records
+        }
+
+        if(assets.total_records > 0) {
+            query += ` LIMIT :offset, :limit`;
+            const  queryColumnReplace = `assets.organisation_id, 
+            CASE WHEN assets.grant_doc_num = '' OR assets.grant_doc_num IS NULL THEN assets.appno_doc_num ELSE assets.grant_doc_num END AS asset, 
+            CASE WHEN assets.grant_doc_num = '' OR assets.grant_doc_num IS NULL THEN 1 ELSE 0 END AS asset_type, assets.appno_doc_num, assets.grant_doc_num, 0 AS child_count, '' AS channel `
+
+            assets.list = await connection.applicationNew.query(query.replace('STRING_COLUMNS', queryColumnReplace),{
+                type: connection.Sequelize.QueryTypes.SELECT,
+                raw: true,
+                logging: console.log,
+                replacements: replacements,
+            })
+        }
+
+        res.status(200).json(assets);
+        
+        /* connection.applicationNew.query("CALL `routine_assets_count`(:companies, :organisationID, :tabs, :customers, :assignments, :layoutID);",{
                 type: connection.Sequelize.QueryTypes.SELECT,
                 raw: true,
                 logging: console.log,
@@ -563,7 +630,7 @@ route.get("/:layout/assets", [authJWT.verifyToken, clientDBConnection.connect], 
             } else {
                 res.status(200).json(assets);
             }
-        })
+        }) */
 
 
         
