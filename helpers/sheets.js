@@ -131,6 +131,18 @@ SheetsHelper.prototype.createProductSpreadsheet = function(title, sheets, sheetH
   });
 }
 
+SheetsHelper.prototype.addNewSheet = function (request, callback) {
+  var self = this;
+  self.service.spreadsheets.batchUpdate(request, function(err, response) {
+    if(!err) {
+      callback(response.data) ;
+    } else {
+      console.log('SpreadsheetGet', err)
+      callback({}) 
+    }    
+  })
+}
+
 SheetsHelper.prototype.get = function(request, callback) {
   var self = this;
   self.service.spreadsheets.get(request, function(err, response) {

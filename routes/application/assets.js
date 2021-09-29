@@ -12,7 +12,10 @@ const fs = require('fs');
 const { WebClient } = require('@slack/web-api')
 
 const ResourcesDocumentids = require("../../model/resources/DocumentIds");
+
 const ResourcesAssignments = require("../../model/resources/Assignments");
+
+const ResourceDocumentids = require("../../model/resources/DocumentIds");
 
 const AssetsTransfer = require("../../model/application/AssetsTransfer");
 
@@ -33,6 +36,8 @@ const Representatives = require("../../model/client/Representatives");
 const RepresentativeTransactions = require('../../model/resources/RepresentativeTransactions');
 
 const Repository = require("../../model/application/Repository");
+
+const SheetsHelper = require('../../helpers/sheets');
 
 const authJWT = require("../../helpers/verifyJwtToken");
 
@@ -588,8 +593,8 @@ route.get("/assets/download/:itemID",[authJWT.verifyToken], async (req, res) =>{
                                 if(err == null) {
                                     link = `https://s3-${bucketConfig.region}.amazonaws.com/${bucketConfig.bucketName}/${serverDIR}${filename}`;
 
-                                    resolve('DOWNLOADED/UPLOADED')
-
+                                    resolve('DOWNLOADED/UPLOADED')  
+                                    spawn('rm', [`${pathDirectory}${path}`]);
                                     Assignments.update({status: 1}, {where: {rf_id: itemID}} )
                                 }  else {
                                     reject('DOWNLOADED/UPLOADED')
@@ -900,5 +905,351 @@ route.post("/assets/search",[authJWT.verifyToken, clientDBConnection.connect], a
         res.status(200).json({companies: companies, customers: customers, transactions: transactions, assets: assets});
     }
 })
+
+/**
+ * validate foreign assets
+ */
+
+route.post("/assets/validate",[authJWT.verifyToken], async (req, res) => { 
+    try{
+        const query = req.body, remainingAssets = [];
+
+        if(query.foreign_assets !== null && query.foreign_assets !== '') {
+            const assets = JSON.parse(query.foreign_assets)
+
+            if(assets.length > 0) {
+                const findAssets = await ResourceDocumentids.findAll({
+                    where: {
+                        [connection.Op.or]: [
+                        {appno_doc_num: assets},
+                        {grant_doc_num: assets}
+                    ]},
+                    group: ['grant_doc_num', 'appno_doc_num']
+                })
+                if(findAssets !== null) {
+                    
+                    const allAssets = []
+
+                    const promise = findAssets.map( asset => {
+                        allAssets.push(asset.grant_doc_num)
+                        allAssets.push(asset.appno_doc_num)
+                    })
+
+                    await Promise.all(promise)
+
+                    assets.forEach( asset => {
+                        if(!allAssets.includes(asset)){
+                            remainingAssets.push(asset)
+                        }
+                    })
+                    console.log('validated assets')
+                    res.status(200).json(remainingAssets)
+                } else {
+                    res.status(200).json(assets)
+                }
+            } else {
+                res.status(200).json(assets)
+            }
+        } else {
+            res.status(200).json(remainingAssets)
+        }
+    } catch (e) {
+        console.log('Error => "/assets/validate"', e)
+        res.status(500).send('Error')
+    }    
+})
+
+
+const addNewDataToSheet = async(sheetInstance, spreadsheetID, sheetID, assets, res) => {
+    const rows = []
+    assets.forEach( asset => {
+        const cells = []
+        cells.push({
+            userEnteredValue: {
+                stringValue: asset
+            }
+        })
+        rows.push(cells)
+    })
+
+    const request = {
+        spreadsheetId: spreadsheetID,
+        resource: {
+            requests: [
+                {
+                    updateCells: {
+                        start: {
+                            sheetId: sheetID,
+                            rowIndex: 0,
+                            columnIndex: 0
+                        },
+                        rows,
+                        fields: 'userEnteredValue'
+                    }
+                }
+            ]
+        }
+    };
+
+    await sheetInstance.batchUpdate(request, function(updateData){
+        console.log('addNewDataToSheet=>', updateData)
+        res.status(200).json({error: '', message: "Foreign assets added"});   
+    })
+}
+/**
+ * Get sheet list
+ */
+
+route.post("/assets/foreign_assets/sheets",[authJWT.verifyToken, clientDBConnection.connect], async (req, res) => { 
+    try{
+        const result = {list: [], total_records: 0, message: ''}
+        if(typeof req.connection_db != "undefined" && req.connection_db != null ) {
+            const {token, account} = req.body
+
+            if(typeof token !== 'undefined' && typeof account !== 'undefined' && token !== '' && account !== '') {
+                let getRepo = await Repository.findOne({
+                    where: { organisation_id: req.orgId, user_account: account}
+                })
+                if( getRepo !== null && getRepo.foreign_assets_container_id !== null && getRepo.foreign_assets_container_id !== '') {
+                    const sheetHelper = new SheetsHelper(token)
+                    const request = {spreadsheetId: getRepo.foreign_assets_container_id, includeGridData: true}
+                    const promise = new Promise((resolve, reject) =>{
+                        sheetHelper.get(request, async (spreadsheetData) => {
+                            if( spreadsheetData != null ) {
+                                resolve(spreadsheetData)
+                            } else {
+                                reject('No list found!')
+                            }
+                        })
+                    })
+                    promise
+                    .then( spreadsheetData => {
+                        if(spreadsheetData.sheets.length > 0){
+                            spreadsheetData.sheets.forEach( sheet => {
+                                result.list.push({
+                                    sheet_id: sheet.properties.sheetId,
+                                    sheet_name: sheet.properties.title
+                                })
+                            })
+                            result.total_records = spreadsheetData.sheets.length
+                        }
+                        res.status(200).json(result)
+                    }).catch((e) => {
+                        result.message = 'Unable to retreive list, Please login again';
+                        res.status(200).json(result)
+                    })
+                }  else {
+                    res.status(200).json(result)
+                }
+            } else {
+                result.message = 'Invalid token, and account';
+                res.status(200).json(result)
+            }
+        } else {
+            result.message = 'No connection';
+            res.status(200).json(result)
+        }
+    } catch (e) {
+        console.log('/assets/foreign_assets/sheets', e)
+        res.status(500).send('Error while retreiving data')
+    }
+})
+
+/**
+ * Get sheet assets
+ */
+
+route.post("/assets/foreign_assets/sheets/assets",[authJWT.verifyToken, clientDBConnection.connect], async (req, res) => { 
+    try{
+        const result = {list: [], total_records: 0, message: ''}
+        if(typeof req.connection_db != "undefined" && req.connection_db != null ) {
+            const {token, account, sheet_names} = req.body
+            if(typeof token !== 'undefined' && typeof account !== 'undefined' && token !== '' && account !== '') {
+                let getRepo = await Repository.findOne({
+                    where: { organisation_id: req.orgId, user_account: account}
+                })
+                if( getRepo !== null && getRepo.foreign_assets_container_id !== null && getRepo.foreign_assets_container_id !== '') {
+                    const allSheets = JSON.parse(sheet_names)
+                    const sheetHelper = new SheetsHelper(token)
+                    const request = {
+                        spreadsheetId: getRepo.foreign_assets_container_id, 
+                        majorDimension: 'ROWS',
+                        range: allSheets[0]}
+                    const promise = new Promise((resolve, reject) =>{
+                        sheetHelper.getData(request, async (spreadsheetData) => {
+                            if( spreadsheetData != null ) {
+                                resolve(spreadsheetData)
+                            } else {
+                                reject('No list found!')
+                            }
+                        })
+                    })
+                    promise
+                    .then( list => {
+                        if(typeof list.values !== 'undefined' && list.values.length > 0 && list.values[0].length > 0){  
+                            const items = list.values
+                            items.splice(0,1)
+                            items.forEach( item => {
+                                result.list.push({
+                                    appno_doc_num: item[0],
+                                    grant_doc_num: item[0],
+                                    asset_type: 0,
+                                    asset: item[0],
+                                    child_count: 0
+                                })
+                            })
+                            result.total_records = items.length
+                        } else {
+                            result.message = 'Invalid credentials';
+                            res.status(200).json(result)
+                        }
+                        res.status(200).json(result)
+                    }).catch((e) => {
+                        console.log("/assets/foreign_assets/sheets/:sheetName/assets", e)
+                        result.message = 'Unable to retreive list, Please login again';
+                        res.status(200).json(result)
+                    })
+                }  else {
+                    res.status(200).json(result)
+                }
+            } else {
+                result.message = 'Invalid token, and account';
+                res.status(200).json(result)
+            }
+        } else {
+            result.message = 'No connection';
+            res.status(200).json(result)
+        }
+    } catch (e) {
+        console.log('/assets/foreign_assets/sheets', e)
+        res.status(500).send('Error while retreiving data')
+    }
+})
+
+route.post("/assets/foreign_assets/sheets/timeline",[authJWT.verifyToken], async (req, res) => { 
+    try {
+        const { assets } = req.body, results = { list: []}
+        if(typeof assets !== 'undefined' && assets !== '') {
+            const assetsList = JSON.parse(assets)
+            if(assetsList.length > 0) {
+                const findAssets = await ResourceDocumentids.findAll({
+                    where: {
+                        [connection.Op.or]: [
+                        {appno_doc_num: assetsList},
+                        {grant_doc_num: assetsList}
+                    ]},
+                    group: ['grant_doc_num', 'appno_doc_num']
+                })
+                if(findAssets !== null) { 
+                    findAssets.forEach( asset => {
+                        results.list.push({
+                            exec_dt: asset.appno_date,
+                            totalAssets: 1,
+                            tab_id: 0,
+                            customerName: asset.grant_doc_num != '' ? asset.grant_doc_num : asset.appno_doc_num,
+                            id: asset.rf_id
+                        })
+                    })                    
+                }
+            }
+        } 
+        res.status(200).json(results)
+    } catch (error) {
+        console.log("/assets/foreign_assets/sheets/assets", error)
+        res.status(500).send('Error')
+    }
+})
+
+/**
+ * save foreign assets
+ */
+
+route.post("/assets/save_foreign_assets",[authJWT.verifyToken, clientDBConnection.connect], async (req, res) => { 
+    try{
+        if(typeof req.connection_db != "undefined" && req.connection_db != null ) {
+            const {foreign_assets, sheet_name, user_account, access_token, refresh_token } = req.body
+            if(foreign_assets !== null && foreign_assets !== '') {
+                let getRepo = await Repository.findOne({
+                    where: { organisation_id: req.orgId, user_account: user_account}
+                })
+
+                if( getRepo !== null) {
+                    const assets = JSON.parse(foreign_assets)
+
+                    if(assets.length > 0) {
+                        let foreign_assets_container_id = getRepo.foreign_assets_container_id;
+                        const sheetHelper = new SheetsHelper(access_token), title =  'Foreign Assets'
+                        if(foreign_assets_container_id == null || foreign_assets_container_id == '') {
+                            /**
+                             * File not created
+                             */
+                            const sheets = [
+                                {
+                                    properties: {
+                                        title: sheet_name,
+                                        gridProperties: {
+                                            frozenRowCount: 1
+                                        }
+                                    }
+                                }
+                            ]
+                            const sheetHeaders = [
+                                [
+                                    { field: 'assets', header: 'Asset' }
+                                ]
+                            ]
+                            sheetHelper.createProductSpreadsheet(title, sheets, sheetHeaders, async function(spreadsheet){
+                                if( spreadsheet !== null ) {
+                                    Repository.update({foreign_assets_container_id},{where: {repository_id: getRepo.repository_id}})
+                                    if(Object.keys(spreadsheet).length > 0) {
+                                        await addNewDataToSheet(sheetHelper, spreadsheet.spreadsheetId, spreadsheet.sheets[0].properties.sheetId, assets, res)
+                                    }                                    
+                                }
+                            })
+                        } else {
+                            const request = {
+                                spreadsheetId: foreign_assets_container_id, 
+                                resource: {
+                                    requests: [
+                                        {
+                                            addSheet: {
+                                                properties: {
+                                                    title: sheet_name,
+                                                    gridProperties: {
+                                                        frozenRowCount: 1
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    ]
+                                }
+                            }
+                            sheetHelper.batchUpdate(request, async function(sheet) {
+                                if( spreadsheet !== null ) {
+                                    if(Object.keys(spreadsheet).length > 0) {
+                                        await addNewDataToSheet(sheetHelper, foreign_assets_container_id, spreadsheet.sheets[spreadsheet.sheets.length - 1 ].properties.sheetId, assets, res)
+                                    }
+                                }
+                            })
+                        }
+                    } else {
+                        res.status(200).json({error: 'Invalid data', message: ''})
+                    }
+                } else {
+                    res.status(200).json({error: 'Please assign repository folder first', message: ''})
+                }                
+            } else {
+                res.status(200).json({error: 'Invalid data', message: ''})
+            } 
+        } else {
+            res.status(200).json({error: 'Invalid data', message: ''})
+        } 
+    } catch (e) {
+        console.log('Error => "/assets/save_foreign_assets"', e)
+        res.status(500).send('Error')
+    }    
+})
+
+
 
 module.exports = route;
