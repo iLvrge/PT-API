@@ -930,7 +930,7 @@ route.post("/assets/validate",[authJWT.verifyToken], async (req, res) => {
                 number = number.replace(/,/g, "");
                 number = number.replace(/./g, "");
                 number = number.replace(/\//g, "");
-                consoloe.log("number", number, asset)
+                console.log("number", number, asset)
                 if(number != asset && number !== '') {
                     assets[index] = number
                 }   
