@@ -932,7 +932,7 @@ route.post("/assets/validate",[authJWT.verifyToken], async (req, res) => {
                 console.log('THIRD', number)
                 number = number.replace(/,/g, "");
                 console.log('THIRD1', number)
-                number = number.replace(/./g, "");
+                number = number.replace(/\./g, "");
                 console.log('THIRD2', number)
                 number = number.replace(/\//g, "");
                 console.log("number", number, asset)
