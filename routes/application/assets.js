@@ -932,7 +932,7 @@ route.post("/assets/validate",[authJWT.verifyToken], async (req, res) => {
                 number = number.replace(/\//g, "");
                 if(number != asset && number !== '') {
                     assets[index] = number
-                }
+                }   
             })
             if(assets.length > 0) {
                 const findAssets = await ResourceDocumentids.findAll({
