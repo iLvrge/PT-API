@@ -90,7 +90,7 @@ route.get("/share/:code/:type", async (req, res) =>{
     }
 });
 
-route.get("/share/:asset/:code", async (req, res) =>{     
+route.get("/share/data/:asset/:code", async (req, res) =>{     
     const { asset, code } = req.params;
     try {
         if( code != "") {

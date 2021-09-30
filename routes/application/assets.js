@@ -916,7 +916,24 @@ route.post("/assets/validate",[authJWT.verifyToken], async (req, res) => {
 
         if(query.foreign_assets !== null && query.foreign_assets !== '') {
             const assets = JSON.parse(query.foreign_assets)
-
+            assets.forEach((asset, index) => {
+                let number = asset.toString().toLocaleLowerCase()
+                if(number.indexOf('us') !== -1) {
+                    number = number.replace('us', '')
+                }
+                if(number.indexOf('a') !== -1) {
+                    number = number.substring(0, number.indexOf('a'))
+                }
+                if(number.indexOf('b') !== -1) {
+                    number = number.substring(0, number.indexOf('b'))
+                }
+                number = number.replace(/,/g, "");
+                number = number.replace(/./g, "");
+                number = number.replace(/\//g, "");
+                if(number != asset && number !== '') {
+                    assets[index] = number
+                }
+            })
             if(assets.length > 0) {
                 const findAssets = await ResourceDocumentids.findAll({
                     where: {
@@ -959,18 +976,22 @@ route.post("/assets/validate",[authJWT.verifyToken], async (req, res) => {
     }    
 })
 
+const buildRows = async(assets) => {
+    return assets.map(function(asset) {        
+        return {
+            values: [
+                {
+                    userEnteredValue: {
+                    stringValue: asset
+                    }
+                }
+            ]
+        };
+    });
+}
 
 const addNewDataToSheet = async(sheetInstance, spreadsheetID, sheetID, assets, res) => {
-    const rows = []
-    assets.forEach( asset => {
-        const cells = []
-        cells.push({
-            userEnteredValue: {
-                stringValue: asset
-            }
-        })
-        rows.push(cells)
-    })
+    const rows = await buildRows(assets)
 
     const request = {
         spreadsheetId: spreadsheetID,
@@ -980,11 +1001,11 @@ const addNewDataToSheet = async(sheetInstance, spreadsheetID, sheetID, assets, r
                     updateCells: {
                         start: {
                             sheetId: sheetID,
-                            rowIndex: 0,
+                            rowIndex: 1,
                             columnIndex: 0
                         },
                         rows,
-                        fields: 'userEnteredValue'
+                        fields: '*'
                     }
                 }
             ]
@@ -1200,10 +1221,14 @@ route.post("/assets/save_foreign_assets",[authJWT.verifyToken, clientDBConnectio
                             ]
                             sheetHelper.createProductSpreadsheet(title, sheets, sheetHeaders, async function(spreadsheet){
                                 if( spreadsheet !== null ) {
-                                    Repository.update({foreign_assets_container_id},{where: {repository_id: getRepo.repository_id}})
+                                    getRepo.update({foreign_assets_container_id: spreadsheet.spreadsheetId})
                                     if(Object.keys(spreadsheet).length > 0) {
                                         await addNewDataToSheet(sheetHelper, spreadsheet.spreadsheetId, spreadsheet.sheets[0].properties.sheetId, assets, res)
-                                    }                                    
+                                    } else {
+                                        res.status(200).json({error: 'Error while adding data', message: ''})
+                                    }                                 
+                                } else {
+                                    res.status(200).json({error: 'Error while adding data', message: ''})
                                 }
                             })
                         } else {
@@ -1228,7 +1253,11 @@ route.post("/assets/save_foreign_assets",[authJWT.verifyToken, clientDBConnectio
                                 if( spreadsheet !== null ) {
                                     if(Object.keys(spreadsheet).length > 0) {
                                         await addNewDataToSheet(sheetHelper, foreign_assets_container_id, spreadsheet.sheets[spreadsheet.sheets.length - 1 ].properties.sheetId, assets, res)
+                                    } else {
+                                        res.status(200).json({error: 'Error while adding data', message: ''})
                                     }
+                                } else {
+                                    res.status(200).json({error: 'Error while adding data', message: ''})
                                 }
                             })
                         }
