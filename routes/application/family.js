@@ -400,8 +400,8 @@ const getContentFromXML = async (fileContent, contentType) => {
                 claims = replaceContent('<claims', '<div', claims)
                 claims = replaceContent('</claims>', '</div>', claims)
 
-                claims = replaceContent('<claim', '<div', claims)
-                claims = replaceContent('</claim>', '</div>', claims)
+                claims = replaceContent('<claim', '<div class="claim"><div', claims)
+                claims = replaceContent('</claim>', '</div></div>', claims)
                
                 content.push({ text: claims })
             }
