@@ -921,14 +921,19 @@ route.post("/assets/validate",[authJWT.verifyToken], async (req, res) => {
                 if(number.indexOf('us') !== -1) {
                     number = number.replace('us', '')
                 }
+                console.log('FIRST', number)
                 if(number.indexOf('a') !== -1) {
                     number = number.substring(0, number.indexOf('a'))
                 }
+                console.log('SECOND', number)
                 if(number.indexOf('b') !== -1) {
                     number = number.substring(0, number.indexOf('b'))
                 }
+                console.log('THIRD', number)
                 number = number.replace(/,/g, "");
+                console.log('THIRD1', number)
                 number = number.replace(/./g, "");
+                console.log('THIRD2', number)
                 number = number.replace(/\//g, "");
                 console.log("number", number, asset)
                 if(number != asset && number !== '') {
