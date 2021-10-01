@@ -916,6 +916,7 @@ route.post("/assets/validate",[authJWT.verifyToken], async (req, res) => {
 
         if(query.foreign_assets !== null && query.foreign_assets !== '') {
             const assets = JSON.parse(query.foreign_assets)
+            const originalAsset = [...assets]
             assets.forEach((asset, index) => {
                 let number = asset.toString().toLocaleLowerCase()
                 if(number.indexOf('us') !== -1) {
@@ -930,6 +931,7 @@ route.post("/assets/validate",[authJWT.verifyToken], async (req, res) => {
                 number = number.replace(/,/g, "")
                 number = number.replace(/\./g, "")
                 number = number.replace(/\//g, "")
+                number = number.trim()
                 if(number != asset && number !== '') {
                     assets[index] = number
                 }   
@@ -954,9 +956,9 @@ route.post("/assets/validate",[authJWT.verifyToken], async (req, res) => {
 
                     await Promise.all(promise)
 
-                    assets.forEach( asset => {
+                    assets.forEach( (asset, index) => {
                         if(!allAssets.includes(asset)){
-                            remainingAssets.push(asset)
+                            remainingAssets.push(originalAsset[index])
                         }
                     })
                     console.log('validated assets')
