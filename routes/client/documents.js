@@ -286,25 +286,35 @@ route.get("/repo_folder", [authJWT.verifyToken], async(req, res, next) => {
 
 route.put("/repo_folder", [authJWT.verifyToken], async(req, res, next) => {
     try {
-        const { container_id, container_name, user_account, breadcrumb } = req.body
+        const { container_id, container_name, user_account, breadcrumb, utilities_container_id, utilities_name, utilities_breadcrumb } = req.body
 
         let getRepo = await Repository.findOne({
             where: { organisation_id: req.orgId, user_account: user_account}
         })
 
         if(getRepo == null) {
-            getRepo = await Repository.create({
-                organisation_id: req.orgId,
-                user_account: user_account,
-                container_id: container_id,
-                container_name: container_name,
-                breadcrumb: breadcrumb
-            })
+            let item = {}
+            if(typeof container_id !== 'undefined') {
+                item = {container_id, container_name, breadcrumb, user_account}
+            } else if (typeof utilities_container_id !== 'undefined') {
+                item = {utilities_container_id, utilities_name, utilities_breadcrumb, user_account}               
+            }
+            if(Object.keys(item).length > 0) {
+                item.organisation_id = req.orgId
+                getRepo = await Repository.create(item)
+            }
         } else {
-            getRepo.container_id = container_id
-            getRepo.container_name = container_name
-            getRepo.breadcrumb = breadcrumb
-            await getRepo.save();
+            if(typeof container_id !== 'undefined') {
+                getRepo.container_id = container_id
+                getRepo.container_name = container_name
+                getRepo.breadcrumb = breadcrumb
+                await getRepo.save();
+            } else if (typeof utilities_container_id !== 'undefined') {
+                getRepo.utilities_container_id = utilities_container_id
+                getRepo.utilities_name = utilities_name
+                getRepo.utilities_breadcrumb = utilities_breadcrumb
+                await getRepo.save();
+            }
         }
         res.status(200).json(getRepo)
     } catch(e) {
@@ -960,10 +970,13 @@ route.post("/product_sheet", [authJWT.verifyToken], async(req, res, next) =>{
                     const drive = google.drive({version: 'v3', auth:oauth2Client});
 
                     if(drive != null && drive != undefined) {
-                        const response = await drive.files.update({
-                                                fileId: model.file_container_id,
-                                                addParents: getRepo.container_id
-                                            })
+                        if(getRepo.utilities_container_id !== '' && getRepo.utilities_container_id !== null) {
+                            const response = await drive.files.update({
+                                fileId: model.file_container_id,
+                                addParents: getRepo.utilities_container_id
+                            })
+                        }
+                        
                         getRepo.file_container_id =  model.file_container_id         
                         getRepo.file_container_child1_id =  model.file_container_child1_id       
                         getRepo.file_container_child2_id =  model.file_container_child2_id   

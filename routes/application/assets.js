@@ -910,32 +910,37 @@ route.post("/assets/search",[authJWT.verifyToken, clientDBConnection.connect], a
  * validate foreign assets
  */
 
+const fixedAssetsUnWantedCharacters = async (assets) => {
+    assets.forEach((asset, index) => {
+        let number = asset.toString().toLocaleLowerCase()
+        if(number.indexOf('us') !== -1) {
+            number = number.replace('us', '')
+        }
+        if(number.indexOf('a') !== -1) {
+            number = number.substring(0, number.indexOf('a'))
+        }
+        if(number.indexOf('b') !== -1) {
+            number = number.substring(0, number.indexOf('b'))
+        }
+        number = number.replace(/,/g, "")
+        number = number.replace(/\./g, "")
+        number = number.replace(/\//g, "")
+        number = number.trim()
+        if(number != asset && number !== '') {
+            assets[index] = number
+        }   
+    })
+    return assets
+}
+
 route.post("/assets/validate",[authJWT.verifyToken], async (req, res) => { 
     try{
         const query = req.body, remainingAssets = [];
 
         if(query.foreign_assets !== null && query.foreign_assets !== '') {
-            const assets = JSON.parse(query.foreign_assets)
+            let assets = JSON.parse(query.foreign_assets)
             const originalAsset = [...assets]
-            assets.forEach((asset, index) => {
-                let number = asset.toString().toLocaleLowerCase()
-                if(number.indexOf('us') !== -1) {
-                    number = number.replace('us', '')
-                }
-                if(number.indexOf('a') !== -1) {
-                    number = number.substring(0, number.indexOf('a'))
-                }
-                if(number.indexOf('b') !== -1) {
-                    number = number.substring(0, number.indexOf('b'))
-                }
-                number = number.replace(/,/g, "")
-                number = number.replace(/\./g, "")
-                number = number.replace(/\//g, "")
-                number = number.trim()
-                if(number != asset && number !== '') {
-                    assets[index] = number
-                }   
-            })
+            assets = await fixedAssetsUnWantedCharacters(assets)
             if(assets.length > 0) {
                 const findAssets = await ResourceDocumentids.findAll({
                     where: {
@@ -1187,6 +1192,19 @@ route.post("/assets/foreign_assets/sheets/timeline",[authJWT.verifyToken], async
  * save foreign assets
  */
 
+const moveSheetToUtilitiesFolder = (repositoryObject, access_token, fileID) => {
+    oauth2Client.setCredentials({ access_token})
+
+    const drive = google.drive({version: 'v3', auth:oauth2Client});
+    if(drive != null && drive != undefined) {
+        drive.files.update({
+            fileId: fileID,
+            addParents: repositoryObject.utilities_container_id 
+        })
+    }
+
+}
+
 route.post("/assets/save_foreign_assets",[authJWT.verifyToken, clientDBConnection.connect], async (req, res) => { 
     try{
         if(typeof req.connection_db != "undefined" && req.connection_db != null ) {
@@ -1196,78 +1214,102 @@ route.post("/assets/save_foreign_assets",[authJWT.verifyToken, clientDBConnectio
                     where: { organisation_id: req.orgId, user_account: user_account}
                 })
 
-                if( getRepo !== null) {
-                    const assets = JSON.parse(foreign_assets)
-
+                if(getRepo !== null && getRepo.utilities_container_id !== '' &&  getRepo.utilities_container_id !== null) {
+                    let assets = JSON.parse(foreign_assets)
+                    assets = await fixedAssetsUnWantedCharacters(assets)
                     if(assets.length > 0) {
-                        let foreign_assets_container_id = getRepo.foreign_assets_container_id;
-                        const sheetHelper = new SheetsHelper(access_token), title =  'Foreign Assets'
-                        if(foreign_assets_container_id == null || foreign_assets_container_id == '') {
-                            /**
-                             * File not created
-                             */
-                            const sheets = [
-                                {
-                                    properties: {
-                                        title: sheet_name,
-                                        gridProperties: {
-                                            frozenRowCount: 1
+
+                        const findAssets = await ResourceDocumentids.findAll({
+                            attributes: ['grant_doc_num', 'appno_doc_num'],
+                            where: {
+                                [connection.Op.or]: [
+                                {appno_doc_num: assets},
+                                {grant_doc_num: assets}
+                            ]},
+                            group: ['grant_doc_num', 'appno_doc_num']
+                        })
+
+                        if(findAssets.length > 0) {
+                            const validAssets = []
+                            findAssets.forEach( asset => {
+                                if(asset.grant_doc_num !== '' || asset.appno_doc_num !== '') {
+                                    validAssets.push(asset.grant_doc_num !== '' && asset.grant_doc_num !== null ? asset.grant_doc_num : asset.appno_doc_num)
+                                }
+                                
+                            })
+                            let foreign_assets_container_id = getRepo.foreign_assets_container_id;
+                            const sheetHelper = new SheetsHelper(access_token), title =  'Foreign Assets'
+                            if(foreign_assets_container_id == null || foreign_assets_container_id == '') {
+                                /**
+                                 * File not created
+                                 */
+                                const sheets = [
+                                    {
+                                        properties: {
+                                            title: sheet_name,
+                                            gridProperties: {
+                                                frozenRowCount: 1
+                                            }
                                         }
                                     }
-                                }
-                            ]
-                            const sheetHeaders = [
-                                [
-                                    { field: 'assets', header: 'Asset' }
                                 ]
-                            ]
-                            sheetHelper.createProductSpreadsheet(title, sheets, sheetHeaders, async function(spreadsheet){
-                                if( spreadsheet !== null ) {
-                                    getRepo.update({foreign_assets_container_id: spreadsheet.spreadsheetId})
-                                    if(Object.keys(spreadsheet).length > 0) {
-                                        await addNewDataToSheet(sheetHelper, spreadsheet.spreadsheetId, spreadsheet.sheets[0].properties.sheetId, assets, res)
+                                const sheetHeaders = [
+                                    [
+                                        { field: 'assets', header: 'Asset' }
+                                    ]
+                                ]
+                                sheetHelper.createProductSpreadsheet(title, sheets, sheetHeaders, async function(spreadsheet){
+                                    if( spreadsheet !== null ) {
+                                        moveSheetToUtilitiesFolder(getRepo, access_token, spreadsheet.spreadsheetId) // Move sheet to utilities folder
+                                        
+                                        getRepo.update({foreign_assets_container_id: spreadsheet.spreadsheetId})
+                                        if(Object.keys(spreadsheet).length > 0) {
+                                            await addNewDataToSheet(sheetHelper, spreadsheet.spreadsheetId, spreadsheet.sheets[0].properties.sheetId, validAssets, res)
+                                        } else {
+                                            res.status(200).json({error: 'Error while adding data', message: ''})
+                                        }                                 
                                     } else {
                                         res.status(200).json({error: 'Error while adding data', message: ''})
-                                    }                                 
-                                } else {
-                                    res.status(200).json({error: 'Error while adding data', message: ''})
-                                }
-                            })
-                        } else {
-                            const request = {
-                                spreadsheetId: foreign_assets_container_id, 
-                                resource: {
-                                    requests: [
-                                        {
-                                            addSheet: {
-                                                properties: {
-                                                    title: sheet_name,
-                                                    gridProperties: {
-                                                        frozenRowCount: 1
+                                    }
+                                })
+                            } else {
+                                const request = {
+                                    spreadsheetId: foreign_assets_container_id, 
+                                    resource: {
+                                        requests: [
+                                            {
+                                                addSheet: {
+                                                    properties: {
+                                                        title: sheet_name,
+                                                        gridProperties: {
+                                                            frozenRowCount: 1
+                                                        }
                                                     }
                                                 }
                                             }
-                                        }
-                                    ]
+                                        ]
+                                    }
                                 }
-                            }
-                            sheetHelper.batchUpdate(request, async function(sheet) {
-                                if( spreadsheet !== null ) {
-                                    if(Object.keys(spreadsheet).length > 0) {
-                                        await addNewDataToSheet(sheetHelper, foreign_assets_container_id, spreadsheet.sheets[spreadsheet.sheets.length - 1 ].properties.sheetId, assets, res)
+                                sheetHelper.batchUpdate(request, async function(sheet) {
+                                    if( spreadsheet !== null ) {
+                                        if(Object.keys(spreadsheet).length > 0) {
+                                            await addNewDataToSheet(sheetHelper, foreign_assets_container_id, spreadsheet.sheets[spreadsheet.sheets.length - 1 ].properties.sheetId, validAssets, res)
+                                        } else {
+                                            res.status(200).json({error: 'Error while adding data', message: ''})
+                                        }
                                     } else {
                                         res.status(200).json({error: 'Error while adding data', message: ''})
                                     }
-                                } else {
-                                    res.status(200).json({error: 'Error while adding data', message: ''})
-                                }
-                            })
+                                })
+                            }
+                        } else {
+                            res.status(200).json({error: 'Invalid data', message: ''})
                         }
                     } else {
                         res.status(200).json({error: 'Invalid data', message: ''})
                     }
                 } else {
-                    res.status(200).json({error: 'Please assign repository folder first', message: ''})
+                    res.status(200).json({error: 'Please assign a repository folder', message: ''})
                 }                
             } else {
                 res.status(200).json({error: 'Invalid data', message: ''})
@@ -1279,8 +1321,6 @@ route.post("/assets/save_foreign_assets",[authJWT.verifyToken, clientDBConnectio
         console.log('Error => "/assets/save_foreign_assets"', e)
         res.status(500).send('Error')
     }    
-})
-
-
+});
 
 module.exports = route;

@@ -42,6 +42,18 @@ const Repository = connection.applicationNew.define('repositories',{
         type: Sequelize.STRING,
         allowNull: true,
     },
+    utilities_container_id:{
+        type: Sequelize.STRING,
+        allowNull: true,
+    },   
+    utilities_name:{
+        type: Sequelize.STRING,
+        allowNull: true,
+    },
+    utilities_breadcrumb:{
+        type: Sequelize.STRING,
+        allowNull: true,
+    },
     foreign_assets_container_id:{
         type: Sequelize.STRING,
         allowNull: true,
