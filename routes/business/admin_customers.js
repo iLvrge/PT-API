@@ -914,8 +914,7 @@ let downloadImageFromUrl = async (org, res, url, filename, contentType, callback
     })
 };
 
-route.put("/customers/:id/logo", [authJWT.verifyToken, authJWT.isAdmin], async (req, res)=>{
-    (async () => {        
+route.put("/customers/:id/logo", [authJWT.verifyToken, authJWT.isAdmin], async (req, res) => {
         try{
             let organisationID = req.params.id;
             if(organisationID > 0){
@@ -975,7 +974,7 @@ route.put("/customers/:id/logo", [authJWT.verifyToken, authJWT.isAdmin], async (
                                     });
                                     res.status(200).json({name: org.name, logo: org.logo});
                                 } else {
-                                    return res.status(500).send("ERROR: "+err);	
+                                    res.status(500).send("ERROR: "+err);	
                                 }
                             }) 
                         } else {
@@ -1026,26 +1025,25 @@ route.put("/customers/:id/logo", [authJWT.verifyToken, authJWT.isAdmin], async (
                                     });
                                     res.status(200).json({name: org.name, logo: org.logo});
                                 } else {
-                                    return res.status(500).send("ERROR: "+err);	
+                                    res.status(500).send("ERROR: "+err);	
                                 }
                             })
                         } else {
-                            return res.status(400).send("Invalid file format.");	
+                            res.status(400).send("Invalid file format.");	
                         }
                     } else {
-                        return res.status(400).send("Please select file first.");	
+                        res.status(400).send("Please select file first.");	
                     }
                 } else {
-                    return res.status(400).send("Invalid customer");	
+                    res.status(400).send("Invalid customer");	
                 }
             } else {
-                return res.status(400).send("Invalid customer");	
+                res.status(400).send("Invalid customer");	
             }
         } catch(e) {
             console.log(e);
-            return res.status(500).send("Error while uploading file.");	
+            res.status(500).send("Error while uploading file.");	
         }
-    })();
 });
 
 /**

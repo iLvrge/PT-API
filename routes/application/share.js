@@ -114,4 +114,32 @@ route.get("/share/data/:asset/:code", async (req, res) =>{
     }
 });
 
+route.get("/share/illustrate/show/:code", async (req, res) =>{     
+    const { code } = req.params;
+    try {
+        if( code != "") {
+            const assetList = await helpers.getShareList(code, 0);
+            if( assetList.length > 0 ) {
+                const share = await helpers.getShareData(code, assetList[0].asset);
+                if( share != null ) {
+                    req.orgId = share.organisation_id;
+                    req.userId = share.user_id;
+                    if(share  != null ) {
+                        req.params.patentNumber = assetList[0].asset;
+                        helpers.generateJSON(req, res);
+                    }
+                } else {
+                    res.status(500).send("Invalid url.");
+                }
+            } else {
+                res.status(500).send("Invalid url.");
+            }
+        } else {
+            res.status(500).send("Invalid url.");
+        }
+    }catch(e){
+        console.log(e);
+        res.status(500).send("Invalid url.");
+    }
+});
 module.exports = route;
