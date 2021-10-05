@@ -1206,7 +1206,7 @@ let getCompaniesListWithReports = async (DBConnection) => {
     WHERE parent_id IN (SELECT representative_id from representative WHERE type = :groupType)
     UNION
     SELECT representative_id, original_name, representative_name FROM representative 
-    WHERE parent_id = :companyParentID AND type = :companyType`
+    WHERE parent_id = :companyParentID AND type = :companyType ORDER BY original_name`
 
     let getList = await DBConnection.query(queryRepresentatives,{
             type: DBConnection.Sequelize.QueryTypes.SELECT,
