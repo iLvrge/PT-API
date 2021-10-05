@@ -182,7 +182,7 @@ route.get("/family/:applicationNumber", [authJWT.verifyToken], async (req, res) 
                     const publication = findPatent != null && findPatent.grant_doc_num != null && findPatent.grant_doc_num != '' ? 'publication' : 'application'
                     getFamilyData = await epo.runUrl(token, 'family', publication, 'docdb', `${asset}`);
                     if( !getFamilyData  || getFamilyData.indexOf('EntityNotFound') !== -1) {
-                        getFamilyData = await epo.runUrl(token, 'family', publication,' epodoc', `${asset}`);
+                        getFamilyData = await epo.runUrl(token, 'family', publication,'epodoc', `${asset}`);
                     }
                 }
             }
