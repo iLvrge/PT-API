@@ -165,24 +165,24 @@ route.get("/family/:applicationNumber", [authJWT.verifyToken], async (req, res) 
         } */      
         let asset = findPatent != null && findPatent.grant_doc_num != null && findPatent.grant_doc_num != '' ? findPatent.grant_doc_num : applicationNumber
 
-        asset = `US${asset}`
+        const formatAsset = `US${asset}`
 
           
-        if(asset !== null && asset !== '') {
+        if(formatAsset !== null && formatAsset !== '') {
                         
             let getFamilyData = '', fileExist = false
-            if (fs.existsSync(`${extraDiskPath}FAMILY/${asset}.XML`)) {
+            if (fs.existsSync(`${extraDiskPath}FAMILY/${formatAsset}.XML`)) {
                 //file exists
                 console.log('FILE EXIST')
                 fileExist = true
-                getFamilyData = await fs.promises.readFile(`${extraDiskPath}FAMILY/${asset}.XML`, 'utf8');
+                getFamilyData = await fs.promises.readFile(`${extraDiskPath}FAMILY/${formatAsset}.XML`, 'utf8');
             } else {
                 const token = await epo.readToken('HedCET') 
                 if(token !== 'undefined' && token != '') {
                     const publication = findPatent != null && findPatent.grant_doc_num != null && findPatent.grant_doc_num != '' ? 'publication' : 'application'
-                    getFamilyData = await epo.runUrl(token, 'family', publication, 'docdb', `${asset}`);
+                    getFamilyData = await epo.runUrl(token, 'family', publication, 'docdb', `${formatAsset}`);
                     if( !getFamilyData  || getFamilyData.indexOf('EntityNotFound') !== -1) {
-                        getFamilyData = await epo.runUrl(token, 'family', publication,'epodoc', `${asset}`);
+                        getFamilyData = await epo.runUrl(token, 'family', publication,'epodoc', `${formatAsset}`);
                     }
                 }
             }
@@ -201,11 +201,12 @@ route.get("/family/:applicationNumber", [authJWT.verifyToken], async (req, res) 
                 if( xmlData.hasOwnProperty('ops:world-patent-data') ){
                     
                     if(fileExist === false) {
-                        fs.writeFileSync(`${extraDiskPath}FAMILY/${asset}.XML`, getFamilyData);
+                        fs.writeFileSync(`${extraDiskPath}FAMILY/${formatAsset}.XML`, getFamilyData);
                     }
                     const worldPatentData = xmlData['ops:world-patent-data']
                     if(worldPatentData.hasOwnProperty('ops:patent-family')) {
                         const patentFamily =  worldPatentData['ops:patent-family']
+                        
                         if( patentFamily.length > 0 && typeof patentFamily[0] !== 'undefined' ) {
                             const familyMembers = patentFamily[0]['ops:family-member']
                             if( familyMembers.length > 0 ) {                                
@@ -216,42 +217,55 @@ route.get("/family/:applicationNumber", [authJWT.verifyToken], async (req, res) 
                                         dbTypeData = family['publication-reference'][0]['document-id'][1]
                                     }
                                     if(dbTypeData.hasOwnProperty('doc-number')) {
-
                                         if(findPatent == null || findPatent.grant_doc_num == null || findPatent.grant_doc_num == '') {
                                             dbTypeData = family['application-reference'][0]['document-id'][0]
                                         }
-
-                                        if((familyID === 0 && dbTypeData['doc-number'] == asset) || (familyID !== 0 && familyID == family.$['family-id'])) {
-                                            if(familyID === 0 && dbTypeData['doc-number'] == asset) {
+                                        console.log("dbTypeData['doc-number'] == asset", dbTypeData['doc-number'], asset)
+                                        if((familyID === 0 && dbTypeData['doc-number'].toString() == asset) || (familyID !== 0 && familyID == family.$['family-id'])) {
+                                            if(familyID === 0 && dbTypeData['doc-number'].toString() == asset) {
                                                 familyID = family.$['family-id']
-                                            }
-                                            if(familyID > 0) {
-                                                getFamily.push({
-                                                    family_id: familyID,
-                                                    patent_number: dbTypeData['doc-number'].toString(),
-                                                    publication_number: dbTypeData['doc-number'].toString(),
-                                                    application_number: family['application-reference'][0]['document-id'][0]['doc-number'],
-                                                    application_date: family['application-reference'][0]['document-id'][0]['date'].toString(),                                                
-                                                    publication_date: dbTypeData['date'].toString(),
-                                                    application_country: dbTypeData['country'].toString(),
-                                                    publication_country: dbTypeData['country'].toString(),
-                                                    publication_kind: dbTypeData['kind'].toString(),                                            
-                                                    application_kind: family['application-reference'][0]['document-id'][0]['kind'].toString(),
-                                                    classifications: null,
-                                                    assigments: null,
-                                                    images: null,
-                                                    abstracts: null,
-                                                    specification: null,
-                                                    claims: null,
-                                                    inventors: null,
-                                                    assignee: null,
-                                                    applicants: [],
-                                                    title: findPatent != null ? findPatent.title : ''
-                                                })
-                                            }                                                
+                                            }                                                                                            
                                         }
                                     }
                                 });
+                                console.log('familyID', familyID)
+                                if(familyID > 0) {
+                                    familyMembers.forEach(family => {
+                                        if(familyID === family.$['family-id']) {
+                                            let dbTypeData = family['publication-reference'][0]['document-id'][0]
+                                            if( dbTypeData.$['document-id-type'] !== 'docdb' ) {
+                                                dbTypeData = family['publication-reference'][0]['document-id'][1]
+                                            }
+                                            if(dbTypeData.hasOwnProperty('doc-number')) {
+                                                if(findPatent == null || findPatent.grant_doc_num == null || findPatent.grant_doc_num == '') {
+                                                    dbTypeData = family['application-reference'][0]['document-id'][0]
+                                                }
+                                            }
+                                            getFamily.push({
+                                                family_id: familyID,
+                                                patent_number: dbTypeData['doc-number'].toString(),
+                                                publication_number: dbTypeData['doc-number'].toString(),
+                                                application_number: family['application-reference'][0]['document-id'][0]['doc-number'],
+                                                application_date: family['application-reference'][0]['document-id'][0]['date'].toString(),                                                
+                                                publication_date: dbTypeData['date'].toString(),
+                                                application_country: dbTypeData['country'].toString(),
+                                                publication_country: dbTypeData['country'].toString(),
+                                                publication_kind: dbTypeData['kind'].toString(),                                            
+                                                application_kind: family['application-reference'][0]['document-id'][0]['kind'].toString(),
+                                                classifications: null,
+                                                assigments: null,
+                                                images: null,
+                                                abstracts: null,
+                                                specification: null,
+                                                claims: null,
+                                                inventors: null,
+                                                assignee: null,
+                                                applicants: [],
+                                                title: findPatent != null ? findPatent.title : ''
+                                            })
+                                        }                                        
+                                    })                                    
+                                }
                             } 
                         }
                     }
