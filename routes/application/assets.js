@@ -1444,6 +1444,7 @@ route.post("/assets/external_assets",[authJWT.verifyToken, clientDBConnection.co
                                 }
                                 
                             })
+                            console.log('getRepo', JSON.stringify(getRepo))
                             let foreign_assets_container_id = getRepo.foreign_assets_container_id;
                             const sheetHelper = new SheetsHelper(access_token), title =  'List of External Assets'
                             if(foreign_assets_container_id == null || foreign_assets_container_id == '') {
