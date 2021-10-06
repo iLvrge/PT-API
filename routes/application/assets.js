@@ -999,7 +999,7 @@ const buildRows = async(assets) => {
     });
 }
 
-const addNewDataToSheet = async(sheetInstance, spreadsheetID, sheetID, assets, res) => {
+const addNewDataToSheet = async(sheetInstance, spreadsheetID, sheetID, index, assets, res) => {
     const rows = await buildRows(assets)
 
     const request = {
@@ -1010,7 +1010,7 @@ const addNewDataToSheet = async(sheetInstance, spreadsheetID, sheetID, assets, r
                     updateCells: {
                         start: {
                             sheetId: sheetID,
-                            rowIndex: 1,
+                            rowIndex: index,
                             columnIndex: 0
                         },
                         rows,
@@ -1020,7 +1020,7 @@ const addNewDataToSheet = async(sheetInstance, spreadsheetID, sheetID, assets, r
             ]
         }
     };
-
+    console.log('addNewDataToSheet', JSON.stringify(request))
     await sheetInstance.batchUpdate(request, function(updateData){
         console.log('addNewDataToSheet=>', updateData)
         res.status(200).json({error: '', message: "Foreign assets added"});   
@@ -1030,7 +1030,7 @@ const addNewDataToSheet = async(sheetInstance, spreadsheetID, sheetID, assets, r
  * Get sheet list
  */
 
-route.post("/assets/foreign_assets/sheets",[authJWT.verifyToken, clientDBConnection.connect], async (req, res) => { 
+route.post("/assets/external_assets/sheets",[authJWT.verifyToken, clientDBConnection.connect], async (req, res) => { 
     try{
         const result = {list: [], total_records: 0, message: ''}
         if(typeof req.connection_db != "undefined" && req.connection_db != null ) {
@@ -1089,7 +1089,7 @@ route.post("/assets/foreign_assets/sheets",[authJWT.verifyToken, clientDBConnect
  * Get sheet assets
  */
 
-route.post("/assets/foreign_assets/sheets/assets",[authJWT.verifyToken, clientDBConnection.connect], async (req, res) => { 
+route.post("/assets/external_assets/sheets/assets",[authJWT.verifyToken, clientDBConnection.connect], async (req, res) => { 
     try{
         const result = {list: [], total_records: 0, message: ''}
         if(typeof req.connection_db != "undefined" && req.connection_db != null ) {
@@ -1156,7 +1156,7 @@ route.post("/assets/foreign_assets/sheets/assets",[authJWT.verifyToken, clientDB
     }
 })
 
-route.post("/assets/foreign_assets/sheets/timeline",[authJWT.verifyToken], async (req, res) => { 
+route.post("/assets/external_assets/sheets/timeline",[authJWT.verifyToken], async (req, res) => { 
     try {
         const { assets } = req.body, results = { list: []}
         if(typeof assets !== 'undefined' && assets !== '') {
@@ -1207,7 +1207,212 @@ const moveSheetToUtilitiesFolder = (repositoryObject, access_token, fileID) => {
 
 }
 
-route.post("/assets/save_foreign_assets",[authJWT.verifyToken, clientDBConnection.connect], async (req, res) => { 
+route.put("/assets/external_assets",[authJWT.verifyToken, clientDBConnection.connect], async (req, res) => { 
+    try{
+        if(typeof req.connection_db != "undefined" && req.connection_db != null ) {
+            const {foreign_assets, sheet_id, sheet_name, user_account, access_token, refresh_token } = req.body
+            if(foreign_assets !== null && foreign_assets !== '' ) {
+                let getRepo = await Repository.findOne({
+                    where: { organisation_id: req.orgId, user_account: user_account}
+                })
+
+                if(getRepo !== null && getRepo.foreign_assets_container_id !== '' &&  getRepo.foreign_assets_container_id !== null) {
+                    const sheetHelper = new SheetsHelper(access_token)
+                    sheetHelper.getData({
+                        spreadsheetId: getRepo.foreign_assets_container_id,
+                        majorDimension: 'COLUMNS',
+                        range: sheet_name
+                    }, async function( sourceList ){
+                        if(Object.keys(sourceList).length > 0 && typeof sourceList.values !== 'undefined' && sourceList.values.length > 0 && sourceList.values[0].length > 0) {
+                            
+                            const appendAssets = JSON.parse(foreign_assets)
+                            if(appendAssets.length > 0) {
+                                const filterItems = appendAssets.filter( item => !sourceList.values[0].includes(item) ? item : '')
+
+                                if(filterItems.length > 0) {
+                                    const findAssets = await ResourceDocumentids.findAll({
+                                        attributes: ['grant_doc_num', 'appno_doc_num'],
+                                        where: {
+                                            [connection.Op.or]: [
+                                            {appno_doc_num: filterItems},
+                                            {grant_doc_num: filterItems}
+                                        ]},
+                                        group: ['grant_doc_num', 'appno_doc_num']
+                                    })
+                                    if(findAssets.length > 0) {
+                                        const validAssets = []
+                                        findAssets.forEach( asset => {
+                                            if(asset.grant_doc_num !== '' || asset.appno_doc_num !== '') {
+                                                validAssets.push(asset.grant_doc_num !== '' && asset.grant_doc_num !== null ? asset.grant_doc_num : asset.appno_doc_num)
+                                            }                                            
+                                        })
+                                        await addNewDataToSheet(sheetHelper, getRepo.foreign_assets_container_id, sheet_id, sourceList.values[0].length, validAssets, res)
+                                    } else {
+                                        res.status(200).json({error: 'Assets not found in USPTO database'});   
+                                    }                                    
+                                } else {
+                                    res.status(200).json({error: 'All items already in the list'});   
+                                }
+                            } else {
+                                res.status(200).json({error: 'Items cannot be empty'});   
+                            }
+                        } else {
+                            res.status(200).json({error: 'Source list is empty'});   
+                        }
+                    })
+                } else {
+                    res.status(200).json({error: 'External sheet not found'});   
+                }
+            } else {
+                res.status(200).json({error: 'Update item cannot be empty'});   
+            } 
+        } else {
+            res.status(200).json({error: 'Please try again'});   
+        }
+    } catch (error) {
+        console.log("PATCH => /assets/external_assets", error)
+        res.status(500).json({error: 'Please try again'});   
+    }
+})
+
+route.patch("/assets/external_assets",[authJWT.verifyToken, clientDBConnection.connect], async (req, res) => { 
+    try{
+        if(typeof req.connection_db != "undefined" && req.connection_db != null ) {
+            const {new_item, update_item, sheet_id, sheet_name, user_account, access_token, refresh_token } = req.body
+            if(update_item !== null && update_item !== '' && new_item !== null && new_item !== '') {
+                let getRepo = await Repository.findOne({
+                    where: { organisation_id: req.orgId, user_account: user_account}
+                })
+
+                if(getRepo !== null && getRepo.foreign_assets_container_id !== '' &&  getRepo.foreign_assets_container_id !== null) {
+                    const sheetHelper = new SheetsHelper(access_token)
+                    sheetHelper.getData({
+                        spreadsheetId: getRepo.foreign_assets_container_id,
+                        majorDimension: 'COLUMNS',
+                        range: sheet_name
+                    }, async function( sourceList ){
+                        if(Object.keys(sourceList).length > 0 && typeof sourceList.values !== 'undefined' && sourceList.values.length > 0 && sourceList.values[0].length > 0) {
+                            const findIndex = sourceList.values[0].findIndex( item => item == update_item)
+                            if(findIndex !== -1) {
+                                const requestDelete = {
+                                    spreadsheetId: getRepo.foreign_assets_container_id,
+                                    resource: {
+                                        requests: [
+                                            {
+                                                updateCells: {
+                                                    start: {
+                                                        sheetId: sheet_id,
+                                                        rowIndex: findIndex,
+                                                        columnIndex: 0
+                                                    },
+                                                    rows:[
+                                                        [
+                                                            {
+                                                                values: [
+                                                                    {
+                                                                        userEnteredValue: {
+                                                                            stringValue: new_item
+                                                                        }
+                                                                    }
+                                                                ]
+                                                            }
+                                                        ]
+                                                    ],
+                                                    fields: '*'
+                                                }
+                                            }
+                                        ]
+                                    }
+                                }
+                                await sheetHelper.batchUpdate(requestDelete, function(updateData){
+                                    console.log('Update ITEM=>', updateData)
+                                    res.status(200).json({error: '', message: 'Item updated'});   
+                                })
+                            } else {
+                                res.status(200).json({error: 'Item not found'});   
+                            }
+                        } else {
+                            res.status(200).json({error: 'Source list is empty'});   
+                        }
+                    })
+                } else {
+                    res.status(200).json({error: 'External sheet not found'});   
+                }
+            } else {
+                res.status(200).json({error: 'Update item cannot be empty'});   
+            } 
+        } else {
+            res.status(200).json({error: 'Please try again'});   
+        }
+    } catch (error) {
+        console.log("PATCH => /assets/external_assets", error)
+        res.status(500).json({error: 'Please try again'});   
+    }
+})
+
+route.delete("/assets/external_assets",[authJWT.verifyToken, clientDBConnection.connect], async (req, res) => { 
+    try{
+        if(typeof req.connection_db != "undefined" && req.connection_db != null ) {
+            const {delete_item, sheet_id, sheet_name, user_account, access_token, refresh_token } = req.body
+            if(delete_item !== null && delete_item !== '') {
+                let getRepo = await Repository.findOne({
+                    where: { organisation_id: req.orgId, user_account: user_account}
+                })
+
+                if(getRepo !== null && getRepo.foreign_assets_container_id !== '' &&  getRepo.foreign_assets_container_id !== null) {
+                    const sheetHelper = new SheetsHelper(access_token)
+                    sheetHelper.getData({
+                        spreadsheetId: getRepo.foreign_assets_container_id,
+                        majorDimension: 'COLUMNS',
+                        range: sheet_name
+                    }, async function( sourceList ){
+                        if(Object.keys(sourceList).length > 0 && typeof sourceList.values !== 'undefined' && sourceList.values.length > 0 && sourceList.values[0].length > 0) {
+                            const findIndex = sourceList.values[0].findIndex( item => item == delete_item)
+                            if(findIndex !== -1) {
+                                const requestDelete = {
+                                    spreadsheetId: getRepo.foreign_assets_container_id,
+                                    resource: {
+                                        requests: [
+                                            {
+                                                deleteRange: {
+                                                    range: {
+                                                        sheetId: sheet_id,
+                                                        startRowIndex: findIndex,
+                                                        endRowIndex: findIndex + 1
+                                                    },
+                                                    shiftDimension: "ROWS"
+                                                }
+                                            }
+                                        ]
+                                    }
+                                }
+                                await sheetHelper.batchUpdate(requestDelete, function(updateData){
+                                    console.log('DELETE ITEM=>', updateData)
+                                    res.status(200).json({error: '', message: 'Row deleted'});   
+                                })
+                            } else {
+                                res.status(200).json({error: 'Item not found'});   
+                            }
+                        } else {
+                            res.status(200).json({error: 'Source list is empty'});   
+                        }
+                    })
+                } else {
+                    res.status(200).json({error: 'External sheet not found'});   
+                }
+            } else {
+                res.status(200).json({error: 'Delete item cannot be empty'});   
+            } 
+        } else {
+            res.status(200).json({error: 'Please try again'});   
+        }
+    } catch (error) {
+        console.log("DELETE => /assets/external_assets", error)
+        res.status(500).json({error: 'Please try again'});   
+    }
+})
+
+route.post("/assets/external_assets",[authJWT.verifyToken, clientDBConnection.connect], async (req, res) => { 
     try{
         if(typeof req.connection_db != "undefined" && req.connection_db != null ) {
             const {foreign_assets, sheet_name, user_account, access_token, refresh_token } = req.body
@@ -1266,7 +1471,7 @@ route.post("/assets/save_foreign_assets",[authJWT.verifyToken, clientDBConnectio
                                         
                                         getRepo.update({foreign_assets_container_id: spreadsheet.spreadsheetId})
                                         if(Object.keys(spreadsheet).length > 0) {
-                                            await addNewDataToSheet(sheetHelper, spreadsheet.spreadsheetId, spreadsheet.sheets[0].properties.sheetId, validAssets, res)
+                                            await addNewDataToSheet(sheetHelper, spreadsheet.spreadsheetId, spreadsheet.sheets[0].properties.sheetId, 1, validAssets, res)
                                         } else {
                                             res.status(200).json({error: 'Error while adding data', message: ''})
                                         }                                 
@@ -1293,9 +1498,10 @@ route.post("/assets/save_foreign_assets",[authJWT.verifyToken, clientDBConnectio
                                     }
                                 }
                                 sheetHelper.batchUpdate(request, async function(sheet) {
-                                    if( spreadsheet !== null ) {
-                                        if(Object.keys(spreadsheet).length > 0) {
-                                            await addNewDataToSheet(sheetHelper, foreign_assets_container_id, spreadsheet.sheets[spreadsheet.sheets.length - 1 ].properties.sheetId, validAssets, res)
+                                    if( sheet !== null ) {
+                                        if(Object.keys(sheet).length > 0) {
+                                            validAssets.splice(0,0, 'Asset')
+                                            await addNewDataToSheet(sheetHelper, foreign_assets_container_id, sheet.replies[sheet.replies.length - 1].addSheet.properties.sheetId, 0, validAssets, res)
                                         } else {
                                             res.status(200).json({error: 'Error while adding data', message: ''})
                                         }
@@ -1311,7 +1517,7 @@ route.post("/assets/save_foreign_assets",[authJWT.verifyToken, clientDBConnectio
                         res.status(200).json({error: 'Invalid data', message: ''})
                     }
                 } else {
-                    res.status(200).json({error: 'Please assign a repository folder', message: ''})
+                    res.status(200).json({error: 'Please assign a Utility Files Folder.', message: ''})
                 }                
             } else {
                 res.status(200).json({error: 'Invalid data', message: ''})
