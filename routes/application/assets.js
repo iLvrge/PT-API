@@ -19,6 +19,8 @@ const ResourcesAssignments = require("../../model/resources/Assignments");
 
 const ResourceDocumentids = require("../../model/resources/DocumentIds");
 
+const ResourceAssignments = require("../../model/resources/Assignments");
+
 const AssetsTransfer = require("../../model/application/AssetsTransfer");
 
 const Assets = require("../../model/application/Assets");
@@ -544,7 +546,14 @@ route.get("/assets/download/:itemID",[authJWT.verifyToken], async (req, res) =>{
     let {itemID} = req.params, link = ''
 
     if(itemID > 0) {
-        const query = 'SELECT reel_no, frame_no FROM assignment WHERE rf_id = :itemID'
+
+        const assignmentData = ResourceAssignments.findOne({
+            attributes: ['reel_no, frame_no', 'status'],
+            where:{
+                rf_id: itemID
+            }
+        })
+        /* const query = 'SELECT reel_no, frame_no FROM assignment WHERE rf_id = :itemID'
     
         const assignmentData =  await connection.resources.query(query,{
             type: connection.Sequelize.QueryTypes.SELECT,
@@ -552,61 +561,65 @@ route.get("/assets/download/:itemID",[authJWT.verifyToken], async (req, res) =>{
             raw: true,
             plain: true,
             logging: console.log,
-        })
+        }) */
         console.log(assignmentData)
         if(assignmentData !== null) {
             const usptoLink = `https://legacy-assignments.uspto.gov/assignments/assignment-pat-${assignmentData.reel_no}-${assignmentData.frame_no}.pdf`
             const downloadFileProcess = new Promise( (resolve, reject) => {
-                console.log(usptoLink)
-                request.head(usptoLink, (err, response, body) => {
+                if(assignmentData.status == 1) {
+                    link = `https://s3-us-west-1.amazonaws.com/static.patentrack.com/assignments/var/www/html/beta/resources/shared/data/assignment-pat-${assignmentData.reel_no}-${assignmentData.frame_no}.pdf`;
+                    resolve('FROM CDN')  
+                } else {
                     console.log(usptoLink)
-                    const path = usptoLink.split('/').pop(), pathDirectory = '/var/www/html/trash/'
-                    console.log(`${pathDirectory}${path}`)
-                    request(usptoLink)
-                    .pipe(fs.createWriteStream(`${pathDirectory}${path}`))
-                    .on('close', () => {
-                        const pdfFile = fs.readFileSync(`${pathDirectory}${path}`, {flag:'r'});
-                        if(pdfFile) {
+                    request.head(usptoLink, (err, response, body) => {
+                        console.log(usptoLink)
+                        const path = usptoLink.split('/').pop(), pathDirectory = '/var/www/html/trash/'
+                        console.log(`${pathDirectory}${path}`)
+                        request(usptoLink)
+                        .pipe(fs.createWriteStream(`${pathDirectory}${path}`))
+                        .on('close', () => {
+                            const pdfFile = fs.readFileSync(`${pathDirectory}${path}`, {flag:'r'});
+                            if(pdfFile) {
 
-                            const bucketConfig = connection.bucketConfig;              
-                            const filename = path.replace(/\s+/g, '-');
-                        
-                            let s3 = new AWS.S3({
-                                credentials: {
-                                    accessKeyId: bucketConfig.accessKeyId,
-                                    secretAccessKey: bucketConfig.secretAccessKey,
-                                },
-                                region: bucketConfig.region
-                            })
-                            const serverDIR = 'assignments/var/www/html/beta/resources/shared/data/'
-                            console.log(pdfFile)
-                            console.log(`${serverDIR}${filename}`)
+                                const bucketConfig = connection.bucketConfig;              
+                                const filename = path.replace(/\s+/g, '-');
+                            
+                                let s3 = new AWS.S3({
+                                    credentials: {
+                                        accessKeyId: bucketConfig.accessKeyId,
+                                        secretAccessKey: bucketConfig.secretAccessKey,
+                                    },
+                                    region: bucketConfig.region
+                                })
+                                const serverDIR = 'assignments/var/www/html/beta/resources/shared/data/'
+                                console.log(pdfFile)
+                                console.log(`${serverDIR}${filename}`)
 
-                            const params = {
-                                Key: `${serverDIR}${filename}`,
-                                Bucket: bucketConfig.bucketName,
-                                Body: pdfFile,
-                                ACL: 'public-read',
-                                ContentType: 'application/pdf',
-                                ContentDisposition: 'inline'
-                            }
-                            s3.putObject(params, async function(err, data) {
-                                console.log(err, data);
-                                if(err == null) {
-                                    link = `https://s3-${bucketConfig.region}.amazonaws.com/${bucketConfig.bucketName}/${serverDIR}${filename}`;
-
-                                    resolve('DOWNLOADED/UPLOADED')  
-                                    spawn('rm', [`${pathDirectory}${path}`]);
-                                    Assignments.update({status: 1}, {where: {rf_id: itemID}} )
-                                }  else {
-                                    reject('DOWNLOADED/UPLOADED')
+                                const params = {
+                                    Key: `${serverDIR}${filename}`,
+                                    Bucket: bucketConfig.bucketName,
+                                    Body: pdfFile,
+                                    ACL: 'public-read',
+                                    ContentType: 'application/pdf',
+                                    ContentDisposition: 'inline'
                                 }
-                            });
-                        }  else {
-                            reject('DOWNLOADED/UPLOADED')
-                        }
+                                s3.putObject(params, async function(err, data) {
+                                    console.log(err, data);
+                                    if(err == null) {
+                                        link = `https://s3-${bucketConfig.region}.amazonaws.com/${bucketConfig.bucketName}/${serverDIR}${filename}`;                                    
+                                        spawn('rm', [`${pathDirectory}${path}`]);
+                                        assignmentData.update({status: 1})
+                                        resolve('DOWNLOADED/UPLOADED')  
+                                    }  else {
+                                        reject('DOWNLOADED/UPLOADED')
+                                    }
+                                });
+                            }  else {
+                                reject('DOWNLOADED/UPLOADED')
+                            }
+                        })
                     })
-                })    
+                }                    
             }) 
             downloadFileProcess
             .then(async () => {

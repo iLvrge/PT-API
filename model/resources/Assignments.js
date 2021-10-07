@@ -76,6 +76,10 @@ const Assignments = connection.resources.define('assignment',{
     law_firm_id:{
         type: Sequelize.INTEGER,
         allowNull: false,
+    },
+    status: {
+        type: Sequelize.INTEGER,
+        allowNull: true,
     }
 },
 {
