@@ -146,10 +146,15 @@ route.get("/family/:applicationNumber", [authJWT.verifyToken], async (req, res) 
 
         let getFamily = [];
     
-        const findPatent = await Documentid.findOne({
-            attributes: ['rf_id', 'grant_doc_num', 'appno_date', 'title', 'grant_date'],
-            where: {appno_doc_num: applicationNumber}
-        })
+        let findPatent = await Documentid.findOne({
+                attributes: ['rf_id', 'grant_doc_num', 'appno_date', 'title', 'grant_date'],
+                where: {
+                        [connection.Op.or]: [
+                        {appno_doc_num: applicationNumber},
+                        {grant_doc_num: applicationNumber}
+                ]},
+                group: ['grant_doc_num', 'appno_doc_num', 'pgpub_doc_num']
+            })
     
         /* if(findPatent != null && findPatent.rf_id > 0 && findPatent.grant_doc_num != null && findPatent.grant_doc_num != '') {
            
