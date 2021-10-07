@@ -235,8 +235,10 @@ route.get("/family/:applicationNumber", [authJWT.verifyToken], async (req, res) 
                                 });
                                 console.log('familyID', familyID)
                                 if(familyID > 0) {
+                                    const allApplicationNumbers = []
                                     familyMembers.forEach(family => {
                                         if(familyID === family.$['family-id']) {
+                                            allApplicationNumbers.push(family['application-reference'][0]['document-id'][0]['date'].toString())
                                             let dbTypeData = family['publication-reference'][0]['document-id'][0]
                                             if( dbTypeData.$['document-id-type'] !== 'docdb' ) {
                                                 dbTypeData = family['publication-reference'][0]['document-id'][1]
@@ -269,7 +271,22 @@ route.get("/family/:applicationNumber", [authJWT.verifyToken], async (req, res) 
                                                 title: findPatent != null ? findPatent.title : ''
                                             })
                                         }                                        
-                                    })                                    
+                                    }) 
+                                    /* if(allApplicationNumbers.length > 1) {
+                                        //Find Duplicates and remove it from array and at the time of removing element check if publication number character length of one index is greater than the patent number character length then remove the publication number index from array
+
+                                        const count = numbers => numbers.reduce((a, b) => ({ ...a, [b]: (a[b] || 0) + 1 }), {})
+
+                                        const duplicates = dict => Object.keys(dict).filter((a) => dict[a] > 1)
+
+                                        const getDuplicateNumber duplicates(count(allApplicationNumbers))
+
+                                        if(getDuplicateNumber.length > 0) {
+                                            getDuplicateNumber.forEach( number => {
+                                                
+                                            })
+                                        }
+                                    } */                                
                                 }
                             } 
                         }
