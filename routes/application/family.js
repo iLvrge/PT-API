@@ -460,6 +460,7 @@ const getPublicationNumber = async(applicationNumber) => {
         replacements: {applicationNumber},
         plain: true
     })
+    console.log('getPublicationData', getPublicationData)
     return getPublicationData
 }
 
@@ -471,7 +472,20 @@ route.get("/family/abstract/:applicationNumber", [authJWT.verifyToken], async (r
         if(indexing != null && indexing.index >= 0) {
             asset = asset.substr(0,indexing.index)
         }
-        let findPatent = await getPublicationNumber(asset)
+        let findPatent = await Documentid.findOne({
+                attributes: ['grant_doc_num', 'appno_doc_num', 'pgpub_doc_num'],
+                where: {
+                        [connection.Op.or]: [
+                        {appno_doc_num: asset},
+                        {grant_doc_num: asset}
+                ]},
+                group: ['grant_doc_num', 'appno_doc_num', 'pgpub_doc_num']
+            })
+        if(findPatent == null) {
+            findPatent = await getPublicationNumber(asset)
+        } else {
+            findPatent = await getPublicationNumber(findPatent.appno_doc_num)
+        }
         if(findPatent === null) {
             findPatent = await Documentid.findOne({
                 attributes: ['rf_id', 'grant_doc_num', 'pgpub_doc_num', 'pgpub_date'],
@@ -651,7 +665,20 @@ route.get("/family/claims/:applicationNumber", [authJWT.verifyToken], async (req
             if(indexing != null && indexing.index >= 0) {
                 asset = asset.substr(0,indexing.index)
             }
-            let findPatent = await getPublicationNumber(asset)
+            let findPatent = await Documentid.findOne({
+                attributes: ['grant_doc_num', 'appno_doc_num', 'pgpub_doc_num'],
+                where: {
+                        [connection.Op.or]: [
+                        {appno_doc_num: asset},
+                        {grant_doc_num: asset}
+                ]},
+                group: ['grant_doc_num', 'appno_doc_num', 'pgpub_doc_num']
+            })
+            if(findPatent == null) {
+                findPatent = await getPublicationNumber(asset)
+            } else {
+                findPatent = await getPublicationNumber(findPatent.appno_doc_num)
+            }
             if(findPatent === null) {
                 findPatent = await Documentid.findOne({
                     attributes: ['rf_id', 'grant_doc_num', 'pgpub_doc_num', 'pgpub_date'],
@@ -709,7 +736,20 @@ route.get("/family/specifications/:applicationNumber", [authJWT.verifyToken], as
         if(indexing != null && indexing.index >= 0) {
             asset = asset.substr(0,indexing.index)
         }
-        let findPatent = await getPublicationNumber(asset)
+        let findPatent = await Documentid.findOne({
+                attributes: ['grant_doc_num', 'appno_doc_num', 'pgpub_doc_num'],
+                where: {
+                        [connection.Op.or]: [
+                        {appno_doc_num: asset},
+                        {grant_doc_num: asset}
+                ]},
+                group: ['grant_doc_num', 'appno_doc_num', 'pgpub_doc_num']
+            })
+        if(findPatent == null) {
+            findPatent = await getPublicationNumber(asset)
+        } else {
+            findPatent = await getPublicationNumber(findPatent.appno_doc_num)
+        }
         if(findPatent === null) {
             findPatent = await Documentid.findOne({
                 attributes: ['rf_id', 'grant_doc_num', 'pgpub_doc_num', 'pgpub_date'],
@@ -768,7 +808,20 @@ route.get("/family/images/:applicationNumber", [authJWT.verifyToken], async (req
         if(indexing != null && indexing.index >= 0) {
             asset = asset.substr(0,indexing.index)
         }
-        let findPatent = await getPublicationNumber(asset)
+        let findPatent = await Documentid.findOne({
+                attributes: ['grant_doc_num', 'appno_doc_num', 'pgpub_doc_num'],
+                where: {
+                        [connection.Op.or]: [
+                        {appno_doc_num: asset},
+                        {grant_doc_num: asset}
+                ]},
+                group: ['grant_doc_num', 'appno_doc_num', 'pgpub_doc_num']
+            })
+        if(findPatent == null) {
+            findPatent = await getPublicationNumber(asset)
+        } else {
+            findPatent = await getPublicationNumber(findPatent.appno_doc_num)
+        }
         if(findPatent === null) {
             findPatent = await Documentid.findOne({
                 attributes: ['rf_id', 'grant_doc_num', 'pgpub_doc_num', 'pgpub_date'],
