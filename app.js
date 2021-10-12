@@ -60,6 +60,7 @@ const events = require("./routes/application/events");
 const timelines = require("./routes/application/timelines");
 const search = require("./routes/application/search");
 const entity = require("./routes/application/entity");
+const externalapi = require("./routes/application/externalapi");
 /**
  * Route for Client database
  */
@@ -130,6 +131,8 @@ app.use("/", comments);
 app.use("/", collections);
 
 app.use("/", events);
+
+app.use("/", externalapi);
 
 app.use("/", userCompanySelections);
 

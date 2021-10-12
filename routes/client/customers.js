@@ -573,7 +573,7 @@ route.get("/:layout/assets", [authJWT.verifyToken, clientDBConnection.connect], 
             query += ` GROUP BY activity_parties_transactions.rf_id ) `
         }
 
-        query += ` GROUP BY asset `;
+        query += ` GROUP BY asset`;
 
         const countReplace = ` CASE WHEN assets.grant_doc_num = '' OR assets.grant_doc_num IS NULL THEN assets.appno_doc_num ELSE assets.grant_doc_num END AS asset `
 
@@ -594,7 +594,7 @@ route.get("/:layout/assets", [authJWT.verifyToken, clientDBConnection.connect], 
         }
 
         if(assets.total_records > 0) {
-            query += ` LIMIT :offset, :limit`;
+            query += `  LIMIT :offset, :limit`;
             const  queryColumnReplace = `assets.organisation_id, 
             CASE WHEN assets.grant_doc_num = '' OR assets.grant_doc_num IS NULL THEN assets.appno_doc_num ELSE assets.grant_doc_num END AS asset, 
             CASE WHEN assets.grant_doc_num = '' OR assets.grant_doc_num IS NULL THEN 1 ELSE 0 END AS asset_type, assets.appno_doc_num, assets.grant_doc_num, 0 AS child_count, '' AS channel `
