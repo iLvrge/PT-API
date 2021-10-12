@@ -79,7 +79,8 @@ route.get("/citation/:asset", [authJWT.verifyToken], async (req, res) => {
                                 number: item.patent_number,
                                 combined: item.patent_num_combined_citations,
                                 logo: '',
-                                assignee
+                                assignee,
+                                all_assignee: item.assignees.join('@@')
                             })                            
                         })
                         if(allAssignee.length > 0) {
