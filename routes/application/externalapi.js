@@ -28,7 +28,8 @@ route.get("/ptab/:asset", [authJWT.verifyToken], async (req, res) => {
                                 start: item.proceedingFilingDate + ' 00:00:00',
                                 end: item.decisionDate + ' 00:00:00',
                                 name: item.respondentPartyName,
-                                status: item.proceedingStatusCategory
+                                status: item.proceedingStatusCategory,
+                                otherInfo: item
                             })
                         })
                     }

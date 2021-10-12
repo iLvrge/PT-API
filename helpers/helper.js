@@ -1648,7 +1648,7 @@ let findCompanyEntitiesByAccountID = async(orgID, type, DBConnection) => {
         list.map(r => IDs.push(r.representative_id));
         let listIDs = [];
         if(IDs.length > 0) {
-            const queryRepresentativeTransactions = "SELECT rf_id FROM representative_transactions where organisation_id = :organisationID AND representative_id IN (:representativeIDs) GROUP BY rf_id";
+            const queryRepresentativeTransactions = "SELECT rf_id FROM list2 where organisation_id = :organisationID AND company_id IN (:representativeIDs) GROUP BY rf_id";
 
             listIDs = await connection.resources.query(queryRepresentativeTransactions,{
                 type: connection.Sequelize.QueryTypes.SELECT,
@@ -1672,7 +1672,7 @@ let findCompanyEntitiesByAccountIDByRepresentativeIDs = async(orgID, representat
    
     let entitiesList = [];
     if(representativeIDs.length > 0) {        
-        const queryRepresentativeTransactions = "SELECT rf_id FROM representative_transactions where organisation_id = :organisationID AND representative_id IN (:representativeIDs)";
+        const queryRepresentativeTransactions = "SELECT rf_id FROM list2 where organisation_id = :organisationID AND company_id IN (:representativeIDs)";
 
         const listIDs = await connection.resources.query(queryRepresentativeTransactions,{
             type: connection.Sequelize.QueryTypes.SELECT,
@@ -1710,6 +1710,15 @@ let findAssignorAndAssigneeListFromRFIDs = async(rfIDs, type) => {
         }
 
         queryAssignor += " GROUP BY a.or_name";
+        
+        if(parseInt(type) == 2) { 
+            queryAssignor += " UNION "
+
+            queryAssignor += " SELECT a.assignor_and_assignee_id, a.ee_name as name, count(a.ee_name) as counter, r.representative_name as normalize_name, (select rr.representative_name FROM representative as rr WHERE rr.representative_name = aaa.name GROUP BY rr.representative_name) as representativeCompany, (SELECT aa.instances FROM assignor_and_assignee as aa WHERE aa.assignor_and_assignee_id = a.assignor_and_assignee_id  GROUP BY aa.assignor_and_assignee_id) as total_occurences, a.rf_id FROM db_uspto.assignee as a INNER JOIN representative_assignment_conveyance as ac ON ac.rf_id = a.rf_id LEFT JOIN assignor_and_assignee as aaa ON aaa.assignor_and_assignee_id = a.assignor_and_assignee_id LEFT JOIN representative as r ON r.representative_id = aaa.representative_id WHERE a.rf_id IN (:IDs)  GROUP BY a.ee_name";
+        }
+        
+        
+        
         assignors = await connection.resources.query(queryAssignor,{
             type: connection.Sequelize.QueryTypes.SELECT,
             replacements: { IDs: rfIDs },
@@ -1717,7 +1726,7 @@ let findAssignorAndAssigneeListFromRFIDs = async(rfIDs, type) => {
             logging: console.log,
             }
         );
-        if(parseInt(type) == 2) {
+        /* if(parseInt(type) == 2) {
             let queryAssignee = "SELECT a.assignor_and_assignee_id, a.ee_name as name, count(a.ee_name) as counter, r.representative_name as normalize_name, (select rr.representative_name FROM representative as rr WHERE rr.representative_name = aaa.name GROUP BY rr.representative_name) as representativeCompany, (SELECT aa.instances FROM assignor_and_assignee as aa WHERE aa.assignor_and_assignee_id = a.assignor_and_assignee_id  GROUP BY aa.assignor_and_assignee_id) as total_occurences, a.rf_id FROM db_uspto.assignee as a INNER JOIN representative_assignment_conveyance as ac ON ac.rf_id = a.rf_id LEFT JOIN assignor_and_assignee as aaa ON aaa.assignor_and_assignee_id = a.assignor_and_assignee_id LEFT JOIN representative as r ON r.representative_id = aaa.representative_id WHERE a.rf_id IN (:IDs) ";
 
             //queryAssignee +=" AND ac.employer_assign in (0,1)"; 
@@ -1733,7 +1742,7 @@ let findAssignorAndAssigneeListFromRFIDs = async(rfIDs, type) => {
                 logging: console.log,
                 }
             );   
-        }
+        } */
     } else if(typeof type != 'undefined' &&  parseInt(type) == 3) {
 
         /* queryDocumentID = 'SELECT rf_id FROM documentid WHERE appno_doc_num IN (SELECT appno_doc_num FROM documentid WHERE rf_id IN (:rfIDs)) GROUP BY rf_id';
@@ -1760,7 +1769,7 @@ let findAssignorAndAssigneeListFromRFIDs = async(rfIDs, type) => {
             }
         ); */
 
-        let queryAssignor = "SELECT a.assignor_and_assignee_id, a.or_name as name, count(a.or_name) as counter, r.representative_name as normalize_name, (select rr.representative_name FROM representative as rr WHERE rr.representative_name = aaa.name GROUP BY rr.representative_name) as representativeCompany, (SELECT aa.instances FROM assignor_and_assignee as aa WHERE aa.assignor_and_assignee_id = a.assignor_and_assignee_id  GROUP BY aa.assignor_and_assignee_id) as total_occurences, a.rf_id FROM assignor as a INNER JOIN assignor_and_assignee as aaa ON aaa.assignor_and_assignee_id = a.assignor_and_assignee_id INNER JOIN representative_assignment_conveyance as rac ON rac.rf_id = a.rf_id LEFT JOIN representative as r ON r.representative_id = aaa.representative_id WHERE aaa.assignor_and_assignee_id NOT IN (SELECT inventors.assignor_and_assignee_id FROM inventors) AND a.rf_id IN (SELECT rf_id FROM documentid WHERE appno_doc_num IN (SELECT appno_doc_num FROM documentid WHERE rf_id IN (:rfIDs)) GROUP BY rf_id) AND rac.employer_assign = 0  AND date_format(a.exec_dt, '%Y') >= 2000 GROUP BY a.or_name UNION SELECT a.assignor_and_assignee_id, a.ee_name as name, count(a.ee_name) as counter, r.representative_name as normalize_name, (select rr.representative_name FROM representative as rr WHERE rr.representative_name = aaa.name GROUP BY rr.representative_name) as representativeCompany, (SELECT aa.instances FROM assignor_and_assignee as aa WHERE aa.assignor_and_assignee_id = a.assignor_and_assignee_id  GROUP BY aa.assignor_and_assignee_id) as total_occurences, a.rf_id FROM assignee as a INNER JOIN representative_assignment_conveyance as ac ON ac.rf_id = a.rf_id INNER JOIN assignor_and_assignee as aaa ON aaa.assignor_and_assignee_id = a.assignor_and_assignee_id LEFT JOIN representative as r ON r.representative_id = aaa.representative_id INNER JOIN assignor as aor ON aor.rf_id = a.rf_id WHERE date_format(aor.exec_dt, '%Y') >= 2000 AND a.rf_id IN (SELECT rf_id FROM documentid WHERE appno_doc_num IN (SELECT appno_doc_num FROM documentid WHERE rf_id IN (:rfIDs)) GROUP BY rf_id) AND ac.employer_assign = 0 GROUP BY a.ee_name";
+        let queryAssignor = "SELECT a.assignor_and_assignee_id, a.or_name as name, count(a.or_name) as counter, r.representative_name as normalize_name, (select rr.representative_name FROM representative as rr WHERE rr.representative_name = aaa.name GROUP BY rr.representative_name) as representativeCompany, (SELECT aa.instances FROM assignor_and_assignee as aa WHERE aa.assignor_and_assignee_id = a.assignor_and_assignee_id  GROUP BY aa.assignor_and_assignee_id) as total_occurences, a.rf_id FROM assignor as a INNER JOIN assignor_and_assignee as aaa ON aaa.assignor_and_assignee_id = a.assignor_and_assignee_id INNER JOIN representative_assignment_conveyance as rac ON rac.rf_id = a.rf_id LEFT JOIN representative as r ON r.representative_id = aaa.representative_id WHERE aaa.assignor_and_assignee_id NOT IN (SELECT inventors.assignor_and_assignee_id FROM inventors) AND a.rf_id IN (SELECT rf_id FROM documentid WHERE appno_doc_num IN (SELECT appno_doc_num FROM documentid WHERE rf_id IN (:rfIDs)) GROUP BY rf_id) AND rac.employer_assign = 0  AND date_format(a.exec_dt, '%Y') >= 1997 GROUP BY a.or_name UNION SELECT a.assignor_and_assignee_id, a.ee_name as name, count(a.ee_name) as counter, r.representative_name as normalize_name, (select rr.representative_name FROM representative as rr WHERE rr.representative_name = aaa.name GROUP BY rr.representative_name) as representativeCompany, (SELECT aa.instances FROM assignor_and_assignee as aa WHERE aa.assignor_and_assignee_id = a.assignor_and_assignee_id  GROUP BY aa.assignor_and_assignee_id) as total_occurences, a.rf_id FROM assignee as a INNER JOIN representative_assignment_conveyance as ac ON ac.rf_id = a.rf_id INNER JOIN assignor_and_assignee as aaa ON aaa.assignor_and_assignee_id = a.assignor_and_assignee_id LEFT JOIN representative as r ON r.representative_id = aaa.representative_id INNER JOIN assignor as aor ON aor.rf_id = a.rf_id WHERE date_format(aor.exec_dt, '%Y') >= 1997 AND a.rf_id IN (SELECT rf_id FROM documentid WHERE appno_doc_num IN (SELECT appno_doc_num FROM documentid WHERE rf_id IN (:rfIDs)) GROUP BY rf_id) AND ac.employer_assign = 0 GROUP BY a.ee_name";
 
        
         assignors = await connection.resources.query(queryAssignor,{
