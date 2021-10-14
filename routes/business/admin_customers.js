@@ -1477,44 +1477,12 @@ route.get("/customers/:organisation_id/publish", [authJWT.verifyToken, authJWT.i
                     col: 'user_id'
                 });
                 if(findUsers > 0) {
-                    let companyName = org.name;
-                    /*console.log(`php -f /var/www/html/trash/tree_script.php "${companyName}"`);*/
-                    /*console.log(`php -f /var/www/html/trash/tree_script.php "${organisationID}"`);
-                    await exec(`php -f /var/www/html/trash/tree_script.php "${organisationID}"`, async (error, stdout, stderr) => {*/
-                    console.log(`php -f /var/www/html/trash/tree_script_client.php "${organisationID}"  ""`);
-                    await exec(`php -f /var/www/html/trash/tree_script_client.php "${organisationID}"  ""`, async (error, stdout, stderr) => {    
+                    console.log(`php -f /var/www/html/trash/create_data_for_company_db_application.php "${organisationID}"  ""`);
+                    await exec(`php -f /var/www/html/trash/create_data_for_company_db_application.php "${organisationID}"  ""`, async (error, stdout, stderr) => {    
                         console.log("tree_script");
                         console.log(error);
                         console.log(stderr);
-                        /*res.status(200).send(stdout);*/
-                        if(stdout == "Tree created") {
-                            console.log(`php -f /var/www/html/trash/fix_inventor_timeline_tree_transaction_assests_updates.php "${organisationID}" ""`);
-                            await exec(`php -f /var/www/html/trash/fix_inventor_timeline_tree_transaction_assests_updates.php "${organisationID}" ""`, async (error, std, stderr) => {
-                                console.log("FiX Inventor Data, Transaction, Timeline, Tree, Assets, Updates, Error....");
-                                console.log(error);
-                                console.log(stderr);
-                                console.log(std);                                
-                                res.status(200).send(stdout);
-                            });
-                            /*console.log(`php -f /var/www/html/trash/script_create_customer_db.php "${organisationID}"`);
-                            await exec(`php -f /var/www/html/trash/script_create_customer_db.php "${organisationID}"`, async (error, std, stderr) => {
-                                console.log("script_create_customer_db");
-                                console.log(error);
-                                console.log(stderr);
-                                console.log(std);
-                               
-                            });*/
-                            /*console.log(`php -f /var/www/html/trash/download_all_pdf.php "${companyName}"`);
-                                exec(`php -f /var/www/html/trash/download_all_pdf.php "${companyName}"`, (error, stdd, stderr)=> {
-                                    console.log("donwload_all_pdf....")
-                                    console.log(error);
-                                    console.log(stderr);
-                                    console.log(stdd);
-                                    console.log("DONE");
-                                });*/
-                        } else {
-                            res.status(200).send("Error while creating database for the customer.");
-                        }
+                        res.status(200).send("UPDATED!");                        
                     });
                 } else {
                     res.status(200).send("Please create a admin user first for this customer.");
