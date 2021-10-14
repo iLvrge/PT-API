@@ -1657,6 +1657,70 @@ route.put("/company/assignments", [authJWT.verifyToken, authJWT.isAdmin], async 
 });
 
 /**
+ * Assignees list of cited patents
+ */
+
+route.get("/company/cited/:id", [authJWT.verifyToken, authJWT.isAdmin, authJWT.addClientID, clientDBConnection.connect], async (req, res, next) => {
+    const customerID = req.params.id, representativeIDs = JSON.parse(req.query.portfolios != undefined ? req.query.portfolios : "[]");
+    let citedAssignees = [], organizations = [];
+    if(customerID > 0) {
+        const where = {organisation_id: customerID};
+        let whereRepresentative = {};
+        if(representativeIDs.length > 0) {
+            where.representative_id = representativeIDs;
+            whereRepresentative = {
+                [connection.Op.or]: [
+                    {parent_id: representativeIDs},
+                    {representative_id: representativeIDs}
+                ]
+            }
+        }
+
+        if(req.connection_db != null) {
+            const RepresentativeClient = req.connection_db.define('Representatives', RepresentativeCustomer.mainStructure, RepresentativeCustomer.options);
+            const findRepresentativeCompanies = await RepresentativeClient.findAll({
+                attributes:['representative_id'],
+                where:whereRepresentative
+            });
+
+            if(findRepresentativeCompanies != null && findRepresentativeCompanies.length > 0) {
+                const companies = [];
+                const promises = findRepresentativeCompanies.map( company => {
+                    companies.push(company.representative_id);
+                    return company;
+                });
+                await Promise.all(promises);
+
+                const queryCitedPatentsAssignee = `SELECT ao.assignee_id, ao.assignee_organization FROM assignee_organizations AS ao 
+                                        INNER JOIN cited_patents AS cp ON cp.assignee_id = ao.assignee_id
+                                        INNER JOIN assets AS a ON a.grant_doc_num = cp.patent_number
+                                        WHERE a.layout_id = :layout_id AND a.organisation_id = :organisationID AND a.company_id IN (:companiesIDs)
+                                        GROUP BY ao.assignee_id`
+                
+                citedAssignees = await connection.applicationNew.query(queryCitedPatentsAssignee,{
+                        type: connection.Sequelize.QueryTypes.SELECT,
+                        raw: true,
+                        replacements: {organisationID: customerID, companiesIDs: companies, layout_id: 15 },
+                        logging: console.log,
+                    }
+                );
+
+                const queryOrganisations = `SELECT organisation_id, organisation_name FROM organisations`
+                organizations = await connection.applicationNew.query(queryOrganisations,{
+                        type: connection.Sequelize.QueryTypes.SELECT,
+                        raw: true,
+                        replacements: { },
+                        logging: console.log,
+                    }
+                );
+            }
+        }
+    }
+    res.status(200).json({citedAssignees, organizations});
+})
+
+
+/**
  * Find All Transaction with conveyanceType and Entity Type
  */
 route.get("/all/transactions/:conveyanceType", [authJWT.verifyToken, authJWT.isAdmin], async (req, res, next) => {
