@@ -684,23 +684,21 @@ route.get("/assets/:patentNumber/:type/outsource",[], async (req, res) =>{
     if(type == 1) {
         let type = "patNum";
         let where = {
-            [connection.Op.or]:[{grant_doc_num: asset},{appno_doc_num: asset}]
+            [connection.Op.or]:[{grant_doc_num: patentNumber},{appno_doc_num: patentNumber}]
         }
         if(typeof flag !== 'undefined' && flag >= 0) {
             if(flag == 1) {
                 type = "patNum";
                 where = {
-                    grant_doc_num: asset
+                    grant_doc_num: patentNumber
                 }
             } else if(flag == 0) {
                 type = "applNum";
                 where = {
-                    appno_doc_num: asset
+                    appno_doc_num: patentNumber
                 }
             }
         }
-
-
 
         let record = await Documentids.findOne({
             where,
