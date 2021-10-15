@@ -547,7 +547,7 @@ route.get("/assets/download/:itemID",[authJWT.verifyToken], async (req, res) =>{
 
     if(itemID > 0) {
 
-        const assignmentData = ResourceAssignments.findOne({
+        const assignmentData = await ResourceAssignments.findOne({
             attributes: ['reel_no', 'frame_no', 'status'],
             where:{
                 rf_id: itemID
