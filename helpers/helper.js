@@ -2141,7 +2141,7 @@ let generateJSON = async(req, res) => {
         if(typeof req.query.flag !== 'undefined' && req.query.flag >= 0){
             flag = req.query.flag 
         }
-        console.log(process.env.BACKGROUND_JOB_URL+""+process.env.JSON_GENERATE+"?p="+req.params.asset+"&o="+orgID+"&u="+userID);
+        console.log(process.env.BACKGROUND_JOB_URL+""+process.env.JSON_GENERATE+"?p="+req.params.asset+"&f="+flag+"&o="+orgID+"&u="+userID);
         await request(process.env.BACKGROUND_JOB_URL+""+process.env.JSON_GENERATE+"?p="+req.params.asset+"&f="+flag+"&o="+orgID+"&u="+userID,function (error, response, body) {
             if (!error && response.statusCode == 200) {
                 console.log("request complete");
