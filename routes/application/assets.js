@@ -652,7 +652,7 @@ route.get("/assets/:asset",[authJWT.verifyToken], async (req, res) =>{
             }
         }
     }
-    
+
     Documentids.findAll({
         where,
         attributes:['rf_id',['grant_doc_num','number'], ['appno_doc_num','application']],

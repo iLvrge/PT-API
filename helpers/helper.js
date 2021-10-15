@@ -2132,13 +2132,17 @@ let getAssignmentDataByrfID = async (rfID, t = 0) => {
 let generateJSON = async(req, res) => {
     try {
         console.log("SAAAPPAPAP: "+req.params.patentNumber);
-        let orgID = 0, userID = 0;
+        let orgID = 0, userID = 0, flag = '';
         if( req.orgId != undefined && req.orgId > 0 ) {
             orgID = req.orgId;
-            userID = req.userId;
+            userID = req.userId;            
+        }
+
+        if(typeof req.query.flag !== 'undefined' && req.query.flag >= 0){
+            flag = req.query.flag 
         }
         console.log(process.env.BACKGROUND_JOB_URL+""+process.env.JSON_GENERATE+"?p="+req.params.patentNumber+"&o="+orgID+"&u="+userID);
-        await request(process.env.BACKGROUND_JOB_URL+""+process.env.JSON_GENERATE+"?p="+req.params.patentNumber+"&o="+orgID+"&u="+userID,function (error, response, body) {
+        await request(process.env.BACKGROUND_JOB_URL+""+process.env.JSON_GENERATE+"?p="+req.params.patentNumber+"&f="+flag+"&o="+orgID+"&u="+userID,function (error, response, body) {
             if (!error && response.statusCode == 200) {
                 console.log("request complete");
                 if(body != ""){
