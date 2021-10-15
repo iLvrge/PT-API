@@ -679,7 +679,7 @@ route.get("/assets/:asset",[authJWT.verifyToken], async (req, res) =>{
  */
 
 route.get("/assets/:patentNumber/:type/outsource",[], async (req, res) =>{        
-    let { patentNumber, type } = req.params, flag = req.query;
+    let { patentNumber, type } = req.params, flag = req.query.flag;
     
     if(type == 1) {
         let type = "patNum";
