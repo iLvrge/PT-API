@@ -608,7 +608,9 @@ route.get("/assets/download/:itemID",[authJWT.verifyToken], async (req, res) =>{
                                     if(err == null) {
                                         link = `https://s3-${bucketConfig.region}.amazonaws.com/${bucketConfig.bucketName}/${serverDIR}${filename}`;                                    
                                         spawn('rm', [`${pathDirectory}${path}`]);
-                                        assignmentData.update({status: 1})
+
+                                        ResourceAssignments.update({status: 1}, {where: {reel_no: assignmentData.reel_no, frame_no: assignmentData.frame_no}})
+                                        
                                         resolve('DOWNLOADED/UPLOADED')  
                                     }  else {
                                         reject('DOWNLOADED/UPLOADED')
