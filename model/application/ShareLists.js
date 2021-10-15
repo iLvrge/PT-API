@@ -12,6 +12,10 @@ const ShareLists = connection.applicationNew.define('share_list',{
     asset:{
         type: Sequelize.STRING,
         allowNull: false,
+    },
+    type:{
+        type: Sequelize.INTEGER,
+        allowNull: false,
     }
 },
 {

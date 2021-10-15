@@ -21,7 +21,7 @@ route.post("/share", [authJWT.verifyToken], async (req, res) =>{
             }
         }
     }catch(e){
-        console.log(e);
+        console.log(e); 
         res.status(500).send("Unable to create share url.");
     }
 });

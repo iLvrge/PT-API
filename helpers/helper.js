@@ -2207,7 +2207,7 @@ let shareURL = async (params) => {
         if(insertRecord != null && insertRecord.share_id > 0) {      
             
             const bulkData = []
-            const promises = assets.map(asset => bulkData.push({asset, share_id: insertRecord.share_id}))
+            const promises = assets.map(item => bulkData.push({asset: item.asset, type: item.flag, share_id: insertRecord.share_id}))
     
             await Promise.all(promises)
     
@@ -2227,12 +2227,14 @@ let shareURL = async (params) => {
 };
 
 let getShareList = async (code, type) => {
-    let query = "SELECT  `share_lists`.`asset` AS asset FROM `share` AS `share` INNER JOIN `share_list` AS `share_lists` ON `share`.`share_id` = `share_lists`.`share_id` WHERE `share`.`code` = :code"
+    let query = "SELECT  `share_lists`.`asset` AS asset, CASE WHEN share_lists.type = 4 THEN asset ELSE '' END AS grant_doc_num, CASE WHEN share_lists.type = 5 THEN asset ELSE '' END AS appno_doc_num, CASE WHEN share_lists.type = 4 THEN 0 ELSE 1 END AS asset_type, '' AS channel, 0 AS child_count FROM `share` AS `share` INNER JOIN `share_list` AS `share_lists` ON `share`.`share_id` = `share_lists`.`share_id` WHERE `share`.`code` = :code "
     
     if(type !== 'undefined' && type !== undefined && parseInt(type) === 2) {
-        query = "SELECT appno_doc_num, grant_doc_num, CASE WHEN grant_doc_num = '' THEN appno_doc_num ELSE grant_doc_num END AS asset, CASE WHEN grant_doc_num = '' THEN 1 ELSE 0 END AS asset_type, '' AS channel, 0 AS child_count  FROM db_uspto.documentid INNER JOIN  ( SELECT  `share_lists`.`asset` AS asset FROM `share` AS `share` INNER JOIN `share_list` AS `share_lists` ON `share`.`share_id` = `share_lists`.`share_id` WHERE `share`.`code` = :code AND type = :type) AS temp ON temp.asset = documentid.appno_doc_num OR temp.asset = documentid.grant_doc_num GROUP BY appno_doc_num"
+        query += " AND share.type = :type"
+       // query = "SELECT appno_doc_num, grant_doc_num, CASE WHEN grant_doc_num = '' THEN appno_doc_num ELSE grant_doc_num END AS asset, CASE WHEN grant_doc_num = '' THEN 1 ELSE 0 END AS asset_type, '' AS channel, 0 AS child_count  FROM db_uspto.documentid WHERE grant_doc_num IN (SELECT  `share_lists`.`asset` AS asset FROM `share` AS `share` INNER JOIN `share_list` AS `share_lists` ON `share`.`share_id` = `share_lists`.`share_id` WHERE `share`.`code` = :code AND share.type = :type AND share_lists.type = '4') GROUP BY appno_doc_num UNION SELECT appno_doc_num, grant_doc_num, CASE WHEN grant_doc_num = '' THEN appno_doc_num ELSE grant_doc_num END AS asset, CASE WHEN grant_doc_num = '' THEN 1 ELSE 0 END AS asset_type, '' AS channel, 0 AS child_count  FROM db_uspto.documentid WHERE appno_doc_num IN (SELECT  `share_lists`.`asset` AS asset FROM `share` AS `share` INNER JOIN `share_list` AS `share_lists` ON `share`.`share_id` = `share_lists`.`share_id` WHERE `share`.`code` = :code AND share.type = :type AND share_lists.type = '5') GROUP BY appno_doc_num"
+        /* query = "SELECT appno_doc_num, grant_doc_num, CASE WHEN grant_doc_num = '' THEN appno_doc_num ELSE grant_doc_num END AS asset, CASE WHEN grant_doc_num = '' THEN 1 ELSE 0 END AS asset_type, '' AS channel, 0 AS child_count  FROM db_uspto.documentid INNER JOIN  ( SELECT  `share_lists`.`asset` AS asset FROM `share` AS `share` INNER JOIN `share_list` AS `share_lists` ON `share`.`share_id` = `share_lists`.`share_id` WHERE `share`.`code` = :code AND share.type = :type) AS temp ON temp.asset = documentid.appno_doc_num OR temp.asset = documentid.grant_doc_num GROUP BY appno_doc_num" */
     } else {
-        query += " AND type <> :type"
+        query += " AND share.type <> :type"
     }
 
     return await connection.applicationNew.query(query,{
