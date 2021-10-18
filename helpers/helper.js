@@ -2196,8 +2196,9 @@ let getNewCode = async () => {
 let shareURL = async (params) => {
     console.log(params.assets)
     const assets = JSON.parse(params.assets)
+    const transactions = JSON.parse(params.transactions)
 
-    if( assets.length > 0 ) {
+    if( assets.length > 0 || transactions.length > 0) {
         let insertRecord = await Share.create({
             code: params.code,
             organisation_id: params.organisation_id,        
@@ -2207,17 +2208,37 @@ let shareURL = async (params) => {
         if(insertRecord != null && insertRecord.share_id > 0) {      
             
             const bulkData = []
-            const promises = assets.map(item => bulkData.push({asset: item.asset, type: item.flag, share_id: insertRecord.share_id}))
+            if(assets.length > 0) {
+                assets.forEach(item => bulkData.push({asset: item.asset, type: item.flag, share_id: insertRecord.share_id}))
+            } else if(transactions.length > 0) {
+                const query = "SELECT CASE WHEN grant_doc_num = '' THEN appno_doc_num ELSE grant_doc_num END AS asset, CASE WHEN grant_doc_num = '' THEN 4 ELSE 5 END AS flag FROM assets WHERE rf_id IN (:rfIDs) AND organisation_id = :organisation_id GROUP BY rf_id, appno_doc_num"
+                const getList = await connection.applicationNew.query(query,{
+                    type: connection.Sequelize.QueryTypes.SELECT,
+                    raw: true,
+                    logging: console.log,
+                    replacements: {organisation_id: params.organisation_id, rfIDs: transactions},
+                    }
+                );
+
+                if( getList.length > 0 ) {
+                    insertRecord.update({transactions: JSON.stringify(transactions)})
+                    getList.forEach( item => {
+                        bulkData.push({asset: item.asset, type: item.flag, share_id: insertRecord.share_id})
+                    })
+                }
+            }
+
+            if(bulkData.length > 0) {
+                const addBulkData = await ShareLists.bulkCreate(bulkData, { ignoreDuplicates: true })
     
-            await Promise.all(promises)
-    
-            const addBulkData = await ShareLists.bulkCreate(bulkData, { ignoreDuplicates: true })
-    
-            if(addBulkData) {                
-                return `https://${params.type == 2 ? 'sample.app' : 'share'}.patentrack.com/${params.code}`;
+                if(addBulkData) {
+                    return `https://${params.type == 2 ? 'sample.app' : 'share'}.patentrack.com/${params.code}`;
+                } else {
+                    return '';
+                }
             } else {
                 return '';
-            }
+            }            
         } else {
             return '';
         }
@@ -2297,6 +2318,18 @@ let getShareList = async (code, type) => {
 let getShareDataByCode = async (code) => {
     return await Share.findOne({
         where:{code}
+	});
+}
+
+let getShareDataByCodeWithAssets = async (code, asset) => {
+    return await Share.findOne({
+        where:{code},
+        include:[
+            {                       
+                model: ShareLists,
+                attributes: [ 'asset', 'type' ],  
+            }
+        ]
 	});
 }
 
@@ -2876,6 +2909,7 @@ helper.shareURL = shareURL;
 helper.getShareList = getShareList;
 helper.getShareData = getShareData;
 helper.getShareDataByCode = getShareDataByCode;
+helper.getShareDataByCodeWithAssets = getShareDataByCodeWithAssets;
 helper.getCompaniesMinAndMaxDateTransaction = getCompaniesMinAndMaxDateTransaction;
 helper.findProfessionalFromUserID = findProfessionalFromUserID;
 helper.findFakeDocument = findFakeDocument;

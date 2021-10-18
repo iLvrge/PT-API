@@ -114,6 +114,81 @@ route.get("/share/data/:asset/:code", async (req, res) =>{
     }
 });
 
+route.get("/share/timeline/list/:code", async (req, res) =>{    
+    try {
+        const { code } = req.params;
+        let list = [], groups = []
+        if( code != "") {
+            const getShareCodeData = await helpers.getShareDataByCodeWithAssets(code)
+            if( getShareCodeData !== null ) {
+                const getTransactions = getShareCodeData.transactions
+                let transactions = []
+                if(getTransactions !== null) {
+                    transactions = JSON.parse(getTransactions)                    
+                }
+                if(transactions.length == 0) {
+                    if(getShareCodeData.share_lists.length > 0) {
+                        const patents = [], applications = []
+                        getShareCodeData.share_lists.forEach( item => {
+                            if(item.type == 4) {
+                                patents.push(item.asset)
+                            }
+                            if(item.type == 5) {
+                                applications.push(item.asset)
+                            }
+                        })
+                        if(patents.length > 0 || applications.length> 0) {
+                            let query = "SELECT rf_id FROM documentid WHERE ";
+                            if(patents.length > 0) {
+                                query += " grant_doc_num IN (:patents) OR "
+                            }
+
+                            if(applications.length > 0) {
+                                query += " appno_doc_num IN (:applications)  "
+                            }
+
+                            query += " GROUP BY rf_id  "
+
+                            const rfIDsList = await connection.resources.query(query,{
+                                type: connection.Sequelize.QueryTypes.SELECT,
+                                raw: true,
+                                logging: console.log,
+                                replacements: {patents, applications},
+                                plain: true
+                            })   
+
+                            if(rfIDsList.length > 0) {
+                                rfIDsList.forEach( row => {
+                                    transactions.push(row.rf_id)
+                                })
+                            }
+                        }
+                    }
+                }
+                if(transactions.length > 0) {
+                    let query = "SELECT activity_parties_transactions.rf_id as id, exec_dt, assignor_and_assignee.name AS customerName, activity_id AS tab_id, (CASE WHEN (activity_id = 8 OR activity_id = 9 OR activity_id = 14) THEN 1 WHEN (activity_id = 5 OR activity_id = 11 OR activity_id = 12 OR activity_id = 13) THEN 2 WHEN (activity_id = 3 OR activity_id = 4) THEN 3 WHEN (activity_id = 1 OR activity_id = 2 OR activity_id = 6 OR activity_id = 7) THEN 4 WHEN (activity_id = 10) THEN 5 END) AS `group`, company_id AS `company`, (SELECT count(distinct assets.appno_doc_num) FROM assets WHERE assets.rf_id = activity_parties_transactions.rf_id AND assets.organisation_id = :organisation_id  AND assets.layout_id = :layoutID ) AS totalAssets FROM activity_parties_transactions INNER JOIN db_uspto.assignor_and_assignee AS assignor_and_assignee ON assignor_and_assignee.assignor_and_assignee_id = activity_parties_transactions.assignor_and_assignee_id WHERE activity_parties_transactions.organisation_id = :organisation_id  AND activity_parties_transactions.rf_id IN (:rf_ids)  GROUP BY activity_parties_transactions.rf_id ORDER BY exec_dt DESC "
+
+                    list =  await connection.applicationNew.query(query, {
+                            type: connection.Sequelize.QueryTypes.SELECT,
+                            raw: true,
+                            logging: console.log,
+                            replacements: {layoutID: 15, organisation_id: getShareCodeData.organisation_id, rf_ids: transactions },
+                        }
+                    );
+                }
+                res.status(200).json({list, groups});
+            } else {
+                res.status(400).send("Invalid code.");
+            }
+        } else {
+            res.status(400).send("Invalid code.");
+        }
+    } catch (err) {
+        console.log("SHARE TIMELINE=> ERROR", err)
+        res.status(500).send("Internal server error.");
+    }
+})
+
 route.get("/share/illustrate/show/:code", async (req, res) =>{     
     const { code } = req.params;
     try {

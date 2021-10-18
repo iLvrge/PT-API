@@ -24,6 +24,10 @@ const Share = connection.applicationNew.define('share',{
     type: {
         type: Sequelize.INTEGER
     },
+    transactions:{
+        type: Sequelize.STRING,
+        allowNull: true,
+    },
     created_at:{
         type: Sequelize.DATE,
         defaultValue: Sequelize.DATE

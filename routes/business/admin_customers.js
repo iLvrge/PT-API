@@ -14,6 +14,8 @@ const express = require("express"),
     
     request = require('request');
 
+const {google} = require('googleapis');
+
 const { v4: uuidv4  } = require('uuid');
 
 const { exec, spawn  } = require("child_process");
@@ -59,6 +61,10 @@ const Organisations = require("../../model/business/Organisations"),
     RepresentativeTransactions = require("../../model/resources/RepresentativeTransactions"),
 
     AWS  = require('aws-sdk');
+
+    
+/**Get all documents */
+
 
 route.put("/customers/:organisation_id/buttons", [authJWT.verifyToken, authJWT.isAdmin], async(req, res, next) => {
     try{
@@ -1658,5 +1664,14 @@ route.get("/patents/:patentNumber/assignments",[authJWT.verifyToken, authJWT.isA
         res.status(400).send("Invalid number");
     })
 });
+
+
+route.get("/retrieve_cited_patents/:customerID",[authJWT.verifyToken, authJWT.isAdmin], async (req, res) =>{ 
+    const {customerID} = req.params
+    spawn('env-cmd', ['node', '/var/www/html/script/retrieve_cited_patents_assignees.js', customerID]);
+    res.status(200).send("Run script");
+})
+
+
 
 module.exports = route;

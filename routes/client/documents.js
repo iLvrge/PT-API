@@ -93,6 +93,7 @@ route.get("/auth_token", authJWT.verifyToken, async(req, res, next) => {
     try{
         if(code != '' && code != undefined) {
             const token = await authenticateGoogleToken( code )
+            console.log('token', token)
             res.status(200).json(token);
         } else {
             res.status(401).send("Authentication code is missing");

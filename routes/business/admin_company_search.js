@@ -8,6 +8,8 @@ const connection = require("../../config/db.config");
 
 const clientDBConnection = require("../../helpers/clientDBConnection");
 
+const {google} = require('googleapis');
+
 //require the Model
 
 const authJWT = require("../../helpers/verifyJwtToken");
@@ -21,6 +23,8 @@ const Representatives = require('../../model/resources/Representatives');
 const RepresentativeCustomer = require('../../model/client/Representatives');
 
 const RepresentativeAssignmentConveyance = require('../../model/resources/RepresentativeAssignmentConveyance');
+
+const AssigneeOrganizations = require('../../model/application/AssigneeOrganizations');
 
 const AssignmentConveyance = require('../../model/application/AssignmentConveyance');
 
@@ -45,6 +49,28 @@ const Lawyers = require('../../model/resources/Lawyers');
 const RepresentativeLawyers = require('../../model/resources/RepresentativeLawyers');
 
 const RepresentativeTransactions = require('../../model/resources/RepresentativeTransactions');
+
+const SheetsHelper = require('../../helpers/sheets');
+
+
+const oauth2Client = new google.auth.OAuth2(
+    process.env.GOOGLE_CLIENT_ID,
+    process.env.GOOGLE_SECRET_KEY,
+    process.env.ADMIN_REDIRECT_URL
+);
+
+let authenticateGoogleToken = async( code ) => {
+    let getTokens = {}
+
+    try{
+        const {tokens} = await oauth2Client.getToken(code)
+        getTokens = tokens
+    } catch(e) {
+        console.log(e)
+    }
+    
+    return getTokens
+}
 
 /**
  * Search entity by name
@@ -1694,7 +1720,7 @@ route.get("/company/cited/:id", [authJWT.verifyToken, authJWT.isAdmin, authJWT.a
                 const queryCitedPatentsAssignee = `SELECT ao.assignee_id, ao.assignee_organization FROM assignee_organizations AS ao 
                                         INNER JOIN cited_patents AS cp ON cp.assignee_id = ao.assignee_id
                                         INNER JOIN assets AS a ON a.grant_doc_num = cp.patent_number
-                                        WHERE a.layout_id = :layout_id AND a.organisation_id = :organisationID AND a.company_id IN (:companiesIDs)
+                                        WHERE a.layout_id = :layout_id AND a.organisation_id = :organisationID AND a.company_id IN (:companiesIDs) AND ao.organisation_id = 0
                                         GROUP BY ao.assignee_id`
                 
                 citedAssignees = await connection.applicationNew.query(queryCitedPatentsAssignee,{
@@ -1718,6 +1744,112 @@ route.get("/company/cited/:id", [authJWT.verifyToken, authJWT.isAdmin, authJWT.a
     }
     res.status(200).json({citedAssignees, organizations});
 })
+
+route.put("/company/cited/:id", [authJWT.verifyToken, authJWT.isAdmin, authJWT.addClientID], async (req, res, next) => {
+    try{
+        let { organisation_id, assignee_id } = req.body
+        const { id } = req.params, data = ''
+
+        if(id > 0) {
+            assignee_id = JSON.parse(assignee_id)
+            if(assignee_id.length > 0) {
+                data = await AssigneeOrganizations.update({organisation_id}, {where : { assignee_id}})
+            }
+        }
+        res.status(200).send(data);
+    } catch ( e ) {
+        console.log('update => /company/cited/', e)
+    }
+})
+
+route.delete("/company/cited/:id", [authJWT.verifyToken, authJWT.isAdmin, authJWT.addClientID], async (req, res, next) => {
+    try{
+        let { organisation_id, assignee_id } = req.body
+        const { id } = req.params, data = ''
+
+        if(id > 0) {
+            assignee_id = JSON.parse(assignee_id)
+            if(assignee_id.length > 0) {
+                data = await AssigneeOrganizations.update({organisation_id: 0}, {where : { assignee_id}})
+            }
+        }
+        res.status(200).send(data);
+    } catch ( e ) {
+        console.log('delete => /company/cited/', e)
+    }
+})
+
+route.post("/company/cited/:id", [authJWT.verifyToken, authJWT.isAdmin, authJWT.addClientID], async (req, res, next) => {
+    try {
+        
+        const {assignee_organisation, token, account} = req.body;
+
+        const spreadsheetID = `18ZdO_58z9jJ3hkdUY1DrjiddRRNGWpfGMCNS8IGdp54`, sheetID = '150866887'
+
+        const sheetHelper = new SheetsHelper(token)
+
+        sheetHelper.getData({
+            spreadsheetId: spreadsheetID,
+            majorDimension: 'COLUMNS',
+            range: 'Sheet1'
+        }, async function( sourceList ){
+            console.log('sourceList', sourceList)
+            if(Object.keys(sourceList).length > 0 && typeof sourceList.values !== 'undefined' && sourceList.values.length > 0 && sourceList.values[0].length > 0) {
+                const assignees = JSON.parse(assignee_organisation)
+
+                if(assignees.length > 0) {
+                    await addNewDataToSheet(sheetHelper, spreadsheetID, sheetID, sourceList.values[0].length, assignees, res)
+                }
+            }
+        })
+
+
+    } catch (err) {
+
+    }
+})
+
+const buildRows = async(assets) => {
+    return assets.map(function(asset) {        
+        return {
+            values: [
+                {
+                    userEnteredValue: {
+                    stringValue: asset
+                    }
+                }
+            ]
+        };
+    });
+}
+
+const addNewDataToSheet = async(sheetInstance, spreadsheetID, sheetID, index, assets, res) => {
+    const rows = await buildRows(assets)
+
+    const request = {
+        spreadsheetId: spreadsheetID,
+        resource: {
+            requests: [
+                {
+                    updateCells: {
+                        start: {
+                            sheetId: sheetID,
+                            rowIndex: index,
+                            columnIndex: 0
+                        },
+                        rows,
+                        fields: '*'
+                    }
+                }
+            ]
+        }
+    };
+    console.log('addNewDataToSheet', JSON.stringify(request))
+    await sheetInstance.batchUpdate(request, function(updateData){
+        console.log('addNewDataToSheet=>', updateData)
+        res.status(200).json({error: '', message: "Assignees added to sheet"});   
+    })
+}
 
 
 /**
@@ -1865,5 +1997,23 @@ route.get("/company/:representativeID/event_maintainence", [authJWT.verifyToken,
         res.status(402).send("Unable to retrieve data.");
     } 
 });
+
+
+route.get("/company/auth_token", [authJWT.verifyToken, authJWT.isAdmin], async(req, res, next) => {
+    const { code } = req.query
+    try{
+        if(code != '' && code != undefined) {
+            const token = await authenticateGoogleToken( code )
+            console.log('token', token)
+            res.status(200).json(token);
+        } else {
+            res.status(401).send("Authentication code is missing");
+        }
+    } catch(e) {
+        console.log(e)
+        res.status(500).send("Unable to authenticate token");
+    }
+})
+
 
 module.exports = route;
