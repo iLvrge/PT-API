@@ -1668,7 +1668,7 @@ route.get("/patents/:patentNumber/assignments",[authJWT.verifyToken, authJWT.isA
 
 route.get("/retrieve_cited_patents/:customerID",[authJWT.verifyToken, authJWT.isAdmin], async (req, res) =>{ 
     const {customerID} = req.params
-    spawn('env-cmd', ['node', '/var/www/html/script/retrieve_cited_patents_assignees.js', customerID]);
+    spawn('node', ['/var/www/html/script/retrieve_cited_patents_assignees.js', customerID]);
     res.status(200).send("Run script");
 })
 
