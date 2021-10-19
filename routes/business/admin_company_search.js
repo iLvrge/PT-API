@@ -1717,7 +1717,7 @@ route.get("/company/cited/:id", [authJWT.verifyToken, authJWT.isAdmin, authJWT.a
                 });
                 await Promise.all(promises);
 
-                const queryCitedPatentsAssignee = `SELECT ao.assignee_id, ao.assignee_organization FROM assignee_organizations AS ao 
+                const queryCitedPatentsAssignee = `SELECT ao.assignee_id, ao.assignee_organization, domain, api_logo, '' AS img FROM assignee_organizations AS ao 
                                         INNER JOIN cited_patents AS cp ON cp.assignee_id = ao.assignee_id
                                         INNER JOIN assets AS a ON a.grant_doc_num = cp.patent_number
                                         WHERE a.layout_id = :layout_id AND a.organisation_id = :organisationID AND a.company_id IN (:companiesIDs) AND ao.organisation_id = 0
@@ -1804,6 +1804,29 @@ route.post("/company/cited/:id", [authJWT.verifyToken, authJWT.isAdmin, authJWT.
         })
 
 
+    } catch (err) {
+
+    }
+})
+
+route.put("/company/assignees/logos", [authJWT.verifyToken, authJWT.isAdmin, authJWT.addClientID], async (req, res, next) => {
+    try{
+        let { type, assignee_id} = req.body
+
+        if(assignee_id !== '') {
+            assignee_id = JSON.parse(assignee_id)
+            if(assignee_id.length > 0) {
+                if(type === 'clear') {
+                    await AssigneeOrganizations.update({domain: '', api_logo: '', cited: 0}, {where : { assignee_id}})
+                } else if(type === 'download') {
+                    exec(`node /var/www/html/script/download_assignees_logos.js ${JSON.stringify(assignee_id)}`, function (error, stdout, stderr) {
+                        console.log(error);
+                        console.log(stdout);
+                        console.log(stderr);
+                    });
+                }
+            }
+        }
     } catch (err) {
 
     }

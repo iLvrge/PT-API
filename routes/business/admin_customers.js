@@ -1666,12 +1666,16 @@ route.get("/patents/:patentNumber/assignments",[authJWT.verifyToken, authJWT.isA
 });
 
 
-route.get("/retrieve_cited_patents/:customerID",[authJWT.verifyToken, authJWT.isAdmin], async (req, res) =>{ 
+route.get("/customers/retrieve_cited_patents/:customerID",[authJWT.verifyToken, authJWT.isAdmin], async (req, res) =>{ 
     const {customerID} = req.params
     spawn('node', ['/var/www/html/script/retrieve_cited_patents_assignees.js', customerID]);
-    res.status(200).send("Run script");
+    res.status(200).send("Run retireved assignee script");
 })
 
-
+route.get("/customers/retrieve_cited_patents_logo/:customerID",[authJWT.verifyToken, authJWT.isAdmin], async (req, res) =>{ 
+    const {customerID} = req.params
+    spawn('node', ['/var/www/html/script/name_to_domain_api.js', customerID]);
+    res.status(200).send("run logo script");
+})
 
 module.exports = route;
