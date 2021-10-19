@@ -1818,17 +1818,24 @@ route.put("/company/assignees/logos", [authJWT.verifyToken, authJWT.isAdmin, aut
             if(assignee_id.length > 0) {
                 if(type === 'clear') {
                     await AssigneeOrganizations.update({domain: '', api_logo: '', cited: 0}, {where : { assignee_id}})
+                    res.status(200).send("Assignee data cleared");
                 } else if(type === 'download') {
                     exec(`node /var/www/html/script/download_assignees_logos.js ${JSON.stringify(assignee_id)}`, function (error, stdout, stderr) {
                         console.log(error);
                         console.log(stdout);
                         console.log(stderr);
                     });
+                    res.status(200).send("Assignee logo download script start.");
                 }
+            } else {
+                res.status(401).send("Invalid data");
             }
+        } else {
+            res.status(401).send("Invalid data");
         }
     } catch (err) {
-
+        console.log('Error /company/assignees/logos', err)
+        res.status(500).send("Internal server error.");
     }
 })
 
