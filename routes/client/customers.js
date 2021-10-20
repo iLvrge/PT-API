@@ -509,22 +509,22 @@ route.get("/:layout/assets", [authJWT.verifyToken, clientDBConnection.connect], 
 
         if(companies && companies != '') {
             companies = JSON.parse( companies )
-            replacements.companies = companies.join(',')
+            replacements.companies = JSON.parse( companies )
         }
 
         if(tabs && tabs != '') {
             tabs = JSON.parse( tabs )
-            replacements.tabs = tabs.join(',')
+            replacements.tabs = tabs
         }
 
         if(customers && customers != '') {
             customers = JSON.parse( customers )
-            replacements.customers = customers.join(',')
+            replacements.customers = customers
         }
 
         if(assignments && assignments != '') {
             assignments = JSON.parse( assignments )
-            replacements.assignments = assignments.join(',')
+            replacements.assignments = assignments
         }
 
         if(typeof offset === 'undefined') {
@@ -556,7 +556,7 @@ route.get("/:layout/assets", [authJWT.verifyToken, clientDBConnection.connect], 
 
 
         if((Array.isArray(assignments) && assignments.length > 0 ) || (Array.isArray(tabs) && tabs.length > 0) || (Array.isArray(customers) && customers.length > 0)) {
-            query += ` AND assets.rf_id IN ( SELECT activity_parties_transactions.rf_id  FROM db_new_application.activity_parties_transactions WHERE activity_parties_transactions.organisation_id = :organisationID AND activity_parties_transactions.company_id IN (:companies) `
+            query += ` AND assets.appno_doc_num IN ( SELECT documentid.appno_doc_num FROM db_uspto.documentid WHERE rf_id  IN ( SELECT activity_parties_transactions.rf_id  FROM db_new_application.activity_parties_transactions WHERE activity_parties_transactions.organisation_id = :organisationID AND activity_parties_transactions.company_id IN (:companies) `
 
             if(Array.isArray(assignments) && assignments.length > 0 ) {
                 query += ` AND activity_parties_transactions.rf_id IN (:assignments)`
@@ -570,7 +570,7 @@ route.get("/:layout/assets", [authJWT.verifyToken, clientDBConnection.connect], 
                 query += ` AND activity_parties_transactions.assignor_and_assignee_id IN (:customers)`
             }
 
-            query += ` GROUP BY activity_parties_transactions.rf_id ) `
+            query += ` GROUP BY activity_parties_transactions.rf_id ) GROUP BY documentid.appno_doc_num) `
         }
 
         query += ` GROUP BY asset`;

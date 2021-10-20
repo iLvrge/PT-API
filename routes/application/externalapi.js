@@ -91,11 +91,11 @@ route.get("/citation/:asset", [authJWT.verifyToken], async (req, res) => {
                             })
                             if(getCompanyLogos.length > 0) {
                                 getCompanyLogos.forEach( company => {
-                                    const findIndex = citationEvents.findIndex( item => item.assignee.toString().toLocaleLowerCase() == company.organisation_name.toString().toLocaleLowerCase())
-
-                                    if( findIndex !== -1) {
-                                        citationEvents[findIndex].logo = company.original_logo !== '' ? company.original_logo : company.logo_optimize
-                                    }
+                                    citationEvents.forEach( (item, index) => {
+                                        if(item.assignee.toString().toLocaleLowerCase() == company.organisation_name.toString().toLocaleLowerCase()){
+                                            citationEvents[index].logo = company.original_logo !== '' ? company.original_logo : company.logo_optimize
+                                        }
+                                    })
                                 })
                             }
                         }
