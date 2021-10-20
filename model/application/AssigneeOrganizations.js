@@ -13,6 +13,10 @@ const AssigneeOrganizations = connection.applicationNew.define('assignee_organiz
         type: Sequelize.STRING,
         allowNull: false,
     },
+    assignee_query:{
+        type: Sequelize.STRING,
+        allowNull: false,
+    },
     domain:{
         type: Sequelize.STRING,
         allowNull: true,

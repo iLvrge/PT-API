@@ -1717,7 +1717,7 @@ route.get("/company/cited/:id", [authJWT.verifyToken, authJWT.isAdmin, authJWT.a
                 });
                 await Promise.all(promises);
 
-                const queryCitedPatentsAssignee = `SELECT ao.assignee_id, ao.assignee_organization, domain, api_logo, '' AS img FROM assignee_organizations AS ao 
+                const queryCitedPatentsAssignee = `SELECT ao.assignee_id, ao.assignee_organization, ao.assignee_query, ao.domain, ao.api_logo, '' AS img FROM assignee_organizations AS ao 
                                         INNER JOIN cited_patents AS cp ON cp.assignee_id = ao.assignee_id
                                         INNER JOIN assets AS a ON a.grant_doc_num = cp.patent_number
                                         WHERE a.layout_id = :layout_id AND a.organisation_id = :organisationID AND a.company_id IN (:companiesIDs) AND ao.organisation_id = 0
@@ -1806,6 +1806,31 @@ route.post("/company/cited/:id", [authJWT.verifyToken, authJWT.isAdmin, authJWT.
 
     } catch (err) {
 
+    }
+})
+
+route.put("/company/assignees/query_name", [authJWT.verifyToken, authJWT.isAdmin, authJWT.addClientID], async (req, res, next) => {
+    try{
+        let { assignee_query, assignee_id} = req.body
+
+        if(assignee_id > 0) {
+
+            const assignee = await AssigneeOrganizations.findOne({
+                where: {assignee_id}
+            })
+
+            if(assignee !== null) {
+                await assignee.update({assignee_query})
+                res.status(200).send("Assignee query name updated.");
+            } else {
+                res.status(401).send("Invalid data");
+            }
+        } else {
+            res.status(401).send("Invalid data");
+        }
+    } catch (err) {
+        console.log('Error /company/assignees/query_name', err)
+        res.status(500).send("Internal server error.");
     }
 })
 
