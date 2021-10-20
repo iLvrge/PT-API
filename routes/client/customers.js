@@ -509,7 +509,7 @@ route.get("/:layout/assets", [authJWT.verifyToken, clientDBConnection.connect], 
 
         if(companies && companies != '') {
             companies = JSON.parse( companies )
-            replacements.companies = JSON.parse( companies )
+            replacements.companies = companies
         }
 
         if(tabs && tabs != '') {
