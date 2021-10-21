@@ -139,11 +139,16 @@ route.get("/share/timeline/list/:code", async (req, res) =>{
                         })
                         if(patents.length > 0 || applications.length> 0) {
                             let query = "SELECT rf_id FROM documentid WHERE ";
+                            let patentAdded = false
                             if(patents.length > 0) {
-                                query += " grant_doc_num IN (:patents) OR "
+                                patentAdded = true
+                                query += " grant_doc_num IN (:patents)"
                             }
 
                             if(applications.length > 0) {
+                                if(patentAdded === true) {
+                                    query += " OR ";
+                                }
                                 query += " appno_doc_num IN (:applications)  "
                             }
 
@@ -164,7 +169,7 @@ route.get("/share/timeline/list/:code", async (req, res) =>{
                         }
                     }
                 }
-                
+
                 if(transactions.length > 0) {
                     let query = "SELECT activity_parties_transactions.rf_id as id, exec_dt, assignor_and_assignee.name AS customerName, activity_id AS tab_id, (CASE WHEN (activity_id = 8 OR activity_id = 9 OR activity_id = 14) THEN 1 WHEN (activity_id = 5 OR activity_id = 11 OR activity_id = 12 OR activity_id = 13) THEN 2 WHEN (activity_id = 3 OR activity_id = 4) THEN 3 WHEN (activity_id = 1 OR activity_id = 2 OR activity_id = 6 OR activity_id = 7) THEN 4 WHEN (activity_id = 10) THEN 5 END) AS `group`, company_id AS `company`, (SELECT count(distinct assets.appno_doc_num) FROM assets WHERE assets.rf_id = activity_parties_transactions.rf_id AND assets.organisation_id = :organisation_id  AND assets.layout_id = :layoutID ) AS totalAssets FROM activity_parties_transactions INNER JOIN db_uspto.assignor_and_assignee AS assignor_and_assignee ON assignor_and_assignee.assignor_and_assignee_id = activity_parties_transactions.assignor_and_assignee_id WHERE activity_parties_transactions.organisation_id = :organisation_id  AND activity_parties_transactions.rf_id IN (:rf_ids)  GROUP BY activity_parties_transactions.rf_id ORDER BY exec_dt DESC "
 
