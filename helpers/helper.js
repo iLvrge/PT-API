@@ -1255,7 +1255,7 @@ let getCompaniesListWithReports = async (DBConnection) => {
  * @param {} DBConnection 
  */
 
-let getCompaniesListSumWithReports = async (DBConnection) => {
+let getCompaniesListSumWithReports = async (DBConnection, organisationID) => {
     const Representative = DBConnection.define('ClientRepesentative', ClientRepesentative.mainStructure, ClientRepesentative.options);
 
     const getList =  await Representative.findAll({
@@ -1280,6 +1280,14 @@ let getCompaniesListSumWithReports = async (DBConnection) => {
                 plain: true
             }
         ); 
+
+        const queryShareURL = await Share.findOne({
+            where: {organisation_id: organisationID}
+        })
+
+        if( queryShareURL !== null ) {
+            reports.share_url = 1
+        }
 
         if(reports != null) {            
             return reports
@@ -2193,12 +2201,35 @@ let getNewCode = async () => {
     return newCode;
 };
 
+const removeAllOldSharingUrl = async(organisation_id) => {
+    const findOldShare = await Share.findAll({
+        attributes: ['share_id'], 
+        where : {organisation_id}
+    })
+
+    if(findOldShare.length > 0) {
+        const oldShareIDs = []
+        findOldShare.forEach( row => {
+            oldShareIDs.push(row.get('share_id'))
+        })
+        await ShareLists.destroy({
+            where: {share_id: oldShareIDs}
+        })
+        await Share.destroy({
+            where: {share_id: oldShareIDs}
+        })
+    }
+}
+
 let shareURL = async (params) => {
     console.log(params.assets)
     const assets = JSON.parse(params.assets)
     const transactions = JSON.parse(params.transactions)
 
     if( assets.length > 0 || transactions.length > 0) {
+        await removeAllOldSharingUrl(params.organisation_id)
+
+
         let insertRecord = await Share.create({
             code: params.code,
             organisation_id: params.organisation_id,        
@@ -2228,11 +2259,11 @@ let shareURL = async (params) => {
                 }
             }
 
-            if(bulkData.length > 0) {
+            if(bulkData.length > 0) {                
                 const addBulkData = await ShareLists.bulkCreate(bulkData, { ignoreDuplicates: true })
     
                 if(addBulkData) {
-                    return `https://${params.type == 2 ? 'sample.app' : 'share'}.patentrack.com/${params.code}`;
+                    return `https://${params.type == 2 ? 'sample.app' : params.type == 0 ? 'standard' : 'share'}.patentrack.com/${params.code}`;
                 } else {
                     return '';
                 }
@@ -2925,4 +2956,5 @@ helper.findRfIDsBySearchString = findRfIDsBySearchString
 helper.getCompaniesListWithReports = getCompaniesListWithReports 
 helper.getCompaniesListSumWithReports = getCompaniesListSumWithReports 
 helper.getCompaniesAllList = getCompaniesAllList 
+helper.removeAllOldSharingUrl = removeAllOldSharingUrl
 module.exports = helper;

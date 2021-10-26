@@ -431,7 +431,7 @@ route.get("/asset_types/assets", [authJWT.verifyToken, clientDBConnection.connec
             where.assignments = assignments
         }
 
-        let query = "SELECT appno_doc_num, grant_doc_num, CASE WHEN grant_doc_num = '' THEN appno_doc_num ELSE  grant_doc_num END as asset, 0 as child_count FROM documentid WHERE rf_id IN (SELECT rf_id FROM tree_parties_collection WHERE REPLACE_WHERE ) GROUP BY appno_doc_num, grant_doc_num";
+        let query = "SELECT appno_doc_num, grant_doc_num, CASE WHEN grant_doc_num = '' OR grant_doc_num IS NULL THEN FORMAT(appno_doc_num,0) ELSE FORMAT(grant_doc_num,0) END AS format_asset, CASE WHEN grant_doc_num = '' THEN appno_doc_num ELSE  grant_doc_num END as asset, 0 as child_count FROM documentid WHERE rf_id IN (SELECT rf_id FROM tree_parties_collection WHERE REPLACE_WHERE ) GROUP BY appno_doc_num, grant_doc_num";
 
         let whereCondition = ' representative_id IN (:representative_id)  AND organisation_id = :organisation_id';
 
@@ -595,7 +595,8 @@ route.get("/:layout/assets", [authJWT.verifyToken, clientDBConnection.connect], 
 
         if(assets.total_records > 0) {
             query += `  LIMIT :offset, :limit`;
-            const  queryColumnReplace = `assets.organisation_id, 
+            const  queryColumnReplace = `assets.organisation_id,
+            CASE WHEN assets.grant_doc_num = '' OR assets.grant_doc_num IS NULL THEN CONCAT(SUBSTRING(assets.appno_doc_num, 1, 2), '/', FORMAT(SUBSTRING(assets.appno_doc_num, 3), 0)) ELSE FORMAT(assets.grant_doc_num, 0) END AS format_asset,
             CASE WHEN assets.grant_doc_num = '' OR assets.grant_doc_num IS NULL THEN assets.appno_doc_num ELSE assets.grant_doc_num END AS asset, 
             CASE WHEN assets.grant_doc_num = '' OR assets.grant_doc_num IS NULL THEN 1 ELSE 0 END AS asset_type, assets.appno_doc_num, assets.grant_doc_num, 0 AS child_count, '' AS channel `
 

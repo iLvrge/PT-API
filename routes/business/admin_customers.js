@@ -149,13 +149,13 @@ route.get("/customers/run_query/:representative_name/:query_no", [authJWT.verify
 })
 
 /**
- * List all customers
+ * List all customers   
  */
 
 route.get("/customers", [authJWT.verifyToken, authJWT.isAdmin], (req, res, next) => {
 
     Organisations.findAll({
-        attributes: [['organisation_id', 'id'], 'name','logo', 'organisation_type', [connection.Sequelize.literal(0, 'assets'), 'assets'], [connection.Sequelize.literal(0, 'no_of_transactions'),'no_of_transactions'], [connection.Sequelize.literal(0, 'no_of_parties'), 'no_of_parties'], [connection.Sequelize.literal(0, 'product'), 'product']],
+        attributes: [['organisation_id', 'id'], 'name','logo', 'organisation_type', [connection.Sequelize.literal(0, 'no_of_parties'), 'share_url'], [connection.Sequelize.literal(0, 'assets'), 'assets'], [connection.Sequelize.literal(0, 'no_of_transactions'),'no_of_transactions'], [connection.Sequelize.literal(0, 'no_of_parties'), 'no_of_parties'], [connection.Sequelize.literal(0, 'product'), 'product']],
         where: {type:{[connection.Op.ne]: 2}}
     })
     .then((list)=>{
@@ -587,6 +587,21 @@ route.delete("/customers/:id/companies", [authJWT.verifyToken, authJWT.isAdmin, 
     }    
 });
 
+route.delete("/customers/:id/share", [authJWT.verifyToken, authJWT.isAdmin, authJWT.addClientID, clientDBConnection.connect], async (req, res, next) => {
+    try{
+        const { id } = req.params
+        if(id > 0) {
+            await helpers.removeAllOldSharingUrl(id)
+            res.status(200).send("Share url deleted.");
+        } else {
+            res.status(402).send("Invalid inputs");
+        }
+    } catch( err ) {
+        console.log(err)
+        res.status(500).send(null)
+    }
+})
+
 route.get("/customers/:id/reports", [authJWT.verifyToken, authJWT.isAdmin, authJWT.addClientID, clientDBConnection.connect], async (req, res, next) => {
     try{
         let organisationID = req.params.id;
@@ -595,7 +610,7 @@ route.get("/customers/:id/reports", [authJWT.verifyToken, authJWT.isAdmin, authJ
             if(organisation != null && organisation.organisation_id > 0){
                 if(typeof req.connection_db != "undefined" && req.connection_db != null ) {
                     /*const getCompaniesList = await helpers.getCompaniesWithChildren(req.connection_db);*/
-                    const getCompaniesReport = await helpers.getCompaniesListSumWithReports(req.connection_db);
+                    const getCompaniesReport = await helpers.getCompaniesListSumWithReports(req.connection_db, organisationID);
                     res.status(200).json(getCompaniesReport);
                 } else {
                     res.status(200).json([]);
