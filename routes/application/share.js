@@ -206,7 +206,8 @@ route.get("/share/illustrate/show/:code", async (req, res) =>{
                     req.userId = share.user_id;
                     if(share  != null ) {
                         req.params.asset = assetList[0].asset;
-                        req.query.flag = assetList[0].type == 4 ? 1 : 0;
+                        req.query.flag = assetList[0].asset_type == 0 ? 1 : 0;
+                        console.log(req.query, assetList)
                         helpers.generateJSON(req, res);
                     }
                 } else {
