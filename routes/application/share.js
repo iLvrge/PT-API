@@ -205,7 +205,8 @@ route.get("/share/illustrate/show/:code", async (req, res) =>{
                     req.orgId = share.organisation_id;
                     req.userId = share.user_id;
                     if(share  != null ) {
-                        req.params.patentNumber = assetList[0].asset;
+                        req.params.asset = assetList[0].asset;
+                        req.query.flag = assetList[0].type == 4 ? 1 : 0;
                         helpers.generateJSON(req, res);
                     }
                 } else {
