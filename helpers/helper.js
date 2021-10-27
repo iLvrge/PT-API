@@ -2227,7 +2227,7 @@ let shareURL = async (params) => {
     const transactions = typeof params.transactions !== 'undefined' ? JSON.parse(params.transactions) : []
 
     if( assets.length > 0 || transactions.length > 0) {
-        await removeAllOldSharingUrl(params.organisation_id)
+        //await removeAllOldSharingUrl(params.organisation_id)
 
 
         let insertRecord = await Share.create({
@@ -2263,7 +2263,7 @@ let shareURL = async (params) => {
                 const addBulkData = await ShareLists.bulkCreate(bulkData, { ignoreDuplicates: true })
     
                 if(addBulkData) {
-                    return `https://${params.type == 2 ? 'sample.app' : params.type == 0 ? 'standard' : 'share'}.patentrack.com/${params.code}`;
+                    return `https://${params.type == 2 ? 'sample.app' : params.type == 0 ? 'standard.app' : 'share'}.patentrack.com/${params.code}`;
                 } else {
                     return '';
                 }
@@ -2370,7 +2370,7 @@ let getShareData = async (code, asset) => {
         include:[
             {                       
                 model: ShareLists,
-                attributes: [ 'asset' ],
+                attributes: [ 'asset', 'type' ],
                 where: {asset}             
             }
         ]
