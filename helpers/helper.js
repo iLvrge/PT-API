@@ -2224,7 +2224,7 @@ const removeAllOldSharingUrl = async(organisation_id) => {
 let shareURL = async (params) => {
     console.log(params.assets)
     const assets = JSON.parse(params.assets)
-    const transactions = JSON.parse(params.transactions)
+    const transactions = typeof params.transactions !== 'undefined' ? JSON.parse(params.transactions) : []
 
     if( assets.length > 0 || transactions.length > 0) {
         await removeAllOldSharingUrl(params.organisation_id)
