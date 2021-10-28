@@ -198,7 +198,7 @@ route.get("/share/illustrate/show/:code", async (req, res) =>{
     const { code } = req.params;
     try {
         if( code != "") {
-            const assetList = await helpers.getShareList(code, 0);
+            const assetList = await helpers.getShareList(code, 1);
             if( assetList.length > 0 ) {
                 const share = await helpers.getShareData(code, assetList[0].asset);
                 if( share != null ) {

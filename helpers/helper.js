@@ -2280,13 +2280,13 @@ let shareURL = async (params) => {
 
 let getShareList = async (code, type) => {
     const assetsList = []
-    let query = "SELECT  `share_lists`.`asset` AS asset, `share_lists`.`type` FROM `share` AS `share` INNER JOIN `share_list` AS `share_lists` ON `share`.`share_id` = `share_lists`.`share_id` WHERE `share`.`code` = :code "
+    let query = "SELECT  `share_lists`.`asset` AS asset, `share_lists`.`type` FROM `share` AS `share` INNER JOIN `share_list` AS `share_lists` ON `share`.`share_id` = `share_lists`.`share_id` WHERE `share`.`code` = :code  AND share.type = :type"
     
-    if(type !== 'undefined' && type !== undefined && parseInt(type) === 2) {
+    /* if(type !== 'undefined' && type !== undefined && parseInt(type) === 2) {
         query += " AND share.type = :type"
     } else {
         query += " AND share.type <> :type"
-    }
+    } */
 
     const shareList = await connection.applicationNew.query(query,{
         type: connection.Sequelize.QueryTypes.SELECT,
