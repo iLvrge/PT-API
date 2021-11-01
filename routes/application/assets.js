@@ -432,6 +432,7 @@ route.get("/assets/:patentNumber/files/:channelID/slack/:token", [authJWT.verify
                         tap = true
                         replacements.activities = activities
                         replacements.parties = parties
+                        replacements.companies = companies
                         query += 'list2.rf_id IN ( SELECT rf_id FROM db_new_application.activity_parties_transactions WHERE organisation_id = :organisation_id  '
     
                         if(companies.length > 0) {
