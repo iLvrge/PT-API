@@ -1574,10 +1574,24 @@ route.delete("/customers/:organisation_id", [authJWT.verifyToken, authJWT.isAdmi
 });
 
 
-route.get("/patents/:patentNumber",[authJWT.verifyToken, authJWT.isAdmin], async (req, res) =>{        
-    let patentNumber = req.params.patentNumber;
+route.get("/patents/:asset",[authJWT.verifyToken, authJWT.isAdmin], async (req, res) =>{        
+    let asset = req.params.asset;
+    let where = {
+        [connection.Op.or]:[{grant_doc_num: asset},{appno_doc_num: asset}]
+    }
+    if(typeof flag !== 'undefined' && flag >= 0) {
+        if(flag == 1) {
+            where = {
+                grant_doc_num: asset
+            }
+        } else if(flag == 0) {
+            where = {
+                appno_doc_num: asset
+            }
+        }
+    }
     Documentids.findAll({
-        where:{[connection.Op.or]:[{grant_doc_num: patentNumber},{appno_doc_num: patentNumber}]},
+        where,
         attributes:['rf_id',['grant_doc_num','number'], ['appno_doc_num','application']],
     })
     .then(p => {

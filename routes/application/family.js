@@ -238,7 +238,7 @@ route.get("/family/:applicationNumber", [authJWT.verifyToken], async (req, res) 
                                     const allApplicationNumbers = []
                                     familyMembers.forEach(family => {
                                         if(familyID === family.$['family-id']) {
-                                            allApplicationNumbers.push(family['application-reference'][0]['document-id'][0]['date'].toString())
+                                                                                       
                                             let dbTypeData = family['publication-reference'][0]['document-id'][0]
                                             if( dbTypeData.$['document-id-type'] !== 'docdb' ) {
                                                 dbTypeData = family['publication-reference'][0]['document-id'][1]
@@ -248,6 +248,17 @@ route.get("/family/:applicationNumber", [authJWT.verifyToken], async (req, res) 
                                                     dbTypeData = family['application-reference'][0]['document-id'][0]
                                                 }
                                             }
+                                            if(!allApplicationNumbers.includes(family['application-reference'][0]['document-id'][0]['date'].toString())){
+                                                allApplicationNumbers.push(family['application-reference'][0]['document-id'][0]['date'].toString())
+                                            } else {
+                                                console.log('APPLICATION', dbTypeData['kind'].toString().toLowerCase().indexOf('b'))
+                                                if(dbTypeData['kind'].toString().toLowerCase().indexOf('b') !== null) {
+                                                    const findIndex = getFamily.findIndex( r => r.application_number == family['application-reference'][0]['document-id'][0]['doc-number'].toString())
+                                                    if(findIndex !== -1) {
+                                                        getFamily.splice(findIndex, 1)
+                                                    }
+                                                }
+                                            } 
                                             getFamily.push({
                                                 family_id: familyID,
                                                 patent_number: dbTypeData['doc-number'].toString(),

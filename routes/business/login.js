@@ -22,10 +22,12 @@ route.get("/authenticate/:code/:type", async(req, res, next) => {
         let query = `SELECT organisation_id FROM db_business.organisation WHERE uuid = UUID_TO_BIN(:binToUUID) AND status = 0`
 
         const replacements = { binToUUID : req.params.code  }
-        if(parseInt(req.params.type) === 1 || parseInt(req.params.type) === 0) {
-            query = `SELECT organisation_id FROM db_business.organisation WHERE status = 0 AND organisation_id IN (SELECT organisation_id FROM db_new_application.share WHERE code = :binToUUID AND type = :type)`
-            replacements.type = req.params.type
-        }        
+        /* if(parseInt(req.params.type) === 1 || parseInt(req.params.type) === 0) {
+           
+        } */  
+        
+        query = `SELECT organisation_id FROM db_business.organisation WHERE status = 0 AND organisation_id IN (SELECT organisation_id FROM db_new_application.share WHERE code = :binToUUID AND type = :type)`
+        replacements.type = req.params.type
 
         
     
