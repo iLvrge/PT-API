@@ -488,7 +488,7 @@ route.get("/asset_types/assets", [authJWT.verifyToken, clientDBConnection.connec
  */
 route.get("/:layout/assets", [authJWT.verifyToken, clientDBConnection.connect], async(req, res, next) => {
     try {
-        let { companies, tabs, customers, assignments, limit, offset } = req.query,
+        let { companies, tabs, customers, assignments, limit, offset, column, direction } = req.query,
             layoutID = 15
             
         const replacements =  { 
@@ -580,7 +580,7 @@ route.get("/:layout/assets", [authJWT.verifyToken, clientDBConnection.connect], 
 
         const countquery = `SELECT COUNT(*) as total_records FROM (${query.replace('STRING_COLUMNS', countReplace)}) AS temp`
 
-
+       
         const countResult = await connection.applicationNew.query(countquery,{
             type: connection.Sequelize.QueryTypes.SELECT,
             raw: true,
@@ -594,7 +594,13 @@ route.get("/:layout/assets", [authJWT.verifyToken, clientDBConnection.connect], 
         }
 
         if(assets.total_records > 0) {
-            query += `   ORDER BY asset_type ASC, asset DESC LIMIT :offset, :limit`;
+            if(typeof column === 'undefined' || column === 'undefined') {
+                column = 'asset'
+            }
+            if(typeof direction === 'undefined' || direction === 'undefined') {
+                direction = 'DESC'
+            }
+            query += `   ORDER BY asset_type ASC, ${column} ${direction} LIMIT :offset, :limit`;
             const  queryColumnReplace = `assets.organisation_id,
             CASE WHEN assets.grant_doc_num = '' OR assets.grant_doc_num IS NULL THEN CONCAT(SUBSTRING(assets.appno_doc_num, 1, 2), '/', FORMAT(SUBSTRING(assets.appno_doc_num, 3), 0)) ELSE FORMAT(assets.grant_doc_num, 0) END AS format_asset,
             CASE WHEN assets.grant_doc_num = '' OR assets.grant_doc_num IS NULL THEN assets.appno_doc_num ELSE assets.grant_doc_num END AS asset, 

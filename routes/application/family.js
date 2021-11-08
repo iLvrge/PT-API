@@ -396,7 +396,7 @@ const getContentFromXML = async (fileContent, contentType) => {
     if(contentType === 'abstract') {
         if( xmlData.hasOwnProperty('patent-application-publication') ){
             const usBibliographic = xmlData['patent-application-publication']
-            let content = usBibliographic['subdoc-abstract']
+            content = usBibliographic['subdoc-abstract']
             if(typeof content === 'object'){
                 if(typeof content['paragraph'] !== 'undefined') {
                     content = content['paragraph']['#text']
@@ -438,13 +438,13 @@ const getContentFromXML = async (fileContent, contentType) => {
             if(child.name === 'claims' || child.name === 'subdoc-claims') {
                 let claims = child.toString({compressed:true})
 
-                claims = replaceContent('<claim-text', ' <div', claims)
+                claims = replaceContent('<claim-text', ' <div ', claims)
                 claims = replaceContent('</claim-text>', '</div>', claims)
 
-                claims = replaceContent('<claim-ref', ' <span', claims)
+                claims = replaceContent('<claim-ref', ' <span ', claims)
                 claims = replaceContent('</claim-ref>', '</span>', claims)
 
-                claims = replaceContent('<claims', '<div', claims)
+                claims = replaceContent('<claims', '<div ', claims)
                 claims = replaceContent('</claims>', '</div>', claims)
 
                 claims = replaceContent('<claim', '<div class="claim"><div', claims)
@@ -466,6 +466,9 @@ const getContentFromXML = async (fileContent, contentType) => {
                         content.push(`https://s3-${bucketConfig.region}.amazonaws.com/${bucketConfig.bucketName}/${bucketConfig.figuresDir}/${target}`)
                     })
                 }
+            } else {
+                const target = figure['img']['@_file'].toString().replace('.TIF', '.png')
+                content.push(`https://s3-${bucketConfig.region}.amazonaws.com/${bucketConfig.bucketName}/${bucketConfig.figuresDir}/${target}`)
             }
         } else if( xmlData.hasOwnProperty('us-patent-application') ) { 
             const usBibliographic = xmlData['us-patent-application']
@@ -477,6 +480,9 @@ const getContentFromXML = async (fileContent, contentType) => {
                         content.push(`https://s3-${bucketConfig.region}.amazonaws.com/${bucketConfig.bucketName}/${bucketConfig.figuresDir}/${target}`)
                     })
                 }
+            } else {
+                const target = figure['img']['@_file'].toString().replace('.TIF', '.png')
+                content.push(`https://s3-${bucketConfig.region}.amazonaws.com/${bucketConfig.bucketName}/${bucketConfig.figuresDir}/${target}`)
             }
         }
     }
