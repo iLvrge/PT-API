@@ -25,7 +25,7 @@ const PatentFamilyMember = require("../../model/resources/PatentFamilyMember");
 const PatentFamilyRelation = require("../../model/resources/PatentFamilyRelation");
 const Documentid = require("../../model/application/DocumentIds");
 
-const mainFolderPath = process.env.MAIN_FOLDER_PATH , extraDiskPath =   process.env.EXTRA_DISK_PATH
+const mainFolderPath = process.env.MAIN_FOLDER_PATH , extraDiskPath =   process.env.EXTRA_DISK_PATH,  extraDiskPathApplications =   process.env.EXTRA_DISK_PATH + 'applications/',  extraDiskPathPatents =   process.env.EXTRA_DISK_PATH + 'patent/'
 
 route.get('/family/list/:grantNumber', [authJWT.verifyToken], async (req, res) =>{
     const familyData = []
@@ -339,7 +339,7 @@ route.get("/family/:applicationNumber", [authJWT.verifyToken], async (req, res) 
 let findXMLFile = async (pgPubDocNum, t) => {
     return new Promise( function(resolve, reject) {
         let findFile = ''
-        const child = spawn('find', [`${t === 1 ? extraDiskPath : mainFolderPath}XML/`, '-name', `*${pgPubDocNum}*.XML`]);
+        const child = spawn('find', [`${t === 1 ? extraDiskPathApplications : mainFolderPath}XML/`, '-name', `*${pgPubDocNum}*.XML`]);
         child.stdout.on('data', (data) => {
             console.log(`child.stdout: ${data}`)
             const files = data.toString().split('\n')  
@@ -550,7 +550,7 @@ route.get("/family/abstract/:applicationNumber", [authJWT.verifyToken], async (r
         if( pgPubDocNum !== '' ) {
             let filePath = ''
             if(fileName !== '') {
-                filePath = `${type === 1 ? extraDiskPath : mainFolderPath}XML/${fileName}`
+                filePath = `${type === 1 ? extraDiskPathApplications : mainFolderPath}XML/${fileName}`
             } else {
                 filePath = await findXMLFile(pgPubDocNum, type)
             }
@@ -743,7 +743,7 @@ route.get("/family/claims/:applicationNumber", [authJWT.verifyToken], async (req
             if( pgPubDocNum !== '' ) {
                 let filePath = ''
                 if(fileName !== '') {
-                    filePath = `${type === 1 ? extraDiskPath : mainFolderPath}XML/${fileName}`
+                    filePath = `${type === 1 ? extraDiskPathApplications : mainFolderPath}XML/${fileName}`
                 } else {
                     filePath = await findXMLFile(pgPubDocNum, type)
                 }
@@ -814,7 +814,7 @@ route.get("/family/specifications/:applicationNumber", [authJWT.verifyToken], as
         if( pgPubDocNum !== '' ) {
             let filePath = ''
             if(fileName !== '') {
-                filePath = `${type === 1 ? extraDiskPath : mainFolderPath}XML/${fileName}`
+                filePath = `${type === 1 ? extraDiskPathApplications : mainFolderPath}XML/${fileName}`
             } else {
                 filePath = await findXMLFile(pgPubDocNum, type)
             }
@@ -887,7 +887,7 @@ route.get("/family/images/:applicationNumber", [authJWT.verifyToken], async (req
         if( pgPubDocNum !== '' ) {
             let filePath = ''
             if(fileName !== '') {
-                filePath = `${type === 1 ? extraDiskPath : mainFolderPath}XML/${fileName}`
+                filePath = `${type === 1 ? extraDiskPathApplications : mainFolderPath}XML/${fileName}`
             } else {
                 filePath = await findXMLFile(pgPubDocNum, type)
             }
