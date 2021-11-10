@@ -338,8 +338,9 @@ route.get("/family/:applicationNumber", [authJWT.verifyToken], async (req, res) 
 
 let findXMLFile = async (pgPubDocNum, t) => {
     return new Promise( function(resolve, reject) {
+        console.log('findXMLFile')
         let findFile = ''
-        const child = spawn('find', [`${t === 1 ? extraDiskPathApplications : mainFolderPath}XML/`, '-name', `*${pgPubDocNum}*.XML`]);
+        const child = spawn('find', [`${t === 1 ? extraDiskPathApplications : t === 2 ? extraDiskPathPatents : mainFolderPath}XML/`, '-name', `*${pgPubDocNum}*.XML`]);
         child.stdout.on('data', (data) => {
             console.log(`child.stdout: ${data}`)
             const files = data.toString().split('\n')  
@@ -354,21 +355,39 @@ let findXMLFile = async (pgPubDocNum, t) => {
     })
 }
 
-let getFileContent = async (filePath) => {
+let getFileContent = async (filePath, type) => {
     return new Promise ((resolve, reject) => {
         fs.readFile(filePath, async function(err,data){
             if (!err) {
                 try {          
                     let xmlData = ''
-                    let findIndex = data.indexOf('<us-patent-application')
-                    if(findIndex !== -1) {                
-                        xmlData = data.toString().substring(findIndex, data.length)
-                    } else {
-                        findIndex = data.indexOf('<patent-application-publication')
+                    if(type === 1) {
+                        let findIndex = data.indexOf('<us-patent-application')
                         if(findIndex !== -1) {                
                             xmlData = data.toString().substring(findIndex, data.length)
+                        } else {
+                            findIndex = data.indexOf('<patent-application-publication')
+                            if(findIndex !== -1) {                
+                                xmlData = data.toString().substring(findIndex, data.length)
+                            }
                         }
-                    }
+                    } else if (type ==2) {
+                        let findIndex = data.indexOf('<us-patent-grant')
+                        if(findIndex !== -1) {                
+                            xmlData = data.toString().substring(findIndex, data.length)
+                        } else {
+                            findIndex = data.indexOf('<PATDOC')
+                            if(findIndex !== -1) {                
+                                xmlData = data.toString().substring(findIndex, data.length)
+                                /**
+                                * Remove <B500> This node has lots of childeren open without closing 
+                                 */
+                                const findIndexOpen500 = xmlData.toString().indexOf('<B500>')
+                                const findIndexClosing500 = xmlData.toString().indexOf('</B500>')    
+                                xmlData = xmlData.substring(0, findIndexOpen500) + xmlData.substring(findIndexClosing500 + 7, xmlData.length)                                
+                            }
+                        }
+                    }                    
                     resolve(xmlData)
                 } catch (error) {
                     console.log(`Error while reading - 1 - ${error}`)
@@ -388,104 +407,236 @@ const replaceContent = (search, replace, content) => {
 }
 
 
-const getContentFromXML = async (fileContent, contentType) => {
+const getContentFromXML = async (fileContent, contentType, type) => {
     let content = '';
     //const parser = new xml2js.Parser
     const xmlData = parser.parse( fileContent, {ignoreAttributes: false});
-    
-    if(contentType === 'abstract') {
-        if( xmlData.hasOwnProperty('patent-application-publication') ){
-            const usBibliographic = xmlData['patent-application-publication']
-            content = usBibliographic['subdoc-abstract']
-            if(typeof content === 'object'){
-                if(typeof content['paragraph'] !== 'undefined') {
-                    content = content['paragraph']['#text']
-                }
-            }
-        } else if( xmlData.hasOwnProperty('us-patent-application') ){ 
-            const usBibliographic = xmlData['us-patent-application']
-            if( usBibliographic.hasOwnProperty('abstract') ){ 
-                content = usBibliographic.abstract    
+    if(type === 1) {
+        if(contentType === 'abstract') {
+            if( xmlData.hasOwnProperty('patent-application-publication') ){
+                const usBibliographic = xmlData['patent-application-publication']
+                content = usBibliographic['subdoc-abstract']
                 if(typeof content === 'object'){
-                    if(Array.isArray(content['p'])) {
-                        let paragraph = []
-                        content['p'].forEach( p => {
-                            paragraph.push( decode(p['#text'], {level: 'xml'}))
-                        })
-                        content = paragraph.join(' ')
-                    } else  if(typeof content['p'] !== 'undefined') {
-                        content = content['p']['#text']
+                    if(typeof content['paragraph'] !== 'undefined') {
+                        content = content['paragraph']['#text']
+                    }
+                }
+            } else if( xmlData.hasOwnProperty('us-patent-application') ){ 
+                const usBibliographic = xmlData['us-patent-application']
+                if( usBibliographic.hasOwnProperty('abstract') ){ 
+                    content = usBibliographic.abstract    
+                    if(typeof content === 'object'){
+                        if(Array.isArray(content['p'])) {
+                            let paragraph = []
+                            content['p'].forEach( p => {
+                                paragraph.push( decode(p['#text'], {level: 'xml'}))
+                            })
+                            content = paragraph.join(' ')
+                        } else  if(typeof content['p'] !== 'undefined') {
+                            content = content['p']['#text']
+                        }
                     }
                 }
             }
+        } else if(contentType === 'specifications') {
+            content = []
+            fileContent = replaceContent('&lsqb;', '', fileContent)
+            fileContent = replaceContent('&rsqb;', '', fileContent)
+            const document = new xmldoc.XmlDocument(fileContent);
+            document.eachChild((child, index, a) => {
+                if(child.name === 'description' || child.name === 'subdoc-description') {
+                    content.push({ text: child.toString({compressed:true}) })
+                }
+            })
+        } else if(contentType === 'claims') {
+            content = []
+            fileContent = replaceContent('&lsqb;', '', fileContent)
+            fileContent = replaceContent('&rsqb;', '', fileContent)         
+            const document = new xmldoc.XmlDocument(fileContent);
+            document.eachChild((child, index, a) => {
+                if(child.name === 'claims' || child.name === 'subdoc-claims') {
+                    let claims = child.toString({compressed:true})
+    
+                    claims = replaceContent('<claim-text', ' <div ', claims)
+                    claims = replaceContent('</claim-text>', '</div>', claims)
+    
+                    claims = replaceContent('<claim-ref', ' <span ', claims)
+                    claims = replaceContent('</claim-ref>', '</span>', claims)
+    
+                    claims = replaceContent('<claims', '<div ', claims)
+                    claims = replaceContent('</claims>', '</div>', claims)
+    
+                    claims = replaceContent('<claim', '<div class="claim"><div', claims)
+                    claims = replaceContent('</claim>', '</div></div>', claims)
+                   
+                    content.push({ text: claims })
+                }
+            })
+        } else if(contentType === 'figures') {
+            content = []
+            const bucketConfig = connection.bucketConfig;  
+            if( xmlData.hasOwnProperty('patent-application-publication') ){
+                const usBibliographic = xmlData['patent-application-publication']
+                const figure = typeof usBibliographic['subdoc-drawings'] !== 'undefined' ? usBibliographic['subdoc-drawings'].figure : []
+                if(Array.isArray(figure)) {
+                    if(figure.length > 0) {
+                        figure.forEach( item => {
+                            const target = item['image']['@_file'].toString().replace('.TIF', '.png')
+                            content.push(`https://s3-${bucketConfig.region}.amazonaws.com/${bucketConfig.bucketName}/${bucketConfig.figuresDir}/${target}`)
+                        })
+                    }
+                } else {
+                    const target = figure['img']['@_file'].toString().replace('.TIF', '.png')
+                    content.push(`https://s3-${bucketConfig.region}.amazonaws.com/${bucketConfig.bucketName}/${bucketConfig.figuresDir}/${target}`)
+                }
+            } else if( xmlData.hasOwnProperty('us-patent-application') ) { 
+                const usBibliographic = xmlData['us-patent-application']
+                let figure = typeof usBibliographic.drawings !== 'undefined' ? usBibliographic.drawings.figure : []
+                if(Array.isArray(figure)) {
+                    if(figure.length > 0) {
+                        figure.forEach( item => {
+                            const target = item['img']['@_file'].toString().replace('.TIF', '.png')
+                            content.push(`https://s3-${bucketConfig.region}.amazonaws.com/${bucketConfig.bucketName}/${bucketConfig.figuresDir}/${target}`)
+                        })
+                    }
+                } else {
+                    const target = figure['img']['@_file'].toString().replace('.TIF', '.png')
+                    content.push(`https://s3-${bucketConfig.region}.amazonaws.com/${bucketConfig.bucketName}/${bucketConfig.figuresDir}/${target}`)
+                }
+            }
         }
-    } else if(contentType === 'specifications') {
-        content = []
-        fileContent = replaceContent('&lsqb;', '', fileContent)
-        fileContent = replaceContent('&rsqb;', '', fileContent)
-        const document = new xmldoc.XmlDocument(fileContent);
-        document.eachChild((child, index, a) => {
-            if(child.name === 'description' || child.name === 'subdoc-description') {
-                content.push({ text: child.toString({compressed:true}) })
+    } else if(type === 2) {
+        if(contentType === 'abstract') {
+            if( xmlData.hasOwnProperty('PATDOC') ){           
+                const usBibliographic = xmlData['PATDOC']
+                content = usBibliographic['SDOAB']
+                if(typeof content === 'object'){
+                    if(typeof content['BTEXT']['PARA'] !== 'undefined') {                    
+                        content = content['BTEXT']['PARA']['PTEXT']['PDAT']
+                    }
+                }
+            } else if( xmlData.hasOwnProperty('us-patent-grant') ){ 
+                const usBibliographic = xmlData['us-patent-grant']
+                if( usBibliographic.hasOwnProperty('abstract') ){ 
+                    content = usBibliographic.abstract    
+                    if(typeof content === 'object'){
+                        if(Array.isArray(content['p'])) {
+                            let paragraph = []
+                            content['p'].forEach( p => {
+                                paragraph.push( decode(p['#text'], {level: 'xml'}))
+                            })
+                            content = paragraph.join(' ')
+                        } else  if(typeof content['p'] !== 'undefined') {
+                            content = content['p']['#text']
+                        }
+                    }
+                }
             }
-        })
-    } else if(contentType === 'claims') {
-        content = []
-        fileContent = replaceContent('&lsqb;', '', fileContent)
-        fileContent = replaceContent('&rsqb;', '', fileContent)         
-        const document = new xmldoc.XmlDocument(fileContent);
-        document.eachChild((child, index, a) => {
-            if(child.name === 'claims' || child.name === 'subdoc-claims') {
-                let claims = child.toString({compressed:true})
-
-                claims = replaceContent('<claim-text', ' <div ', claims)
-                claims = replaceContent('</claim-text>', '</div>', claims)
-
-                claims = replaceContent('<claim-ref', ' <span ', claims)
-                claims = replaceContent('</claim-ref>', '</span>', claims)
-
-                claims = replaceContent('<claims', '<div ', claims)
-                claims = replaceContent('</claims>', '</div>', claims)
-
-                claims = replaceContent('<claim', '<div class="claim"><div', claims)
-                claims = replaceContent('</claim>', '</div></div>', claims)
-               
+        } else if(contentType === 'specifications') {
+            content = []
+            fileContent = replaceContent('&lsqb;', '', fileContent)
+            fileContent = replaceContent('&rsqb;', '', fileContent)
+            if( xmlData.hasOwnProperty('PATDOC') ){     
+                const findIndexOpenSDODE = fileContent.toString().indexOf('<SDODE>')
+                const findIndexClosingSDODE = fileContent.toString().indexOf('</SDODE>')
+    
+                fileContent = fileContent.substring(findIndexOpenSDODE, findIndexClosingSDODE + 8)
+    
+                fileContent = replaceContent('<SDODE', ' <div ', fileContent)
+                fileContent = replaceContent('</SDODE>', '</div>', fileContent)
+    
+                content.push({ text: fileContent})
+            } else  {
+                const document = new xmldoc.XmlDocument(fileContent);
+                document.eachChild((child, index, a) => {
+                    if(child.name === 'description' || child.name === 'SDODE') {
+                        content.push({ text: child.toString({compressed:true}) })
+                    }
+                })
+            }
+            
+        } else if(contentType === 'claims') {
+            content = []
+            fileContent = replaceContent('&lsqb;', '', fileContent)
+            fileContent = replaceContent('&rsqb;', '', fileContent)     
+            if( xmlData.hasOwnProperty('PATDOC') ){  
+                const findIndexOpenSDOCL = fileContent.toString().indexOf('<SDOCL>')
+                const findIndexClosingSDOCL = fileContent.toString().indexOf('</SDOCL>')
+    
+                let claims = fileContent.substring(findIndexOpenSDOCL, findIndexClosingSDOCL + 8)
+    
+                claims = replaceContent('<SDOCL', ' <div ', claims)
+                claims = replaceContent('</SDOCL>', '</div>', claims)
+    
+                claims = replaceContent('<PARA', ' <div ', claims)
+                claims = replaceContent('</PARA>', '</div>', claims)
+    
+                claims = replaceContent('<CLREF', ' <span ', claims)
+                claims = replaceContent('</CLREF>', '</span>', claims)
+    
+                claims = replaceContent('<CL>', '<div ', claims)
+                claims = replaceContent('</CL>', '</div>', claims)
+    
+                claims = replaceContent('<CLM', '<div class="claim"><div', claims)
+                claims = replaceContent('</CLM>', '</div></div>', claims)
                 content.push({ text: claims })
-            }
-        })
-    } else if(contentType === 'figures') {
-        content = []
-        const bucketConfig = connection.bucketConfig;  
-        if( xmlData.hasOwnProperty('patent-application-publication') ){
-            const usBibliographic = xmlData['patent-application-publication']
-            const figure = typeof usBibliographic['subdoc-drawings'] !== 'undefined' ? usBibliographic['subdoc-drawings'].figure : []
-            if(Array.isArray(figure)) {
-                if(figure.length > 0) {
-                    figure.forEach( item => {
-                        const target = item['image']['@_file'].toString().replace('.TIF', '.png')
-                        content.push(`https://s3-${bucketConfig.region}.amazonaws.com/${bucketConfig.bucketName}/${bucketConfig.figuresDir}/${target}`)
-                    })
-                }
             } else {
-                const target = figure['img']['@_file'].toString().replace('.TIF', '.png')
-                content.push(`https://s3-${bucketConfig.region}.amazonaws.com/${bucketConfig.bucketName}/${bucketConfig.figuresDir}/${target}`)
-            }
-        } else if( xmlData.hasOwnProperty('us-patent-application') ) { 
-            const usBibliographic = xmlData['us-patent-application']
-            let figure = typeof usBibliographic.drawings !== 'undefined' ? usBibliographic.drawings.figure : []
-            if(Array.isArray(figure)) {
-                if(figure.length > 0) {
-                    figure.forEach( item => {
-                        const target = item['img']['@_file'].toString().replace('.TIF', '.png')
-                        content.push(`https://s3-${bucketConfig.region}.amazonaws.com/${bucketConfig.bucketName}/${bucketConfig.figuresDir}/${target}`)
-                    })
+                const document = new xmldoc.XmlDocument(fileContent);
+                document.eachChild((child, index, a) => {
+                    if(child.name === 'claims' || child.name === 'SDOCL') {
+                        let claims = child.toString({compressed:true})
+    
+                        claims = replaceContent('<claim-text', ' <div ', claims)
+                        claims = replaceContent('</claim-text>', '</div>', claims)
+    
+                        claims = replaceContent('<claim-ref', ' <span', claims)
+                        claims = replaceContent('</claim-ref>', '</span>', claims)
+    
+                        claims = replaceContent('<claims', '<div ', claims)
+                        claims = replaceContent('</claims>', '</div>', claims)
+    
+                        claims = replaceContent('<claim', '<div class="claim"><div', claims)
+                        claims = replaceContent('</claim>', '</div></div>', claims)
+
+                        content.push({ text: claims })
+                    }
+                })
+            }         
+        } else if(contentType === 'figures') {
+            content = []
+            const bucketConfig = connection.bucketConfig;  
+            if( xmlData.hasOwnProperty('PATDOC') ){
+                const usBibliographic = xmlData['PATDOC']            
+                const figure = typeof usBibliographic['SDODR'] !== 'undefined' ? usBibliographic['SDODR']['EMI'] : []            
+                if(Array.isArray(figure)) {
+                    if(figure.length > 0) {
+                        figure.forEach( item => {
+                            const target = item['@_FILE'].toString().replace('.TIF', '.png')
+                            content.push(`https://s3-${bucketConfig.region}.amazonaws.com/${bucketConfig.bucketName}/${bucketConfig.figuresDir}/${target}`)
+                        })
+                    }
+                } else {
+                    const target = figure['@_FILE'].toString().replace('.TIF', '.png')
+                    content.push(`https://s3-${bucketConfig.region}.amazonaws.com/${bucketConfig.bucketName}/${bucketConfig.figuresDir}/${target}`)
                 }
-            } else {
-                const target = figure['img']['@_file'].toString().replace('.TIF', '.png')
-                content.push(`https://s3-${bucketConfig.region}.amazonaws.com/${bucketConfig.bucketName}/${bucketConfig.figuresDir}/${target}`)
+            } else if( xmlData.hasOwnProperty('us-patent-grant') ) { 
+                const usBibliographic = xmlData['us-patent-grant']
+                let figure = typeof usBibliographic.drawings !== 'undefined' ? usBibliographic.drawings.figure : []
+                if(Array.isArray(figure)) {
+                    if(figure.length > 0) {
+                        figure.forEach( item => {
+                            const target = item['img']['@_file'].toString().replace('.TIF', '.png')
+                            content.push(`https://s3-${bucketConfig.region}.amazonaws.com/${bucketConfig.bucketName}/${bucketConfig.figuresDir}/${target}`)
+                        })
+                    }
+                } else {
+                    const target = figure['img']['@_file'].toString().replace('.TIF', '.png')
+                    content.push(`https://s3-${bucketConfig.region}.amazonaws.com/${bucketConfig.bucketName}/${bucketConfig.figuresDir}/${target}`)
+                }
             }
         }
     }
+    
     return content;
 
 }
@@ -502,6 +653,19 @@ const getPublicationNumber = async(applicationNumber) => {
     console.log('getPublicationData', getPublicationData)
     return getPublicationData
 }
+
+const getGrantNumber = async(applicationNumber) => {
+    const query = `SELECT grant_doc_num AS pgpub_doc_num, appno_doc_num, file_name FROM db_patent_application_bibliographic.application_grant WHERE appno_doc_num = :applicationNumber`
+    const getPublicationData = await connection.resources.query(query,{
+        type: connection.Sequelize.QueryTypes.SELECT,
+        raw: true,
+        logging: console.log,
+        replacements: {applicationNumber},
+        plain: true
+    })
+    console.log('getGrantNumber', getPublicationData)
+    return getPublicationData
+}   
 
 route.get("/family/abstract/:applicationNumber", [authJWT.verifyToken], async (req, res) =>{  
     try{
@@ -520,10 +684,20 @@ route.get("/family/abstract/:applicationNumber", [authJWT.verifyToken], async (r
                 ]},
                 group: ['grant_doc_num', 'appno_doc_num', 'pgpub_doc_num']
             })
+
+        let abstractData = '', query = '', replacements = {applicationNumber}, type = 1, pgPubDocNum = ''
+            
         if(findPatent == null) {
             findPatent = await getPublicationNumber(asset)
         } else {
-            findPatent = await getPublicationNumber(findPatent.appno_doc_num)
+            if(findPatent.grant_doc_num !== null && findPatent.grant_doc_num !== '') {                
+                findPatent = await getGrantNumber(findPatent.appno_doc_num)
+                if(findPatent !== null) {
+                    type = 2
+                }
+            } else {
+                findPatent = await getPublicationNumber(findPatent.appno_doc_num)
+            }
         }
         if(findPatent === null) {
             findPatent = await Documentid.findOne({
@@ -539,87 +713,38 @@ route.get("/family/abstract/:applicationNumber", [authJWT.verifyToken], async (r
                 where: {grant_doc_num: asset}
             })
         }
-        let abstractData = '', query = '', replacements = {applicationNumber}, type = 1, pgPubDocNum = ''
+        
 
-        if( findPatent != null && findPatent.pgpub_doc_num !== '' ) {
-            pgPubDocNum = `US${findPatent.pgpub_doc_num}`
+        if( findPatent != null ) {
+            if(findPatent.grant_doc_num !== '' && findPatent.grant_doc_num !== null ) {
+                pgPubDocNum = `US${findPatent.grant_doc_num}`
+                type = 2
+            } else if(findPatent.pgpub_doc_num !== '' ) {
+                pgPubDocNum = `US${findPatent.pgpub_doc_num}`
+            }            
         } else if( req.query.publication_number !== '') {
             pgPubDocNum = req.query.publication_number 
         }
+        
         /*pgPubDocNum = '20200053026'*/
         if( pgPubDocNum !== '' ) {
             let filePath = ''
             if(fileName !== '') {
-                filePath = `${type === 1 ? extraDiskPathApplications : mainFolderPath}XML/${fileName}`
+                filePath = `${type === 1 ? extraDiskPathApplications : extraDiskPathPatents}XML/${fileName}`
             } else {
                 filePath = await findXMLFile(pgPubDocNum, type)
             }
             console.log(`FILE PATH: ${filePath}`)
             if( filePath !== '') {
                 
-                const getXMLData = await getFileContent(filePath)
+                const getXMLData = await getFileContent(filePath, type)
                 
                 if( getXMLData !== '' ) {
                     console.log('FINDABSTRACT')
-                    abstractData = await getContentFromXML(getXMLData, 'abstract')
+                    abstractData = await getContentFromXML(getXMLData, 'abstract', type)
                 }
             }
-        } 
-        /* if(abstractData == '' || abstractData == null || (abstractData.hasOwnProperty('abstracts') && (abstractData.abstracts == null ||  abstractData.abstracts.toString().trim() == ''))) {
-            const token = await epo.readToken('HedCET')    
-            if(token !== 'undefined' && token != '') {
-                const asset = applicationNumber
-                let publication = 'publication';
-                let abstract = await epo.singleUrl(token, `published-data/${publication}/docdb/${asset}/abstract`);
-                if( abstract.indexOf('EntityNotFound') !== -1) {
-                    abstract = await epo.singleUrl(token, `published-data/${publication}/epodoc/${asset}/abstract`);
-                    if( abstract.indexOf('EntityNotFound') !== -1) {
-                        publication = 'application';
-                        abstract = await epo.singleUrl(token, `published-data/${publication}/docdb/${asset}/abstract`);
-                        if( abstract.indexOf('EntityNotFound') !== -1) {
-                            abstract = await epo.singleUrl(token, `published-data/${publication}/epodoc/${asset}/abstract`);
-                        }
-                    }
-                } 
-                
-                //abstract = await epo.singleUrl(token, `published-data/publication/epodoc/US${asset}/biblio`);
-                if( abstract ) {
-                    const parser = new xml2js.Parser
-                    const xmlData = await new Promise((resolve, reject) => parser.parseString(abstract, (err, result) => {
-                        if (err){
-                            reject(err);
-                        } else {
-                            resolve(result);
-                        }
-                    }));
-
-                    if( xmlData.hasOwnProperty('ops:world-patent-data') ){
-                        const worldPatentData = xmlData['ops:world-patent-data']
-                        if(worldPatentData.hasOwnProperty('exchange-documents')) {
-                            const exchangeDocuments = worldPatentData['exchange-documents']
-                            if( exchangeDocuments.length > 0 && exchangeDocuments[0].hasOwnProperty('exchange-document')) {
-                                const exchangeDocument = exchangeDocuments[0]['exchange-document']
-                                if(exchangeDocument.length > 0 && exchangeDocument[0].hasOwnProperty('abstract')){
-                                    const abstract = exchangeDocument[0]['abstract']
-                                    if(abstract.length > 0) {
-                                        if(abstract[0].hasOwnProperty('p')){
-                                            const abstractParagraph = abstract[0]['p']
-                                            if(typeof abstractParagraph[0] !== 'undefined') {
-                                                abstractData = { abstracts: abstractParagraph[0] }
-                                            } else {
-                                                abstractData = { abstracts: abstractParagraph }
-                                            }
-                                        } else {
-                                            abstractData = { abstracts: abstract[0] }
-                                        }
-                                    }
-                                }
-                            }
-                        }  
-                    }                    
-                }
-            }
-        } */   
+        }           
         res.status(200).json(abstractData);
     } catch( err ) {
         console.log('ERROR IN Abstract', err);
@@ -713,10 +838,19 @@ route.get("/family/claims/:applicationNumber", [authJWT.verifyToken], async (req
                 ]},
                 group: ['grant_doc_num', 'appno_doc_num', 'pgpub_doc_num']
             })
+            let query = '', replacements = {applicationNumber: asset}, pgPubDocNum = '', type = 1
+
             if(findPatent == null) {
                 findPatent = await getPublicationNumber(asset)
             } else {
-                findPatent = await getPublicationNumber(findPatent.appno_doc_num)
+                if(findPatent.grant_doc_num !== null && findPatent.grant_doc_num !== '') {
+                    findPatent = await getGrantNumber(findPatent.appno_doc_num)
+                    if(findPatent !== null) {
+                        type = 2
+                    }
+                } else {
+                    findPatent = await getPublicationNumber(findPatent.appno_doc_num)
+                }
             }
             if(findPatent === null) {
                 findPatent = await Documentid.findOne({
@@ -732,10 +866,15 @@ route.get("/family/claims/:applicationNumber", [authJWT.verifyToken], async (req
                     where: {grant_doc_num: asset}
                 })
             }
-            let query = '', replacements = {applicationNumber: asset}, pgPubDocNum = '', type = 1
+            
 
-            if( findPatent != null && findPatent.pgpub_doc_num !== '' ) {
-                pgPubDocNum = `US${findPatent.pgpub_doc_num}`
+            if( findPatent != null ) {
+                if(findPatent.grant_doc_num !== '' && findPatent.grant_doc_num !== null ) {
+                    pgPubDocNum = `US${findPatent.grant_doc_num}`
+                    type = 2
+                } else if(findPatent.pgpub_doc_num !== '' ) {
+                    pgPubDocNum = `US${findPatent.pgpub_doc_num}`
+                }            
             } else if( req.query.publication_number !== '') {
                 pgPubDocNum = req.query.publication_number 
             }
@@ -743,17 +882,17 @@ route.get("/family/claims/:applicationNumber", [authJWT.verifyToken], async (req
             if( pgPubDocNum !== '' ) {
                 let filePath = ''
                 if(fileName !== '') {
-                    filePath = `${type === 1 ? extraDiskPathApplications : mainFolderPath}XML/${fileName}`
+                    filePath = `${type === 1 ? extraDiskPathApplications : extraDiskPathPatents}XML/${fileName}`
                 } else {
                     filePath = await findXMLFile(pgPubDocNum, type)
                 }
 
                 if( filePath !== '') {
                     
-                    const getXMLData = await getFileContent(filePath)
+                    const getXMLData = await getFileContent(filePath, type)
                     if( getXMLData !== '' ) {
                         console.log('FIND XMl Content')
-                        claimsData = await getContentFromXML(getXMLData, 'claims')
+                        claimsData = await getContentFromXML(getXMLData, 'claims', type)
                     }
                 }
             } 
@@ -784,10 +923,19 @@ route.get("/family/specifications/:applicationNumber", [authJWT.verifyToken], as
                 ]},
                 group: ['grant_doc_num', 'appno_doc_num', 'pgpub_doc_num']
             })
+        let query = '', replacements = {applicationNumber: asset}, pgPubDocNum = '', type = 1
+
         if(findPatent == null) {
             findPatent = await getPublicationNumber(asset)
         } else {
-            findPatent = await getPublicationNumber(findPatent.appno_doc_num)
+            if(findPatent.grant_doc_num !== null && findPatent.grant_doc_num !== '') {
+                findPatent = await getGrantNumber(findPatent.appno_doc_num)
+                if(findPatent !== null) {
+                    type = 2
+                }
+            } else {
+                findPatent = await getPublicationNumber(findPatent.appno_doc_num)
+            }
         }
         if(findPatent === null) {
             findPatent = await Documentid.findOne({
@@ -803,10 +951,15 @@ route.get("/family/specifications/:applicationNumber", [authJWT.verifyToken], as
                 where: {grant_doc_num: asset}
             })
         }
-        let query = '', replacements = {applicationNumber: asset}, pgPubDocNum = '', type = 1
+        
 
-        if( findPatent != null && findPatent.pgpub_doc_num !== '' ) {
-            pgPubDocNum = `US${findPatent.pgpub_doc_num}`
+        if( findPatent != null ) {
+            if(findPatent.grant_doc_num !== '' && findPatent.grant_doc_num !== null ) {
+                pgPubDocNum = `US${findPatent.grant_doc_num}`
+                type = 2
+            } else if(findPatent.pgpub_doc_num !== '' ) {
+                pgPubDocNum = `US${findPatent.pgpub_doc_num}`
+            }            
         } else if( req.query.publication_number !== '') {
             pgPubDocNum = req.query.publication_number 
         }
@@ -814,24 +967,20 @@ route.get("/family/specifications/:applicationNumber", [authJWT.verifyToken], as
         if( pgPubDocNum !== '' ) {
             let filePath = ''
             if(fileName !== '') {
-                filePath = `${type === 1 ? extraDiskPathApplications : mainFolderPath}XML/${fileName}`
+                filePath = `${type === 1 ? extraDiskPathApplications : extraDiskPathPatents}XML/${fileName}`
             } else {
                 filePath = await findXMLFile(pgPubDocNum, type)
             }
 
             if( filePath !== '') {
                 
-                const getXMLData = await getFileContent(filePath)
+                const getXMLData = await getFileContent(filePath, type)
                 
                 if( getXMLData !== '' ) {
-                    specificationsData = await getContentFromXML(getXMLData, 'specifications')
+                    specificationsData = await getContentFromXML(getXMLData, 'specifications', type)
                 }
             }
-        }       
-        if(specificationsData.length == 0) {
-            // find from epo XML
-
-        } 
+        }
         res.status(200).json(specificationsData);
     } catch( err ) {
         console.log('ERROR IN Claims', err);
@@ -856,10 +1005,19 @@ route.get("/family/images/:applicationNumber", [authJWT.verifyToken], async (req
                 ]},
                 group: ['grant_doc_num', 'appno_doc_num', 'pgpub_doc_num']
             })
+        let imagesList = [], query = '', replacements = {applicationNumber: asset}, pgPubDocNum = '', type = 1
+
         if(findPatent == null) {
             findPatent = await getPublicationNumber(asset)
         } else {
-            findPatent = await getPublicationNumber(findPatent.appno_doc_num)
+            if(findPatent.grant_doc_num !== null && findPatent.grant_doc_num !== '') {
+                findPatent = await getGrantNumber(findPatent.appno_doc_num)
+                if(findPatent !== null) {
+                    type = 2
+                }
+            } else {
+                findPatent = await getPublicationNumber(findPatent.appno_doc_num)
+            }
         }
         if(findPatent === null) {
             findPatent = await Documentid.findOne({
@@ -876,10 +1034,15 @@ route.get("/family/images/:applicationNumber", [authJWT.verifyToken], async (req
                 where: {grant_doc_num: asset}
             })
         }
-        let imagesList = [], query = '', replacements = {applicationNumber: asset}, pgPubDocNum = '', type = 1
+        
 
-        if( findPatent != null && findPatent.pgpub_doc_num !== '' ) {
-            pgPubDocNum = `US${findPatent.pgpub_doc_num}`
+        if( findPatent != null ) {
+            if(findPatent.grant_doc_num !== '' && findPatent.grant_doc_num !== null ) {
+                pgPubDocNum = `US${findPatent.grant_doc_num}`
+                type = 2
+            } else if(findPatent.pgpub_doc_num !== '' ) {
+                pgPubDocNum = `US${findPatent.pgpub_doc_num}`
+            }            
         } else if( req.query.publication_number !== '') {
             pgPubDocNum = req.query.publication_number 
         }
@@ -887,17 +1050,17 @@ route.get("/family/images/:applicationNumber", [authJWT.verifyToken], async (req
         if( pgPubDocNum !== '' ) {
             let filePath = ''
             if(fileName !== '') {
-                filePath = `${type === 1 ? extraDiskPathApplications : mainFolderPath}XML/${fileName}`
+                filePath = `${type === 1 ? extraDiskPathApplications : extraDiskPathPatents}XML/${fileName}`
             } else {
                 filePath = await findXMLFile(pgPubDocNum, type)
             }
 
             if( filePath !== '') {
                 
-                const getXMLData = await getFileContent(filePath)
+                const getXMLData = await getFileContent(filePath, type)
                 
                 if( getXMLData !== '' ) {
-                    imagesList = await getContentFromXML(getXMLData, 'figures')
+                    imagesList = await getContentFromXML(getXMLData, 'figures', type)
                 }
             }
         }

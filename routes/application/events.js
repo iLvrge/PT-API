@@ -1896,10 +1896,19 @@ const findEventList = async(req, res) => {
                             grant_doc_num: findData.length > 0 ? findData[0].grant_doc_num : assetData.grant_doc_num,
                             appno_doc_num: findData.length > 0 ? findData[0].appno_doc_num : assetData.appno_doc_num,
                             start: startDate, 
-                            end: redEndDate,
+                            end: endDate,
                             event_code: '',
                             event_desc: '',
                             type: 'yellow'
+                        })
+                        other.push({
+                            grant_doc_num: findData.length > 0 ? findData[0].grant_doc_num : assetData.grant_doc_num,
+                            appno_doc_num: findData.length > 0 ? findData[0].appno_doc_num : assetData.appno_doc_num,
+                            start: endDate, 
+                            end: redEndDate,
+                            event_code: '',
+                            event_desc: '',
+                            type: 'red'
                         })
                     }
                     
