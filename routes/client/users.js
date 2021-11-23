@@ -22,6 +22,8 @@ const Firms = require("../../model/client/Firms");
 
 const authJWT = require("../../helpers/verifyJwtToken");
 
+const { WebClient } = require('@slack/web-api')
+
 const AWS  = require('aws-sdk');
 const clientDBConnection = require("../../helpers/clientDBConnection");
 
@@ -57,7 +59,9 @@ route.get("/", [authJWT.verifyToken, clientDBConnection.connect], async(req, res
         if(typeof req.connection_db != "undefined" && req.connection_db != null ) {
             
             const User = req.connection_db.define('Users', Users.mainStructure, Users.options);            
-            User.findAll()
+            User.findAll({
+                attributes:['user_id', 'first_name', 'last_name', 'job_title', 'email_address', 'logo', 'telephone', 'telephone1', 'role_id', [connection.Sequelize.literal(0, 'username'), 'slack']]
+            })
             .then((list)=>{
                 res.status(200).json(list);
             }).catch((err)=>{
@@ -419,5 +423,34 @@ route.delete("/:user_id", [authJWT.verifyToken, clientDBConnection.connect], asy
         res.status(400).send("Invalid inputs");
     }
 });
+
+route.post("/invite", [authJWT.verifyToken], async(req, res, next) => {
+    const { email, name } = req.body
+    const appToken = 'xoxp-1151309023568-1112736917239-1576762842999-1dd2f7a85cd6e927fb759ed5633b30bf'
+    const getInvitationData = await inviteUser(appToken, {
+        email,
+        real_name: {
+            full_name: name
+        },              
+        resend: 'yes',
+        team_id: 'T014F930PGQ',
+        channel_ids: 'C01RGV329QV',  
+    })
+    console.log('getInvitationData', getInvitationData)
+});
+
+
+const inviteUser = async(token, params) => {
+
+    let result = {}
+    try{
+        const web = new WebClient(token);
+
+        result = await web.admin.users.invite( params )
+    } catch( err ) {
+        console.log("createChannelID", err)
+    }
+    return result
+}
 
 module.exports = route;

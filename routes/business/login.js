@@ -127,12 +127,12 @@ route.post("/forgot_password", (req, res) => {
                 const transporter = nodemailer.createTransport({
                     service: 'gmail',
                     auth:{
-                        user: 'webmaster@patentrack.com',
+                        user: 'no-reply@patentrack.com',
                         pass: '!QAZ2wsx3edc'
                     }
                  });
                 const mailOptions = {
-                     from: 'webmaster@patentrack.com',
+                     from: 'no-reply@patentrack.com',
                      to: `${user.email_address}`,
                      subject: 'Link to reset password for PatenTrack.com',
                      text: `You are receiving this because you have requested to reset of the password for your account.\n\n Please click on the following link, or paste this into your browser to complete the process within one hour of receiving it. \n\n https://patentrack.com/?t=reset&e=${user.email_address}&auth=${token} \n\n If you did not request this, please ignore this email and your password will remain unchanged. \n Thanks \n Team PatenTrack`
@@ -174,6 +174,10 @@ route.get("/reset/:code/:email", (req, res) => {
     });
 });
 
+const sendSuccessPasswordEmail = (user) => {
+    
+}
+
 route.post("/update_password_via_email", (req, res) => {
     User.findOne({
         where: {authentication_code: req.body.code, auth_token_expire: {[config.Op.gte]: Date.now()}}
@@ -190,7 +194,9 @@ route.post("/update_password_via_email", (req, res) => {
                 })
                 .then( u => {
                     console.log("Password Updated");
+                    sendSuccessPasswordEmail(user);
                     res.status(200).json({message: 'Password updated.'});
+
                 }).catch(err => {
                     console.log("Error: "+err);
                     res.status(500).json({message: 'Internal server error'});
