@@ -716,7 +716,7 @@ route.get("/family/abstract/:applicationNumber", [authJWT.verifyToken], async (r
         
 
         if( findPatent != null ) {
-            if(findPatent.grant_doc_num !== '' && findPatent.grant_doc_num !== null ) {
+            if(findPatent.grant_doc_num !== undefined && findPatent.grant_doc_num !== '' && findPatent.grant_doc_num !== null ) {
                 pgPubDocNum = `US${findPatent.grant_doc_num}`
                 type = 2
             } else if(findPatent.pgpub_doc_num !== '' ) {
@@ -869,7 +869,7 @@ route.get("/family/claims/:applicationNumber", [authJWT.verifyToken], async (req
             
 
             if( findPatent != null ) {
-                if(findPatent.grant_doc_num !== '' && findPatent.grant_doc_num !== null ) {
+                if(findPatent.grant_doc_num !== undefined && findPatent.grant_doc_num !== '' && findPatent.grant_doc_num !== null ) {
                     pgPubDocNum = `US${findPatent.grant_doc_num}`
                     type = 2
                 } else if(findPatent.pgpub_doc_num !== '' ) {
@@ -954,7 +954,7 @@ route.get("/family/specifications/:applicationNumber", [authJWT.verifyToken], as
         
 
         if( findPatent != null ) {
-            if(findPatent.grant_doc_num !== '' && findPatent.grant_doc_num !== null ) {
+            if(findPatent.grant_doc_num !== undefined && findPatent.grant_doc_num !== '' && findPatent.grant_doc_num !== null ) {
                 pgPubDocNum = `US${findPatent.grant_doc_num}`
                 type = 2
             } else if(findPatent.pgpub_doc_num !== '' ) {
@@ -1007,10 +1007,10 @@ route.get("/family/images/:applicationNumber", [authJWT.verifyToken], async (req
             })
         let imagesList = [], query = '', replacements = {applicationNumber: asset}, pgPubDocNum = '', type = 1
 
-        if(findPatent == null) {
+        if(findPatent === null) {
             findPatent = await getPublicationNumber(asset)
         } else {
-            if(findPatent.grant_doc_num !== null && findPatent.grant_doc_num !== '') {
+            if(findPatent.grant_doc_num !== null && findPatent.grant_doc_num !== '') {               
                 findPatent = await getGrantNumber(findPatent.appno_doc_num)
                 if(findPatent !== null) {
                     type = 2
@@ -1027,7 +1027,6 @@ route.get("/family/images/:applicationNumber", [authJWT.verifyToken], async (req
         } else {
             fileName = findPatent.file_name
         }
-        
         if(findPatent === null) {
             findPatent = await Documentid.findOne({
                 attributes: ['rf_id', 'grant_doc_num', 'pgpub_doc_num', 'pgpub_date'],
@@ -1036,8 +1035,8 @@ route.get("/family/images/:applicationNumber", [authJWT.verifyToken], async (req
         }
         
 
-        if( findPatent != null ) {
-            if(findPatent.grant_doc_num !== '' && findPatent.grant_doc_num !== null ) {
+        if( findPatent !== null ) {
+            if(findPatent.grant_doc_num !== undefined && findPatent.grant_doc_num !== '' && findPatent.grant_doc_num !== null ) {
                 pgPubDocNum = `US${findPatent.grant_doc_num}`
                 type = 2
             } else if(findPatent.pgpub_doc_num !== '' ) {
@@ -1049,12 +1048,13 @@ route.get("/family/images/:applicationNumber", [authJWT.verifyToken], async (req
         //pgPubDocNum = '20200053026'
         if( pgPubDocNum !== '' ) {
             let filePath = ''
+            console.log(type, extraDiskPathApplications, extraDiskPathPatents)
             if(fileName !== '') {
-                filePath = `${type === 1 ? extraDiskPathApplications : extraDiskPathPatents}XML/${fileName}`
+                filePath = `${type == 1 ? extraDiskPathApplications : extraDiskPathPatents}XML/${fileName}`
             } else {
                 filePath = await findXMLFile(pgPubDocNum, type)
             }
-
+            console.log('filePath', filePath)
             if( filePath !== '') {
                 
                 const getXMLData = await getFileContent(filePath, type)
