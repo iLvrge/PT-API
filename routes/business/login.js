@@ -127,7 +127,7 @@ route.post("/forgot_password", (req, res) => {
                 const transporter = nodemailer.createTransport({
                     service: 'gmail',
                     auth:{
-                        user: 'no-reply@patentrack.com',
+                        user: 'no-reply@ilvrge.com',
                         pass: '!QAZ2wsx3edc'
                     }
                  });
@@ -175,7 +175,7 @@ route.get("/reset/:code/:email", (req, res) => {
 });
 
 const sendSuccessPasswordEmail = (user) => {
-    
+
 }
 
 route.post("/update_password_via_email", (req, res) => {
