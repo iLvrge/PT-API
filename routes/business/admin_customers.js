@@ -1338,7 +1338,7 @@ route.get("/customers/:id/:representativeID/patents", [authJWT.verifyToken, auth
 
 route.get("/customers/:organisation_id/flag_automatic", [authJWT.verifyToken, authJWT.isAdmin], async(req, res, next) => {
     try{
-        let organisationID = req.params.organisation_id, companyID = req.params.representative_id;
+        let organisationID = req.params.organisation_id, companyID = req.query.representative_id;
         if(organisationID > 0){
             let org = await helpers.findOrganisationbyID( organisationID );
             if(org != null && org.organisation_id > 0) {
@@ -1362,7 +1362,7 @@ route.get("/customers/:organisation_id/flag_automatic", [authJWT.verifyToken, au
 
 route.get("/customers/:organisation_id/transaction_missing_conveyance", [authJWT.verifyToken, authJWT.isAdmin], async(req, res, next) => {
     try{
-        let organisationID = req.params.organisation_id, companyID = req.params.representative_id;
+        let organisationID = req.params.organisation_id, companyID = req.query.representative_id;
         if(organisationID > 0){
             let org = await helpers.findOrganisationbyID( organisationID );
             if(org != null && org.organisation_id > 0) {
