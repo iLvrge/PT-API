@@ -1338,13 +1338,13 @@ route.get("/customers/:id/:representativeID/patents", [authJWT.verifyToken, auth
 
 route.get("/customers/:organisation_id/flag_automatic", [authJWT.verifyToken, authJWT.isAdmin], async(req, res, next) => {
     try{
-        let organisationID = req.params.organisation_id;
+        let organisationID = req.params.organisation_id, companyID = req.params.representative_id;
         if(organisationID > 0){
             let org = await helpers.findOrganisationbyID( organisationID );
             if(org != null && org.organisation_id > 0) {
                 
-                console.log(`php -f /var/www/html/trash/update_flag.php "${organisationID}"`);
-                exec(`php -f /var/www/html/trash/update_flag.php "${organisationID}"`, (error, stdout, stderr) => {  
+                console.log(`php -f /var/www/html/trash/update_flag.php "${organisationID}" "${companyID}"`);
+                exec(`php -f /var/www/html/trash/update_flag.php "${organisationID}" "${companyID}"`, (error, stdout, stderr) => {  
                     console.log(error, stdout, stderr);
                 });
                 res.status(200).send("Fixing flag in process");
@@ -1362,13 +1362,13 @@ route.get("/customers/:organisation_id/flag_automatic", [authJWT.verifyToken, au
 
 route.get("/customers/:organisation_id/transaction_missing_conveyance", [authJWT.verifyToken, authJWT.isAdmin], async(req, res, next) => {
     try{
-        let organisationID = req.params.organisation_id;
+        let organisationID = req.params.organisation_id, companyID = req.params.representative_id;
         if(organisationID > 0){
             let org = await helpers.findOrganisationbyID( organisationID );
             if(org != null && org.organisation_id > 0) {
                 
-                console.log(`php -f /var/www/html/trash/update_missing_type.php "${organisationID}"`);
-                exec(`php -f /var/www/html/trash/update_missing_type.php "${organisationID}"`, (error, stdout, stderr) => {  
+                console.log(`php -f /var/www/html/trash/update_missing_type.php "${organisationID}" "${companyID}"`);
+                exec(`php -f /var/www/html/trash/update_missing_type.php "${organisationID}" "${companyID}"`, (error, stdout, stderr) => {  
                     console.log(error, stdout, stderr);
                 });
                 res.status(200).send("Fixing flag in process");
