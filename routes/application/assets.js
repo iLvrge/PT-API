@@ -571,10 +571,10 @@ route.get("/assets/download/:itemID",[authJWT.verifyToken], async (req, res) =>{
                     link = `https://s3-us-west-1.amazonaws.com/static.patentrack.com/assignments/var/www/html/beta/resources/shared/data/assignment-pat-${assignmentData.reel_no}-${assignmentData.frame_no}.pdf`;
                     resolve('FROM CDN')  
                 } else {
-                    console.log(usptoLink)
+                    
                     request.head(usptoLink, (err, response, body) => {
                         console.log(usptoLink)
-                        const path = usptoLink.split('/').pop(), pathDirectory = '/var/www/html/trash/'
+                        const path = usptoLink.split('/').pop(), pathDirectory = '/var/www/html/beta/resources/shared/data/'
                         console.log(`${pathDirectory}${path}`)
                         request(usptoLink)
                         .pipe(fs.createWriteStream(`${pathDirectory}${path}`))
@@ -608,11 +608,11 @@ route.get("/assets/download/:itemID",[authJWT.verifyToken], async (req, res) =>{
                                     console.log(err, data);
                                     if(err == null) {
                                         link = `https://s3-${bucketConfig.region}.amazonaws.com/${bucketConfig.bucketName}/${serverDIR}${filename}`;                                    
-                                        spawn('rm', [`${pathDirectory}${path}`]);
+                                        //spawn('rm', [`${pathDirectory}${path}`]);
 
                                         ResourceAssignments.update({status: 1}, {where: {reel_no: assignmentData.reel_no, frame_no: assignmentData.frame_no}})
                                         
-                                        resolve('DOWNLOADED/UPLOADED')  
+                                        resolve(`${pathDirectory}${path}`)  
                                     }  else {
                                         reject('DOWNLOADED/UPLOADED')
                                     }
@@ -625,7 +625,8 @@ route.get("/assets/download/:itemID",[authJWT.verifyToken], async (req, res) =>{
                 }                    
             }) 
             downloadFileProcess
-            .then(async () => {
+            .then(async (data) => {
+                splitPDFFile(data)
                 res.status(200).json({link})
             }).catch(function(err) {
                 console.log(`File not downloaded: ${err}`)
@@ -634,10 +635,31 @@ route.get("/assets/download/:itemID",[authJWT.verifyToken], async (req, res) =>{
     }
 }) 
 
-/*6*/
-	/**
-     * Get patent JSON data
+const splitPDFFile = (item) => {
+    /**
+     * Split PDF file with script
      */
+    const splitFiles = spawn('php', ['-f', '/var/www/html/trash/split_pdf_files.php'])
+
+    splitFiles.on("close", code => {
+        //check Files exist
+        const agreementFile = item.replace('.pdf', '_agreement.pdf'), formFile = item.replace('.pdf', '_form.pdf')
+        if (fs.existsSync(agreementFile) || fs.existsSync(formFile)) {
+            /**
+             * Upload Files to S3
+             */
+            const uploadFiles = spawn('php', ['-f', '/var/www/html/trash/s3_upload_files.php'])
+            uploadFiles.on("close", code => {
+                spawn('rm', [item]);
+            })
+        }
+    })
+}
+
+/*6*/
+/**
+ * Get patent JSON data
+ */
 route.get("/assets/:asset",[authJWT.verifyToken], async (req, res) =>{        
     let asset = req.params.asset, flag = req.query.flag;
 

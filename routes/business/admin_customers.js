@@ -1286,47 +1286,30 @@ route.put("/customers" , [authJWT.verifyToken, authJWT.isAdmin], async (req, res
 
 route.get("/customers/:id/patents", [authJWT.verifyToken, authJWT.isAdmin], async (req, res, next) => {
     try{
-        let organisationID = req.params.id;
+        let organisationID = req.params.id, representativeIDs = req.params.representativeID;
         let patentList = [];
         if(organisationID > 0){
             let org = await helpers.findOrganisationbyID( organisationID );
             if(org != null && org.organisation_id > 0) {
+                if(typeof representativeIDs !== 'undefined' && representativeIDs != '') {
+                    representativeIDs = JSON.parse(representativeIDs)
+                }
+                let queryAllPatentList = '';
+                if(Array.isArray(representativeIDs) && representativeIDs.length > 0) {
+                    queryAllPatentList = 'SELECT grant_doc_num as number, appno_doc_num as application FROM assets WHERE organisation_id = :organisationID AND representative_id IN (representativeIDs) AND date_format(grant_date, "%Y") >= :year GROUP BY number, application';
+                } else {
+                    queryAllPatentList = 'SELECT grant_doc_num as number, appno_doc_num as application FROM assets WHERE organisation_id = :organisationID AND date_format(grant_date, "%Y") >= :year GROUP BY number, application';
+                }
 
-                let queryAllPatentList = 'SELECT grant_doc_num as number, appno_doc_num as application FROM assets WHERE organisation_id = :organisationID AND date_format(grant_date, "%Y") >= :year GROUP BY number, application';
-            
-                patentList = await connection.applicationNew.query(queryAllPatentList,{
-                    type: connection.Sequelize.QueryTypes.SELECT,
-                    replacements: { organisationID, year: 1997 },
-                    raw: true,
-                    logging: console.log,
-                    }
-                );                
-            }
-        }
-        res.status(200).json(patentList);
-    } catch(e) {
-        console.log(e);
-        res.status(402).send("No patents");
-    }
-});
-
-route.get("/customers/:id/:representativeID/patents", [authJWT.verifyToken, authJWT.isAdmin, authJWT.addClientID, clientDBConnection.connect], async (req, res, next) => {
-    try{
-        const organisationID = req.params.id, representativeIDs = JSON.parse(req.params.representativeID);
-        let patentList = [];
-        if(organisationID > 0){
-            let org = await helpers.findOrganisationbyID( organisationID );
-            if(org != null && org.organisation_id > 0) {
-
-                let queryAllPatentList = 'SELECT grant_doc_num as number, appno_doc_num as application FROM assets WHERE organisation_id = :organisationID AND representative_id IN (representativeIDs) AND date_format(grant_date, "%Y") >= :year GROUP BY number, application';
-            
-                patentList = await connection.applicationNew.query(queryAllPatentList,{
-                    type: connection.Sequelize.QueryTypes.SELECT,
-                    replacements: { organisationID, representativeIDs, year: 1997 },
-                    raw: true,
-                    logging: console.log,
-                    }
-                );                
+                if(queryAllPatentList !== '')  {
+                    patentList = await connection.applicationNew.query(queryAllPatentList,{
+                        type: connection.Sequelize.QueryTypes.SELECT,
+                        replacements: { organisationID, representativeIDs, year: 1997 },
+                        raw: true,
+                        logging: console.log,
+                        }
+                    );
+                }           
             }
         }
         res.status(200).json(patentList);
