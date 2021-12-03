@@ -577,7 +577,7 @@ const getContentFromXML = async (fileContent, contentType, type) => {
                 claims = replaceContent('<CL>', '<div ', claims)
                 claims = replaceContent('</CL>', '</div>', claims)
     
-                claims = replaceContent('<CLM', '<div class="claim"><div', claims)
+                claims = replaceContent('<CLM', '<div class="claim"><div ', claims)
                 claims = replaceContent('</CLM>', '</div></div>', claims)
                 content.push({ text: claims })
             } else {
@@ -595,7 +595,7 @@ const getContentFromXML = async (fileContent, contentType, type) => {
                         claims = replaceContent('<claims', '<div ', claims)
                         claims = replaceContent('</claims>', '</div>', claims)
     
-                        claims = replaceContent('<claim', '<div class="claim"><div', claims)
+                        claims = replaceContent('<claim', '<div class="claim"><div ', claims)
                         claims = replaceContent('</claim>', '</div></div>', claims)
 
                         content.push({ text: claims })

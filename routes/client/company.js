@@ -4,7 +4,9 @@ const express = require("express"),
 
     moment = require('moment'),
 
-    route = express.Router();
+    route = express.Router(),
+
+    crypto = require("crypto");
 //require the Model
 
 const Representatives = require("../../model/client/Representatives");
@@ -42,6 +44,8 @@ const authJWT = require("../../helpers/verifyJwtToken");
 const connection = require("../../config/db.config");
 
 const clientDBConnection = require("../../helpers/clientDBConnection");
+
+const SlackHelper = require('../../helpers/slack')
 
 const {google} = require('googleapis');
 
@@ -265,6 +269,58 @@ route.get("/:companyID/list", [authJWT.verifyToken, clientDBConnection.connect],
         console.log(err);
         res.status(500).json({message: "Unable to retrieve companies"})
     }
+})
+
+
+
+
+route.get("/:companyID/users", [authJWT.verifyToken, clientDBConnection.connect], async(req, res, next) => {
+    try{
+        if(typeof req.connection_db != "undefined" && req.connection_db != null ) {
+            const {companyID} = req.params
+            if(companyID > 0) {   
+                const Representative = req.connection_db.define('Representatives', Representatives.mainStructure, Representatives.options);
+                const getData =  await Representative.findOne( {
+                    attributes: ['original_name'],
+                    where: {representative_id: companyID}
+                })
+                if(getData !== null) {
+                    const organisation  = await helpers.findOrganisationbyID(req.orgId);                
+                    if(organisation != null && organisation.organisation_id > 0 && organisation.team !== '') {
+                        const slack = await new SlackHelper()
+                        await slack.refreshToken()
+    
+                        slack.getAllTeams({}, async(list) => {
+                            console.log('list', list)
+                            if(list.length > 0) {   
+                                const findTeam = await slack.findWorkSpace(list, getData.original_name, organisation) 
+                                if(findTeam.length > 0) {
+                                    slack.getTeamUserList({team_id: findTeam[0].id}, (response) => {
+                                        res.status(200).json(response);
+                                    })
+                                } else {
+                                    res.status(200).json([]);
+                                }
+                            }  else {
+                                res.status(200).json([]);
+                            }  
+                        })  
+                    } else {
+                        res.status(200).json([]);
+                    }
+                } else {
+                    res.status(200).json([]);
+                }
+            } else {
+                res.status(200).json([]);
+            }        
+        } else {
+            res.status(200).json([]);
+        }
+    } catch (err) {
+        console.log(err);
+        res.status(500).send("Unable to retrieve users")
+    }    
 })
 
 /**Get all companies */
@@ -567,12 +623,43 @@ route.post("/group", [authJWT.verifyToken, clientDBConnection.connect], async(re
             instances: 0,
             type: 1
         });
-
+        if(addGroup !== null) {            
+            const organisation  = await helpers.findOrganisationbyID(req.orgId);
+            
+            if(organisation != null && organisation.organisation_id > 0 && organisation.team !== '') {
+                /**
+                 * Create new workspace in slack
+                 */
+                await createSlackWorkSpace(group_name, organisation)                
+            }
+        }
         res.status(200).json(addGroup);
     } catch( err ) {
         res.status(500).send("Internal error", err);
     }
 })
+
+/**
+ * 
+ * @param {Worspace Name} name 
+ * @param {Organisation Object} organisation 
+ */
+
+const createSlackWorkSpace = async (name, organisation) => {
+    const slack = new SlackHelper()
+    await slack.refreshToken()
+    const randomBytes = crypto.randomBytes(20).toString('hex')
+    const params = {
+        team_domain: `${organisation.team}${randomBytes.substring(0, 20 - organisation.team.length)}`,
+        team_name: name,
+        team_discoverability: 'invite_only'
+    }
+    console.log('Slack Params', params)
+    slack.createWorkSpace(params, function(err, response){
+        console.log('slack.createWorkSpace', err, response)         
+                                       
+    })
+}
 
 /**
  * Add new company 
@@ -758,7 +845,14 @@ route.post("/", [authJWT.verifyToken, clientDBConnection.connect], async(req, re
                             where: whereC
                         });
                         if(findParentCompanies.length == 0) {
-                            let addRecord = 0,  mainCompanies = [], parentCompaniesID = [];                   
+                            let addRecord = 0,  mainCompanies = [], parentCompaniesID = [];   
+                            /**
+                             * 
+                             *  Initialized the SlackHelper
+                             * 
+                             *  */                
+                            const slack = new SlackHelper()
+                            const organisation  = await helpers.findOrganisationbyID(req.orgId);
                             for(let i = 0; i < companies.length; i++) {
                                 
                                 /** Add in Client Representative */
@@ -776,6 +870,14 @@ route.post("/", [authJWT.verifyToken, clientDBConnection.connect], async(req, re
                                 activityLogs.push({organistaion_id: req.orgId, user_id: req.userId, type: 0, company_name: companies[i].original_name, representative_company_name: companies[i].original_name, activity_date: currentDate});
                                 
                                 if(addParent != null && addParent.representative_id > 0){
+
+                                    /**
+                                     * Create new workspace in slack
+                                     */
+                                    if(organisation != null && organisation.organisation_id > 0 && organisation.team !== '') {
+                                        createSlackWorkSpace(companies[i].original_name, organisation)
+                                    }                                   
+
                                     /**
                                      * Find Normalize companies
                                      */

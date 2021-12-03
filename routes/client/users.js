@@ -22,7 +22,7 @@ const Firms = require("../../model/client/Firms");
 
 const authJWT = require("../../helpers/verifyJwtToken");
 
-const { WebClient } = require('@slack/web-api')
+const SlackHelper = require('../../helpers/slack')
 
 const AWS  = require('aws-sdk');
 const clientDBConnection = require("../../helpers/clientDBConnection");
@@ -143,10 +143,40 @@ route.post("/", [authJWT.verifyToken, clientDBConnection.connect], async(req, re
                             const addClientUser = await User.create(clientUser);
 
                             if(addClientUser != null  && addClientUser.user_id > 0) {
-                                
+
+                                /**
+                                 * Add user to slack
+                                 */
+                                const organisation  = await helpers.findOrganisationbyID(req.orgId);
+                                if(organisation != null && organisation.organisation_id > 0){
+                                    /**
+                                     * Invite user to client workspace
+                                    */
+                
+                                   const slack = await new SlackHelper()
+
+                                    slack.adminConversationSearch({
+                                       team_ids: organisation.team
+                                    }, function(response) {
+                                       if(response.length > 0) {
+                                           const params = {
+                                               channel_ids: response[0].id,
+                                               team_id: organisation.team,
+                                               email: req.body.email_address,
+                                               resend: true,
+                                               custom_message: 'You are invited to Join workspace '
+                                           }
+                                           console.log(params)
+                                           slack.addInvite(params, function(response){
+                                               console.log('user invited', response)
+                                           })
+                                       } 
+                                   })
+                                }
+
+                                let upload_file = ''
                                 if(req.files != null && req.files != undefined && req.files.file != undefined) {
-                                    const mimeType = req.files.file.mimetype
-                                    let upload_file = ''
+                                    const mimeType = req.files.file.mimetype                                    
                                     if(mimeType != null && mimeType != '' && mimeType.toLowerCase().indexOf('.exe') < 0){
                                         let fileObject = req.files.file;
                                         const name = fileObject.name.replace(/\s+/g, '-');
@@ -425,32 +455,56 @@ route.delete("/:user_id", [authJWT.verifyToken, clientDBConnection.connect], asy
 });
 
 route.post("/invite", [authJWT.verifyToken], async(req, res, next) => {
-    const { email, name } = req.body
-    const appToken = 'xoxp-1151309023568-1112736917239-1576762842999-1dd2f7a85cd6e927fb759ed5633b30bf'
-    const getInvitationData = await inviteUser(appToken, {
-        email,
-        real_name: {
-            full_name: name
-        },              
-        resend: 'yes',
-        team_id: 'T014F930PGQ',
-        channel_ids: 'C01RGV329QV',  
-    })
-    console.log('getInvitationData', getInvitationData)
+    try {
+        const { email, representative_name } = req.body
+        const organisation  = await helpers.findOrganisationbyID(req.orgId);                
+        if(organisation != null && organisation.organisation_id > 0 && organisation.team !== '') {
+            const slack = await new SlackHelper()
+            await slack.refreshToken()
+
+            slack.getAllTeams({}, async(list) => {
+                if(list.length > 0) {     
+                    const findTeam = await slack.findWorkSpace(list, representative_name, organisation) 
+                    if(findTeam.length > 0) {
+                        slack.adminConversationSearch({
+                            team_ids: findTeam[0].id
+                        }, function(response) {
+                            if(response.length > 0) {
+                                const params = {
+                                    channel_ids: response[0].id,
+                                    team_id: findTeam[0].id,
+                                    email: email,
+                                    resend: true,
+                                    custom_message: 'You are invited to Join workspace '
+                                }
+                                console.log(params)
+                                slack.addInvite(params, function(response){
+                                    console.log('user invited', response)
+                                    if(response.ok == true) {
+                                        res.status(200).send("Invitation sent");
+                                    } else {
+                                        res.status(200).send(response.data.error);
+                                    }
+                                })
+                            }
+                        })
+                        
+                    } else {
+                        res.status(401).send("No team found");
+                    }
+                } else {
+                    res.status(401).send("No team found");
+                }
+            })
+        } else {
+            res.status(401).send("No team found");
+        }
+    } catch (err) {
+        console.log(err);
+        res.status(500).send("Unable to process request");
+    }
 });
 
 
-const inviteUser = async(token, params) => {
-
-    let result = {}
-    try{
-        const web = new WebClient(token);
-
-        result = await web.admin.users.invite( params )
-    } catch( err ) {
-        console.log("createChannelID", err)
-    }
-    return result
-}
 
 module.exports = route;

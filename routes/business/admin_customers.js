@@ -12,13 +12,19 @@ const express = require("express"),
 
     Stream = require('stream').Transform,
     
-    request = require('request');
+    request = require('request'),
+
+    crypto = require("crypto");
 
 const {google} = require('googleapis');
+
+const SlackHelper = require('../../helpers/slack')
 
 const { v4: uuidv4  } = require('uuid');
 
 const { exec, spawn  } = require("child_process");
+
+const { WebClient } = require('@slack/web-api')
 
 const route = express.Router();
 
@@ -61,8 +67,7 @@ const Organisations = require("../../model/business/Organisations"),
     RepresentativeTransactions = require("../../model/resources/RepresentativeTransactions"),
 
     AWS  = require('aws-sdk');
-
-    
+   
 /**Get all documents */
 
 
@@ -658,6 +663,7 @@ route.get("/customers/:id/users", [authJWT.verifyToken, authJWT.isAdmin, authJWT
  * Create new user in same organisation
  */
 
+
 route.post("/customers/:id/users", [authJWT.verifyToken, authJWT.isAdmin, userExist.checkDuplicateUsername, authJWT.addClientID, clientDBConnection.connect], async function (req, res, next){
     try{
         let organisationID = req.params.id;
@@ -704,6 +710,34 @@ route.post("/customers/:id/users", [authJWT.verifyToken, authJWT.isAdmin, userEx
                                 console.log("addClientUser", addClientUser);
 
                                 if(addClientUser != null) {
+
+                                    /**
+                                     * Invite user to client workspace
+                                    */
+                
+                                    const slack = await new SlackHelper()
+
+                                    slack.adminConversationSearch({
+										team_ids: organisation.team
+									}, function(response) {
+										if(response.length > 0) {
+											const params = {
+												channel_ids: response[0].id,
+												team_id: organisation.team,
+												email: req.body.email_address,
+												resend: true,
+												custom_message: 'You are invited to Join workspace '
+											}
+											console.log(params)
+											slack.addInvite(params, function(response){
+												console.log('user invited', response)
+											})
+										}
+									})
+
+
+
+
                                     const Firm = await req.connection_db.define('Firms', Firms.mainStructure, Firms.options);
 
                                     let firmID = 0;
@@ -1222,6 +1256,28 @@ route.post("/customers", [authJWT.verifyToken, authJWT.isAdmin], async (req, res
             }
             if(org != null && org.organisation_id > 0){
                 let organisationID = org.organisation_id;
+
+                /**
+                 * Create new workspace in slack
+                 */
+                const randomBytes = crypto.randomBytes(20).toString('hex')
+                const params = {
+                    team_domain: `${randomBytes.substring(0, 20)}`,
+                    team_name: req.body.company_name,
+                    team_discoverability: 'open'
+                }
+                console.log('Slack Params', params)
+                const slack = await new SlackHelper()
+                slack.createWorkSpace(params, function(err, response){
+                    console.log('slack.createWorkSpace', err, response)
+                    if(err === null) {
+                        if(response.team !== null) {
+                            org.update({
+                                team: response.team
+                            })
+                        }
+                    }
+                })
                
                 console.log(`php -f /var/www/html/trash/script_create_customer_db.php "${organisationID}"`);
                 exec(`php -f /var/www/html/trash/script_create_customer_db.php "${organisationID}"`, async (error, std, stderr) => {
@@ -1702,6 +1758,30 @@ route.get("/customers/retrieve_cited_patents_logo/:customerID/:apiName",[authJWT
 
 
     res.status(200).send("run logo script");
+})
+
+
+route.get("/customers/team/create/:customerID", [authJWT.verifyToken, authJWT.isAdmin], async (req, res) =>{ 
+    try{
+        const {customerID} = req.params
+
+        const {token, refresh_token} = req.query
+
+        const web = new WebClient(token);
+
+        console.log(web.app)
+
+        const params = {
+            team_domain: 'chemistrypatrackteam',
+            team_name: 'Chemistry',
+            team_discoverability: 'open'
+        }
+
+        const result = await web.admin.teams.create( params )
+
+    } catch (err) {
+        console.log("Create Error", err)
+    }
 })
 
 module.exports = route;
