@@ -574,10 +574,10 @@ const getContentFromXML = async (fileContent, contentType, type) => {
                 claims = replaceContent('<CLREF', ' <span ', claims)
                 claims = replaceContent('</CLREF>', '</span>', claims)
     
-                claims = replaceContent('<CL>', '<div ', claims)
+                claims = replaceContent('<CL', '<div ', claims)
                 claims = replaceContent('</CL>', '</div>', claims)
 
-                claims = replaceContent('<CLMSTEP>', '<div ', claims)
+                claims = replaceContent('<CLMSTEP', '<div ', claims)
                 claims = replaceContent('</CLMSTEP>', '</div>', claims)
     
                 claims = replaceContent('<CLM', '<div class="claim"><div ', claims)
