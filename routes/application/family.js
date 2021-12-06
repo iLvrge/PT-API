@@ -580,9 +580,9 @@ const getContentFromXML = async (fileContent, contentType, type) => {
                 claims = replaceContent('<CLM', '<div class="claim"><div ', claims)
                 claims = replaceContent('</CLM>', '</div></div>', claims)
 
-                claims = replaceContent('<CL', '<div', claims)
+                claims = replaceContent('<CL', '<div id="claims"', claims)
                 claims = replaceContent('</CL>', '</div>', claims)  
-                 
+
                 content.push({ text: claims })
             } else {
                 const document = new xmldoc.XmlDocument(fileContent);
