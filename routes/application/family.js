@@ -338,7 +338,7 @@ route.get("/family/:applicationNumber", [authJWT.verifyToken], async (req, res) 
 
 let findXMLFile = async (pgPubDocNum, t) => {
     return new Promise( function(resolve, reject) {
-        console.log('findXMLFile')
+        console.log('findXMLFile', pgPubDocNum, t)
         let findFile = ''
         const child = spawn('find', [`${t === 1 ? extraDiskPathApplications : t === 2 ? extraDiskPathPatents : mainFolderPath}XML/`, '-name', `*${pgPubDocNum}*.XML`]);
         child.stdout.on('data', (data) => {
@@ -870,9 +870,8 @@ route.get("/family/claims/:applicationNumber", [authJWT.verifyToken], async (req
                     attributes: ['rf_id', 'grant_doc_num', 'pgpub_doc_num', 'pgpub_date'],
                     where: {appno_doc_num: asset}
                 })
-            } else {
-                fileName = findPatent.file_name
-            }
+            } 
+            
             if(findPatent === null) {
                 findPatent = await Documentid.findOne({
                     attributes: ['rf_id', 'grant_doc_num', 'pgpub_doc_num', 'pgpub_date'],
@@ -894,6 +893,9 @@ route.get("/family/claims/:applicationNumber", [authJWT.verifyToken], async (req
                 }
             }
             
+            if( findPatent != null && fileName == '') {
+                fileName = findPatent.file_name
+            }
 
             if( findPatent != null ) {
                 if(findPatent.grant_doc_num !== undefined && findPatent.grant_doc_num !== '' && findPatent.grant_doc_num !== null ) {
