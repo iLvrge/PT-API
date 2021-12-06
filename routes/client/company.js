@@ -657,7 +657,14 @@ const createSlackWorkSpace = async (name, organisation) => {
     console.log('Slack Params', params)
     slack.createWorkSpace(params, function(err, response){
         console.log('slack.createWorkSpace', err, response)         
-                                       
+        /**
+         * Add Team to Group
+         */                 
+        if(err === null) {
+            if(response.team !== null) {
+                
+            }   
+        }          
     })
 }
 

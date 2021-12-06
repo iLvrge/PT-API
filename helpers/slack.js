@@ -399,7 +399,7 @@ SlackHelper.prototype.getAllTeams = async function(params, callback) {
 }
 
 SlackHelper.prototype.getTeamUserList = async function(params, callback) {    
-    try{
+    try {
         var self = this;
         const reteivePageOfUsers = async( nextPageToken, result) => {
         
@@ -449,3 +449,46 @@ SlackHelper.prototype.findWorkSpace = async function(list, workspaceName, organi
     })
     return findTeam
 } 
+
+SlackHelper.prototype.updateMembersToUserGroup = async function(type, team_id, groupName) {
+    try {
+        var self = this;
+        self.usergroupsList({
+            team_id
+        }, function(response){
+            console.log('updateMembersToUserGroup1', response)
+            if(response.ok == true) {
+                console.log('updateMembersToUserGroup1', response.usergroups)
+                if(response.usergroups.length > 0) {
+                    const list = response.usergroups
+                    if(list.length > 0) {
+                        const findIndex = list.findIndex( group => group.name == groupName)
+                        if(findIndex !== -1) {
+                            slack.getTeamUserList({team_id}, (response) => {
+                                console.log('updateMembersToUserGroup getTeamUserList', response.usergroups)
+                                if(response.ok == true) {
+                                    const list = response.users;
+                                    if(list.length > 0) {
+                                        const userIDs = []
+                                        list.forEach( user => userIDs.push(user.id))
+                                        self.usergroupsUsersUpdate({
+                                            usergroup: list[findIndex].id,
+                                            users: userIDs.join(','),
+                                            team_id
+                                        }, function( usergroupUsersResult ) {
+                                            console.log('updateMembersToUserGroup', usergroupUsersResult)
+                                        })
+                                    }
+                                }
+                            })
+                        } else {
+                            console.log('updateMembersToUserGroup group name not found')
+                        }
+                    }
+                } 
+            }
+        })
+    } catch( err ) {
+        console.log('updateMembersToUserGroup', err)
+    }
+}

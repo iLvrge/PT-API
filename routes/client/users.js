@@ -158,19 +158,22 @@ route.post("/", [authJWT.verifyToken, clientDBConnection.connect], async(req, re
                                     slack.adminConversationSearch({
                                        team_ids: organisation.team
                                     }, function(response) {
-                                       if(response.length > 0) {
-                                           const params = {
+                                        if(response.length > 0) {
+                                            const params = {
                                                channel_ids: response[0].id,
                                                team_id: organisation.team,
                                                email: req.body.email_address,
                                                resend: true,
                                                custom_message: 'You are invited to Join workspace '
-                                           }
-                                           console.log(params)
-                                           slack.addInvite(params, function(response){
-                                               console.log('user invited', response)
+                                            }
+                                            console.log(params)
+                                            slack.addInvite(params, function(response){
+                                               console.log('user invited', response)                                                
+                                                if(response.ok == true) {
+                                                    slack.updateMembersToUserGroup(0, organisation.team, process.env.USERGROUP_NAME)
+                                                }
                                            })
-                                       } 
+                                        } 
                                    })
                                 }
 

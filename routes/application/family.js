@@ -567,23 +567,45 @@ const getContentFromXML = async (fileContent, contentType, type) => {
     
                 claims = replaceContent('<SDOCL', ' <div ', claims)
                 claims = replaceContent('</SDOCL>', '</div>', claims)
-    
+
                 claims = replaceContent('<PARA', ' <div ', claims)
                 claims = replaceContent('</PARA>', '</div>', claims)
-    
+
                 claims = replaceContent('<CLREF', ' <span ', claims)
                 claims = replaceContent('</CLREF>', '</span>', claims)
-    
-                claims = replaceContent('<CL', '<div ', claims)
-                claims = replaceContent('</CL>', '</div>', claims)
 
                 claims = replaceContent('<CLMSTEP', '<div ', claims)
                 claims = replaceContent('</CLMSTEP>', '</div>', claims)
-    
+
                 claims = replaceContent('<CLM', '<div class="claim"><div ', claims)
                 claims = replaceContent('</CLM>', '</div></div>', claims)
+
+                claims = replaceContent('<CL', '<div', claims)
+                claims = replaceContent('</CL>', '</div>', claims)  
+                 
                 content.push({ text: claims })
-            }       
+            } else {
+                const document = new xmldoc.XmlDocument(fileContent);
+                document.eachChild((child, index, a) => {
+                    if(child.name === 'claims' || child.name === 'SDOCL') {
+                        let claims = child.toString({compressed:true})
+    
+                        claims = replaceContent('<claim-text', ' <div ', claims)
+                        claims = replaceContent('</claim-text>', '</div>', claims)
+    
+                        claims = replaceContent('<claim-ref', ' <span', claims)
+                        claims = replaceContent('</claim-ref>', '</span>', claims)
+    
+                        claims = replaceContent('<claims', '<div ', claims)
+                        claims = replaceContent('</claims>', '</div>', claims)
+    
+                        claims = replaceContent('<claim', '<div class="claim"><div ', claims)
+                        claims = replaceContent('</claim>', '</div></div>', claims)
+
+                        content.push({ text: claims })
+                    }
+                })
+            }         
         } else if(contentType === 'figures') {
             content = []
             const bucketConfig = connection.bucketConfig;  

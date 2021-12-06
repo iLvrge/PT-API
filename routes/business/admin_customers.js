@@ -716,7 +716,7 @@ route.post("/customers/:id/users", [authJWT.verifyToken, authJWT.isAdmin, userEx
                                     */
                 
                                     const slack = await new SlackHelper()
-
+                                    //find public channels
                                     slack.adminConversationSearch({
 										team_ids: organisation.team
 									}, function(response) {
@@ -730,7 +730,10 @@ route.post("/customers/:id/users", [authJWT.verifyToken, authJWT.isAdmin, userEx
 											}
 											console.log(params)
 											slack.addInvite(params, function(response){
-												console.log('user invited', response)
+                                                console.log('user invited', response)                                                
+                                                if(response.ok == true) {
+                                                    slack.updateMembersToUserGroup(0, organisation.team, process.env.USERGROUP_NAME)
+                                                }
 											})
 										}
 									})
@@ -1274,6 +1277,15 @@ route.post("/customers", [authJWT.verifyToken, authJWT.isAdmin], async (req, res
                         if(response.team !== null) {
                             org.update({
                                 team: response.team
+                            })
+                            /**
+                             * create a usergroup
+                             */
+                            slack.createUserGroups({
+                                name: process.env.USERGROUP_NAME,
+                                team_id: response.team
+                            }, function(result){
+                                console.log('usergroupResult', result)
                             })
                         }
                     }

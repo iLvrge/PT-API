@@ -2040,8 +2040,8 @@ route.get("/company/assets/:entityID", [authJWT.verifyToken, authJWT.isAdmin], a
 
 route.get("/company/recent_transactions", [authJWT.verifyToken, authJWT.isAdmin], async (req, res, next) => {
     try {
-        const queryTransactions = `SELECT records.rf_id, records.reel_frame, records.frame_no, records.reel_no, records.record_dt, rac.convey_ty, records.counter AS assets,
-        records.exec_dt AS exec_dt, DATEDIFF(records.exec_dt, records.record_dt) AS date_difference, 
+        const queryTransactions = `SELECT records.rf_id, records.reel_frame, records.frame_no, records.reel_no, date_format(records.record_dt,"%b %d, %Y") AS record_dt, rac.convey_ty, records.counter AS assets,
+        date_format(records.exec_dt,"%b %d, %Y") AS exec_dt, DATEDIFF(records.record_dt, records.exec_dt ) AS date_difference, 
         (SELECT GROUP_CONCAT(or_name) FROM assignor WHERE assignor.rf_id = records.rf_id) AS assingor, 
         (SELECT GROUP_CONCAT(ee_name) FROM assignee WHERE assignee.rf_id = records.rf_id) AS assingee
         FROM (
