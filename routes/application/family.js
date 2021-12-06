@@ -878,6 +878,20 @@ route.get("/family/claims/:applicationNumber", [authJWT.verifyToken], async (req
                     attributes: ['rf_id', 'grant_doc_num', 'pgpub_doc_num', 'pgpub_date'],
                     where: {grant_doc_num: asset}
                 })
+
+                if(findPatent !== null) {
+                    if(findPatent.grant_doc_num !== null && findPatent.grant_doc_num !== '') {
+                        const applicationNumber = findPatent.appno_doc_num
+                        findPatent = await getGrantNumber(findPatent.appno_doc_num)
+                        if(findPatent !== null) {
+                            type = 2
+                        } else {
+                            findPatent = await getPublicationNumber(applicationNumber)
+                        }
+                    } else {
+                        findPatent = await getPublicationNumber(findPatent.appno_doc_num)
+                    }
+                }
             }
             
 
