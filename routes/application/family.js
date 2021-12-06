@@ -836,6 +836,9 @@ route.get("/family/claims/:applicationNumber", [authJWT.verifyToken], async (req
             if(indexing != null && indexing.index >= 0) {
                 asset = asset.substr(0,indexing.index)
             }
+            if(asset.substr(0,1) === 0) {
+                asset = asset.substr(1, asset.length)
+            }
             let findPatent = await Documentid.findOne({
                 attributes: ['grant_doc_num', 'appno_doc_num', 'pgpub_doc_num'],
                 where: {
