@@ -874,7 +874,7 @@ route.get("/family/claims/:applicationNumber", [authJWT.verifyToken], async (req
             
             if(findPatent === null) {
                 findPatent = await Documentid.findOne({
-                    attributes: ['rf_id', 'grant_doc_num', 'pgpub_doc_num', 'pgpub_date'],
+                    attributes: ['rf_id', 'appno_doc_num', 'grant_doc_num', 'pgpub_doc_num', 'pgpub_date'],
                     where: {grant_doc_num: asset}
                 })
 
@@ -894,6 +894,7 @@ route.get("/family/claims/:applicationNumber", [authJWT.verifyToken], async (req
             }
             
             if( findPatent != null && fileName == '') {
+                console.log(findPatent)
                 fileName = findPatent.file_name
             }
 
