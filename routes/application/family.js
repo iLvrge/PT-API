@@ -894,7 +894,7 @@ route.get("/family/claims/:applicationNumber", [authJWT.verifyToken], async (req
             }
             
             if( findPatent != null && fileName == '') {
-                console.log(findPatent)
+                console.log('TT', findPatent)
                 fileName = findPatent.file_name
             }
 
