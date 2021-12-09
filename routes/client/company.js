@@ -327,7 +327,7 @@ route.get("/:companyID/users", [authJWT.verifyToken, clientDBConnection.connect]
 route.get("/list", [authJWT.verifyToken, clientDBConnection.connect], async(req, res, next) => {
     try{
         if(typeof req.connection_db != "undefined" && req.connection_db != null ) {
-            const { offset, limit } = req.query;
+            const { offset, limit, column, direction } = req.query;
 
             const Representative = req.connection_db.define('Representatives', Representatives.mainStructure, Representatives.options);
 
@@ -341,6 +341,16 @@ route.get("/list", [authJWT.verifyToken, clientDBConnection.connect], async(req,
                 ['original_name', 'ASC'],
                 ['representative_name', 'ASC']
             ];
+
+            if(typeof column !== 'undefined' && typeof direction !== 'undefined') {
+                where.order = [
+                    [column, direction]
+                ];
+                if(column === 'original_name') {
+                    where.order.push(['representative_name', 'ASC'])
+                }
+            }
+
             where.attributes = ['representative_id', 'original_name', 'representative_name', 'type'];
 
             const list = await Representative.findAll( where )
