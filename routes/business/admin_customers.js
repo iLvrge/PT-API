@@ -1354,25 +1354,28 @@ route.put("/customers" , [authJWT.verifyToken, authJWT.isAdmin], async (req, res
 
 route.get("/customers/:id/patents", [authJWT.verifyToken, authJWT.isAdmin], async (req, res, next) => {
     try{
-        let organisationID = req.params.id, representativeIDs = req.params.representativeID;
+        let organisationID = req.params.id;
+        let { direction, representativeID } = req.query
         let patentList = [];
         if(organisationID > 0){
             let org = await helpers.findOrganisationbyID( organisationID );
             if(org != null && org.organisation_id > 0) {
-                if(typeof representativeIDs !== 'undefined' && representativeIDs != '') {
-                    representativeIDs = JSON.parse(representativeIDs)
+                if(typeof representativeID !== 'undefined' && representativeID != '') {
+                    representativeID = JSON.parse(representativeID)
                 }
                 let queryAllPatentList = '';
-                if(Array.isArray(representativeIDs) && representativeIDs.length > 0) {
-                    queryAllPatentList = 'SELECT grant_doc_num as number, appno_doc_num as application FROM assets WHERE organisation_id = :organisationID AND representative_id IN (representativeIDs) AND date_format(grant_date, "%Y") >= :year GROUP BY number, application';
+                if(Array.isArray(representativeID) && representativeID.length > 0) {
+                    queryAllPatentList = 'SELECT CASE WHEN grant_doc_num = "" OR grant_doc_num IS NULL THEN appno_doc_num ELSE grant_doc_num END AS number, appno_doc_num as application, CASE WHEN grant_doc_num = "" OR grant_doc_num IS NULL THEN 1 ELSE 0 END AS asset_type FROM assets WHERE organisation_id = :organisationID AND representative_id IN (:representativeID) AND date_format(grant_date, "%Y") >= :year GROUP BY number, application';
                 } else {
-                    queryAllPatentList = 'SELECT grant_doc_num as number, appno_doc_num as application FROM assets WHERE organisation_id = :organisationID AND date_format(grant_date, "%Y") >= :year GROUP BY number, application';
+                    queryAllPatentList = 'SELECT CASE WHEN grant_doc_num = "" OR grant_doc_num IS NULL THEN appno_doc_num ELSE grant_doc_num END AS number, appno_doc_num as application, CASE WHEN grant_doc_num = "" OR grant_doc_num IS NULL THEN 1 ELSE 0 END AS asset_type FROM assets WHERE organisation_id = :organisationID AND date_format(grant_date, "%Y") >= :year GROUP BY number, application ';
                 }
+
+                queryAllPatentList += ` ORDER BY asset_type ASC, number * 1 ${typeof direction === 'undefined' ? "ASC" : direction}`
 
                 if(queryAllPatentList !== '')  {
                     patentList = await connection.applicationNew.query(queryAllPatentList,{
                         type: connection.Sequelize.QueryTypes.SELECT,
-                        replacements: { organisationID, representativeIDs, year: 1997 },
+                        replacements: { organisationID, representativeID, year: 1997 },
                         raw: true,
                         logging: console.log,
                         }
