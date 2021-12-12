@@ -41,7 +41,7 @@ route.get("/ptab/:asset", [authJWT.verifyToken], async (req, res) => {
                 } else {
                     console.log('ERROR => /ptab/', error)
                     if(typeof counter !== 'undefined') {
-                        res.status(200).send(0);
+                        res.status(200).send(`0`);
                     } else {
                         res.status(200).json({});
                     }
@@ -116,7 +116,7 @@ route.get("/citation/:asset", [authJWT.verifyToken], async (req, res) => {
                 } else {
                     console.log('ERROR => /citation/', error)
                     if(typeof counter !== 'undefined') {
-                        res.status(200).send(0);
+                        res.status(200).send(`0`);
                     } else {
                         res.status(200).json({});
                     }
