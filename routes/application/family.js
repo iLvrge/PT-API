@@ -667,7 +667,7 @@ const getGrantNumber = async(applicationNumber) => {
         replacements: {applicationNumber},
         plain: true
     })
-    console.log('getGrantNumber', grantNumber, getPublicationData)
+    console.log('getGrantNumber', applicationNumber, getPublicationData)
     return getPublicationData
 }   
 
