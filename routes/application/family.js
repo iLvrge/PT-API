@@ -658,13 +658,13 @@ const getPublicationNumber = async(applicationNumber) => {
     return getPublicationData
 }
 
-const getGrantNumber = async(grantNumber) => {
-    const query = `SELECT grant_doc_num AS pgpub_doc_num, appno_doc_num, file_name FROM db_patent_application_bibliographic.application_grant WHERE grant_doc_num = :grantNumber`
+const getGrantNumber = async(applicationNumber) => {
+    const query = `SELECT grant_doc_num AS pgpub_doc_num, appno_doc_num, file_name FROM db_patent_application_bibliographic.application_grant WHERE appno_doc_num = :applicationNumber`
     const getPublicationData = await connection.resources.query(query,{
         type: connection.Sequelize.QueryTypes.SELECT,
         raw: true,
         logging: console.log,
-        replacements: {grantNumber},
+        replacements: {applicationNumber},
         plain: true
     })
     console.log('getGrantNumber', grantNumber, getPublicationData)
@@ -696,7 +696,7 @@ route.get("/family/abstract/:applicationNumber", [authJWT.verifyToken], async (r
         } else {
             if(findPatent.grant_doc_num !== null && findPatent.grant_doc_num !== '') {                
                 const applicationNumber = findPatent.appno_doc_num
-                findPatent = await getGrantNumber(findPatent.grant_doc_num)
+                findPatent = await getGrantNumber(applicationNumber)
                 if(findPatent !== null) {
                     type = 2
                 } else {
@@ -720,7 +720,9 @@ route.get("/family/abstract/:applicationNumber", [authJWT.verifyToken], async (r
                 where: {grant_doc_num: asset}
             })
         }
-        
+        if( findPatent != null && fileName == '') {
+            fileName = findPatent.file_name
+        }
 
         if( findPatent != null ) {
             if(findPatent.grant_doc_num !== undefined && findPatent.grant_doc_num !== '' && findPatent.grant_doc_num !== null ) {
@@ -855,7 +857,7 @@ route.get("/family/claims/:applicationNumber", [authJWT.verifyToken], async (req
             } else {
                 if(findPatent.grant_doc_num !== null && findPatent.grant_doc_num !== '') {
                     const applicationNumber = findPatent.appno_doc_num
-                    findPatent = await getGrantNumber(findPatent.grant_doc_num)
+                    findPatent = await getGrantNumber(applicationNumber)
                     if(findPatent !== null) {
                         type = 2
                     } else {
@@ -881,7 +883,7 @@ route.get("/family/claims/:applicationNumber", [authJWT.verifyToken], async (req
                 if(findPatent !== null) {
                     if(findPatent.grant_doc_num !== null && findPatent.grant_doc_num !== '') {
                         const applicationNumber = findPatent.appno_doc_num
-                        findPatent = await getGrantNumber(findPatent.grant_doc_num)
+                        findPatent = await getGrantNumber(applicationNumber)
                         if(findPatent !== null) {
                             type = 2
                         } else {
@@ -894,7 +896,6 @@ route.get("/family/claims/:applicationNumber", [authJWT.verifyToken], async (req
             }
             
             if( findPatent != null && fileName == '') {
-                console.log('TT', findPatent)
                 fileName = findPatent.file_name
             }
 
@@ -960,7 +961,7 @@ route.get("/family/specifications/:applicationNumber", [authJWT.verifyToken], as
         } else {
             if(findPatent.grant_doc_num !== null && findPatent.grant_doc_num !== '') {
                 const applicationNumber = findPatent.appno_doc_num
-                findPatent = await getGrantNumber(findPatent.grant_doc_num)
+                findPatent = await getGrantNumber(applicationNumber)
                 if(findPatent !== null) {
                     type = 2
                 } else {
@@ -984,7 +985,9 @@ route.get("/family/specifications/:applicationNumber", [authJWT.verifyToken], as
                 where: {grant_doc_num: asset}
             })
         }
-        
+        if( findPatent != null && fileName == '') {
+            fileName = findPatent.file_name
+        }
 
         if( findPatent != null ) {
             if(findPatent.grant_doc_num !== undefined && findPatent.grant_doc_num !== '' && findPatent.grant_doc_num !== null ) {
@@ -1045,7 +1048,7 @@ route.get("/family/images/:applicationNumber", [authJWT.verifyToken], async (req
         } else {
             if(findPatent.grant_doc_num !== null && findPatent.grant_doc_num !== '') {               
                 const applicationNumber = findPatent.appno_doc_num
-                findPatent = await getGrantNumber(findPatent.grant_doc_num)
+                findPatent = await getGrantNumber(applicationNumber)
                 if(findPatent !== null) {
                     type = 2
                 } else {
@@ -1069,7 +1072,9 @@ route.get("/family/images/:applicationNumber", [authJWT.verifyToken], async (req
                 where: {grant_doc_num: asset}
             })
         }
-        
+        if( findPatent != null && fileName == '') {
+            fileName = findPatent.file_name
+        }
 
         if( findPatent !== null ) {
             if(findPatent.grant_doc_num !== undefined && findPatent.grant_doc_num !== '' && findPatent.grant_doc_num !== null ) {
