@@ -13,7 +13,7 @@ const { v4: uuidv4  } = require('uuid');
 route.get("/ptab/:asset", [authJWT.verifyToken], async (req, res) => { 
     try {
         const {asset} = req.params
-
+        const {counter} = req.query;  
         if(typeof asset !== 'undefined' && asset !== '' && asset !== null) {
             const url = `https://developer.uspto.gov/ptab-api/proceedings?applicationNumberText=${asset}`
 
@@ -33,10 +33,18 @@ route.get("/ptab/:asset", [authJWT.verifyToken], async (req, res) => {
                             })
                         })
                     }
-                    res.status(200).json(ptabEvents)
+                    if(typeof counter !== 'undefined') {
+                        res.status(200).send(`${ptabEvents.length}`);
+                    } else {
+                        res.status(200).json(ptabEvents);
+                    }
                 } else {
                     console.log('ERROR => /ptab/', error)
-                    res.status(200).json({})
+                    if(typeof counter !== 'undefined') {
+                        res.status(200).send(0);
+                    } else {
+                        res.status(200).json({});
+                    }
                 }
             })
         } else {
@@ -53,7 +61,7 @@ route.get("/ptab/:asset", [authJWT.verifyToken], async (req, res) => {
 route.get("/citation/:asset", [authJWT.verifyToken], async (req, res) => { 
     try {
         const {asset} = req.params
-
+        const {counter} = req.query; 
         if(typeof asset !== 'undefined' && asset !== '' && asset !== null) {
             const queryString = ``
             const url = `https://api.patentsview.org/patents/query?q={"cited_patent_number":"${asset}"}&f=["patent_number","patent_date","patent_num_combined_citations","patent_title","assignee_organization"]`
@@ -100,10 +108,18 @@ route.get("/citation/:asset", [authJWT.verifyToken], async (req, res) => {
                             }
                         }
                     }
-                    res.status(200).json(citationEvents)
+                    if(typeof counter !== 'undefined') {
+                        res.status(200).send(`${citationEvents.length}`);
+                    } else {
+                        res.status(200).json(citationEvents);
+                    }
                 } else {
                     console.log('ERROR => /citation/', error)
-                    res.status(200).json({})
+                    if(typeof counter !== 'undefined') {
+                        res.status(200).send(0);
+                    } else {
+                        res.status(200).json({});
+                    }
                 }
             })
         }  else {

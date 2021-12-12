@@ -1795,6 +1795,7 @@ route.get("/events/tabs/:tabID/companies/:companyID/customers/:customerID/transa
 const findEventList = async(req, res) => {
     try {
         let { applicationNumber, patentNumber } = req.params;
+        const {counter} = req.query; 
         if(applicationNumber != undefined && applicationNumber != null){
             let where = {appno_doc_num: applicationNumber}, assetData;
             const event_code = ['M1551', 'M2551', 'M3551', 'M1552', 'M2552', 'M3552', 'M1553', 'M2553', 'M3553'], attributes = ['grant_doc_num', 'appno_doc_num', 'grant_date', [connection.Sequelize.fn('date_format', connection.Sequelize.col('event_date'), '%Y-%m-%d'), 'eventdate'], 'event_code', 'event_icon'], group = ['eventdate','event_code'], include = [
@@ -1917,7 +1918,11 @@ const findEventList = async(req, res) => {
                 
                 await Promise.all( eventPromise )
             }
-            res.status(200).json({main: findData, other, icons});
+            if(typeof counter !== 'undefined') {
+                res.status(200).send(`${findData.length}`);
+            } else {
+                res.status(200).json({main: findData, other, icons});
+            }
         } else {
             res.status(402).send("Invalid application number.");
         }

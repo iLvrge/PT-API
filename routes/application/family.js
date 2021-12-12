@@ -141,7 +141,7 @@ route.get("/family/:applicationNumber", [authJWT.verifyToken], async (req, res) 
 
     try{
         const applicationNumber = req.params.applicationNumber;
-
+        const {counter} = req.query;   
         /* const applicationNumber = '09775636'; */
 
         let getFamily = [];
@@ -329,7 +329,11 @@ route.get("/family/:applicationNumber", [authJWT.verifyToken], async (req, res) 
                 }
             }
         }
-        res.status(200).json(getFamily);
+        if(typeof counter !== 'undefined') {
+            res.status(200).send(`${getFamily.length}`);
+        } else {
+            res.status(200).json(getFamily);
+        } 
     } catch( err ) {
         console.log('ERROR IN FAMILY', err);
         res.status(500).send("Internal server error.");
@@ -764,7 +768,8 @@ route.get("/family/abstract/:applicationNumber", [authJWT.verifyToken], async (r
 route.get("/family/claims/:applicationNumber", [authJWT.verifyToken], async (req, res) =>{
     try{
         let claimsData = []
-        const applicationNumber = req.params.applicationNumber;        
+        const applicationNumber = req.params.applicationNumber;     
+        const {counter} = req.query;   
         if(applicationNumber.toString().toLowerCase().indexOf('us') == -1) {
             const europeanCountryCode = ['EP','WO','AT','CA','CH','GB','FR','ES'];
             const countryCode = applicationNumber.toString().substr(0,2).toUpperCase()
@@ -928,7 +933,11 @@ route.get("/family/claims/:applicationNumber", [authJWT.verifyToken], async (req
                 }
             } 
         }
-        res.status(200).json(claimsData);
+        if(typeof counter !== 'undefined') {
+            res.status(200).send(`${claimsData.length}`);
+        } else {
+            res.status(200).json(claimsData);
+        }        
     } catch( err ) {
         console.log('ERROR IN Claims', err);
         res.status(500).send("Internal server error.");
@@ -1027,6 +1036,7 @@ route.get("/family/specifications/:applicationNumber", [authJWT.verifyToken], as
 route.get("/family/images/:applicationNumber", [authJWT.verifyToken], async (req, res) =>{
     try{
         const applicationNumber = req.params.applicationNumber;
+        const {counter} = req.query;   
         let asset = applicationNumber.toString().substr(2, applicationNumber.length), fileName = ''
         const indexing = /[a-z]/i.exec(asset)
         if(indexing != null && indexing.index >= 0) {
@@ -1160,7 +1170,11 @@ route.get("/family/images/:applicationNumber", [authJWT.verifyToken], async (req
                 }
             } 
         }
-        res.status(200).json(imagesList);
+        if(typeof counter !== 'undefined') {
+            res.status(200).send(`${imagesList.length}`);
+        } else {
+            res.status(200).json(imagesList);
+        }  
     } catch (err) {
         console.log('ERROR retreiving images', err)
         res.status(500).send("Internal server error.");
