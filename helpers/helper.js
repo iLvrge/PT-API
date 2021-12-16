@@ -429,6 +429,24 @@ let searchCompanyByAddress = async( address ) => {
     return searchResult;
 }
 
+let searchCompanyByCountry = async( name ) => {
+    let searchResult = [];
+    if(name.length > 1) {
+
+        const queryCompany = "SELECT a.assignor_and_assignee_id as id, a.assignor_and_assignee_id, a.name, a.instances as counter, c.representative_name as normalize_name, (select rr.representative_name FROM representative as rr WHERE rr.representative_name = a.name GROUP BY rr.representative_name) as representative_company, CONCAT(assignment.reel_no,'-', assignment.frame_no) AS assigneeRFID, null as assignorRFID  FROM assignor_and_assignee as a LEFT JOIN representative as c ON c.representative_id = a.representative_id INNER JOIN assignee as ass ON ass.assignor_and_assignee_id = a.assignor_and_assignee_id INNER JOIN assignment ON ass.rf_id = assignment.rf_id WHERE date_format(assignment.record_dt, '%Y') >= :year AND MATCH(ass.ee_country) AGAINST (:name IN BOOLEAN MODE)  GROUP BY a.name ORDER BY counter DESC ";
+
+        searchResult = await connection.resources.query(queryCompany,{
+            type: connection.Sequelize.QueryTypes.SELECT,
+            raw: true,
+            replacements: { name, flag: 0, year: 1997},
+            logging: console.log,
+          }
+        );
+    }
+
+    return searchResult;
+}
+
 let getAddressListByCompanyID = async( ID, type ) => {
     let addresses = [];
     if(ID > 0) {
@@ -2914,6 +2932,7 @@ helper.getCompanyListByOther = getCompanyListByOther;
 helper.searchCompany = searchCompany;
 helper.searchLenders = searchLenders;
 helper.searchCompanyByAddress = searchCompanyByAddress;
+helper.searchCompanyByCountry = searchCompanyByCountry;
 helper.searchCompanyIDByAddress = searchCompanyIDByAddress;
 helper.searchLawfirmIDByAddress = searchLawfirmIDByAddress;
 helper.getAddressListByCompanyID = getAddressListByCompanyID;
