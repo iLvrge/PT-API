@@ -3,21 +3,35 @@ const Sequelize = require("sequelize");
 const connection = require("../../config/db.config");
 
 
-const Assets = connection.application.define('asset',{
-    asset_id: {
+const Assets = connection.applicationNew.define('assets',{
+    rf_id: {
         type: Sequelize.INTEGER,
-        primaryKey: true,
-        autoIncrement: true
-    },        
-    organisation_id:{
-        type: Sequelize.INTEGER,
-        allowNull: false,
-    },
-    type:{
+    }, 
+    appno_doc_num:{
         type: Sequelize.STRING,
         allowNull: true,
     },
-    value:{
+    grant_doc_num:{
+        type: Sequelize.STRING,
+        allowNull: true,
+    },
+    appno_date:{
+        type: Sequelize.DATE,
+        allowNull: true,
+    },
+    grant_date:{
+        type: Sequelize.DATE,
+        allowNull: true,
+    },  
+    layout_id:{
+        type: Sequelize.INTEGER,
+        allowNull: false,
+    },
+    company_id:{
+        type: Sequelize.INTEGER,
+        allowNull: false,
+    },     
+    organisation_id:{
         type: Sequelize.INTEGER,
         allowNull: false,
     }
