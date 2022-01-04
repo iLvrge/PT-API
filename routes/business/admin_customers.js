@@ -731,7 +731,7 @@ route.post("/customers/:id/users", [authJWT.verifyToken, authJWT.isAdmin, userEx
 											console.log(params)
 											slack.addInvite(params, function(response){
                                                 console.log('user invited', response)                                                
-                                                if(response.ok == true) {
+                                                if(response.ok == true || response.data.error === 'already_in_team') {
                                                     slack.updateMembersToUserGroup(0, organisation.team, process.env.USERGROUP_NAME)
                                                 }
 											})

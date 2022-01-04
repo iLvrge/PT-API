@@ -167,7 +167,7 @@ SlackHelper.prototype.addInvite = async function(params, callback) {
         console.log('addInvite user to workspace Info Response', result)
         callback(result)   
     } catch( err ) {
-        if (err.code === ErrorCode.PlatformError) {
+        if (err.code === ErrorCode.PlatformError) { 
             console.log('addInvite user to workspace Info error', err.data)
         }
         callback(err)
@@ -456,37 +456,36 @@ SlackHelper.prototype.updateMembersToUserGroup = async function(type, team_id, g
         self.usergroupsList({
             team_id
         }, function(response){
-            console.log('updateMembersToUserGroup1', response)
-            if(response.ok == true) {
-                console.log('updateMembersToUserGroup1', response.usergroups)
+            if(response.ok === true) {
                 if(response.usergroups.length > 0) {
-                    const list = response.usergroups
-                    if(list.length > 0) {
-                        const findIndex = list.findIndex( group => group.name == groupName)
-                        if(findIndex !== -1) {
-                            slack.getTeamUserList({team_id}, (response) => {
-                                console.log('updateMembersToUserGroup getTeamUserList', response.usergroups)
-                                if(response.ok == true) {
-                                    const list = response.users;
-                                    if(list.length > 0) {
-                                        const userIDs = []
-                                        list.forEach( user => userIDs.push(user.id))
-                                        self.usergroupsUsersUpdate({
-                                            usergroup: list[findIndex].id,
-                                            users: userIDs.join(','),
-                                            team_id
-                                        }, function( usergroupUsersResult ) {
-                                            console.log('updateMembersToUserGroup', usergroupUsersResult)
-                                        })
-                                    }
-                                }
-                            })
-                        } else {
-                            console.log('updateMembersToUserGroup group name not found')
-                        }
+                    const groupList = response.usergroups
+                    const findIndex = groupList.findIndex( group => group.name == groupName)
+                    if(findIndex !== -1) {
+                        self.getTeamUserList({team_id}, (userList) => {                             
+                            if(userList.length > 0) {                                        
+                                const userIDs = []
+                                userList.forEach( user => userIDs.push(user.id))
+                                console.log('updateMembersToUserGroup3-3', userIDs)
+                                self.usergroupsUsersUpdate({
+                                    usergroup: groupList[findIndex].id,
+                                    users: userIDs.join(','),
+                                    team_id
+                                }, function( usergroupUsersResult ) {
+                                    console.log('updateMembersToUserGroup4', usergroupUsersResult)
+                                })
+                            } else {
+                                console.log('updateMembersToUserGroup6 no users found')
+                            }
+                        })
+                    } else {
+                        console.log('updateMembersToUserGroup5 group name not found')
                     }
+                } else {
+                    console.log('updateMembersToUserGroup7 group name not found')
                 } 
-            }
+            } else {
+                console.log('updateMembersToUserGroup8 grouplist response error')
+            } 
         })
     } catch( err ) {
         console.log('updateMembersToUserGroup', err)
