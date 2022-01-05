@@ -948,6 +948,9 @@ route.get("/family/claims/:applicationNumber", [authJWT.verifyToken], async (req
                     // The result can be accessed through the `m`-variable.
                     m.forEach((match, groupIndex) => {
                         console.log(`Found match, group ${groupIndex}: ${match}`);
+                        if(groupIndex === 0) {
+                            getAllMatches.push(match)
+                        }
                     });
                 }
                 console.log('getAllMatches', getAllMatches.length, getAllMatches)
