@@ -936,8 +936,20 @@ route.get("/family/claims/:applicationNumber", [authJWT.verifyToken], async (req
             console.log('claimsData.length', claimsData.length)
             if(claimsData.length === 1) {
                 const claimsHTML = claimsData[0].text;
-                let regex = /(id="CLM-)\w+/gmi;
-                const getAllMatches = claimsHTML.matchAll( regex )
+                let regex = /(id="CLM-)\w+/gmi;                
+                let m;
+                let getAllMatches = []
+                while ((getAllMatches = regex.exec(claimsHTML)) !== null) {
+                    // This is necessary to avoid infinite loops with zero-width matches
+                    if (m.index === regex.lastIndex) {
+                        regex.lastIndex++;
+                    }
+                    
+                    // The result can be accessed through the `m`-variable.
+                    m.forEach((match, groupIndex) => {
+                        console.log(`Found match, group ${groupIndex}: ${match}`);
+                    });
+                }
                 console.log('getAllMatches', getAllMatches.length, getAllMatches)
                 if(getAllMatches.length > 0) {
                     let lastMatch = getAllMatches[getAllMatches.length - 1];
