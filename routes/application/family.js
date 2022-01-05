@@ -939,7 +939,7 @@ route.get("/family/claims/:applicationNumber", [authJWT.verifyToken], async (req
                 let regex = /(id="CLM-)\w+/gmi;                
                 let m;
                 let getAllMatches = []
-                while ((getAllMatches = regex.exec(claimsHTML)) !== null) {
+                while ((m = regex.exec(claimsHTML)) !== null) {
                     // This is necessary to avoid infinite loops with zero-width matches
                     if (m.index === regex.lastIndex) {
                         regex.lastIndex++;
