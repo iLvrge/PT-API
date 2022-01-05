@@ -927,14 +927,27 @@ route.get("/family/claims/:applicationNumber", [authJWT.verifyToken], async (req
                     
                     const getXMLData = await getFileContent(filePath, type)
                     if( getXMLData !== '' ) {
-                        console.log('FIND XMl Content')
                         claimsData = await getContentFromXML(getXMLData, 'claims', type)
                     }
                 }
             } 
         }
         if(typeof counter !== 'undefined') {
-            res.status(200).send(`${claimsData.length}`);
+            if(claimsData.length === 1) {
+                const claimsHTML = claimsData[0].text;
+                let regex = /(id="CLM-)\w+/gmi;
+                const getAllMatches = claimsHTML.matchAll( regex )
+                if(getAllMatches.length > 0) {
+                    let lastMatch = getAllMatches[getAllMatches.length - 1];
+                    const numberPattern = /\d+/g;
+                    const findClaimNumber = lastMatch.match( numberPattern ).join('')  
+                    res.status(200).send(`${parseInt(findClaimNumber)}`);  
+                } else {
+                    res.status(200).send(`${claimsData.length}`);
+                }
+            } else {
+                res.status(200).send(`${claimsData.length}`);
+            }            
         } else {
             res.status(200).json(claimsData);
         }        

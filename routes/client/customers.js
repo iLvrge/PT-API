@@ -539,9 +539,10 @@ route.get("/:layout/assets", [authJWT.verifyToken, clientDBConnection.connect], 
             }
             
         }
-
-        replacements.offset = parseInt(offset)
-        replacements.limit = parseInt(limit)
+        if(parseInt(limit) !== 0) {
+            replacements.offset = parseInt(offset)
+            replacements.limit = parseInt(limit)
+        }        
 
         let query = `SELECT STRING_COLUMNS FROM db_new_application.assets AS assets `
 
@@ -600,7 +601,13 @@ route.get("/:layout/assets", [authJWT.verifyToken, clientDBConnection.connect], 
             if(typeof direction === 'undefined' || direction === 'undefined') {
                 direction = 'DESC'
             }
-            query += `   ORDER BY asset_type ASC, ${column} ${direction} LIMIT :offset, :limit`;
+
+            query += `   ORDER BY asset_type ASC, ${column} ${direction} `;
+            if(parseInt(limit) !== 0) {
+                query += `  LIMIT :offset, :limit`;
+            }
+            
+
             const  queryColumnReplace = `assets.organisation_id,
             CASE WHEN assets.grant_doc_num = '' OR assets.grant_doc_num IS NULL THEN CONCAT(SUBSTRING(assets.appno_doc_num, 1, 2), '/', FORMAT(SUBSTRING(assets.appno_doc_num, 3), 0)) ELSE FORMAT(assets.grant_doc_num, 0) END AS format_asset,
             CASE WHEN assets.grant_doc_num = '' OR assets.grant_doc_num IS NULL THEN assets.appno_doc_num ELSE assets.grant_doc_num END AS asset, 
