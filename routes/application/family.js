@@ -933,14 +933,17 @@ route.get("/family/claims/:applicationNumber", [authJWT.verifyToken], async (req
             } 
         }
         if(typeof counter !== 'undefined') {
+            console.log('claimsData.length', claimsData.length)
             if(claimsData.length === 1) {
                 const claimsHTML = claimsData[0].text;
                 let regex = /(id="CLM-)\w+/gmi;
                 const getAllMatches = claimsHTML.matchAll( regex )
+                console.log('getAllMatches', getAllMatches.length, getAllMatches)
                 if(getAllMatches.length > 0) {
                     let lastMatch = getAllMatches[getAllMatches.length - 1];
                     const numberPattern = /\d+/g;
                     const findClaimNumber = lastMatch.match( numberPattern ).join('')  
+                    console.log('lastMatch',lastMatch, findClaimNumber)
                     res.status(200).send(`${parseInt(findClaimNumber)}`);  
                 } else {
                     res.status(200).send(`${claimsData.length}`);
