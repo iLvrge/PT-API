@@ -627,23 +627,36 @@ route.post("/group", [authJWT.verifyToken, clientDBConnection.connect], async(re
 
         const { group_name } = req.body
 
-        const addGroup = await Representative.create({
-            original_name: group_name,
-            representative_name: group_name,
-            instances: 0,
-            type: 1
-        });
-        if(addGroup !== null) {            
-            const organisation  = await helpers.findOrganisationbyID(req.orgId);
-            
-            if(organisation != null && organisation.organisation_id > 0 && organisation.team !== '') {
-                /**
-                 * Create new workspace in slack
-                 */
-                await createSlackWorkSpace(group_name, organisation)                
+        const findGroup = Representative.findOne({
+            where: {
+                original_name: group_name,
+                representative_name: group_name,
+                instances: 0,
+                type: 1
             }
+        })
+
+        if(findGroup === null) {
+            const addGroup = await Representative.create({
+                original_name: group_name,
+                representative_name: group_name,
+                instances: 0,
+                type: 1
+            });
+            if(addGroup !== null) {            
+                const organisation  = await helpers.findOrganisationbyID(req.orgId);
+                
+                if(organisation != null && organisation.organisation_id > 0 && organisation.team !== '') {
+                    /**
+                    * Create new workspace in slack
+                    */
+                    await createSlackWorkSpace(group_name, organisation)                
+                }
+            }
+            res.status(200).json(addGroup);
+        } else {
+            res.status(200).json(findGroup);
         }
-        res.status(200).json(addGroup);
     } catch( err ) {
         res.status(500).send("Internal error", err);
     }

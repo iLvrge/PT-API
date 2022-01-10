@@ -498,7 +498,8 @@ route.get("/:layout/assets", [authJWT.verifyToken, clientDBConnection.connect], 
                             customers: '',
                             assignments: '',
                             layoutID: layoutID,
-                            date: 1997
+                            date: 1997,
+                            expiredEvents: ['EXP.', 'EXPX'],
                         },
             assets = {
                         list: [], 
@@ -606,7 +607,13 @@ route.get("/:layout/assets", [authJWT.verifyToken, clientDBConnection.connect], 
             if(parseInt(limit) !== 0) {
                 query += `  LIMIT :offset, :limit`;
             }
+
+
             
+            /**
+            for future
+                , (SELECT COUNT(fees.grant_doc_num) FROM ${process.env.DATABASE_MAINTAINENCE}.event_maintainence_fees AS fees WHERE fees.appno_doc_num = assets.appno_doc_num AND event_code IN (:expiredEvents)  ) AS expired 
+             */
 
             const  queryColumnReplace = `assets.organisation_id,
             CASE WHEN assets.grant_doc_num = '' OR assets.grant_doc_num IS NULL THEN CONCAT(SUBSTRING(assets.appno_doc_num, 1, 2), '/', FORMAT(SUBSTRING(assets.appno_doc_num, 3), 0)) ELSE FORMAT(assets.grant_doc_num, 0) END AS format_asset,
