@@ -627,7 +627,7 @@ route.post("/group", [authJWT.verifyToken, clientDBConnection.connect], async(re
 
         const { group_name } = req.body
 
-        const findGroup = Representative.findOne({
+        const findGroup = await Representative.findOne({
             where: {
                 original_name: group_name,
                 representative_name: group_name,
