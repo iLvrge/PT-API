@@ -444,23 +444,16 @@ route.post("/assets/cpc/:year/:cpcCode", [authJWT.verifyToken], async(req, res, 
                 if(getList.length > 0 && list.length > 0) {
                     let findAppList = []
                     getList.forEach( row => {
-                        if(row.appNum !== null && row.appNum !== '') {
-                            const splitAssets = row.appNum.split(',')
-                            findAppList = [...findAppList, ...splitAssets]
-                        }                        
-                    })
-
-                    if(findAppList.length > 0) {
-                        findAppList.forEach( appNum => {
-                            if( list.includes(appNum)) {
-                                let findIndex = list.findIndex( asset => appNum == asset)
+                        if(row.appno_doc_num !== null && row.appno_doc_num !== '') {
+                            if( list.includes(row.appno_doc_num)) {
+                                let findIndex = list.findIndex( asset => row.appno_doc_num == asset)
                                 if(findIndex !== -1) {
                                     list.splice(findIndex, 1)
                                 }
                             }
-                        })
-                        console.log('Remaining', list)                        
-                    }
+                        }                        
+                    })
+                    
                     if(list.length > 0) {
                         dbNameAndTable = 'db_patent_grant_bibliographic.application_cpc';
                         replacements.list = list
