@@ -2734,6 +2734,32 @@ const findMaxMin = async(timelineSpan) => {
     return assetsLifeSpan
 }
 
+const findMaxMinLifeSpan = async(timelineSpan) => {
+    let assetsLifeSpan = [['year', 'count', {type: 'string', role: 'style'}, {type: 'string', role: 'tooltip', 'p': {'html': true}}]]
+
+    const {max, min} = await minMax2DArray(timelineSpan, 'year');
+
+    for(let i = min; i < max; i++) {
+
+        let getList = await timelineSpan.filter( item => {
+            return i == parseInt(item.year) ? item : undefined;
+        });
+
+        if(getList != undefined && getList.length > 0) {
+            
+            let Counter = await getList.reduce((a, b) => +a + +b.count, 0);
+            let counterWithYear = []
+            counterWithYear.push(i)
+            counterWithYear.push(Counter)
+            counterWithYear.push('stroke-width:1;stroke-color:#50719C;fill-color:#395270;')
+            counterWithYear.push(`Year: ${i}\nNumber of Assets: ${Counter}`)
+            assetsLifeSpan.push(counterWithYear)
+        }
+    }
+
+    return assetsLifeSpan
+}
+
 const findMaxMinWithCompanies = async(companies, timelineSpan) => {
     let assetsLifeSpan = []
 
@@ -2919,6 +2945,7 @@ helper.ArrayInterString = ArrayInterString;
 helper.getXML = getXML;
 helper.findMaxMin = findMaxMin;
 helper.findMaxMinWithCompanies = findMaxMinWithCompanies;
+helper.findMaxMinLifeSpan = findMaxMinLifeSpan;
 helper.findLayout = findLayout;
 helper.allAssignments = allAssignments;
 helper.allAssignmentsByRepresentativeIDs = allAssignmentsByRepresentativeIDs;
