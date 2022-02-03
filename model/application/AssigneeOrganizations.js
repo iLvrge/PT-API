@@ -21,6 +21,14 @@ const AssigneeOrganizations = connection.applicationNew.define('assignee_organiz
         type: Sequelize.STRING,
         allowNull: true,
     },
+    domain2:{
+        type: Sequelize.STRING,
+        allowNull: true,
+    },
+    domain3:{
+        type: Sequelize.STRING,
+        allowNull: true,
+    },
     api_logo:{
         type: Sequelize.STRING,
         allowNull: true,

@@ -1829,7 +1829,7 @@ route.get("/company/cited/:id", [authJWT.verifyToken, authJWT.isAdmin, authJWT.a
                 });
                 await Promise.all(promises);
 
-                const queryCitedPatentsAssignee = `SELECT ao.assignee_id, COUNT(ao.assignee_id) AS occurences, ao.assignee_organization, ao.assignee_query, ao.domain, ao.api_logo, '' AS img FROM assignee_organizations AS ao 
+                const queryCitedPatentsAssignee = `SELECT ao.assignee_id, COUNT(ao.assignee_id) AS occurences, ao.assignee_organization, ao.assignee_query, ao.domain, ao.domain2, ao.domain3, ao.api_logo, '' AS img FROM assignee_organizations AS ao 
                                         INNER JOIN cited_patents AS cp ON cp.assignee_id = ao.assignee_id
                                         INNER JOIN assets AS a ON a.grant_doc_num = cp.patent_number
                                         WHERE a.layout_id = :layout_id AND a.organisation_id = :organisationID AND a.company_id IN (:companiesIDs) AND ao.organisation_id = 0
@@ -1923,7 +1923,7 @@ route.post("/company/cited/:id", [authJWT.verifyToken, authJWT.isAdmin, authJWT.
 
 route.put("/company/assignees/query_name", [authJWT.verifyToken, authJWT.isAdmin, authJWT.addClientID], async (req, res, next) => {
     try{
-        let { assignee_query, assignee_id} = req.body
+        let { assignee_query, domain, domain2, domain3, assignee_id} = req.body
 
         if(assignee_id > 0) {
 
@@ -1932,7 +1932,15 @@ route.put("/company/assignees/query_name", [authJWT.verifyToken, authJWT.isAdmin
             })
 
             if(assignee !== null) {
-                await assignee.update({assignee_query})
+                if(typeof assignee_query !== 'undefined') {
+                    await assignee.update({assignee_query})
+                } else if(typeof domain !== 'undefined') {
+                    await assignee.update({domain})
+                } else if(typeof domain2 !== 'undefined') {
+                    await assignee.update({domain2})
+                } else if(typeof domain3 !== 'undefined') {
+                    await assignee.update({domain3})
+                }                
                 res.status(200).send("Assignee query name updated.");
             } else {
                 res.status(401).send("Invalid data");
