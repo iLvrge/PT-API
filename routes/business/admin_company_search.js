@@ -1829,11 +1829,11 @@ route.get("/company/cited/:id", [authJWT.verifyToken, authJWT.isAdmin, authJWT.a
                 });
                 await Promise.all(promises);
 
-                const queryCitedPatentsAssignee = `SELECT ao.assignee_id, ao.assignee_organization, ao.assignee_query, ao.domain, ao.api_logo, '' AS img FROM assignee_organizations AS ao 
+                const queryCitedPatentsAssignee = `SELECT ao.assignee_id, COUNT(ao.assignee_id) AS occurences, ao.assignee_organization, ao.assignee_query, ao.domain, ao.api_logo, '' AS img FROM assignee_organizations AS ao 
                                         INNER JOIN cited_patents AS cp ON cp.assignee_id = ao.assignee_id
                                         INNER JOIN assets AS a ON a.grant_doc_num = cp.patent_number
                                         WHERE a.layout_id = :layout_id AND a.organisation_id = :organisationID AND a.company_id IN (:companiesIDs) AND ao.organisation_id = 0
-                                        GROUP BY ao.assignee_id`
+                                        GROUP BY ao.assignee_id ORDER BY occurences DESC`
                 
                 citedAssignees = await connection.applicationNew.query(queryCitedPatentsAssignee,{
                         type: connection.Sequelize.QueryTypes.SELECT,

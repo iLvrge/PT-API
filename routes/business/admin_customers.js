@@ -1757,7 +1757,8 @@ route.get("/customers/retrieve_cited_patents/:customerID",[authJWT.verifyToken, 
 
 route.get("/customers/retrieve_cited_patents_logo/:customerID/:apiName",[authJWT.verifyToken, authJWT.isAdmin], async (req, res) =>{ 
     const {customerID, apiName} = req.params
-    const assigneeLogos = spawn('node', ['/var/www/html/script/name_to_domain_api.js', customerID, apiName]);
+    const {assignees} = req.query
+    const assigneeLogos = spawn('node', ['/var/www/html/script/name_to_domain_api.js', customerID, apiName, assignees]);
 
     assigneeLogos.stdout.on('data', (data) => {
         console.log(`assigneeLogos downloadFileSpawn.stdout: ${data}`)
