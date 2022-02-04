@@ -1829,7 +1829,7 @@ route.get("/company/cited/:id", [authJWT.verifyToken, authJWT.isAdmin, authJWT.a
                 });
                 await Promise.all(promises);
 
-                const queryCitedPatentsAssignee = `SELECT ao.assignee_id, COUNT(ao.assignee_id) AS occurences, ao.assignee_organization, ao.assignee_query, ao.domain, ao.domain2, ao.domain3, ao.api_logo, '' AS img FROM assignee_organizations AS ao 
+                const queryCitedPatentsAssignee = `SELECT ao.assignee_id, COUNT(ao.assignee_id) AS occurences, ao.assignee_organization, ao.assignee_query, ao.domain, ao.domain2, ao.domain3, ao.api_logo, ao.api_logo1, ao.api_logo2, ao.api_logo3, '' AS img FROM assignee_organizations AS ao 
                                         INNER JOIN cited_patents AS cp ON cp.assignee_id = ao.assignee_id
                                         INNER JOIN assets AS a ON a.grant_doc_num = cp.patent_number
                                         WHERE a.layout_id = :layout_id AND a.organisation_id = :organisationID AND a.company_id IN (:companiesIDs) AND ao.organisation_id = 0
@@ -1923,7 +1923,7 @@ route.post("/company/cited/:id", [authJWT.verifyToken, authJWT.isAdmin, authJWT.
 
 route.put("/company/assignees/query_name", [authJWT.verifyToken, authJWT.isAdmin, authJWT.addClientID], async (req, res, next) => {
     try{
-        let { assignee_query, domain, domain2, domain3, assignee_id} = req.body
+        let { assignee_query, domain, domain2, domain3, api_logo, api_logo1, api_logo2, api_logo3, assignee_id } = req.body
 
         if(assignee_id > 0) {
 
@@ -1940,8 +1940,20 @@ route.put("/company/assignees/query_name", [authJWT.verifyToken, authJWT.isAdmin
                     await assignee.update({domain2})
                 } else if(typeof domain3 !== 'undefined') {
                     await assignee.update({domain3})
-                }                
-                res.status(200).send("Assignee query name updated.");
+                } else if(typeof api_logo !== 'undefined') {
+                    console.log(1)
+                    await assignee.update({api_logo})
+                } else if(typeof api_logo1 !== 'undefined') {
+                    console.log(2)
+                    await assignee.update({api_logo1})
+                } else if(typeof api_logo2 !== 'undefined') {
+                    console.log(3)
+                    await assignee.update({api_logo2})
+                } else if(typeof api_logo3 !== 'undefined') {
+                    console.log(4)
+                    await assignee.update({api_logo3})
+                }               
+                res.status(200).send("Record updated.");
             } else {
                 res.status(401).send("Invalid data");
             }
@@ -1965,7 +1977,7 @@ route.put("/company/assignees/logos", [authJWT.verifyToken, authJWT.isAdmin, aut
                     await AssigneeOrganizations.update({domain: '', api_logo: '', cited: 0}, {where : { assignee_id}})
                     res.status(200).send("Assignee data cleared");
                 } else if(type === 'download') {
-                    exec(`node /var/www/html/script/download_assignees_logos.js ${JSON.stringify(assignee_id)}`, function (error, stdout, stderr) {
+                    exec(`./node_modules/.bin/env-cmd node /var/www/html/script/download_assignees_logos.js ${JSON.stringify(assignee_id)}`, function (error, stdout, stderr) {
                         console.log(error);
                         console.log(stdout);
                         console.log(stderr);

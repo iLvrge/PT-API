@@ -2738,7 +2738,8 @@ const findMaxMinLifeSpan = async(timelineSpan) => {
     let assetsLifeSpan = [['year', 'count', {type: 'string', role: 'style'}, {type: 'string', role: 'tooltip', 'p': {'html': true}}]]
 
     const {max, min} = await minMax2DArray(timelineSpan, 'year');
-
+    const currentYear = moment(new Date()).format('YYYY');
+    let entered = false
     for(let i = min; i < max; i++) {
 
         let getList = await timelineSpan.filter( item => {
@@ -2755,8 +2756,14 @@ const findMaxMinLifeSpan = async(timelineSpan) => {
             counterWithYear.push(`Year: ${i}\nNumber of Assets: ${Counter}`)
             assetsLifeSpan.push(counterWithYear)
         }
+        if(currentYear == i) {
+            assetsLifeSpan.push([currentYear, 0, null, null])  
+            entered = true
+        }
     }
-
+    if(entered === false) {
+        assetsLifeSpan.push([currentYear, 0, null, null])  
+    }
     return assetsLifeSpan
 }
 
