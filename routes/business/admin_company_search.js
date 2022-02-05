@@ -1934,25 +1934,9 @@ route.put("/company/assignees/query_name", [authJWT.verifyToken, authJWT.isAdmin
             if(assignee !== null) {
                 if(typeof assignee_query !== 'undefined') {
                     await assignee.update({assignee_query})
-                } else if(typeof domain !== 'undefined') {
-                    await assignee.update({domain})
-                } else if(typeof domain2 !== 'undefined') {
-                    await assignee.update({domain2})
-                } else if(typeof domain3 !== 'undefined') {
-                    await assignee.update({domain3})
                 } else if(typeof api_logo !== 'undefined') {
-                    console.log(1)
-                    await assignee.update({api_logo})
-                } else if(typeof api_logo1 !== 'undefined') {
-                    console.log(2)
-                    await assignee.update({api_logo1})
-                } else if(typeof api_logo2 !== 'undefined') {
-                    console.log(3)
-                    await assignee.update({api_logo2})
-                } else if(typeof api_logo3 !== 'undefined') {
-                    console.log(4)
-                    await assignee.update({api_logo3})
-                }               
+                    await assignee.update({api_logo, api_logo1, api_logo2, api_logo3})
+                }              
                 res.status(200).send("Record updated.");
             } else {
                 res.status(401).send("Invalid data");
