@@ -1958,7 +1958,7 @@ route.put("/company/assignees/logos", [authJWT.verifyToken, authJWT.isAdmin, aut
             assignee_id = JSON.parse(assignee_id)
             if(assignee_id.length > 0) {
                 if(type === 'clear') {
-                    await AssigneeOrganizations.update({domain: '', api_logo: '', cited: 0}, {where : { assignee_id}})
+                    await AssigneeOrganizations.update({domain: '', api_logo: '', api_logo1: '', api_logo2: '', api_logo3: '', cited: 0}, {where : { assignee_id}})
                     res.status(200).send("Assignee data cleared");
                 } else if(type === 'download') {
                     exec(`./node_modules/.bin/env-cmd node /var/www/html/script/download_assignees_logos.js ${JSON.stringify(assignee_id)}`, function (error, stdout, stderr) {
