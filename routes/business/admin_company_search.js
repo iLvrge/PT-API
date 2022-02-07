@@ -1923,7 +1923,7 @@ route.post("/company/cited/:id", [authJWT.verifyToken, authJWT.isAdmin, authJWT.
 
 route.put("/company/assignees/query_name", [authJWT.verifyToken, authJWT.isAdmin, authJWT.addClientID], async (req, res, next) => {
     try{
-        let { assignee_query, domain, domain2, domain3, api_logo, api_logo1, api_logo2, api_logo3, without_square, assignee_id } = req.body
+        let { assignee_query, domain, domain2, domain3, api_logo, api_logo1, api_logo2, api_logo3, without_square, image_url, assignee_id } = req.body
 
         if(assignee_id > 0) {
 
@@ -1935,8 +1935,10 @@ route.put("/company/assignees/query_name", [authJWT.verifyToken, authJWT.isAdmin
                 if(typeof assignee_query !== 'undefined') {
                     await assignee.update({assignee_query})
                 } else if(typeof api_logo !== 'undefined') {
-                    await assignee.update({api_logo, api_logo1, api_logo2, api_logo3, without_square})
-                }              
+                    await assignee.update({api_logo, api_logo1, api_logo2, api_logo3, without_square, image_url})
+                } else if(typeof image_url !== 'undefined') {
+                    await assignee.update({image_url})
+                }           
                 res.status(200).send("Record updated.");
             } else {
                 res.status(401).send("Invalid data");
