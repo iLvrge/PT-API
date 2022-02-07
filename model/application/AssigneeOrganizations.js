@@ -45,6 +45,10 @@ const AssigneeOrganizations = connection.applicationNew.define('assignee_organiz
         type: Sequelize.STRING,
         allowNull: true,
     },
+    without_square:{
+        type: Sequelize.STRING,
+        allowNull: true,
+    },
     organisation_id:{
         type: Sequelize.INTEGER,
         allowNull: true,
