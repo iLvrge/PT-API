@@ -45,6 +45,30 @@ const AssigneeOrganizations = connection.applicationNew.define('assignee_organiz
         type: Sequelize.STRING,
         allowNull: true,
     },
+    api_logo4:{
+        type: Sequelize.STRING,
+        allowNull: true,
+    },
+    api_logo5:{
+        type: Sequelize.STRING,
+        allowNull: true,
+    },
+    api_logo6:{
+        type: Sequelize.STRING,
+        allowNull: true,
+    },
+    api_logo7:{
+        type: Sequelize.STRING,
+        allowNull: true,
+    },
+    api_logo8:{
+        type: Sequelize.STRING,
+        allowNull: true,
+    },
+    api_logo9:{
+        type: Sequelize.STRING,
+        allowNull: true,
+    },
     without_square:{
         type: Sequelize.STRING,
         allowNull: true,
