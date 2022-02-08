@@ -25,6 +25,8 @@ const AssetsTransfer = require("../../model/application/AssetsTransfer");
 
 const Assets = require("../../model/application/Assets");
 
+const AssetsForSale = require("../../model/application/AssetsForSale");
+
 const Documentids = require("../../model/application/DocumentIds");
 
 const Assignments = require("../../model/application/Assignments");
@@ -92,7 +94,7 @@ route.get("/assets", [authJWT.verifyToken], async(req, res, next) => {
 
 route.post("/assets/cpc", [authJWT.verifyToken], async(req, res, next) => {
     try{
-        let { list, total, type, selectedCompanies, tabs, customers, assignments, range, scope, year } = req.body, getList = [], group = []
+        let { list, total, type, selectedCompanies, tabs, customers, assignments, range, scope, year, other_mode } = req.body, getList = [], group = [], sales = []
 
         if( list != '' ) {
             list = JSON.parse(list)
@@ -128,68 +130,72 @@ route.post("/assets/cpc", [authJWT.verifyToken], async(req, res, next) => {
                      */
 
                     const where = { year: 1997, organisationID: req.orgId}   
-                    
-                    if(typeof type !== 'undefined') {
-                        where.layoutID = helpers.findLayout(type)        
+
+                    if(typeof other_mode != 'undefined' && other_mode == 'true') {
+                        query = `SELECT appno_doc_num FROM db_new_application.assets_for_sale AS assets `
                     } else {
-                        where.layoutID = 15
-                    }
-
-                    const companies = JSON.parse(selectedCompanies)
-                    if(companies.length > 0) {
-                        where.company_id = companies
-                    }
-
-                    
-                    if(tabs && tabs != '') {
-                        tabs = JSON.parse( tabs )
-                        where.tabs = tabs
-                    }
-
-                    if(customers && customers != '') {
-                        customers = JSON.parse( customers )
-                        where.customers = customers
-                    }
-
-                    if(assignments && assignments != '') {
-                        assignments = JSON.parse( assignments )
-                        where.assignments = assignments
-                    }
-
-                    let query = `SELECT appno_doc_num FROM db_new_application.assets AS assets `
-
-
-                    query += ` WHERE date_format(assets.appno_date, '%Y') > :year AND assets.layout_id = :layoutID AND assets.organisation_id = :organisationID `
-                    
-
-                    if(Array.isArray(companies) && companies.length > 0) {
-                        query += ` AND assets.company_id IN (:company_id)`
-                    }
-
-                    if((Array.isArray(assignments) && assignments.length > 0 ) || (Array.isArray(tabs) && tabs.length > 0) || (Array.isArray(customers) && customers.length > 0)) {
-                        query += ` AND assets.appno_doc_num IN ( SELECT documentid.appno_doc_num FROM db_uspto.documentid WHERE rf_id  IN ( SELECT activity_parties_transactions.rf_id  FROM db_new_application.activity_parties_transactions WHERE activity_parties_transactions.organisation_id = :organisationID AND activity_parties_transactions.company_id IN (:company_id) `
-
-                        if(Array.isArray(assignments) && assignments.length > 0 ) {
-                            query += ` AND activity_parties_transactions.rf_id IN (:assignments)`
-                        }
-
-                        if(Array.isArray(tabs) && tabs.length > 0 ) {
-                            query += ` AND activity_parties_transactions.activity_id IN (:tabs)`
+                        if(typeof type !== 'undefined') {
+                            where.layoutID = helpers.findLayout(type)        
                         } else {
-                            /**exclude employees */
-                            query += ' AND activity_parties_transactions.activity_id <> 10 ' 
-                        } 
-
-                        if(Array.isArray(customers) && customers.length > 0 ) {
-                            query += ` AND activity_parties_transactions.assignor_and_assignee_id IN (:customers)`
+                            where.layoutID = 15
                         }
-
-                        query += ` GROUP BY activity_parties_transactions.rf_id ) GROUP BY documentid.appno_doc_num) `
-                    } else  if(Array.isArray(tabs) && tabs.length === 0) {
-                        /**exclude employees */
-                        query += ` AND assets.appno_doc_num IN (  SELECT documentid.appno_doc_num FROM db_uspto.documentid WHERE rf_id  IN ( SELECT activity_parties_transactions.rf_id  FROM db_new_application.activity_parties_transactions WHERE activity_parties_transactions.organisation_id = :organisationID AND activity_parties_transactions.company_id IN (:company_id)  AND activity_parties_transactions.activity_id <> 10  GROUP BY activity_parties_transactions.rf_id )  GROUP BY documentid.appno_doc_num) ` 
+    
+                        const companies = JSON.parse(selectedCompanies)
+                        if(companies.length > 0) {
+                            where.company_id = companies
+                        }
+    
+                        
+                        if(tabs && tabs != '') {
+                            tabs = JSON.parse( tabs )
+                            where.tabs = tabs
+                        }
+    
+                        if(customers && customers != '') {
+                            customers = JSON.parse( customers )
+                            where.customers = customers
+                        }
+    
+                        if(assignments && assignments != '') {
+                            assignments = JSON.parse( assignments )
+                            where.assignments = assignments
+                        }
+    
+                        query = `SELECT appno_doc_num FROM db_new_application.assets AS assets `
+    
+    
+                        query += ` WHERE date_format(assets.appno_date, '%Y') > :year AND assets.layout_id = :layoutID AND assets.organisation_id = :organisationID `
+                        
+    
+                        if(Array.isArray(companies) && companies.length > 0) {
+                            query += ` AND assets.company_id IN (:company_id)`
+                        }
+    
+                        if((Array.isArray(assignments) && assignments.length > 0 ) || (Array.isArray(tabs) && tabs.length > 0) || (Array.isArray(customers) && customers.length > 0)) {
+                            query += ` AND assets.appno_doc_num IN ( SELECT documentid.appno_doc_num FROM db_uspto.documentid WHERE rf_id  IN ( SELECT activity_parties_transactions.rf_id  FROM db_new_application.activity_parties_transactions WHERE activity_parties_transactions.organisation_id = :organisationID AND activity_parties_transactions.company_id IN (:company_id) `
+    
+                            if(Array.isArray(assignments) && assignments.length > 0 ) {
+                                query += ` AND activity_parties_transactions.rf_id IN (:assignments)`
+                            }
+    
+                            if(Array.isArray(tabs) && tabs.length > 0 ) {
+                                query += ` AND activity_parties_transactions.activity_id IN (:tabs)`
+                            } else {
+                                /**exclude employees */
+                                query += ' AND activity_parties_transactions.activity_id <> 10 ' 
+                            } 
+    
+                            if(Array.isArray(customers) && customers.length > 0 ) {
+                                query += ` AND activity_parties_transactions.assignor_and_assignee_id IN (:customers)`
+                            }
+    
+                            query += ` GROUP BY activity_parties_transactions.rf_id ) GROUP BY documentid.appno_doc_num) `
+                        } else  if(Array.isArray(tabs) && tabs.length === 0) {
+                            /**exclude employees */
+                            query += ` AND assets.appno_doc_num IN (  SELECT documentid.appno_doc_num FROM db_uspto.documentid WHERE rf_id  IN ( SELECT activity_parties_transactions.rf_id  FROM db_new_application.activity_parties_transactions WHERE activity_parties_transactions.organisation_id = :organisationID AND activity_parties_transactions.company_id IN (:company_id)  AND activity_parties_transactions.activity_id <> 10  GROUP BY activity_parties_transactions.rf_id )  GROUP BY documentid.appno_doc_num) ` 
+                        }
                     }
-
+                    
                     query += ` GROUP BY appno_doc_num`;
 
                     const appList =  await connection.applicationNew.query(query,{
@@ -204,6 +210,24 @@ route.post("/assets/cpc", [authJWT.verifyToken], async(req, res, next) => {
                         appList.forEach( row => {
                             list.push(`${row.appno_doc_num}`)
                         })
+
+                        if(typeof other_mode != 'undefined' && other_mode == 'true') {
+                            sales = [...list]
+                        } else {
+                            const salesQuery = `SELECT appno_doc_num FROM db_new_application.assets_for_sale AS assets WHERE appno_doc_num IN (:list) GROUP BY appno_doc_num`;
+                            const salesList = await connection.applicationNew.query(salesQuery, {
+                                type: connection.Sequelize.QueryTypes.SELECT,
+                                replacements: {list},
+                                raw: true,
+                                logging: console.log,
+                            })
+
+                            if(salesList.length > 0) {
+                                salesList.forEach( row => {
+                                    sales.push(`${row.appno_doc_num}`)
+                                })
+                            }
+                        }
                     }
                 }
                                 
@@ -230,7 +254,7 @@ route.post("/assets/cpc", [authJWT.verifyToken], async(req, res, next) => {
 
                 
 
-                let listQuery =  query.replace('REPLACE_STRING', "SUM(IF(patent_number != '' AND application_number >0, 1, 0)) AS patent_number, SUM(IF (patent_number = '' AND application_number > 0, 1, 0 )) AS application_number, GROUP_CONCAT(application_number) AS appNum, (SUM(if(patent_number != '' AND application_number >0, 1, 0)) + SUM(IF (patent_number = '' AND application_number > 0, 1, 0 ))) AS countAssets, fillingYear, cpc_code, section, class, sub_class, main_group, sub_group, GROUP_CONCAT(distinct origin SEPARATOR '@@ ') AS group_name ").replace('GROUP_STRING', "GROUP BY fillingYear, cpc_code")
+                let listQuery =  query.replace('REPLACE_STRING', "SUM(IF(patent_number != '' AND application_number >0, 1, 0)) AS patent_number, SUM(IF (patent_number = '' AND application_number > 0, 1, 0 )) AS application_number, GROUP_CONCAT(application_number) AS appNum, (SUM(if(patent_number != '' AND application_number >0, 1, 0)) + SUM(IF (patent_number = '' AND application_number > 0, 1, 0 ))) AS countAssets, fillingYear, cpc_code, section, class, sub_class, main_group, sub_group, GROUP_CONCAT(distinct origin SEPARATOR '@@ ') AS group_name").replace('GROUP_STRING', "GROUP BY fillingYear, cpc_code")
 
                 
                 getList = await connection.applicationNew.query(listQuery, {
@@ -250,7 +274,7 @@ route.post("/assets/cpc", [authJWT.verifyToken], async(req, res, next) => {
                 })
             }
         }
-        res.status(200).json({list: getList, group});
+        res.status(200).json({list: getList, group, sales});
     } catch(err) {
         console.log("CPC", err);
         res.status(500).send("Internal error");
@@ -1083,6 +1107,39 @@ route.post("/assets/validate",[authJWT.verifyToken], async (req, res) => {
         res.status(500).send('Error')
     }    
 })
+
+/**
+ * Get Assets for Sale
+ */
+
+route.post("/assets/assets_for_sale",[authJWT.verifyToken, clientDBConnection.connect], async (req, res) => { 
+    try{
+        const result = { message: ''}
+        if(typeof req.connection_db != "undefined" && req.connection_db != null ) {
+            const {appno_doc_num, grant_doc_num} = req.body
+
+            if((typeof grant_doc_num !== 'undefined' && grant_doc_num !== '') || (typeof appno_doc_num !== 'undefined' && appno_doc_num !== '')) {
+                const data = await AssetsForSale.create({
+                    appno_doc_num,
+                    grant_doc_num,
+                    organisation_id: req.orgId
+                })
+
+                if(data !== null ) {
+                    result.message = "Assets moved for sale successfully"
+                }
+            } else {
+                result.message = "Invalid inputs"
+            }
+        } else {
+            result.message = "Invalid inputs"
+        }
+        res.status(200).json(result)
+    } catch (error) {
+        res.status(500).send('Error while retreiving data')
+    }
+})
+
 
 const buildRows = async(assets) => {
     return assets.map(function(asset) {        
