@@ -49,6 +49,10 @@ const AssigneeOrganizations = connection.applicationNew.define('assignee_organiz
         type: Sequelize.STRING,
         allowNull: true,
     },
+    image_url: {
+        type: Sequelize.STRING,
+        allowNull: true,
+    },
     organisation_id:{
         type: Sequelize.INTEGER,
         allowNull: true,

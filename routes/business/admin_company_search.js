@@ -1829,7 +1829,7 @@ route.get("/company/cited/:id", [authJWT.verifyToken, authJWT.isAdmin, authJWT.a
                 });
                 await Promise.all(promises);
 
-                const queryCitedPatentsAssignee = `SELECT ao.assignee_id, COUNT(ao.assignee_id) AS occurences, ao.assignee_organization, ao.assignee_query, ao.domain, ao.domain2, ao.domain3, ao.api_logo, ao.api_logo1, ao.api_logo2, ao.api_logo3, without_square, '' AS img FROM assignee_organizations AS ao 
+                const queryCitedPatentsAssignee = `SELECT ao.assignee_id, COUNT(ao.assignee_id) AS occurences, ao.assignee_organization, ao.assignee_query, ao.domain, ao.domain2, ao.domain3, ao.api_logo, ao.api_logo1, ao.api_logo2, ao.api_logo3, without_square, image_url, '' AS img FROM assignee_organizations AS ao 
                                         INNER JOIN cited_patents AS cp ON cp.assignee_id = ao.assignee_id
                                         INNER JOIN assets AS a ON a.grant_doc_num = cp.patent_number
                                         WHERE a.layout_id = :layout_id AND a.organisation_id = :organisationID AND a.company_id IN (:companiesIDs) AND ao.organisation_id = 0
@@ -1960,7 +1960,7 @@ route.put("/company/assignees/logos", [authJWT.verifyToken, authJWT.isAdmin, aut
             assignee_id = JSON.parse(assignee_id)
             if(assignee_id.length > 0) {
                 if(type === 'clear') {
-                    await AssigneeOrganizations.update({domain: '', api_logo: '', api_logo1: '', api_logo2: '', api_logo3: '', without_square: '', cited: 0}, {where : { assignee_id}})
+                    await AssigneeOrganizations.update({domain: '', api_logo: '', api_logo1: '', api_logo2: '', api_logo3: '', without_square: '', image_url: '', cited: 0}, {where : { assignee_id}})
                     res.status(200).send("Assignee data cleared");
                 } else if(type === 'download') {
                     exec(`./node_modules/.bin/env-cmd node /var/www/html/script/download_assignees_logos.js ${JSON.stringify(assignee_id)}`, function (error, stdout, stderr) {
