@@ -1776,10 +1776,9 @@ route.get("/customers/retrieve_cited_patents_domain/:customerID/:apiName",[authJ
     res.status(200).send("run logo script");
 })
 
-route.get("/customers/retrieve_cited_patents_logo/:customerID/:apiName",[authJWT.verifyToken, authJWT.isAdmin], async (req, res) =>{ 
-    const {customerID, apiName} = req.params
-    const {assignees} = req.query
-    const assigneeLogos = spawn('node', ['/var/www/html/script/name_to_domain_api.js', customerID, apiName, assignees, 1]);
+route.post("/customers/retrieve_cited_patents_logo",[authJWT.verifyToken, authJWT.isAdmin], async (req, res) =>{ 
+    const {client_id, api_name, assignees} = req.body
+    const assigneeLogos = spawn('node', ['/var/www/html/script/name_to_domain_api.js', client_id, api_name, assignees, 1]);
 
     assigneeLogos.stdout.on('data', (data) => {
         console.log(`assigneeLogos downloadFileSpawn.stdout: ${data}`)
