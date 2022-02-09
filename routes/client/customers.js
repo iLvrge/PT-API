@@ -552,7 +552,7 @@ route.get("/:layout/assets", [authJWT.verifyToken, clientDBConnection.connect], 
                     direction = 'DESC'
                 }
     
-                query += `  WHERE organisation_id = :organisationID  ORDER BY asset_type ASC, ${column} ${direction} `;
+                query += `  WHERE organisation.organisation_id = :organisationID  ORDER BY asset_type ASC, ${column} ${direction} `;
                 if(parseInt(limit) !== 0) {
                     query += `  LIMIT :offset, :limit`;
                 }
