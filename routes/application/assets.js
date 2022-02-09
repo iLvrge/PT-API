@@ -132,7 +132,7 @@ route.post("/assets/cpc", [authJWT.verifyToken], async(req, res, next) => {
                     const where = { year: 1997, organisationID: req.orgId}   
 
                     if(typeof other_mode != 'undefined' && other_mode == 'true') {
-                        query = `SELECT appno_doc_num FROM db_new_application.assets_for_sale AS assets WHERE organisation_id = :organisationID `
+                        query = `SELECT appno_doc_num FROM db_new_application.assets_for_sale AS assets WHERE assets.organisation_id = :organisationID `
                     } else {
                         if(typeof type !== 'undefined') {
                             where.layoutID = helpers.findLayout(type)        
@@ -214,7 +214,7 @@ route.post("/assets/cpc", [authJWT.verifyToken], async(req, res, next) => {
                         if(typeof other_mode != 'undefined' && other_mode == 'true') {
                             sales = [...list]
                         } else {
-                            const salesQuery = `SELECT appno_doc_num FROM db_new_application.assets_for_sale AS assets WHERE appno_doc_num IN (:list) AND organisation_id = :organisationID GROUP BY appno_doc_num`;
+                            const salesQuery = `SELECT appno_doc_num FROM db_new_application.assets_for_sale AS assets WHERE appno_doc_num IN (:list) AND assets.organisation_id = :organisationID GROUP BY appno_doc_num`;
                             const salesList = await connection.applicationNew.query(salesQuery, {
                                 type: connection.Sequelize.QueryTypes.SELECT,
                                 replacements: {list, organisationID: req.orgId},

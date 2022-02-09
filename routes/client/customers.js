@@ -528,7 +528,7 @@ route.get("/:layout/assets", [authJWT.verifyToken, clientDBConnection.connect], 
             const countReplace = ` CASE WHEN assets.grant_doc_num = '' OR assets.grant_doc_num IS NULL THEN assets.appno_doc_num ELSE assets.grant_doc_num END AS asset `
     
     
-            const countquery = `SELECT COUNT(*) as total_records FROM (${query.replace('STRING_COLUMNS', countReplace)} WHERE organisation_id = :organisationID ) AS temp GROUP BY asset`
+            const countquery = `SELECT COUNT(*) as total_records FROM (${query.replace('STRING_COLUMNS', countReplace)} WHERE organisation_id = :organisationID GROUP BY asset ) AS temp `
     
            
             const countResult = await connection.applicationNew.query(countquery,{
