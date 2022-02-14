@@ -1854,7 +1854,7 @@ route.get("/company/cited/:id", [authJWT.verifyToken, authJWT.isAdmin, authJWT.a
                 queryCitedPatentsAssignee += ` ORDER BY   ${typeof sort_by !== "undefined" ? sort_by : "occurences "} ${typeof sort_direction !== "undefined" ? sort_direction : "desc "} `
 
 
-                queryCitedPatentsAssignee += ` LIMIT  ${typeof current_page !== "undefined" ? current_page * rows_per_page + ", " : " 0, "} ${typeof rows_per_page !== "undefined" ? rows_per_page : " 500 "} `
+                queryCitedPatentsAssignee += ` LIMIT  ${typeof current_page !== "undefined" ? current_page * rows_per_page + ", " : " 0, "} ${typeof rows_per_page !== "undefined" ? rows_per_page : " 50 "} `
                 
                 citedAssignees = await connection.applicationNew.query(queryCitedPatentsAssignee,{
                         type: connection.Sequelize.QueryTypes.SELECT,
