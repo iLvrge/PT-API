@@ -181,7 +181,7 @@ route.get("/customers/run_query/:representative_name/:query_no", [authJWT.verify
                                         ? 'db_uspto.table_b'
                                         : 'db_uspto.table_c'
 
-            let query = `SELECT * FROM ${name}  `;    
+            let query = `SELECT appno_doc_num FROM ${name}  `;    
             if(parseInt(query_no) === 1 ) {
                 query = `SELECT assignor_and_assignee_id FROM ${name}  `
             } else if(parseInt(query_no) === 2) {
@@ -200,6 +200,8 @@ route.get("/customers/run_query/:representative_name/:query_no", [authJWT.verify
                 } else if(parseInt(query_no) === 2) {                    
                     query = `SELECT appno_doc_num, grant_doc_num FROM documentid WHERE rf_id IN (${query}) GROUP BY appno_doc_num `;
                 }
+            } else {
+                query = `SELECT appno_doc_num, grant_doc_num FROM documentid WHERE appno_doc_num IN (${query}) GROUP BY appno_doc_num `;
             }
             console.log(query)
             const reports = await connection.resources.query(query,{
