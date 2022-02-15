@@ -112,12 +112,12 @@ route.get("/customers/:organisation_id/buttons" , [authJWT.verifyToken, authJWT.
  * List all customers
  */
 
-route.get("/customers/run_query/:representative_name/:query_no", [authJWT.verifyToken, authJWT.isAdmin], (req, res, next) => {
+route.get("/customers/run_query/:representative_name/:query_no", [authJWT.verifyToken, authJWT.isAdmin], async(req, res, next) => {
     try{
         const { representative_name, query_no } = req.params
         console.log("ad", representative_name, query_no)
         let  procedureName = null
-        switch(parseInt(query_no)) {
+        /* switch(parseInt(query_no)) {
             case 1:
                 procedureName = 'Table_A'
                 break;
@@ -130,21 +130,85 @@ route.get("/customers/run_query/:representative_name/:query_no", [authJWT.verify
             case 4:
                 procedureName = 'Table_D'
                 break;
+        } */
+
+        switch(parseInt(query_no)) {
+            case 1:
+                procedureName = 'routine_list1'
+                break;
+            case 2:
+                procedureName = 'routine_list2'
+                break;
+            case 3:
+                procedureName = 'routine_tableA'
+                break;
+            case 4:
+                procedureName = 'routine_tableB'
+                break;
+            case 5:
+                procedureName = 'routine_tableC'
+                break;
+            case 6:
+                procedureName = 'routine_broken_title'
+                break;
+            case 7:
+                procedureName = 'routine_correct_details'
+                break;
         }
         if(procedureName != null) {
-            connection.resources.query(`CALL ${procedureName}(:representative_name);`,{
+            const replacements = {representative_name, company_id: 99999, organisation_id: 99999}
+            let procedureRun = `CALL ${procedureName}(:representative_name, :company_id, :organisation_id);`
+            if(parseInt(query_no) === 6) {
+                procedureRun = `CALL ${procedureName}(:company_id, :organisation_id);`
+            }
+            await connection.resources.query(procedureRun,{
                     type: connection.Sequelize.QueryTypes.SELECT,
                     raw: true,
                     logging: console.log,
-                    replacements: {representative_name},
+                    replacements
                 }
-            ).spread(result => {
-                let reports = []
-                if (result) {
-                    reports = Object.values(result)
+            )
+            console.log("QUERY")
+
+            let name = parseInt(query_no) === 1 
+                            ? 'db_uspto.list1'
+                            : parseInt(query_no) === 2
+                                ? 'db_uspto.list2'
+                                :
+                                    parseInt(query_no) === 3 || parseInt(query_no) === 6 || parseInt(query_no) === 7
+                                    ? 'db_new_application.assets'
+                                    : parseInt(query_no) === 4
+                                        ? 'db_uspto.table_b'
+                                        : 'db_uspto.table_c'
+
+            let query = `SELECT * FROM ${name}  `;    
+            if(parseInt(query_no) === 1 ) {
+                query = `SELECT assignor_and_assignee_id FROM ${name}  `
+            } else if(parseInt(query_no) === 2) {
+                query = `SELECT rf_id FROM ${name}  `
+            }
+            query += ' WHERE '
+            if(parseInt(query_no) < 3) {
+                query += `representative_name = :representative_name AND `;
+            }
+
+            query += ` company_id = :company_id AND organisation_id = :organisation_id`
+
+            if(parseInt(query_no) < 6) {
+                if(parseInt(query_no) === 1 ) {                    
+                    query = `SELECT * FROM (SELECT appno_doc_num, grant_doc_num FROM documentid WHERE rf_id IN (SELECT rf_id FROM assignor WHERE assignor_and_assignee_id IN (${query}) GROUP BY rf_id) UNION SELECT appno_doc_num, grant_doc_num FROM documentid WHERE rf_id IN (SELECT rf_id FROM assignee WHERE assignor_and_assignee_id IN (${query}) GROUP BY rf_id)) AS temp GROUP BY appno_doc_num `;
+                } else if(parseInt(query_no) === 2) {                    
+                    query = `SELECT appno_doc_num, grant_doc_num FROM documentid WHERE rf_id IN (${query}) GROUP BY appno_doc_num `;
                 }
-                res.status(200).json(reports);
-            })
+            }
+            console.log(query)
+            const reports = await connection.resources.query(query,{
+                type: connection.Sequelize.QueryTypes.SELECT,
+                raw: true,
+                replacements,
+                logging: console.log,
+            });
+            res.status(200).json(reports);
         } else {
             res.status(200).json([]);
         }        
