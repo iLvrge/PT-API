@@ -650,7 +650,7 @@ route.post("/group", [authJWT.verifyToken, clientDBConnection.connect], async(re
                     /**
                     * Create new workspace in slack
                     */
-                    await createSlackWorkSpace(group_name, organisation)                
+                    //await createSlackWorkSpace(group_name, organisation)                
                 }
             }
             res.status(200).json(addGroup);
