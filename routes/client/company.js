@@ -650,7 +650,7 @@ route.post("/group", [authJWT.verifyToken, clientDBConnection.connect], async(re
                     /**
                     * Create new workspace in slack
                     */
-                    //await createSlackWorkSpace(group_name, organisation)                
+                    await createSlackWorkSpace(group_name, organisation)                
                 }
             }
             res.status(200).json(addGroup);
@@ -669,7 +669,7 @@ route.post("/group", [authJWT.verifyToken, clientDBConnection.connect], async(re
  */
 
 const createSlackWorkSpace = async (name, organisation) => {
-    const slack = new SlackHelper()
+    /* const slack = new SlackHelper()
     await slack.refreshToken()
     const randomBytes = crypto.randomBytes(20).toString('hex')
     const params = {
@@ -680,15 +680,13 @@ const createSlackWorkSpace = async (name, organisation) => {
     console.log('Slack Params', params)
     slack.createWorkSpace(params, function(err, response){
         console.log('slack.createWorkSpace', err, response)         
-        /**
-         * Add Team to Group
-         */                 
+       //Add Team to Group              
         if(err === null) {
             if(response.team !== null) {
                 
             }   
         }          
-    })
+    }) */
 }
 
 /**
