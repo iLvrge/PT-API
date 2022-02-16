@@ -233,7 +233,7 @@ route.get("/customers/run_query/:representative_name/:query_no", [authJWT.verify
                     query = `SELECT * FROM (SELECT appno_doc_num, grant_doc_num FROM documentid WHERE rf_id IN (SELECT rf_id FROM assignor WHERE assignor_and_assignee_id IN (${query}) GROUP BY rf_id) UNION SELECT appno_doc_num, grant_doc_num FROM documentid WHERE rf_id IN (SELECT rf_id FROM assignee WHERE assignor_and_assignee_id IN (${query}) GROUP BY rf_id)) AS temp GROUP BY appno_doc_num `;
                 } else if(parseInt(query_no) === 2) {                    
                     query = `SELECT appno_doc_num, grant_doc_num FROM documentid WHERE rf_id IN (${query}) GROUP BY appno_doc_num `;
-                } else {
+                } else if(parseInt(query_no)  === 4 || parseInt(query_no)  === 5) {
                     query = `SELECT appno_doc_num, grant_doc_num FROM documentid WHERE appno_doc_num IN (${query}) GROUP BY appno_doc_num `;
                 }
             }
