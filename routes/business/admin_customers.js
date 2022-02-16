@@ -132,6 +132,111 @@ route.get("/customers/run_query/:representative_name/:query_no", [authJWT.verify
                 break;
         } */
 
+        const companyArray = [["3",  "Tdk Corp"],[
+            "4",  "Tdk Corporation Of America"],[
+            "5",  "Tdk Dalian Corp"],[
+            "6",  "Tdk Electronics Ag"],[
+            "7",  "Tdk Electronics Corp"],[
+            "8",  "Tdk Electronics Ireland Ltd"],[
+            "9",  "Tdk Family Limited Partnership"],[
+            "10",  "Tdk Innoveta Inc"],[
+            "11",  "Tdk Innoveta Technologies Inc"],[
+            "12",  "Tdk Kabushiki Kaisha"],[
+            "13",  "Tdk Korea Corp"],[
+            "14",  "Tdk Ltd"],[
+            "15",  "Tdk Rf Solutions Inc"],[
+            "16",  "Tdk Semiconductor Corp"],[
+            "17",  "Tdk Systems Development Center"],[
+            "18",  "Tdk Systems Europe Ltd"],[
+            "19",  "Tdk Systems Inc"],[
+            "20",  "Tdk Taiwan Corp"],[
+            "21",  "Tdk Usa Corp"],[
+            "22",  "Tdk Xiamen Co Ltd"],[
+            "23",  "Tdk-epc Corp"],[
+            "24",  "Tdk-lambda Americas Inc"],[
+            "25",  "Tdk-lambda Corp"],[
+            "26",  "Tdk-lambda Ltd"],[
+            "27",  "Tdk-lambda Uk Ltd"],[
+            "28",  "Tdk-micronas Gmbh"],[
+            "29",  "Toppan Tdk Label Co Ltd"],[
+            "30",  "Tdk (zhuhai Ftz) Co Ltd"],[
+            "31",  "Tdk Electronics Gmbh & Co Og"],[
+            "32",  "Wuxi Tdk-lambda Electronics Co Ltd"],[
+            "33",  "Tdk Edison Llc"],[
+            "34",  "Tdk Switzerland Gmbh"],[
+            "35",  "Panasonic Appliances Microwave Oven (shanghai) China Co Ltd"],[
+            "36",  "Panasonic Appliances Refrigeration Devices Singapore"],[
+            "37",  "Panasonic Asia Pacific Pte Ltd"],[
+            "38",  "Panasonic Automotive & Industrial Systems Europe Gmbh"],[
+            "39",  "Panasonic Automotive Systems Company Of America Division Of Panasonic Corporation Of North America"],[
+            "40",  "Panasonic Avc Networks Kuala Lumpur Malaysia Sdn Bhd"],[
+            "41",  "Panasonic Avc Networks Singapore Pte Ltd"],[
+            "42",  "Panasonic Avionics Corp"],[
+            "43",  "Panasonic Boston Laboratory"],[
+            "44",  "Panasonic Communications Co Ltd"],[
+            "45",  "Panasonic Consumer Electronics Co"],[
+            "46",  "Panasonic Corp"],[
+            "47",  "Panasonic Corporation Of North America"],[
+            "48",  "Panasonic Cycle Technology Co Ltd"],[
+            "49",  "Panasonic Device Taiko Co Ltd"],[
+            "50",  "Panasonic Disc Manufacturing Corporation Of America"],[
+            "51",  "Panasonic Disc Services Corp"],[
+            "52",  "Panasonic Eco Solutions Power Tools Co Ltd"],[
+            "53",  "Panasonic Eco Technology Center Co Ltd"],[
+            "54",  "Panasonic Ecology Systems Co Ltd"],[
+            "55",  "Panasonic Ecology Systems Guangdong Co Ltd"],[
+            "56",  "Panasonic Electric Works Bath & Life Co Ltd"],[
+            "57",  "Panasonic Electric Works Co Ltd"],[
+            "58",  "Panasonic Electric Works Europe Ag"],[
+            "59",  "Panasonic Electric Works Laboratory Of America Inc"],[
+            "60",  "Panasonic Electric Works Power Tools Co Ltd"],[
+            "61",  "Panasonic Electric Works Sunx Co Ltd"],[
+            "62",  "Panasonic Electric Works Taiko Device Co Ltd"],[
+            "63",  "Panasonic Electronic Devices Co Ltd"],[
+            "64",  "Panasonic Electronic Devices Corporation Of America"],[
+            "65",  "Panasonic Electronic Devices De Baja California Sa De Cv"],[
+            "66",  "Panasonic Electronic Devices Singapore Pte Ltd"],[
+            "67",  "Panasonic Environmental Systems & Engineering Co Ltd"],[
+            "68",  "Panasonic Europe Ltd"],[
+            "69",  "Panasonic Ev Energy Co Ltd"],[
+            "70",  "Panasonic Factory Solutions Asia Pacific"],[
+            "71",  "Panasonic Healthcare Co Ltd"],[
+            "72",  "Panasonic Healthcare Holdings Co Ltd"],[
+            "73",  "Panasonic Home Appliances Company Of America"],[
+            "74",  "Panasonic I-pro Sensing Solutions Co Ltd"],[
+            "75",  "Panasonic I-pro Sensing Solutions Corporation Of America"],[
+            "76",  "Panasonic Idemitsu Oled Lighting Co Ltd"],[
+            "77",  "Panasonic Industrial Devices Europe Gmbh"],[
+            "78",  "Panasonic Industrial Devices Sunx Co Ltd"],[
+            "79",  "Panasonic Industrial Devices Sunx Tatsuno Co Ltd"],[
+            "80",  "Panasonic Industrial Devices Taiko Co Ltd"],[
+            "81",  "Panasonic Intellectual Property Corporation Of America"],[
+            "82",  "Panasonic Intellectual Property Management Co Ltd"],[
+            "83",  "Panasonic Liquid Crystal Display Co Ltd"],[
+            "84",  "Panasonic Manufacturing Malaysia Berhad"],[
+            "85",  "Panasonic Manufacturing Uk Ltd"],[
+            "86",  "Panasonic Medical Solutions Co Ltd"],[
+            "87",  "Panasonic Mobile Communications Co Ltd"],[
+            "88",  "Panasonic Photo & Lighting Co Ltd"],[
+            "89",  "Panasonic Plasma Display Laboratory Of America Inc"],[
+            "90",  "Panasonic Precision Devices Co Ltd"],[
+            "91",  "Panasonic Production Engineering Co Ltd"],[
+            "92",  "Panasonic Refrigeration Devices Singapore Pte Ltd"],[
+            "93",  "Panasonic Semiconductor Asia Pte Ltd"],[
+            "94",  "Panasonic Shikoku Electronics Co Ltd"],[
+            "95",  "Panasonic Shikoku Electronics Corporation Of America"],[
+            "96",  "Panasonic Singapore Laboratories Pte Ltd"],[
+            "97",  "Panasonic System Networks Co Ltd"],[
+            "98",  "Panasonic System Networks Corp"],[
+            "99",  "Panasonic System Solutions Japan Co Ltd"],[
+            "100",  "Panasonic Technologies Inc"],[
+            "101",  "Panasonic Wanbao Appliances Electric Iron (guangzhou) Co Ltd"],[
+            "102",  "Panasonic Wanbao Home Appliances Electric Iron (guangzhou) Co Ltd"],[
+            "103",  "Skyworks Panasonic Filter Solutions Japan Co Ltd"],[
+            "104",  "Towerjazz Panasonic Semiconductor Co Ltd"],[
+            "105",  "Panasonic Semiconductor Solutions Co Ltd"],[
+            "106",  "Panasonic Wanbao Appliances Compressor (guangzhou) Co Ltd"]]
+
         switch(parseInt(query_no)) {
             case 1:
                 procedureName = 'routine_list1'
@@ -156,7 +261,12 @@ route.get("/customers/run_query/:representative_name/:query_no", [authJWT.verify
                 break;
         }
         if(procedureName != null) {
-            const replacements = {representative_name, company_id: 99999, organisation_id: 99999}
+            const replacements = {representative_name, company_id: 99999, organisation_id: 153}
+
+            const findIndex = companyArray.findIndex(row => row[1] === representative_name)
+            if(findIndex !== null) {
+                replacements.company_id = companyArray[findIndex][0]
+            }
             let procedureRun = `CALL ${procedureName}(:representative_name, :company_id, :organisation_id);`
             if(parseInt(query_no) === 6) {
                 procedureRun = `CALL ${procedureName}(:company_id, :organisation_id);`
