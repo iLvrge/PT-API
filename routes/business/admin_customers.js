@@ -336,7 +336,13 @@ route.get("/customers/run_query/:representative_name/:query_no", [authJWT.verify
                 query += `representative_name = :representative_name AND `;
             }
 
-            query += ` company_id = :company_id AND organisation_id = :organisation_id`
+            query += ` company_id = :company_id AND organisation_id = :organisation_id `
+
+
+            if(parseInt(query_no)  === 3 || parseInt(query_no)  === 6 || parseInt(query_no)  === 5) {
+                replacements.layout_id = parseInt(query_no)  === 6 ? 1 : parseInt(query_no)  === 7 ? 4 : 15
+                query += ` layout_id = :layout_id `
+            }
 
             if(parseInt(query_no) < 6) {
                 if(parseInt(query_no) === 1 ) {                    
