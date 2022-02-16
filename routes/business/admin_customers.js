@@ -181,28 +181,28 @@ route.get("/customers/run_query/:representative_name/:query_no", [authJWT.verify
                                         ? 'db_uspto.table_b'
                                         : 'db_uspto.table_c'
 
-            let query = `SELECT appno_doc_num FROM ${name}  `;    
-            if(parseInt(query_no) === 1 ) {
-                query = `SELECT assignor_and_assignee_id FROM ${name}  `
-            } else if(parseInt(query_no) === 2) {
-                query = `SELECT rf_id FROM ${name}  `
+            let query = `SELECT * FROM ${name}  `;    
+            if(parseInt(query_no) === 1) {
+                query = `SELECT assignor_and_assignee_id FROM ${name}  `;    
+            } else if(parseInt(query_no) === 4 || parseInt(query_no) === 5) {
+                query = `SELECT appno_doc_num FROM ${name}  `;    
             }
+            
             query += ' WHERE '
             if(parseInt(query_no) < 3) {
                 query += `representative_name = :representative_name AND `;
             }
 
             query += ` company_id = :company_id AND organisation_id = :organisation_id`
-
-            if(parseInt(query_no) < 6) {
-                if(parseInt(query_no) === 1 ) {                    
-                    query = `SELECT * FROM (SELECT appno_doc_num, grant_doc_num FROM documentid WHERE rf_id IN (SELECT rf_id FROM assignor WHERE assignor_and_assignee_id IN (${query}) GROUP BY rf_id) UNION SELECT appno_doc_num, grant_doc_num FROM documentid WHERE rf_id IN (SELECT rf_id FROM assignee WHERE assignor_and_assignee_id IN (${query}) GROUP BY rf_id)) AS temp GROUP BY appno_doc_num `;
-                } else if(parseInt(query_no) === 2) {                    
-                    query = `SELECT appno_doc_num, grant_doc_num FROM documentid WHERE rf_id IN (${query}) GROUP BY appno_doc_num `;
-                }
-            } else {
+            if(parseInt(query_no) === 1) {
+                query = `SELECT assignor_and_assignee_id, name FROM assignor_and_assignee WHERE assignor_and_assignee_id IN (${query}) GROUP BY assignor_and_assignee_id`;
+            } else if(parseInt(query_no)  === 4 || parseInt(query_no)  === 5) {
                 query = `SELECT appno_doc_num, grant_doc_num FROM documentid WHERE appno_doc_num IN (${query}) GROUP BY appno_doc_num `;
+            } else if(parseInt(query_no) === 2) {
+                query += " GROUP BY rf_id"
             }
+
+            
             console.log(query)
             const reports = await connection.resources.query(query,{
                 type: connection.Sequelize.QueryTypes.SELECT,
