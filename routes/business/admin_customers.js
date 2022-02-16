@@ -341,7 +341,7 @@ route.get("/customers/run_query/:representative_name/:query_no", [authJWT.verify
 
             if(parseInt(query_no)  === 3 || parseInt(query_no)  === 6 || parseInt(query_no)  === 5) {
                 replacements.layout_id = parseInt(query_no)  === 6 ? 1 : parseInt(query_no)  === 7 ? 4 : 15
-                query += ` layout_id = :layout_id `
+                query += ` AND layout_id = :layout_id `
             }
 
             if(parseInt(query_no) < 6) {
