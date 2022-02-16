@@ -132,7 +132,7 @@ route.get("/customers/run_query/:representative_name/:query_no", [authJWT.verify
                 break;
         } */
 
-        const companyArray = [["3",  "Tdk Corp"],[
+        /* const companyArray = [["3",  "Tdk Corp"],[
             "4",  "Tdk Corporation Of America"],[
             "5",  "Tdk Dalian Corp"],[
             "6",  "Tdk Electronics Ag"],[
@@ -235,7 +235,25 @@ route.get("/customers/run_query/:representative_name/:query_no", [authJWT.verify
             "103",  "Skyworks Panasonic Filter Solutions Japan Co Ltd"],[
             "104",  "Towerjazz Panasonic Semiconductor Co Ltd"],[
             "105",  "Panasonic Semiconductor Solutions Co Ltd"],[
-            "106",  "Panasonic Wanbao Appliances Compressor (guangzhou) Co Ltd"]]
+            "106",  "Panasonic Wanbao Appliances Compressor (guangzhou) Co Ltd"]] */
+
+            const companyArray = [["1", "Avaya Inc"],[
+                "2", "Avaya Canada Corp"],[
+                "3", "Avaya Communication Israel Ltd"],[
+                "4", "Avaya Communications Inc"],[
+                "5", "Avaya Ecs Ltd"],[
+                "6", "Avaya Gmbh & Co Kg"],[
+                "7", "Avaya Holdings Ltd"],[
+                "17", "Avaya Integrated Cabinet Solutions Inc"],[
+                "18", "Avaya Integrated Cabinet Solutions Llc"],[
+                "19", "Avaya Licensing Llc"],[
+                "20", "Avaya Management Lp"],[
+                "21", "Avaya Technology Corp"],[
+                "29", "Avaya Technology Llc"],[
+                "30", "Avaya Uk"],[
+                "31", "Avaya-tenovis Gmbh & Co Kg"],[
+                "54", "Avaya Cloud Canada Inc"]
+                ]
 
         switch(parseInt(query_no)) {
             case 1:
@@ -261,7 +279,7 @@ route.get("/customers/run_query/:representative_name/:query_no", [authJWT.verify
                 break;
         }
         if(procedureName != null) {
-            const replacements = {representative_name, company_id: 99999, organisation_id: 153}
+            const replacements = {representative_name, company_id: 99999, organisation_id: 68}
 
             const findIndex = companyArray.findIndex(row => row[1] === representative_name)
             if(findIndex !== null) {
