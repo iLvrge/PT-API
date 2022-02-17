@@ -277,6 +277,9 @@ route.get("/customers/run_query/:representative_name/:query_no", [authJWT.verify
             case 7:
                 procedureName = 'routine_correct_details'
                 break;
+            case 8:
+                procedureName = 'routine_correct_chain'
+                break;
         }
         if(procedureName != null) {
             const replacements = {representative_name, company_id: 99999, organisation_id: 68}
@@ -286,7 +289,7 @@ route.get("/customers/run_query/:representative_name/:query_no", [authJWT.verify
                 replacements.company_id = companyArray[findIndex][0]
             }
             let procedureRun = `CALL ${procedureName}(:representative_name, :company_id, :organisation_id);`
-            if(parseInt(query_no) === 6) {
+            if(parseInt(query_no) === 6 || parseInt(query_no) === 8) {
                 procedureRun = `CALL ${procedureName}(:company_id, :organisation_id);`
             }
             await connection.resources.query(procedureRun,{
@@ -358,7 +361,7 @@ route.get("/customers/run_query/:representative_name/:query_no", [authJWT.verify
 
 
             if(parseInt(query_no)  === 3 || parseInt(query_no)  === 6 || parseInt(query_no)  === 7) {
-                replacements.layout_id = parseInt(query_no)  === 6 ? 1 : parseInt(query_no)  === 7 ? 4 : 15
+                replacements.layout_id = parseInt(query_no)  === 6 ? 1 : parseInt(query_no)  === 7 ? 4 : parseInt(query_no)  === 8 ? 99 : 15
                 query += ` AND layout_id = :layout_id `
             }
 
