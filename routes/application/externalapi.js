@@ -6,6 +6,8 @@ const express = require("express"),
 
     authJWT = require("../../helpers/verifyJwtToken"),
 
+    connection = require("../../config/db.config"),
+
     OrganisationApplication = require("../../model/application/OrganisationApplication");
     
 const { v4: uuidv4  } = require('uuid');
@@ -131,5 +133,147 @@ route.get("/citation/:asset", [authJWT.verifyToken], async (req, res) => {
         res.status(500).send('Error while rendering asset details')
     } 
 });
+
+route.post("/citation", [authJWT.verifyToken], async (req, res) => { 
+    try{
+        let { list, total, type, selectedCompanies, tabs, customers, assignments, other_mode } = req.body, assetsLifeSpan = []
+        let citedCompanies = []
+        if( list != '' ) {
+            list = JSON.parse(list)
+                
+            if(parseInt(total) != list.length) {
+                /**
+                 * Get List
+                 */
+
+                const where = { year: 1997, organisationID: req.orgId}  
+                let query = '' 
+                if(typeof other_mode != 'undefined' && other_mode == 'true') {
+                    query = `SELECT grant_doc_num FROM db_new_application.assets_for_sale AS assets WHERE assets.organisation_id = :organisationID `
+                } else {
+                
+                    if(typeof type !== 'undefined') {
+                        where.layoutID = helpers.findLayout(type)        
+                    } else {
+                        where.layoutID = 15
+                    }
+
+                    const companies = JSON.parse(selectedCompanies)
+                    if(companies.length > 0) {
+                        where.company_id = companies
+                    }
+
+                
+                    if(tabs && tabs != '') {
+                        tabs = JSON.parse( tabs )
+                        where.tabs = tabs
+                    }
+
+                    if(customers && customers != '') {
+                        customers = JSON.parse( customers )
+                        where.customers = customers
+                    }
+
+                    if(assignments && assignments != '') {
+                        assignments = JSON.parse( assignments )
+                        where.assignments = assignments
+                    }
+
+                    query = `SELECT grant_doc_num FROM db_new_application.assets AS assets `
+
+
+                    query += ` WHERE date_format(assets.appno_date, '%Y') > :year AND assets.layout_id = :layoutID AND assets.organisation_id = :organisationID AND grant_doc_num <> "" `
+                    
+
+                    if(Array.isArray(companies) && companies.length > 0) {
+                        query += ` AND assets.company_id IN (:company_id)`
+                    }
+
+                    if((Array.isArray(assignments) && assignments.length > 0 ) || (Array.isArray(tabs) && tabs.length > 0) || (Array.isArray(customers) && customers.length > 0)) {
+                        query += ` AND assets.appno_doc_num IN ( SELECT documentid.appno_doc_num FROM db_uspto.documentid WHERE rf_id  IN ( SELECT activity_parties_transactions.rf_id  FROM db_new_application.activity_parties_transactions WHERE activity_parties_transactions.organisation_id = :organisationID AND activity_parties_transactions.company_id IN (:company_id) `
+
+                        if(Array.isArray(assignments) && assignments.length > 0 ) {
+                            query += ` AND activity_parties_transactions.rf_id IN (:assignments)`
+                        }
+
+                        if(Array.isArray(tabs) && tabs.length > 0 ) {
+                            query += ` AND activity_parties_transactions.activity_id IN (:tabs)`
+                        } else {
+                            /**exclude employees */
+                            query += ' AND activity_parties_transactions.activity_id <> 10 ' 
+                        } 
+
+                        if(Array.isArray(customers) && customers.length > 0 ) {
+                            query += ` AND activity_parties_transactions.assignor_and_assignee_id IN (:customers)`
+                        }
+
+                        query += ` GROUP BY activity_parties_transactions.rf_id ) GROUP BY documentid.appno_doc_num) `
+                    } else  if(Array.isArray(tabs) && tabs.length === 0) {
+                        /**exclude employees */
+                        query += ` AND assets.appno_doc_num IN (  SELECT documentid.appno_doc_num FROM db_uspto.documentid WHERE rf_id  IN ( SELECT activity_parties_transactions.rf_id  FROM db_new_application.activity_parties_transactions WHERE activity_parties_transactions.organisation_id = :organisationID AND activity_parties_transactions.company_id IN (:company_id)  AND activity_parties_transactions.activity_id <> 10  GROUP BY activity_parties_transactions.rf_id )  GROUP BY documentid.appno_doc_num) ` 
+                    }
+                }
+
+                query += ` GROUP BY grant_doc_num`;
+
+                const appList =  await connection.applicationNew.query(query,{
+                    type: connection.Sequelize.QueryTypes.SELECT,
+                    raw: true,
+                    logging: console.log,
+                    replacements: where,
+                })
+
+                if(appList !== null && appList.length > 0) {
+                    list = [];
+                    appList.forEach( row => {
+                        list.push(`${row.grant_doc_num}`)
+                    })
+                }
+            }
+            if( list.length > 0 ) {
+                let queryCitedLgo = "SELECT cp.cited_patent_id AS id, cp.patent_number AS number, o.organisation_name AS assignee, o.logo_optimize AS logo, '' AS combined, o.organisation_name AS all_assignee FROM cited_patents AS cp INNER JOIN assignee_organizations AS ao ON ao.assignee_id = cp.assignee_id INNER JOIN organisations AS o ON o.organisation_id = ao.organisation_id WHERE cp.patent_number IN (:list) "
+                citedCompanies =  await connection.applicationNew.query(queryCitedLgo,{
+                    type: connection.Sequelize.QueryTypes.SELECT,
+                    raw: true,
+                    logging: console.log,
+                    replacements: {list},
+                })
+                
+                if(citedCompanies.length > 0) {
+                    const uniquePatent = []
+                    const promise = citedCompanies.map( c => uniquePatent.push(c.number))
+                    await Promise.all(promise)
+
+                    const queryDocumentID = "SELECT title, grant_doc_num, grant_date FROM documentid WHERE grant_doc_num IN (:patent) GROUP BY grant_doc_num"
+
+                    const patentList = await connection.resources.query(queryDocumentID,{
+                        type: connection.Sequelize.QueryTypes.SELECT,
+                        raw: true,
+                        logging: console.log,
+                        replacements: {patent:uniquePatent },
+                    })
+
+                    if(patentList.length > 0) {
+                        const patentPromise = patentList.map( async patent => {
+                            const findList = citedCompanies.map( (company, index) => {
+                                if(patent.grant_doc_num == company.number) {
+                                    citedCompanies[index].start = patent.grant_date
+                                    citedCompanies[index].end = patent.grant_date
+                                    citedCompanies[index].title = patent.title
+                                }
+                            })
+                            await Promise.all(findList)
+                        })
+                        await Promise.all(patentPromise)
+                    }
+                }
+            }
+        }
+        res.status(200).json(citedCompanies);
+    } catch(error) {
+        console.log('ERROR => /citationall/', error)
+        res.status(500).send('Error while rendering asset details')
+    }
+})
 
 module.exports = route;
