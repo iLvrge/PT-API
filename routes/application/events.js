@@ -1773,7 +1773,7 @@ route.post("/events/assets", [authJWT.verifyToken], async(req, res, next) => {
                 }
             }
             if( list.length > 0 ) {
-                const query = "SELECT documentid.appno_doc_num AS application, documentid.grant_doc_num AS patent, documentid.status AS `status`,  documentid.appno_date AS appno_date FROM activity_parties_transactions INNER JOIN db_uspto.documentid AS documentid ON documentid.rf_id = activity_parties_transactions.rf_id WHERE documentid.appno_doc_num IN (:list) AND date_format(documentid.appno_date, '%Y') > 1997 GROUP BY documentid.appno_doc_num"
+                const query = "SELECT documentid.appno_doc_num AS application, documentid.grant_doc_num AS patent, documentid.status AS `status`,  documentid.appno_date AS appno_date FROM activity_parties_transactions INNER JOIN db_uspto.documentid AS documentid ON documentid.rf_id = activity_parties_transactions.rf_id WHERE documentid.appno_doc_num IN (:list) AND date_format(documentid.appno_date, '%Y') > 1997 AND documentid.grant_doc_num <> '' GROUP BY documentid.appno_doc_num"
 
                 const replacements = {list}
                 getList = await connection.applicationNew.query(query, {
