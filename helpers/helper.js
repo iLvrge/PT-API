@@ -2752,7 +2752,7 @@ const findMaxMinLifeSpan = async(timelineSpan) => {
             let counterWithYear = []
             counterWithYear.push(i)
             counterWithYear.push(Counter)
-            counterWithYear.push('stroke-width:1;stroke-color:#90CAF9;fill-color:#42A5F5;')
+            counterWithYear.push('stroke-width:1;stroke-color:rgba(51,153,255,0.24);fill-color:#132F4C;')
             counterWithYear.push(`Year: ${i}\nNumber of Assets: ${Counter}`)
             assetsLifeSpan.push(counterWithYear)
         }
@@ -2786,7 +2786,7 @@ const findMaxMinWithCompanies = async(companies, timelineSpan) => {
                 Counter = await getList.reduce((a, b) => +a + +b.count, 0);                
             }
             companiesYear.push(Counter)
-            companiesYear.push('stroke-width:1;stroke-color:#90CAF9;fill-color:#42A5F5;')
+            companiesYear.push('stroke-width:1;stroke-color:rgba(51,153,255,0.24);fill-color:#132F4C;')
             companiesYear.push(`Year: ${i}\nOwner: ${company.representative_name}\nNumber of Assets: ${Counter}`)
             return company;
             //.push({ year: i, company, count: Counter });
