@@ -2786,7 +2786,7 @@ const findMaxMinWithCompanies = async(companies, timelineSpan) => {
                 Counter = await getList.reduce((a, b) => +a + +b.count, 0);                
             }
             companiesYear.push(Counter)
-            companiesYear.push('stroke-width:1;stroke-color:#3399ff3dfill-color:#132F4C;')
+            companiesYear.push('stroke-width:1;stroke-color:#3399ff3d;fill-color:#132F4C;')
             companiesYear.push(`Year: ${i}\nOwner: ${company.representative_name}\nNumber of Assets: ${Counter}`)
             return company;
             //.push({ year: i, company, count: Counter });
