@@ -2752,7 +2752,7 @@ const findMaxMinLifeSpan = async(timelineSpan) => {
             let counterWithYear = []
             counterWithYear.push(i)
             counterWithYear.push(Counter)
-            counterWithYear.push('stroke-width:1;stroke-color:#3399ff3dfill-color:#132F4C;')
+            counterWithYear.push('stroke-width:1;stroke-color:#3399ff3d;fill-color:#132F4C;')
             counterWithYear.push(`Year: ${i}\nNumber of Assets: ${Counter}`)
             assetsLifeSpan.push(counterWithYear)
         }
