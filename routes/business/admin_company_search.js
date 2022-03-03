@@ -1699,6 +1699,19 @@ route.put("/company/assignments", [authJWT.verifyToken, authJWT.isAdmin], async 
 });
 
 
+/**
+ * Report Dashboard Example Data
+ */
+route.post("/company/report_dashboard:id/", [authJWT.verifyToken, authJWT.isAdmin, authJWT.addClientID, clientDBConnection.connect], async (req, res, next) => {
+    try{
+        const {account_id, type, value} = req.body
+
+        console.log(req.body)
+    } catch(e) {
+        console.log(e);
+        res.status(500).send("Unable to update data.");
+    }  
+})
 
 route.post("/company/cited/:id/export", [authJWT.verifyToken, authJWT.isAdmin, authJWT.addClientID, clientDBConnection.connect], async (req, res, next) => {
     const {portfolios, token} = req.body

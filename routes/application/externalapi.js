@@ -140,23 +140,18 @@ route.post("/citation", [authJWT.verifyToken], async (req, res) => {
         let citedCompanies = []
         if( list != '' ) {
             list = JSON.parse(list)
-                
+            const where = { year: 1997, organisationID: req.orgId, layoutID: 15, list}  
             if(parseInt(total) != list.length) {
                 /**
                  * Get List
                  */
-
-                const where = { year: 1997, organisationID: req.orgId}  
                 let query = '' 
                 if(typeof other_mode != 'undefined' && other_mode == 'true') {
                     query = `SELECT grant_doc_num FROM db_new_application.assets_for_sale AS assets WHERE assets.organisation_id = :organisationID `
-                } else {
-                
+                } else {                
                     if(typeof type !== 'undefined') {
                         where.layoutID = helpers.findLayout(type)        
-                    } else {
-                        where.layoutID = 15
-                    }
+                    } 
 
                     const companies = JSON.parse(selectedCompanies)
                     if(companies.length > 0) {
@@ -225,23 +220,27 @@ route.post("/citation", [authJWT.verifyToken], async (req, res) => {
                 }
 
                 query += ` GROUP BY grant_doc_num`;
+            } else  {
+                query = `SELECT grant_doc_num FROM db_new_application.assets AS assets `
+                query += ` WHERE date_format(assets.appno_date, '%Y') > :year AND assets.layout_id = :layoutID AND assets.organisation_id = :organisationID AND grant_doc_num <> "" `
+                query += ` AND assets.appno_doc_num IN (:list)`
+                query += ` GROUP BY grant_doc_num`;
+            }
+            const appList =  await connection.applicationNew.query(query,{
+                type: connection.Sequelize.QueryTypes.SELECT,
+                raw: true,
+                logging: console.log,
+                replacements: where,
+            })
 
-                const appList =  await connection.applicationNew.query(query,{
-                    type: connection.Sequelize.QueryTypes.SELECT,
-                    raw: true,
-                    logging: console.log,
-                    replacements: where,
+            if(appList !== null && appList.length > 0) {
+                list = [];
+                appList.forEach( row => {
+                    list.push(`${row.grant_doc_num}`)
                 })
-
-                if(appList !== null && appList.length > 0) {
-                    list = [];
-                    appList.forEach( row => {
-                        list.push(`${row.grant_doc_num}`)
-                    })
-                }
             }
             if( list.length > 0 ) {
-                let queryCitedLgo = "SELECT cp.cited_patent_id AS id, cp.patent_number AS number, o.organisation_name AS assignee, o.logo_optimize AS logo, '' AS combined, o.organisation_name AS all_assignee FROM cited_patents AS cp INNER JOIN assignee_organizations AS ao ON ao.assignee_id = cp.assignee_id INNER JOIN organisations AS o ON o.organisation_id = ao.organisation_id WHERE cp.patent_number IN (:list) "
+                let queryCitedLgo = "SELECT cp.cited_patent_id AS id, cp.patent_number AS number, o.organisation_name AS assignee, o.logo_optimize AS logo, '' AS combined, o.organisation_name AS all_assignee FROM cited_patents AS cp INNER JOIN assignee_organizations AS ao ON ao.assignee_id = cp.assignee_id LEFT JOIN organisations AS o ON o.organisation_id = ao.organisation_id WHERE cp.patent_number IN (:list) "
                 citedCompanies =  await connection.applicationNew.query(queryCitedLgo,{
                     type: connection.Sequelize.QueryTypes.SELECT,
                     raw: true,
