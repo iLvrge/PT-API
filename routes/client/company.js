@@ -351,7 +351,7 @@ route.get("/list", [authJWT.verifyToken, clientDBConnection.connect], async(req,
                 }
             }
 
-            where.attributes = ['representative_id', 'original_name', 'representative_name', 'type'];
+            where.attributes = ['representative_id', 'original_name', 'representative_name', 'type', 'status'];
 
             const list = await Representative.findAll( where )
 
