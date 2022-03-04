@@ -15,6 +15,7 @@ const config = require("../../config/db.config");
 //require the Model
 
 const User = require("../../model/business/Users");
+const Organisation = require("../../model/business/Organisations");
 
 route.get("/authenticate/:code/:type", async(req, res, next) => {
 
@@ -74,6 +75,13 @@ route.get("/authenticate/:code/:type", async(req, res, next) => {
 route.post("/signin", (req, res, next) => {
 
     User.findOne({
+        include:[
+            {
+              model: Organisation,
+              as: "organisation",
+              attributes: ['subscribtion'],
+            }
+        ],
         where: {
             username: req.body.username,
             status:0
@@ -93,7 +101,7 @@ route.post("/signin", (req, res, next) => {
 
         const expiredDate = moment(new Date(currentDate)).add(1,'days').valueOf();
         
-        let token = jwt.sign({ id: user.user_id, orgId:user.organisation_id, iat: currentDate, expired: expiredDate }, config.config.secret, {
+        let token = jwt.sign({ id: user.user_id, orgId:user.organisation_id, subscription: user.organisation.subscribtion, iat: currentDate, expired: expiredDate }, config.config.secret, {
             expiresIn: 86400 // expires in 24 hours,
         });
 

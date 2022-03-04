@@ -85,6 +85,10 @@ const Organisations = connection.business.define('organisation',{
         type: Sequelize.INTEGER,
         allowNull: true,
     },
+    subscribtion:{
+        type: Sequelize.INTEGER,
+        allowNull: true,
+    },
     created_at:{
         type: Sequelize.DATE,
         allowNull: true,

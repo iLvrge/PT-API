@@ -33,7 +33,7 @@ route.get("/profile", [authJWT.verifyToken], (req, res, next) => {
             {
                 model: Organisation,
                 as: 'organisation',
-                attributes: ['name', 'logo', 'organisation_id']
+                attributes: ['name', 'subscribtion', 'logo', 'organisation_id']
             }/* ,
             {
                 model: UserCompanySelection,
