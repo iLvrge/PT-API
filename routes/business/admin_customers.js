@@ -1991,7 +1991,7 @@ route.get("/patents/:patentNumber/assignments",[authJWT.verifyToken, authJWT.isA
 route.get("/customers/retrieve_cited_patents/:customerID",[authJWT.verifyToken, authJWT.isAdmin], async (req, res) =>{ 
     const {customerID} = req.params
     const {companies} = req.query
-    spawn('node', ['/var/www/html/script/retrieve_cited_patents_assignees.js', customerID, companies]);
+    spawn('node', ['/var/www/html/script/retrieve_cited_patents_assignees.js', customerID, `${companies}`]);
     res.status(200).send("Run retireved assignee script");
 })
 
