@@ -1038,7 +1038,7 @@ route.post("/", [authJWT.verifyToken, clientDBConnection.connect], async(req, re
                                                     activityLogs.push({organistaion_id: req.orgId, user_id: req.userId, type: 0, company_name: company.name, representative_company_name: companies[i].original_name, activity_date: currentDate});
                                                 });
                                                 if(childCompanies.length > 0) {
-                                                    const addChildCompanies = await Representative.bulkCreate(companies);
+                                                    const addChildCompanies = await Representative.bulkCreate(childCompanies);
                                                     if(addChildCompanies) {
                                                         addRecord++;
                                                     }

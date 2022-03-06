@@ -1206,10 +1206,10 @@ let getCompaniesListWithReports = async (DBConnection) => {
 
     });*/
 
-    const queryRepresentatives = `SELECT representative_id, original_name, representative_name FROM representative
+    const queryRepresentatives = `SELECT representative_id, original_name, representative_name, status FROM representative
     WHERE parent_id IN (SELECT representative_id from representative WHERE type = :groupType)
     UNION
-    SELECT representative_id, original_name, representative_name FROM representative 
+    SELECT representative_id, original_name, representative_name, status FROM representative 
     WHERE parent_id = :companyParentID AND type = :companyType ORDER BY original_name`
 
     let getList = await DBConnection.query(queryRepresentatives,{
