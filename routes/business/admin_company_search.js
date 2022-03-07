@@ -1877,44 +1877,11 @@ route.post("/company/:id/add_bulk_companies", [authJWT.verifyToken, authJWT.isAd
                             if(addRecord > 0) { 
                                 console.log(mainCompanies);
                                 if(mainCompanies.length > 0){
-                                     mainCompanies.map(async (company, index) => {
-                                        console.log(`php -f /var/www/html/trash/add_representative_rfids.php "${client_id}" "${company}"`);
-                                        await exec(`php -f /var/www/html/trash/add_representative_rfids.php "${client_id}" "${company}"`, async (error, stdout, stderr) => {
-                                            console.log(error);
-                                            console.log(stdout);
-                                            console.log(stderr);
-                                            exec(`php -f /var/www/html/trash/create_data_for_company_db_application.php "${client_id}" "${company}"`, (error, stdd, stderr)=> {
-                                                console.log("fill database ....")
-                                                console.log(error); 
-                                                console.log(stderr);
-                                                console.log(stdd);
-                                                console.log("DONE");
-                                            });
-
-                                            exec(`php -f /var/www/html/trash/admin_report_represetative_assets_transactions_by_account.php "${client_id}" "${company}"`, (error, stdd, stderr)=> {
-                                                console.log("fill admin_report_represetative_assets_transactions_by_account.php ....")
-                                                console.log(error); 
-                                                console.log(stderr);
-                                                console.log(stdd);
-                                                console.log("DONE");
-                                                exec(`php -f /var/www/html/trash/report_represetative_assets_transactions_by_account.php "${client_id}" "${company}"`, (error, stdd, stderr)=> {
-                                                    console.log("fill report_represetative_assets_transactions_by_account.php ....")
-                                                    console.log(error); 
-                                                    console.log(stderr);
-                                                    console.log(stdd);
-                                                    console.log("DONE");
-                                                });
-                                            });
-        
-                                            exec(`php -f /var/www/html/trash/download_all_pdf.php "${client_id}"`, (error, stdd, stderr)=> {
-                                                console.log("donwload_all_pdf....")
-                                                console.log(error); 
-                                                console.log(stderr);
-                                                console.log(stdd);
-                                                console.log("DONE");
-                                            });
-                                        });
-                                    }); 
+                                    await exec(`php -f /var/www/html/trash/run_add_companies_script.php "${client_id}" "${JSON.stringify(mainCompanies)}"`, async (error, stdout, stderr) => {
+                                        console.log(error);
+                                        console.log(stdout);
+                                        console.log(stderr);
+                                    })
                                 }
                                 res.status(200).send("Companies added");
                             } else {
@@ -1968,44 +1935,11 @@ route.post("/company/:id/add_bulk_companies", [authJWT.verifyToken, authJWT.isAd
                             if(addRecord > 0) {
                                 console.log(mainCompanies);
                                 if(mainCompanies.length > 0){
-                                    mainCompanies.map(async (company, index) => {
-                                        console.log(`php -f /var/www/html/trash/add_representative_rfids.php "${client_id}" "${company}"`);
-                                        await exec(`php -f /var/www/html/trash/add_representative_rfids.php "${client_id}" "${company}"`, async (error, stdout, stderr) => {
-                                            console.log(error);
-                                            console.log(stdout);
-                                            console.log(stderr);
-                                            exec(`php -f /var/www/html/trash/create_data_for_company_db_application.php "${client_id}" "${company}"`, (error, stdd, stderr)=> {
-                                                console.log("fill database ....")
-                                                console.log(error); 
-                                                console.log(stderr);
-                                                console.log(stdd);
-                                                console.log("DONE");
-                                            });
-
-                                            exec(`php -f /var/www/html/trash/admin_report_represetative_assets_transactions_by_account.php "${client_id}" "${company}"`, (error, stdd, stderr)=> {
-                                                console.log("fill admin_report_represetative_assets_transactions_by_account.php ....")
-                                                console.log(error); 
-                                                console.log(stderr);
-                                                console.log(stdd);
-                                                console.log("DONE");
-                                                exec(`php -f /var/www/html/trash/report_represetative_assets_transactions_by_account.php "${client_id}" "${company}"`, (error, stdd, stderr)=> {
-                                                    console.log("fill report_represetative_assets_transactions_by_account.php ....")
-                                                    console.log(error); 
-                                                    console.log(stderr);
-                                                    console.log(stdd);
-                                                    console.log("DONE");
-                                                });
-                                            });
-        
-                                            exec(`php -f /var/www/html/trash/download_all_pdf.php "${client_id}"`, (error, stdd, stderr)=> {
-                                                console.log("donwload_all_pdf....")
-                                                console.log(error); 
-                                                console.log(stderr);
-                                                console.log(stdd);
-                                                console.log("DONE");
-                                            });
-                                        });
-                                    }); 
+                                    await exec(`php -f /var/www/html/trash/run_add_companies_script.php "${client_id}" "${JSON.stringify(mainCompanies)}"`, async (error, stdout, stderr) => {
+                                        console.log(error);
+                                        console.log(stdout);
+                                        console.log(stderr);
+                                    })
                                 }
                                 res.status(200).send("Companies added");
                             } else {
