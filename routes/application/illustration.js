@@ -67,7 +67,7 @@ let createJSON = async(itemDetails, rfID) => {
 
         itemDetails.assignor.forEach( (assignor, index) => {
             let boxName = assignor.normalize_name;
-            let assignorID = assignor.id;
+            let assignorID = assignor.id + ''+ index;
             if( boxName  === '' || boxName == null) {
                 boxName = assignor.or_name;
             }
@@ -233,7 +233,7 @@ let createJSON = async(itemDetails, rfID) => {
         title = itemDetails.assignment.convey_text;
         
         itemDetails.assignor.forEach( (assignor, index) => {
-            let assignorID = assignor.id;
+            let assignorID = assignor.id + ''+ index;
             if(index === 0){
                 execDate = moment(new Date(assignor.exec_dt)).format('YYYY-MM-DD');
                 fakeDate = moment(new Date(assignor.exec_dt)).subtract(9, 'days');
