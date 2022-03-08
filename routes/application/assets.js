@@ -13,9 +13,6 @@ const { exec, spawn  } = require('child_process');
 //require the Model
 const { WebClient } = require('@slack/web-api')
 
-const ResourcesDocumentids = require("../../model/resources/DocumentIds");
-
-const ResourcesAssignments = require("../../model/resources/Assignments");
 
 const ResourceDocumentids = require("../../model/resources/DocumentIds");
 
@@ -805,7 +802,7 @@ route.get("/assets/:patentNumber/:type/outsource",[], async (req, res) =>{
             res.status(200).send("");
         }
     } else if(type == 0){
-        Assignments.findOne({
+        ResourceAssignments.findOne({
             where:{rf_id: patentNumber},
             attributes:['reel_no', 'frame_no']
         })
