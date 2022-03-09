@@ -332,7 +332,7 @@ route.get("/asset_types/assignments", [authJWT.verifyToken, clientDBConnection.c
         }
         
         
-        query += ` AND rf_id IN (SELECT documentid.rf_id FROM db_uspto.documentid AS documentid INNER JOIN assets AS assets ON assets.appno_doc_num = documentid.appno_doc_num AND assets.grant_doc_num = documentid.grant_doc_num WHERE assets.layout_id = :layout AND `
+        query += ` AND rf_id IN (SELECT documentid.rf_id FROM db_uspto.documentid AS documentid INNER JOIN assets AS assets ON assets.appno_doc_num = documentid.appno_doc_num AND assets.grant_doc_num = documentid.grant_doc_num WHERE assets.layout_id = :layout  `
         
         if(Array.isArray(companies) && companies.length > 0 ) {
             query += `  AND activity_parties_transactions.company_id IN (:companies) `
