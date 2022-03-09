@@ -325,7 +325,7 @@ route.get("/asset_types/assignments", [authJWT.verifyToken, clientDBConnection.c
         const replacements  = { companies, organisation_id: req.orgId, tabs, customers }
         replacements.layout = helpers.findLayout(layout)   
        
-        const query = `SELECT activity_parties_transactions.rf_id, activity_parties_transactions.exec_dt AS date, (SELECT COUNT(distinct assets1.appno_doc_num) FROM assets AS assets1  INNER JOIN db_uspto.documentid AS documentid_1 ON assets1.appno_doc_num = documentid_1.appno_doc_num AND assets1.grant_doc_num = documentid_1.grant_doc_num WHERE documentid_1.rf_id = activity_parties_transactions.rf_id) AS assets FROM activity_parties_transactions AS activity_parties_transactions WHERE activity_parties_transactions.organisation_id = :organisation_id `
+        let query = `SELECT activity_parties_transactions.rf_id, activity_parties_transactions.exec_dt AS date, (SELECT COUNT(distinct assets1.appno_doc_num) FROM assets AS assets1  INNER JOIN db_uspto.documentid AS documentid_1 ON assets1.appno_doc_num = documentid_1.appno_doc_num AND assets1.grant_doc_num = documentid_1.grant_doc_num WHERE documentid_1.rf_id = activity_parties_transactions.rf_id) AS assets FROM activity_parties_transactions AS activity_parties_transactions WHERE activity_parties_transactions.organisation_id = :organisation_id `
         
         if(Array.isArray(companies) && companies.length > 0 ) {
             query += `  AND activity_parties_transactions.company_id IN (:companies) `
