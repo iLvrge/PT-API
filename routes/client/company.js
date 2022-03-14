@@ -338,12 +338,14 @@ route.get("/list", [authJWT.verifyToken, clientDBConnection.connect], async(req,
             /*where.limit = limit > 0 ? parseInt(limit) : connection.DEFAULT_LIMIT;
             where.offset = offset > 0 ? parseInt(offset) : 0;*/
             where.order = [
+                ['status', 'DESC'],
                 ['original_name', 'ASC'],
                 ['representative_name', 'ASC']
             ];
 
             if(typeof column !== 'undefined' && typeof direction !== 'undefined') {
                 where.order = [
+                    ['status', 'DESC'],
                     [column, direction]
                 ];
                 if(column === 'original_name') {
