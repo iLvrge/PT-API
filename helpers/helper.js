@@ -1248,11 +1248,15 @@ let getCompaniesListWithReports = async (DBConnection) => {
                     company.no_of_transactions = filter[0].no_of_transactions
                     company.no_of_parties = filter[0].no_of_parties
                     company.product = filter[0].product
+                    company.arrow_assets = parseInt(filter[0].product / filter[0].assets)
+                    company.arrow_transactions = parseInt(filter[0].product / filter[0].no_of_transactions)
                 } else {
                     company.assets = 0
                     company.no_of_transactions = 0
                     company.no_of_parties = 0
                     company.product = 0
+                    company.arrow_assets = 0
+                    company.arrow_transactions = 0
                 }
                 representativeList.push(company)
             })
