@@ -18,7 +18,7 @@ route.get("/", [authJWT.verifyToken], async(req, res, next) => {
     }
 
     Dashboards.findAll({
-        attributes: ['id', 'type', 'title', 'sub_heading', 'number', 'patent', 'application', 'rf_id'],
+        attributes: ['type', 'title', 'sub_heading', 'number', 'patent', 'application', 'rf_id'],
         where
     })
     .then((list)=>{
