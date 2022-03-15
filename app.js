@@ -61,6 +61,7 @@ const timelines = require("./routes/application/timelines");
 const search = require("./routes/application/search");
 const entity = require("./routes/application/entity");
 const externalapi = require("./routes/application/externalapi");
+const dashboards = require("./routes/application/dashboards");
 /**
  * Route for Client database
  */
@@ -137,6 +138,8 @@ app.use("/", externalapi);
 app.use("/", userCompanySelections);
 
 app.use("/", userActivitySelection);
+
+app.use("/dashboards", dashboards);
 
 app.use('/events_icons', svgFlagIcons);
 
