@@ -33,7 +33,7 @@ route.get("/profile", [authJWT.verifyToken], (req, res, next) => {
             {
                 model: Organisation,
                 as: 'organisation',
-                attributes: ['name', 'subscribtion', 'logo', 'organisation_id']
+                attributes: ['name', 'subscribtion', 'logo', 'organisation_id', 'organisation_type']
             }/* ,
             {
                 model: UserCompanySelection,
@@ -42,8 +42,25 @@ route.get("/profile", [authJWT.verifyToken], (req, res, next) => {
             } */
         ]
     }).then(user => {
+        let userData = user.toJSON()
+        
+        const type =    userData.organisation.organisation_type == 2 ? 
+                                'Bank'
+                            :
+                                userData.organisation.organisation_type == 3 ?
+                                    'Law Firm'
+                                : 
+                                    userData.organisation.organisation_type == 4 ?
+                                        'University'
+                                    :
+                                        userData.organisation.organisation_type == 5 ?
+                                            'Goverment'
+                                        :
+                                            'Company'
+
+        userData.organisation.organisation_type = type  
         res.status(200).json({
-            "user": user
+            "user": userData
         });
     }).catch(err => {
         res.status(500).json({

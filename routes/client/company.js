@@ -794,7 +794,7 @@ route.post("/", [authJWT.verifyToken, clientDBConnection.connect], async(req, re
                                             console.log("DONE");
                                         });
     
-                                        exec(`php -f /var/www/html/trash/admin_report_represetative_assets_transactions_by_account.php "${req.orgId}" "${company}"`, (error, stdd, stderr)=> {
+                                        /* exec(`php -f /var/www/html/trash/admin_report_represetative_assets_transactions_by_account.php "${req.orgId}" "${company}"`, (error, stdd, stderr)=> {
                                             console.log("fill admin_report_represetative_assets_transactions_by_account.php ....")
                                             console.log(error); 
                                             console.log(stderr);
@@ -807,7 +807,7 @@ route.post("/", [authJWT.verifyToken, clientDBConnection.connect], async(req, re
                                                 console.log(stdd);
                                                 console.log("DONE");
                                             });
-                                        });
+                                        }); */
     
                                        
     
