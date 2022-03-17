@@ -18,7 +18,8 @@ route.get("/", [authJWT.verifyToken], async(req, res, next) => {
     }
 
     Dashboards.findAll({
-        attributes: ['type', 'title', 'sub_heading', 'number', 'patent', 'application', 'rf_id'],
+        attributes: ['type', 'title', 'sub_heading', [connection.Sequelize.literal('SUM(number)'), 'number'], 'patent', 'application', 'rf_id'],
+        group: ['type'],
         where
     })
     .then((list)=>{
