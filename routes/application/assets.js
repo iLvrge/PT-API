@@ -334,7 +334,6 @@ route.post("/assets/cpc/:year/:cpcCode", [authJWT.verifyToken], async(req, res, 
                             list.push(`${row.appno_doc_num}`)
                         })
                     }
-
                 }
 
 
