@@ -376,7 +376,10 @@ route.post("/conversations/message/:token", [authJWT.verifyToken, clientDBConnec
                 console.log('message',text);
                 text = text.replace(/&lt;p&gt;/g, '')
                 text = text.replace(/&lt;\/p&gt;/g, '')
-                
+                text = text.replace(/&lt;slackusermention&gt;/g, '')
+                text = text.replace(/&lt;\/slackusermention&gt;/g, '')
+                text = text.replace(/&amp;nbsp;/g, ' ')
+               
                 const messageParams = {
                     channel: channel_id,
                     text: text
@@ -415,7 +418,7 @@ route.post("/conversations/message/:token", [authJWT.verifyToken, clientDBConnec
                     }
                 } else {
                     res.status(500).send("Error while sending message");
-                }
+                } 
             } else {
                 console.log("Error while creating or retreive channel_id")
                 res.status(500).send("Error while sending message");
