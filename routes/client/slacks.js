@@ -389,6 +389,14 @@ route.post("/conversations/message/:token", [authJWT.verifyToken, clientDBConnec
                     messageParams.ts = reply
                 } 
 
+                if(user != null && user != '') {
+                    const inviteUser = await inviteUserToChannel(token, {
+                        channel: channel_id,
+                        users: user
+                    })
+                    console.log("inviteUser", inviteUser)
+                }
+
                 if((edit != null && edit === true) && reply != null) {
                     result = await updateMessage(token, messageParams)
                 } else {
@@ -405,15 +413,6 @@ route.post("/conversations/message/:token", [authJWT.verifyToken, clientDBConnec
                             })
                             console.log("fileUploaded", fileUploaded)
                         }
-
-                        if(user != null && user != '') {
-                            const inviteUser = inviteUserToChannel(token, {
-                                channel: channel_id,
-                                users: user
-                            })
-                            console.log("inviteUser", inviteUser)
-                        } 
-
                         res.status(200).json({status: 'Message sent', channel: result.channel});
                     }
                 } else {
