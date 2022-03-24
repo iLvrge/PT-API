@@ -326,7 +326,7 @@ route.post("/conversations/message/:token", [authJWT.verifyToken, clientDBConnec
             const AssetChannel = req.connection_db.define('AssetsChannel', AssetsChannel.mainStructure, AssetsChannel.options);
 
             const { token } = req.params;
-            let {channel_id, text, asset, asset_format, reply, user, edit } = req.body
+            let {channel_id, text, asset, transaction, company, asset_format, reply, user, edit } = req.body
 
             // channel name without space and no special characters
             let result = {}

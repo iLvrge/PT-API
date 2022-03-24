@@ -475,6 +475,7 @@ route.get("/list", [authJWT.verifyToken, clientDBConnection.connect], async(req,
 
                     representaitveJSON = {
                         ...representaitveJSON, 
+                        channel: '',
                         child: JSON.stringify(child), 
                         child_total: child.length,
                         child_full_detail: JSON.stringify(childWithName),
