@@ -377,8 +377,11 @@ route.post("/conversations/message/:token", [authJWT.verifyToken, clientDBConnec
                 let messageParams = {
                     channel: channel_id,
                     text: text
-                }       
-                if(req.files != null && req.files != undefined && req.files.file != undefined) {
+                }      
+                
+                console.log(req.files)
+
+                /* if(req.files != null && req.files != undefined && req.files.file != undefined) {
                     messageParams.file = req.files.file
                     messageParams.initial_comment = text
 
@@ -413,7 +416,7 @@ route.post("/conversations/message/:token", [authJWT.verifyToken, clientDBConnec
                     }
                 } else {
                     res.status(500).send("Error while sending message");
-                }
+                } */
             } else {
                 console.log("Error while creating or retreive channel_id")
                 res.status(500).send("Error while sending message");
