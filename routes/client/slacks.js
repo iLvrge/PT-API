@@ -112,12 +112,8 @@ const uploadFileToChannel = async(token, params) => {
     let result = {}
     if(mimeType != null && mimeType != '' && mimeType.toLowerCase().indexOf('.exe') < 0){
         const web = new WebClient(token);
-        result = await web.files.upload({
-            // channels can be a list of one to many strings
-            channels: params.channel,
-            file: params.file.data,
-            filename: params.file.name.replace(/\s+/g, '-')
-        });
+        params.filename = params.file.name.replace(/\s+/g, '-');
+        result = await web.files.upload(params);
     }
     return result
 }
@@ -371,57 +367,57 @@ route.post("/conversations/message/:token", [authJWT.verifyToken, clientDBConnec
                     }
                 }
             }
-
             if(channel_id != "") {
-                console.log('message',text);
                 text = text.replace(/&lt;p&gt;/g, '')
                 text = text.replace(/&lt;\/p&gt;/g, '')
                 text = text.replace(/&lt;slackusermention&gt;/g, '')
                 text = text.replace(/&lt;\/slackusermention&gt;/g, '')
                 text = text.replace(/&amp;nbsp;/g, ' ')
                
-                const messageParams = {
+                let messageParams = {
                     channel: channel_id,
                     text: text
-                }                
+                }       
+                if(req.files != null && req.files != undefined && req.files.file != undefined) {
+                    messageParams.file = req.files.file
+                    messageParams.initial_comment = text
 
-                if((edit != null && edit === true) || reply != null) {
-                    messageParams.ts = reply
-                } 
+                    if((edit != null && edit === true) || reply != null) {
+                        messageParams.thread_ts = reply
+                    } 
 
-                if(user != null && user != '') {
-                    const inviteUser = await inviteUserToChannel(token, {
-                        channel: channel_id,
-                        users: user
-                    })
-                    console.log("inviteUser", inviteUser)
+                    result = await uploadFileToChannel(token, messageParams)
+                }  else {
+                    if((edit != null && edit === true) || reply != null) {
+                        messageParams.ts = reply
+                    } 
+                    if(user != null && user != '') {
+                        const inviteUser = await inviteUserToChannel(token, {
+                            channel: channel_id,
+                            users: user
+                        })
+                        console.log("inviteUser", inviteUser)
+                    }
+                    if((edit != null && edit === true) && reply != null) {
+                        result = await updateMessage(token, messageParams)
+                    } else {
+                        result = await sendMessage(token, messageParams)
+                    }
                 }
-
-                if((edit != null && edit === true) && reply != null) {
-                    result = await updateMessage(token, messageParams)
-                } else {
-                    result = await sendMessage(token, messageParams)
-                }
-                
-    
                 if(result != null && Object.keys(result).length > 0) {
-                    if(result.ok === true) {                        
-                        if(req.files != null && req.files != undefined && req.files.file != undefined) {
-                            const fileUploaded = uploadFileToChannel(token, {
-                                channel: channel_id,
-                                file: req.files.file
-                            })
-                            console.log("fileUploaded", fileUploaded)
-                        }
+                    console.log(" IN OK")
+                    if(result.ok === true) { 
                         res.status(200).json({status: 'Message sent', channel: result.channel});
+                    } else {
+                        res.status(200).json({status: 'Message not sent', error: result.error });
                     }
                 } else {
                     res.status(500).send("Error while sending message");
-                } 
+                }
             } else {
                 console.log("Error while creating or retreive channel_id")
                 res.status(500).send("Error while sending message");
-            }            
+            }      
         } else {
             res.status(500).send("Invalid params");
         }
