@@ -410,7 +410,7 @@ route.post("/conversations/message/:token", [authJWT.verifyToken, clientDBConnec
                 if(result != null && Object.keys(result).length > 0) {
                     console.log(" IN OK")
                     if(result.ok === true) { 
-                        res.status(200).json({status: 'Message sent', channel: result.channel});
+                        res.status(200).json({status: 'Message sent', channel: result?.channel ? result?.channel : channel_id});
                     } else {
                         res.status(200).json({status: 'Message not sent', error: result.error });
                     }
