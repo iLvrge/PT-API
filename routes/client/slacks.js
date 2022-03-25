@@ -108,13 +108,8 @@ const getUsersInfo = async( token, userId ) => {
 }
 
 const uploadFileToChannel = async(token, params) => {
-    const mimeType = params.file.mimetype
-    let result = {}
-    if(mimeType != null && mimeType != '' && mimeType.toLowerCase().indexOf('.exe') < 0){
-        const web = new WebClient(token);
-        params.filename = params.file.name.replace(/\s+/g, '-');
-        result = await web.files.upload(params);
-    }
+    const web = new WebClient(token);
+    const result = await web.files.upload(params);
     return result
 }
 
@@ -378,18 +373,22 @@ route.post("/conversations/message/:token", [authJWT.verifyToken, clientDBConnec
                     channel: channel_id,
                     text: text
                 }      
-                
-                console.log(req.files)
-
-                /* if(req.files != null && req.files != undefined && req.files.file != undefined) {
-                    messageParams.file = req.files.file
-                    messageParams.initial_comment = text
-
-                    if((edit != null && edit === true) || reply != null) {
-                        messageParams.thread_ts = reply
-                    } 
-
-                    result = await uploadFileToChannel(token, messageParams)
+                if(req.files != null && req.files != undefined && req.files.file != undefined) {                    
+                    const mimeType = req.files.file.mimetype
+                    if(mimeType != null && mimeType != '' && mimeType.toLowerCase().indexOf('.exe') < 0){
+                        messageParams.channels = channel_id
+                        messageParams.file = req.files.file.data
+                        messageParams.filename = req.files.file.name.replace(/\s+/g, '-')
+                        messageParams.initial_comment = text
+    
+                        if((edit != null && edit === true) || reply != null) {
+                            messageParams.thread_ts = reply
+                        } 
+    
+                        result = await uploadFileToChannel(token, messageParams)
+                    } else {
+                        res.status(500).send("Cannot upload exe file");
+                    }                    
                 }  else {
                     if((edit != null && edit === true) || reply != null) {
                         messageParams.ts = reply
@@ -407,6 +406,7 @@ route.post("/conversations/message/:token", [authJWT.verifyToken, clientDBConnec
                         result = await sendMessage(token, messageParams)
                     }
                 }
+                console.log(result)
                 if(result != null && Object.keys(result).length > 0) {
                     console.log(" IN OK")
                     if(result.ok === true) { 
@@ -416,7 +416,7 @@ route.post("/conversations/message/:token", [authJWT.verifyToken, clientDBConnec
                     }
                 } else {
                     res.status(500).send("Error while sending message");
-                } */
+                }
             } else {
                 console.log("Error while creating or retreive channel_id")
                 res.status(500).send("Error while sending message");
