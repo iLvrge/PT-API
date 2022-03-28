@@ -307,6 +307,7 @@ route.put('/team', [authJWT.verifyToken], async(req, res, next) =>{
     }
 }) 
 
+
 /**
  * Send Slack message
  */
@@ -365,10 +366,11 @@ route.post("/conversations/message/:token", [authJWT.verifyToken, clientDBConnec
             if(channel_id != "") {
                 text = text.replace(/&lt;p&gt;/g, '')
                 text = text.replace(/&lt;\/p&gt;/g, '')
+                text = text.replace(/&lt;br&gt;/g, "\n")
                 text = text.replace(/&lt;slackusermention&gt;/g, '')
                 text = text.replace(/&lt;\/slackusermention&gt;/g, '')
                 text = text.replace(/&amp;nbsp;/g, ' ')
-               
+                
                 let messageParams = {
                     channel: channel_id,
                     text: text
@@ -390,7 +392,8 @@ route.post("/conversations/message/:token", [authJWT.verifyToken, clientDBConnec
                         res.status(500).send("Cannot upload exe file");
                     }                    
                 }  else {
-                    if((edit != null && edit === true) || reply != null) {
+                    console.log("In sending plain message")
+                    if((edit != null && edit === true) && reply != null && reply != '') {
                         messageParams.ts = reply
                     } 
                     if(user != null && user != '') {
@@ -400,9 +403,10 @@ route.post("/conversations/message/:token", [authJWT.verifyToken, clientDBConnec
                         })
                         console.log("inviteUser", inviteUser)
                     }
-                    if((edit != null && edit === true) && reply != null) {
+                    if((edit != null && edit === true) && reply != null && reply != '') {
                         result = await updateMessage(token, messageParams)
                     } else {
+                        console.log("New thread", messageParams)
                         result = await sendMessage(token, messageParams)
                     }
                 }
@@ -429,6 +433,8 @@ route.post("/conversations/message/:token", [authJWT.verifyToken, clientDBConnec
         res.status(401).send(`Error: ${e.data.error}`);
     }
 })
+
+
 
 route.get("/conversations/message/:token/:channelID/:messageID" , async(req, res, next) => {
     try{
