@@ -85,6 +85,7 @@ const bucketConfig = {
 const slackConfig = {
   clientID: process.env.SLACK_CLIENT_ID,
   clientSecret: process.env.SLACK_CLIENT_SECRET,
+  botToken: process.env.SLACK_BOT_TOKEN
 }
 
 const DEFAULT_LIMIT = 100 

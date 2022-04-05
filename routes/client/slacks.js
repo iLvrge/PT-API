@@ -17,6 +17,31 @@ const   jwt = require('jsonwebtoken'),
         bcrypt = require('bcrypt'),
         moment = require("moment");
 
+        
+
+const addBotUser = async(token, channelID) => {
+    let result = {}
+    try {
+        const users = await getUsersList(token);
+        if(users && users?.ok && users?.ok === true) {
+            const { members } = users;
+            if(members.length > 0) {
+                const findIndex = members.findIndex( user => user.is_bot === true && user.name == 'patentrack')
+                if(findIndex !== -1) {
+                    console.log('members', members,  findIndex)
+                    result = await inviteUserToChannel(token, {
+                        channel: channelID,
+                        users: members[findIndex].id
+                    })
+                }
+            }
+        }
+    } catch( err ) {
+        console.log("ERROR addBotUser", err)
+    }
+    return result
+}
+
 const createChannelID = async(token, params) => {
 
     let result = {}
@@ -24,6 +49,11 @@ const createChannelID = async(token, params) => {
         const web = new WebClient(token);
 
         result = await web.conversations.create( params )
+
+        if(result !== null && result?.ok && result.ok == true) {
+            //add bot
+            addBotUser(token, result.channel.id)
+        }
     } catch( err ) {
         console.log("createChannelID", err)
     }
@@ -72,7 +102,7 @@ const updateMessage = async(token, params) => {
         const web = new WebClient(token);
         result = await web.chat.update( params )
     } catch( err ) {
-        console.log("sendMessage", err)
+        console.log("updateMessage", err)
     }
     return result
 }
@@ -111,6 +141,56 @@ const uploadFileToChannel = async(token, params) => {
     const web = new WebClient(token);
     const result = await web.files.upload(params);
     return result
+}
+
+const shareFile = async(token, channelID, fileID) => {
+    console.log("shareFile", token, channelID, fileID)
+    let result = {}
+    try {
+        const web = new WebClient(token);
+        result = await web.files.remote.share({
+            channels: channelID,
+            file: fileID
+        })
+    } catch(err) {
+        console.log(err)
+    }   
+    return result
+}
+
+const shareRemoteFile = async(token, files, otherItem) => {
+    const { slackConfig } = config;
+    let addedBotUser = false
+    files.map( async file => {
+        try{
+            const webBot = new WebClient(slackConfig.botToken);
+            const result = await webBot.files.remote.add({
+                external_id: file.id,
+                external_url: file.webViewLink,
+                title: file.name,
+                filetype: file.mimeType,
+                preview_image: file.iconLink
+            });
+            console.log("result", result)
+            if(result != null && result?.ok && result.ok == true) {           
+                const fileID = result.file.id 
+                let sharedFile = {}
+                if(addedBotUser === false) {
+                    const botUser = await addBotUser(token, otherItem.channel)
+                    console.log("botUser", botUser)
+                    if(botUser && botUser?.ok && botUser.ok === true) {
+                        sharedFile = await shareFile(slackConfig.botToken, otherItem.channel, fileID)
+                        addedBotUser = true
+                    }
+                } else {
+                    sharedFile = await shareFile(slackConfig.botToken, otherItem.channel, fileID)
+                }                
+                console.log("shared", sharedFile)
+            }
+        } catch (err) {
+            console.log("ERROR SHARE", err);
+        }        
+    })
 }
 
 const inviteUserToChannel = async(token, params)=> {
@@ -318,7 +398,7 @@ route.post("/conversations/message/:token", [authJWT.verifyToken, clientDBConnec
             const AssetChannel = req.connection_db.define('AssetsChannel', AssetsChannel.mainStructure, AssetsChannel.options);
 
             const { token } = req.params;
-            let {channel_id, text, asset, transaction, company, asset_format, reply, user, edit } = req.body
+            let {channel_id, text, remote_file, asset, transaction, company, asset_format, reply, user, edit } = req.body
 
             // channel name without space and no special characters
             let result = {}
@@ -369,6 +449,10 @@ route.post("/conversations/message/:token", [authJWT.verifyToken, clientDBConnec
                 text = text.replace(/&lt;br&gt;/g, "\n")
                 text = text.replace(/&lt;slackusermention&gt;/g, '')
                 text = text.replace(/&lt;\/slackusermention&gt;/g, '')
+
+                text = text.replace(/&lt;patentracklinebreak&gt;/g, "\n")
+                text = text.replace(/&lt;\/patentracklinebreak&gt;/g, '')
+
                 text = text.replace(/&amp;nbsp;/g, ' ')
                 
                 let messageParams = {
@@ -407,18 +491,28 @@ route.post("/conversations/message/:token", [authJWT.verifyToken, clientDBConnec
                         result = await updateMessage(token, messageParams)
                     } else {
                         console.log("New thread", messageParams)
-                        result = await sendMessage(token, messageParams)
+                        if(text != '') {
+                            result = await sendMessage(token, messageParams)
+                        }
                     }
                 }
+                if(remote_file != '' && remote_file != null && remote_file != undefined) {
+                    let remoteFiles = JSON.parse(remote_file)
+                    if(remoteFiles.length > 0) {
+                        await shareRemoteFile(token, remoteFiles, messageParams)
+                    }
+                } 
                 console.log(result)
                 if(result != null && Object.keys(result).length > 0) {
                     console.log(" IN OK")
+                                       
                     if(result.ok === true) { 
                         res.status(200).json({status: 'Message sent', channel: result?.channel ? result?.channel : channel_id});
                     } else {
                         res.status(200).json({status: 'Message not sent', error: result.error });
                     }
                 } else {
+                    console.log("Error ERRORORORRRORORO")
                     res.status(500).send("Error while sending message");
                 }
             } else {
@@ -429,7 +523,7 @@ route.post("/conversations/message/:token", [authJWT.verifyToken, clientDBConnec
             res.status(500).send("Invalid params");
         }
     } catch (e) {
-        console.log(e)
+        console.log("MAINNNNNN", e)
         res.status(401).send(`Error: ${e.data.error}`);
     }
 })
