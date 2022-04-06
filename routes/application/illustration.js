@@ -83,8 +83,10 @@ let createJSON = async(itemDetails, rfID) => {
             assignors.push(boxName);
             if(itemDetails.assignment.status === 1) {
                 mainDocument = cdnURL + rfIDno + ext;
-                document_form = cdnURL + rfIDno + "_form" + ext;
-                document_agreement = cdnURL + rfIDno + "_agreement" + ext
+                document_form = mainDocument
+                document_agreement = mainDocument
+                /* document_form = cdnURL + rfIDno + "_form" + ext;
+                document_agreement = cdnURL + rfIDno + "_agreement" + ext */
             } else {
                 mainDocument = usptoURL + rfIDno + ext;
                 document_form = mainDocument

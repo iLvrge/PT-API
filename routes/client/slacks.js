@@ -211,6 +211,20 @@ const shareRemoteFile = async(token, auth, authID,  files, otherItem) => {
         
                 response.on('end', async () => {
                     console.log('previeStream', previeStream)
+                    let mimeType = ''
+                    switch(file.mimeType) {
+                        case 'application/vnd.google-apps.document':
+                            mimeType = 'doc'
+                            break;
+                        case 'application/vnd.google-apps.spreadsheet':
+                            mimeType = 'xls'
+                            break;
+                        case 'application/vnd.google-apps.photo':
+                        case 'application/vnd.google-apps.photo':
+                        case 'application/vnd.google-apps.presentation':
+                            mimeType = 'jpg'
+                            break;
+                    }
                     const result = await webBot.files.remote.add({
                         external_id: file.id,
                         external_url: file.webViewLink,
