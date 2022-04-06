@@ -235,6 +235,8 @@ route.get('/auth/:code', async(req, res, next) => {
             token.accessSlackToken.id  = result.authed_user.id
             token.accessSlackToken.team  = result.team.id
             token.accessSlackToken.bot_token  = result.access_token
+            token.accessSlackToken.bot_user_id  = result.bot_user_id
+
         }
         
         if(token.accessSlackToken.team != '') {
@@ -294,6 +296,8 @@ route.get("/conversations/auth/:code", async(req, res, next) => {
             grantAccess.access_token  = result.authed_user.access_token
             grantAccess.id  = result.authed_user.id
             grantAccess.team  = result.team.id
+            grantAccess.bot_token  = result.access_token
+            grantAccess.bot_user_id  = result.bot_user_id
         }
         res.status(200).json(grantAccess);
     } catch (e) {
@@ -399,7 +403,7 @@ route.post("/conversations/message/:token", [authJWT.verifyToken, clientDBConnec
             const AssetChannel = req.connection_db.define('AssetsChannel', AssetsChannel.mainStructure, AssetsChannel.options);
 
             const { token } = req.params;
-            let {channel_id, text, remote_file, asset, transaction, company, asset_format, reply, user, edit, auth } = req.body
+            let {channel_id, text, remote_file, asset, transaction, company, asset_format, reply, user, edit, auth, auth_id } = req.body
 
             // channel name without space and no special characters
             let result = {}
@@ -435,6 +439,14 @@ route.post("/conversations/message/:token", [authJWT.verifyToken, clientDBConnec
     
                 if(channelResult != null ) {
                     if(channelResult && channelResult.ok === true) {
+                        //Invite BOT USER
+                        
+                        const botUser = await inviteUserToChannel(token, {
+                            channel: channel_id,
+                            users: auth_id
+                        })
+                        console.log("botUser", botUser)
+
                         const { channel } = channelResult
                         channel_id = channel.id
 
