@@ -1,4 +1,7 @@
 const express = require("express");
+const http = require('http');
+const https = require('https');
+const Stream = require('stream').Transform;
 const { WebClient } = require('@slack/web-api')
 const route = express.Router();
 const config = require("../../config/db.config")
@@ -19,30 +22,46 @@ const   jwt = require('jsonwebtoken'),
 
         
 
-const addBotUser = async(token, channelID) => {
+const addBotUser = async(token, authID, channelID) => {
     let result = {}
     try {
         const users = await getUsersList(token);
         if(users && users?.ok && users?.ok === true) {
             const { members } = users;
             if(members.length > 0) {
-                const findIndex = members.findIndex( user => user.is_bot === true && user.name == 'patentrack')
+                const findIndex = members.findIndex( user => user.is_bot === true && user.id == authID)
                 if(findIndex !== -1) {
                     console.log('members', members,  findIndex)
-                    result = await inviteUserToChannel(token, {
-                        channel: channelID,
-                        users: members[findIndex].id
+                    const channelsInfo = await getChannelMembers(token, {
+                        channel: channelID
                     })
+                    console.log("channelsInfo", channelsInfo)
+                    if(channelsInfo && channelsInfo?.ok && channelsInfo.ok === true) {
+                        const channelMembers = channelsInfo.members
+                        if(!channelMembers.includes(authID)) {
+                            result = await inviteUserToChannel(token, {
+                                channel: channelID,
+                                users: authID
+                            })
+                        } else {
+                            result.ok = true
+                        }
+                    } else {
+                        result = channelsInfo
+                    }                    
+                } else {
+                    result.ok = false
                 }
             }
         }
+        return result
     } catch( err ) {
         console.log("ERROR addBotUser", err)
     }
     return result
 }
 
-const createChannelID = async(token, params) => {
+const createChannelID = async(token, params, authID) => {
 
     let result = {}
     try{
@@ -52,7 +71,7 @@ const createChannelID = async(token, params) => {
 
         if(result !== null && result?.ok && result.ok == true) {
             //add bot
-            addBotUser(token, result.channel.id)
+            addBotUser(token, authID, result.channel.id)
         }
     } catch( err ) {
         console.log("createChannelID", err)
@@ -122,6 +141,19 @@ const getUsersList = async( token ) => {
     return result
 }
 
+const getChannelMembers = async( token, params ) => {
+    let result = {}
+    try{
+        const web = new WebClient(token);
+            
+        // channel name without space and no special characters
+        result = await web.conversations.members(params)
+    } catch( err ) {
+        console.log("getChannelMembers", err)
+    }
+    return result
+}
+
 const getUsersInfo = async( token, userId ) => {
     let result = {}
     try{
@@ -158,35 +190,56 @@ const shareFile = async(token, channelID, fileID) => {
     return result
 }
 
-const shareRemoteFile = async(token, auth, files, otherItem) => {
+const shareRemoteFile = async(token, auth, authID,  files, otherItem) => {
     const { slackConfig } = config;
     let addedBotUser = false
     files.map( async file => {
         try{
             const webBot = new WebClient(auth); //bot token
-            const result = await webBot.files.remote.add({
-                external_id: file.id,
-                external_url: file.webViewLink,
-                title: file.name,
-                filetype: file.mimeType,
-                preview_image: file.iconLink
-            });
-            console.log("result", result)
-            if(result != null && result?.ok && result.ok == true) {           
-                const fileID = result.file.id 
-                let sharedFile = {}
-                if(addedBotUser === false) {
-                    const botUser = await addBotUser(token, otherItem.channel)
-                    console.log("botUser", botUser)
-                    if(botUser && botUser?.ok && botUser.ok === true) {
-                        sharedFile = await shareFile(auth, otherItem.channel, fileID)
-                        addedBotUser = true
-                    }
-                } else {
-                    sharedFile = await shareFile(auth, otherItem.channel, fileID)
-                }                
-                console.log("shared", sharedFile)
+            let client = http;
+            if (file.iconLink.toString().indexOf("https") !== -1){
+                client = https;
             }
+            console.log("file.iconLink,", file.iconLink)
+            const request = client.request(file.iconLink, async (response)=> {  
+                let previeStream = ''                                          
+        
+                response.on('data', function(chunk) { 
+                    console.log('chunk', chunk)
+                    previeStream += chunk;                                               
+                });                                                                         
+        
+                response.on('end', async () => {
+                    console.log('previeStream', previeStream)
+                    const result = await webBot.files.remote.add({
+                        external_id: file.id,
+                        external_url: file.webViewLink,
+                        title: file.name,
+                        filetype: file.mimeType,
+                        preview_image: previeStream
+                    });
+                    console.log("result", result)
+                    if(result != null && result?.ok && result.ok == true) {           
+                        const fileID = result.file.id 
+                        let sharedFile = {}
+                        if(addedBotUser === false) {
+                            const botUser = await addBotUser(token, authID, otherItem.channel)
+                            console.log("botUser", botUser)
+                            if(botUser && botUser?.ok && botUser.ok === true) {
+                                sharedFile = await shareFile(token, otherItem.channel, fileID)
+                                addedBotUser = true
+                            }
+                        } else {
+                            sharedFile = await shareFile(auth, otherItem.channel, fileID)
+                        }                
+                        console.log("shared", sharedFile)
+                    }
+                })
+            }) 
+            request.on('error', (error) => {
+                console.log('An error', error);
+            });              
+            request.end()         
         } catch (err) {
             console.log("ERROR SHARE", err);
         }        
@@ -260,7 +313,8 @@ route.get('/auth/:code', async(req, res, next) => {
                     });
                 }
             }
-        }        
+        }
+        console.log("token", token)        
         res.status(200).json(token);
     } catch (e) {
         console.log(e)
@@ -299,6 +353,7 @@ route.get("/conversations/auth/:code", async(req, res, next) => {
             grantAccess.bot_token  = result.access_token
             grantAccess.bot_user_id  = result.bot_user_id
         }
+        console.log("grantAccess", grantAccess)
         res.status(200).json(grantAccess);
     } catch (e) {
         console.log(e)
@@ -435,17 +490,17 @@ route.post("/conversations/message/:token", [authJWT.verifyToken, clientDBConnec
                     channel_id = findChannel.channel_id
                 } */
                 
-                const channelResult = await createChannelID(token, {name: asset_format.toString().toLowerCase(), is_private: false}) //create public channel
+                const channelResult = await createChannelID(token, {name: asset_format.toString().toLowerCase(), is_private: false}, auth_id) //create public channel
     
                 if(channelResult != null ) {
                     if(channelResult && channelResult.ok === true) {
                         //Invite BOT USER
                         
-                        const botUser = await inviteUserToChannel(token, {
+                        /* const botUser = await inviteUserToChannel(token, {
                             channel: channel_id,
                             users: auth_id
                         })
-                        console.log("botUser", botUser)
+                        console.log("botUser", botUser) */
 
                         const { channel } = channelResult
                         channel_id = channel.id
@@ -472,7 +527,7 @@ route.post("/conversations/message/:token", [authJWT.verifyToken, clientDBConnec
                     channel: channel_id,
                     text: text
                 }      
-                if(req.files != null && req.files != undefined && req.files.file != undefined) {                    
+                /* if(req.files != null && req.files != undefined && req.files.file != undefined) {                    
                     const mimeType = req.files.file.mimetype
                     if(mimeType != null && mimeType != '' && mimeType.toLowerCase().indexOf('.exe') < 0){
                         messageParams.channels = channel_id
@@ -508,19 +563,19 @@ route.post("/conversations/message/:token", [authJWT.verifyToken, clientDBConnec
                             result = await sendMessage(token, messageParams)
                         }
                     }
-                }
+                } */
                 if(remote_file != '' && remote_file != null && remote_file != undefined) {
                     let remoteFiles = JSON.parse(remote_file)
                     if(remoteFiles.length > 0) {
-                        await shareRemoteFile(token, auth, remoteFiles, messageParams)
+                        await shareRemoteFile(token, auth, auth_id, remoteFiles, messageParams)
                     }
                 } 
-                console.log(result)
+                console.log("result", result)
                 if(result != null && Object.keys(result).length > 0) {
                     console.log(" IN OK")
                                        
                     if(result.ok === true) { 
-                        res.status(200).json({status: 'Message sent', channel: result?.channel ? result?.channel : channel_id});
+                        res.status(200).json({status: 'Message sent', channel: result?.channel ? result.channel : channel_id});
                     } else {
                         res.status(200).json({status: 'Message not sent', error: result.error });
                     }
