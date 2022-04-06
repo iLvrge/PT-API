@@ -469,7 +469,6 @@ route.put('/team', [authJWT.verifyToken], async(req, res, next) =>{
 route.post("/conversations/message/:token", [authJWT.verifyToken, clientDBConnection.connect] , async(req, res, next) => {
     try{
         if(typeof req.connection_db != "undefined" && req.connection_db != null ) {
-            const AssetChannel = req.connection_db.define('AssetsChannel', AssetsChannel.mainStructure, AssetsChannel.options);
 
             const { token } = req.params;
             let {channel_id, text, remote_file, asset, transaction, company, asset_format, reply, user, edit, auth, auth_id } = req.body
@@ -478,43 +477,11 @@ route.post("/conversations/message/:token", [authJWT.verifyToken, clientDBConnec
             let result = {}
 
             if(channel_id == '' || channel_id == undefined) {
-
-                /* const findChannel = await AssetChannel.findOne({
-                    attributes: ['channel_id'],
-                    where: {asset: asset}
-                })
-
-                if( findChannel == null ) {
-                    const channelResult = await createChannelID(token, {name: asset_format.toString().toLowerCase(), is_private: false}) //create public channel
-    
-                    if(channelResult != null ) {
-                        if(channelResult && channelResult.ok === true) {
-                            const { channel } = channelResult
-                            channel_id = channel.id
-
-                            // setTopic
-                            createChannelTopic(token, channel_id, asset)
-                            AssetChannel.create({
-                                channel_id: channel_id,
-                                asset: asset
-                            })
-                        }
-                    } 
-                } else {
-                    channel_id = findChannel.channel_id
-                } */
                 
                 const channelResult = await createChannelID(token, {name: asset_format.toString().toLowerCase(), is_private: false}, auth_id) //create public channel
     
                 if(channelResult != null ) {
                     if(channelResult && channelResult.ok === true) {
-                        //Invite BOT USER
-                        
-                        /* const botUser = await inviteUserToChannel(token, {
-                            channel: channel_id,
-                            users: auth_id
-                        })
-                        console.log("botUser", botUser) */
 
                         const { channel } = channelResult
                         channel_id = channel.id
@@ -541,7 +508,7 @@ route.post("/conversations/message/:token", [authJWT.verifyToken, clientDBConnec
                     channel: channel_id,
                     text: text
                 }      
-                /* if(req.files != null && req.files != undefined && req.files.file != undefined) {                    
+                if(req.files != null && req.files != undefined && req.files.file != undefined) {                    
                     const mimeType = req.files.file.mimetype
                     if(mimeType != null && mimeType != '' && mimeType.toLowerCase().indexOf('.exe') < 0){
                         messageParams.channels = channel_id
@@ -577,7 +544,7 @@ route.post("/conversations/message/:token", [authJWT.verifyToken, clientDBConnec
                             result = await sendMessage(token, messageParams)
                         }
                     }
-                } */
+                }
                 if(remote_file != '' && remote_file != null && remote_file != undefined) {
                     let remoteFiles = JSON.parse(remote_file)
                     if(remoteFiles.length > 0) {
