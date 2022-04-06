@@ -158,12 +158,12 @@ const shareFile = async(token, channelID, fileID) => {
     return result
 }
 
-const shareRemoteFile = async(token, files, otherItem) => {
+const shareRemoteFile = async(token, auth, files, otherItem) => {
     const { slackConfig } = config;
     let addedBotUser = false
     files.map( async file => {
         try{
-            const webBot = new WebClient(slackConfig.botToken);
+            const webBot = new WebClient(auth); //bot token
             const result = await webBot.files.remote.add({
                 external_id: file.id,
                 external_url: file.webViewLink,
@@ -179,11 +179,11 @@ const shareRemoteFile = async(token, files, otherItem) => {
                     const botUser = await addBotUser(token, otherItem.channel)
                     console.log("botUser", botUser)
                     if(botUser && botUser?.ok && botUser.ok === true) {
-                        sharedFile = await shareFile(slackConfig.botToken, otherItem.channel, fileID)
+                        sharedFile = await shareFile(auth, otherItem.channel, fileID)
                         addedBotUser = true
                     }
                 } else {
-                    sharedFile = await shareFile(slackConfig.botToken, otherItem.channel, fileID)
+                    sharedFile = await shareFile(auth, otherItem.channel, fileID)
                 }                
                 console.log("shared", sharedFile)
             }
@@ -234,6 +234,7 @@ route.get('/auth/:code', async(req, res, next) => {
             token.accessSlackToken.access_token  = result.authed_user.access_token
             token.accessSlackToken.id  = result.authed_user.id
             token.accessSlackToken.team  = result.team.id
+            token.accessSlackToken.bot_token  = result.access_token
         }
         
         if(token.accessSlackToken.team != '') {
@@ -398,7 +399,7 @@ route.post("/conversations/message/:token", [authJWT.verifyToken, clientDBConnec
             const AssetChannel = req.connection_db.define('AssetsChannel', AssetsChannel.mainStructure, AssetsChannel.options);
 
             const { token } = req.params;
-            let {channel_id, text, remote_file, asset, transaction, company, asset_format, reply, user, edit } = req.body
+            let {channel_id, text, remote_file, asset, transaction, company, asset_format, reply, user, edit, auth } = req.body
 
             // channel name without space and no special characters
             let result = {}
@@ -499,7 +500,7 @@ route.post("/conversations/message/:token", [authJWT.verifyToken, clientDBConnec
                 if(remote_file != '' && remote_file != null && remote_file != undefined) {
                     let remoteFiles = JSON.parse(remote_file)
                     if(remoteFiles.length > 0) {
-                        await shareRemoteFile(token, remoteFiles, messageParams)
+                        await shareRemoteFile(token, auth, remoteFiles, messageParams)
                     }
                 } 
                 console.log(result)
