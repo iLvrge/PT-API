@@ -64,10 +64,14 @@ const addBotUser = async(token, authID, channelID) => {
 const createChannelID = async(token, params, authID) => {
 
     let result = {}
-    try{
+    try {
         const web = new WebClient(token);
 
         result = await web.conversations.create( params )
+
+        /* if(result.error === 'name_taken') {
+
+        } */
 
         if(result !== null && result?.ok && result.ok == true) {
             //add bot
@@ -244,7 +248,7 @@ const shareRemoteFile = async(token, auth, authID,  files, otherItem) => {
                                 addedBotUser = true
                             }
                         } else {
-                            sharedFile = await shareFile(auth, otherItem.channel, fileID)
+                            sharedFile = await shareFile(token, otherItem.channel, fileID)
                         }                
                         console.log("shared", sharedFile)
                     }
