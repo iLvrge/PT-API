@@ -157,7 +157,10 @@ route.get("/layout", authJWT.verifyToken, async(req, res, next) => {
                         }
                     }
                 ]
-            })          
+            }) 
+            if(list.length == 0) {
+                message = "Please add a document to layout first.";
+            }         
         } else {
             message = 'Please first login with google account.'
         }   

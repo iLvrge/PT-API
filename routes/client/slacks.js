@@ -307,7 +307,6 @@ route.get('/auth/:code', async(req, res, next) => {
             token.accessSlackToken.team  = result.team.id
             token.accessSlackToken.bot_token  = result.access_token
             token.accessSlackToken.bot_user_id  = result.bot_user_id
-
         }
         
         if(token.accessSlackToken.team != '') {
@@ -546,6 +545,10 @@ route.post("/conversations/message/:token", [authJWT.verifyToken, clientDBConnec
                         console.log("New thread", messageParams)
                         if(text != '') {
                             result = await sendMessage(token, messageParams)
+                        } else {
+                            if(remote_file != '' && remote_file != null && remote_file != undefined) {
+                                result = {'ok': true}
+                            }
                         }
                     }
                 }
