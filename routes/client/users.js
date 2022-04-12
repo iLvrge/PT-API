@@ -99,7 +99,7 @@ route.post("/", [authJWT.verifyToken, clientDBConnection.connect], async(req, re
 
                 if(req.body.first_name == '' || req.body.first_name == undefined || req.body.first_name == null) {
                     res.status(402).send("Firstname cannot be empty."); 
-                } else if(req.body.last_name == '' || req.body.last_name == undefined || req.body.last_name == null) {
+                } else if(req.body.last_name.trim() == '' || req.body.last_name == undefined || req.body.last_name == null) {
                     res.status(402).send("Lastname cannot be empty."); 
                 } else if(req.body.email_address == '' || req.body.email_address == undefined || req.body.email_address == null) {
                     res.status(402).send("Email address cannot be empty."); 
@@ -147,11 +147,12 @@ route.post("/", [authJWT.verifyToken, clientDBConnection.connect], async(req, re
                                 /**
                                  * Add user to slack
                                  */
-                                const organisation  = await helpers.findOrganisationbyID(req.orgId);
-                                if(organisation != null && organisation.organisation_id > 0){
-                                    /**
+                                /**
                                      * Invite user to client workspace
                                     */
+                                /* const organisation  = await helpers.findOrganisationbyID(req.orgId);
+                                if(organisation != null && organisation.organisation_id > 0){
+                                    
                 
                                    const slack = await new SlackHelper()
 
@@ -175,7 +176,7 @@ route.post("/", [authJWT.verifyToken, clientDBConnection.connect], async(req, re
                                            })
                                         } 
                                    })
-                                }
+                                } */
 
                                 let upload_file = ''
                                 if(req.files != null && req.files != undefined && req.files.file != undefined) {
