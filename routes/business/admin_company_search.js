@@ -50,6 +50,8 @@ const RepresentativeLawyers = require('../../model/resources/RepresentativeLawye
 
 const RepresentativeTransactions = require('../../model/resources/RepresentativeTransactions');
 
+const List2 = require('../../model/resources/List2');
+
 const SheetsHelper = require('../../helpers/sheets');
 
 
@@ -865,7 +867,7 @@ route.get("/company/law_firms/:id", [authJWT.verifyToken, authJWT.isAdmin, authJ
                 where: {law_firm_id:{[connection.Op.gt]: 0}},                
                 include: [
                     {
-                        model: RepresentativeTransactions,
+                        model: List2,
                         as: "representativetransaction",
                         attributes: [],
                         where: where,  
@@ -1221,7 +1223,7 @@ route.get("/company/lawyers/:id", [authJWT.verifyToken, authJWT.isAdmin, authJWT
                 },
                 include: [
                     {
-                        model: RepresentativeTransactions,
+                        model: List2,
                         as: "representativetransaction",
                         attributes: [],
                         where: where,  
@@ -1589,7 +1591,7 @@ route.get("/company/assignments/:id", [authJWT.verifyToken, authJWT.isAdmin, aut
             group: ['caddress_1','caddress_2'],           
             include: [
                 {
-                    model: RepresentativeTransactions,
+                    model: List2,
                     as: "representativetransaction",
                     attributes: [],
                     where: where,

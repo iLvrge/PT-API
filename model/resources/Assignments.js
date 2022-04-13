@@ -4,7 +4,7 @@ const connection = require("../../config/db.config");
 
 const LawFirms = require("./LawFirms");
 
-const RepresentativeTransactions = require("./RepresentativeTransactions"); 
+const List2 = require("./List2"); 
 
 const DocumentIds = require("./DocumentIds");
 
@@ -90,7 +90,7 @@ const Assignments = connection.resources.define('assignment',{
 
 Assignments.belongsTo(LawFirms, { foreignKey: 'law_firm_id', as: 'lawfirm', otherKey: 'law_firm_id' });
 
-Assignments.belongsTo(RepresentativeTransactions, { foreignKey: 'rf_id', as: 'representativetransaction', targetKey: 'rf_id' });
+Assignments.belongsTo(List2, { foreignKey: 'rf_id', as: 'representativetransaction', targetKey: 'rf_id' });
 
 Assignments.belongsTo(DocumentIds, { foreignKey: 'rf_id', as: 'documentids', targetKey: 'rf_id' });
 
