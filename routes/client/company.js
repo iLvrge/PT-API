@@ -405,22 +405,19 @@ route.get("/list", [authJWT.verifyToken, clientDBConnection.connect], async(req,
                     order: [['representative_name', 'ASC']]
                 })
 
-                const promiseReport = list.map( async representative => {
+                for(let i = 0; i < list.length; i++) { 
+                    let representative = list[i]
                     let representaitveJSON = representative.toJSON();
-                   
-                    let child = [],  status = 0, childWithName = [], product = 0, no_of_assets = 0, no_of_transactions = 0, no_of_parties = 0, no_of_inventor = 0, no_of_activities = 0;
+                    let child = [], childWithName = [], product = 0, no_of_assets = 0, no_of_transactions = 0, no_of_parties = 0, no_of_inventor = 0, no_of_activities = 0;
                     if(findChild.length > 0) {
                         child = findChild
                                 .filter( row => row.parent_id == representative.representative_id)
                                 .map(obj => {
-                                    if(status === 0 && obj.status == 1) {
-                                        status = 1
-                                    }
                                     childWithName.push({
                                         original_name: obj.original_name,
                                         representative_name: obj.representative_name,
                                         representative_id: obj.representative_id,
-                                        status: obj.status
+                                        status: obj.representative_id,
                                     })
                                     return obj.representative_id
                                 })
@@ -495,13 +492,9 @@ route.get("/list", [authJWT.verifyToken, clientDBConnection.connect], async(req,
                         no_of_activities: no_of_activities,
                         product
                     }
-                    if(findChild.length > 0 && status == 1){
-                        representaitveJSON.status = status
-                    } 
                     companiesList.push(representaitveJSON)
-                    return representative
-                })
-                await Promise.all(promiseReport)
+                    //return representative
+                }                
             }            
             res.status(200).json({list: companiesList, total_records});
         } else {
