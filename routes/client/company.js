@@ -370,11 +370,16 @@ route.get("/list", [authJWT.verifyToken, clientDBConnection.connect], async(req,
                 await Promise.all(promises)
 
                 const findChild = await Representative.findAll({
-                    attributes: ['representative_id', 'parent_id', 'representative_name', 'original_name'],
+                    attributes: ['representative_id', 'parent_id', 'representative_name', 'original_name', 'status'],
                     where: {                            
                         parent_id: representativeIDs, 
                         child: 1
-                    }
+                    },
+                    order: [
+                        ['status', 'DESC'],
+                        ['original_name', 'ASC'],
+                        ['representative_name', 'ASC']
+                    ]
                 })
 
                 const checkGroupsPromise = list.map( representative => {
@@ -403,15 +408,19 @@ route.get("/list", [authJWT.verifyToken, clientDBConnection.connect], async(req,
                 const promiseReport = list.map( async representative => {
                     let representaitveJSON = representative.toJSON();
                    
-                    let child = [], childWithName = [], product = 0, no_of_assets = 0, no_of_transactions = 0, no_of_parties = 0, no_of_inventor = 0, no_of_activities = 0;
+                    let child = [],  status = 0, childWithName = [], product = 0, no_of_assets = 0, no_of_transactions = 0, no_of_parties = 0, no_of_inventor = 0, no_of_activities = 0;
                     if(findChild.length > 0) {
                         child = findChild
                                 .filter( row => row.parent_id == representative.representative_id)
                                 .map(obj => {
+                                    if(status === 0 && obj.status == 1) {
+                                        status = 1
+                                    }
                                     childWithName.push({
                                         original_name: obj.original_name,
                                         representative_name: obj.representative_name,
                                         representative_id: obj.representative_id,
+                                        status: obj.status
                                     })
                                     return obj.representative_id
                                 })
@@ -475,6 +484,7 @@ route.get("/list", [authJWT.verifyToken, clientDBConnection.connect], async(req,
 
                     representaitveJSON = {
                         ...representaitveJSON, 
+                        status: findChild.length > 0 ? status : representaitveJSON.status,
                         channel: '',
                         child: JSON.stringify(child), 
                         child_total: child.length,
