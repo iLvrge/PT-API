@@ -484,7 +484,6 @@ route.get("/list", [authJWT.verifyToken, clientDBConnection.connect], async(req,
 
                     representaitveJSON = {
                         ...representaitveJSON, 
-                        status: findChild.length > 0 ? status : representaitveJSON.status,
                         channel: '',
                         child: JSON.stringify(child), 
                         child_total: child.length,
@@ -496,6 +495,9 @@ route.get("/list", [authJWT.verifyToken, clientDBConnection.connect], async(req,
                         no_of_activities: no_of_activities,
                         product
                     }
+                    if(findChild.length > 0 && status == 1){
+                        representaitveJSON.status = status
+                    } 
                     companiesList.push(representaitveJSON)
                     return representative
                 })
