@@ -202,10 +202,11 @@ route.get("/:companyID/list", [authJWT.verifyToken, clientDBConnection.connect],
             const total_records = await Representative.count( where );
 
             where.order = [
+                ['status', 'DESC'],
                 ['original_name', 'ASC'],
                 ['representative_name', 'ASC']
             ];
-            where.attributes = ['representative_id', 'original_name', 'representative_name', 'type'];
+            where.attributes = ['representative_id', 'original_name', 'representative_name', 'type', 'status'];
 
             const list = await Representative.findAll( where )
 
