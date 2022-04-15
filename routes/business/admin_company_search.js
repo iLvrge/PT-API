@@ -1714,6 +1714,26 @@ route.put("/company/assignments", [authJWT.verifyToken, authJWT.isAdmin], async 
             const updateCompany = await Representative.update({
                 status
             }, {where: {representative_id}});
+
+            const findParentData = await Representative.findOne({
+                attributes: ['parent_id'],
+                where: {representative_id}
+            })
+
+            if(findParentData !== null && findParentData.parent_id > 0 ) {
+                const findChild = await Representative.count({
+                    where: {parent_id: findParentData.parent_id, status: 1}
+                })
+                let groupStatus = 0
+                if(findChild > 0) {
+                    groupStatus = 1
+                }
+
+                await Representative.update({
+                    status: groupStatus
+                }, {where: {representative_id: findParentData.parent_id}});
+            }
+
             res.status(200).json(updateCompany);
         } else {
             res.status(402).send("Invalid inputs");
