@@ -418,7 +418,7 @@ route.get("/list", [authJWT.verifyToken, clientDBConnection.connect], async(req,
                                         original_name: obj.original_name,
                                         representative_name: obj.representative_name,
                                         representative_id: obj.representative_id,
-                                        status: obj.representative_id,
+                                        status: obj.status,
                                     })
                                     return obj.representative_id
                                 })
