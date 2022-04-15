@@ -45,7 +45,8 @@ route.post("/", [authJWT.verifyToken], async(req, res, next) => {
                     where.company_id = companies
                 }
 
-                where.layoutID = type === 'lost_patents' ? 17 : 1
+                where.layoutID = type
+                
                 if(parseInt(total) != list.length) {
                     /**
                      * Get List
