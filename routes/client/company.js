@@ -530,6 +530,27 @@ route.get("/maintainence_assets", [authJWT.verifyToken], async(req, res, next) =
     }
 })
 
+/**Get all maintaince assets */
+route.get("/maintainence_assets_events", [authJWT.verifyToken], async(req, res, next) => {
+    try{
+        const { representative_id, offset } = req.query
+        let list = [
+            ['Year', 'Sales'],
+            ['2013',  1000],
+            ['2014',  1170],
+            ['2015',  660],
+            ['2016',  1030]
+        ]
+        if(JSON.parse( representative_id ).length > 0 ) {
+
+        }
+        res.status(200).json(list)
+    }  catch (err) {
+        console.log(err);
+        res.status(500).json({message: "Unable to retrieve assets"})
+    }
+})
+
 route.get("/lawfirm", [authJWT.verifyToken, clientDBConnection.connect], async(req, res, next) => {
     try{
         if(typeof req.connection_db != "undefined" && req.connection_db != null ) {
