@@ -1678,7 +1678,7 @@ route.get("/events/tabs/:tabID/companies/:representativeID/customers/:customerID
 
 route.post("/events/assets", [authJWT.verifyToken], async(req, res, next) => {
     try{
-        let { list, total, type, selectedCompanies, tabs, customers, assignments, other_mode } = req.body, assetsLifeSpan = []
+        let { list, total, type, selectedCompanies, tabs, customers, assignments, other_mode } = req.body, assetsLifeSpan = [['year', 'count', {type: 'string', role: 'style'}, {type: 'string', role: 'tooltip', 'p': {'html': true}}]]
 
         if( list != '' ) {
             list = JSON.parse(list)
