@@ -239,7 +239,8 @@ let createJSON = async(itemDetails, rfID) => {
             if(index === 0){
                 execDate = moment(new Date(assignor.exec_dt)).format('YYYY-MM-DD');
                 fakeDate = moment(new Date(assignor.exec_dt)).subtract(9, 'days');
-                recordedDate = moment(new Date(itemDetails.assignment.record_dt)).subtract(9, 'days');
+                /* recordedDate = moment(new Date(itemDetails.assignment.record_dt)).subtract(9, 'days'); */
+                recordedDate = moment(new Date(itemDetails.assignment.record_dt));
             }
             let type = "Ownership";
             if(itemDetails.assignee.length > 0){
@@ -290,7 +291,7 @@ let createJSON = async(itemDetails, rfID) => {
                         }
                         let commentObj = {};
                         commentObj[itemDetails.assignment.reel_no + "-" +  itemDetails.assignment.frame_no] = ["",""];
-                        connections.push({id: assigneeID, assignment_no1 :1, color: connectionLine[0].color, type: type, type_line: lineType, ref_id: assignee.rf_id, start_id: assignorID, end_id: assigneeID, box_creator_id: 0, box_creator_id2:0,popup: [itemDetails.assignment.reel_no + "-" +  itemDetails.assignment.frame_no],comment: [commentObj],user_files: [""], tooltip: connectionLine[0].name, date: execDate, document1: mainDocument, document1_form: document_form, document1_agreement: document_agreement,document2: "",note1: "", pdf1: "", note2: "", pdf2: "", popuptop: itemDetails.assignment.reel_no + "-" +  itemDetails.assignment.frame_no, popupbottom: ""});
+                        connections.push({id: assigneeID, assignment_no1 :1, color: connectionLine[0].color, type: type, type_line: lineType, ref_id: assignee.rf_id, start_id: assignorID, end_id: assigneeID, box_creator_id: 0, box_creator_id2:0,popup: [itemDetails.assignment.reel_no + "-" +  itemDetails.assignment.frame_no],comment: [commentObj],user_files: [""], tooltip: connectionLine[0].name, date: execDate, recorded: recordedDate, document1: mainDocument, document1_form: document_form, document1_agreement: document_agreement,document2: "",note1: "", pdf1: "", note2: "", pdf2: "", popuptop: itemDetails.assignment.reel_no + "-" +  itemDetails.assignment.frame_no, popupbottom: ""});
                     }
                 });
             }
