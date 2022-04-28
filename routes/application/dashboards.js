@@ -60,8 +60,8 @@ route.post("/", [authJWT.verifyToken], async(req, res, next) => {
                              * Broken
                              */
                             query +=    `SELECT COUNT(appno_doc_num) AS number, appno_doc_num AS application, grant_doc_num AS patent, '' AS rf_id FROM (
-                                SELECT appno_doc_num, grant_doc_num FROM db_new_application.lost_assets 
-                                WHERE company_id IN (:company_id) AND organisation_id = :organisationID GROUP BY appno_doc_num) AS temp`; 
+                                SELECT appno_doc_num, grant_doc_num FROM db_new_application.assets_bank_broken 
+                                WHERE company_id IN (:company_id) AND organisation_id = :organisationID ${parties.length > 0 ? ' AND assignor_id IN (:assignor_id) ' : ''} GROUP BY appno_doc_num) AS temp`; 
                             break;
                         case 17: 
                             /**
@@ -69,7 +69,7 @@ route.post("/", [authJWT.verifyToken], async(req, res, next) => {
                              */
                             query +=    `SELECT COUNT(appno_doc_num) AS number, appno_doc_num AS application, grant_doc_num AS patent, '' AS rf_id FROM (
                                 SELECT appno_doc_num, grant_doc_num FROM db_new_application.lost_assets 
-                                WHERE company_id IN (:company_id) AND organisation_id = :organisationID GROUP BY appno_doc_num) AS temp`; 
+                                WHERE company_id IN (:company_id) AND organisation_id = :organisationID  ${parties.length > 0 ? ' AND assignor_id IN (:assignor_id) ' : ''} GROUP BY appno_doc_num) AS temp`; 
                             break;
                         case 18:
                             /**
@@ -82,7 +82,7 @@ route.post("/", [authJWT.verifyToken], async(req, res, next) => {
                             INNER JOIN db_uspto.assignor AS aor ON aor.rf_id = rac.rf_id
                             INNER JOIN LATERAL (
                                 SELECT appno_doc_num, assignor_id, exec_dt, rf_id FROM db_new_application.assets_with_bank
-                                WHERE company_id IN (:company_id) AND organisation_id = :organisationID
+                                WHERE company_id IN (:company_id) AND organisation_id = :organisationID  ${parties.length > 0 ? ' AND assignor_id IN (:assignor_id) ' : ''} 
                                 GROUP BY assignor_id, rf_id
                             ) AS max_date ON max_date.appno_doc_num = d.appno_doc_num AND aor.exec_dt > max_date.exec_dt AND max_date.rf_id <> rac.rf_id AND aor.assignor_and_assignee_id = max_date.assignor_id
                             GROUP BY rac.rf_id) AS temp`;
@@ -100,7 +100,7 @@ route.post("/", [authJWT.verifyToken], async(req, res, next) => {
                                ) AS expired_assets
                                FROM db_new_application.assets_with_bank AS tawb
                                INNER JOIN db_uspto.documentid AS d ON d.rf_id = tawb.rf_id
-                               WHERE tawb.company_id IN (:company_id) AND tawb.organisation_id = :organisationID AND date_format(d.appno_date, '%Y') >= :year
+                               WHERE tawb.company_id IN (:company_id) AND tawb.organisation_id = :organisationID   ${parties.length > 0 ? ' AND tawb.assignor_id IN (:assignor_id) ' : ''}    AND date_format(d.appno_date, '%Y') >= :year
                                GROUP BY d.appno_doc_num
                             ) AS temp`;
                             break;
@@ -130,7 +130,7 @@ route.post("/", [authJWT.verifyToken], async(req, res, next) => {
                                 FROM db_new_application.assets_with_bank as tawb
                                 INNER JOIN db_patent_maintainence_fee.event_maintainence_fees AS emf ON emf.appno_doc_num = tawb.appno_doc_num
                                 WHERE company_id IN (:company_id) 
-                                AND organisation_id = :organisationID 
+                                AND organisation_id = :organisationID ${parties.length > 0 ? ' AND assignor_id IN (:assignor_id) ' : ''}
                                 AND emf.event_code IN ('F176', 'M1554', 'M1555', 'M1556', 'M1557', 'M1558', 'M176', 'M177', 'M178', 'M181', 'M182', 'M186', 'M187', 'M188', 'M2554', 'M2555', 'M2556', 'M2558', 'M277', 'M281', 'M282', 'M286', 'M3554', 'M3555', 'M3556', 'M3557', 'M3558')) AS temp`           
                             break;
                         case 24:
@@ -167,7 +167,7 @@ route.post("/", [authJWT.verifyToken], async(req, res, next) => {
                                         ) AS doc ON doc.appno_doc_num = tawb.appno_doc_num
                                         INNER JOIN db_uspto.representative_assignment_conveyance AS rac ON rac.rf_id = doc.rf_id
                                         WHERE company_id IN (:company_id) 
-                                        AND organisation_id = :organisationID 
+                                        AND organisation_id = :organisationID ${parties.length > 0 ? ' AND assignor_id IN (:assignor_id) ' : ''}
                                         AND rac.convey_ty = :convey_ty
                                         GROUP BY tawb.appno_doc_num) AS temp`;
                             }                            
@@ -214,7 +214,7 @@ route.post("/", [authJWT.verifyToken], async(req, res, next) => {
                                             ) AS doc1 ON doc1.rf_id = aor.rf_id
                                             INNER JOIN db_new_application.assets_with_bank AS tawb1 ON tawb1.appno_doc_num = doc1.appno_doc_num
                                             WHERE company_id IN (:company_id) 
-                                            AND organisation_id = :organisationID 
+                                            AND organisation_id = :organisationID ${parties.length > 0 ? ' AND assignor_id IN (:assignor_id) ' : ''}
                                             GROUP BY aor.rf_id
                                         ) AS temp_exec_dt ON  temp_exec_dt.rf_id = ass.rf_id
                                         WHERE company_id IN (:company_id) 
