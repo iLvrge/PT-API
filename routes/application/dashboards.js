@@ -76,7 +76,7 @@ route.post("/", [authJWT.verifyToken], async(req, res, next) => {
                              * Encumbrances
                              */
                             where.convey_ty = "namechg";
-                            query += `SELECT SUM(count_transactions) AS number, appno_doc_num AS application, grant_doc_num AS patent, '' AS rf_id FROM (SELECT COUNT(rac.rf_id) AS count_transactions, rac.rf_id As transaction, d.appno_doc_num, d.grant_doc_num FROM db_uspto.documentid AS d 
+                            query += `SELECT SUM(count_transactions) AS number, '' AS application, '' AS patent, transaction AS rf_id FROM (SELECT COUNT(rac.rf_id) AS count_transactions, rac.rf_id As transaction, d.appno_doc_num, d.grant_doc_num FROM db_uspto.documentid AS d 
                             INNER JOIN db_uspto.representative_assignment_conveyance AS rac ON rac.rf_id = d.rf_id AND rac.convey_ty NOT IN (:convey_ty)
                             INNER JOIN db_uspto.assignee AS ass ON ass.rf_id = rac.rf_id 
                             INNER JOIN db_uspto.assignor AS aor ON aor.rf_id = rac.rf_id
@@ -330,7 +330,7 @@ route.post("/", [authJWT.verifyToken], async(req, res, next) => {
                              * Encumbrances
                              */
                             where.convey_ty = "namechg";
-                            query = `SELECT SUM(count_transactions) AS number, appno_doc_num AS application, grant_doc_num AS patent, '' AS rf_id FROM (SELECT COUNT(rac.rf_id) AS count_transactions, rac.rf_id As transaction, d.appno_doc_num, d.grant_doc_num FROM db_uspto.documentid AS d 
+                            query = `SELECT SUM(count_transactions) AS number, '' AS application, '' AS patent, transaction AS rf_id FROM (SELECT COUNT(rac.rf_id) AS count_transactions, rac.rf_id As transaction, d.appno_doc_num, d.grant_doc_num FROM db_uspto.documentid AS d 
                             INNER JOIN db_uspto.representative_assignment_conveyance AS rac ON rac.rf_id = d.rf_id AND rac.convey_ty NOT IN (:convey_ty)
                             INNER JOIN db_uspto.assignee AS ass ON ass.rf_id = rac.rf_id 
                             INNER JOIN db_uspto.assignor AS aor ON aor.rf_id = rac.rf_id
