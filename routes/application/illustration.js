@@ -81,7 +81,7 @@ let createJSON = async(itemDetails, rfID) => {
                 earliestDate = moment(new Date(assignor.exec_dt)).format('YYYY-MM-DD');
             }
 
-            assignors.push(boxName);
+            assignors.push({recorded_name: assignor.original_name, normalize_name: boxName});
             if(itemDetails.assignment.status === 1) {
                 mainDocument = cdnURL + rfIDno + ext;
                 document_form = mainDocument
@@ -164,7 +164,7 @@ let createJSON = async(itemDetails, rfID) => {
                 boxName = assignee.ee_name;
             }
 
-            assignees.push(boxName);
+            assignees.push({recorded_name: assignee.original_name, normalize_name: boxName});
             assigneesAddress1.push(assignee.ee_address_1);
             assigneesAddress2.push(assignee.ee_address_2);
             assigneesCity.push(assignee.ee_city);
