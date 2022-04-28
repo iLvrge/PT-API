@@ -65,10 +65,10 @@ route.post("/", [authJWT.verifyToken], async(req, res, next) => {
                             break;
                         case 17: 
                             /**
-                             * Loss Assets
+                             * Incorrect Names
                              */
-                            query +=    `SELECT COUNT(appno_doc_num) AS number, appno_doc_num AS application, grant_doc_num AS patent, '' AS rf_id FROM (
-                                SELECT appno_doc_num, grant_doc_num FROM db_new_application.lost_assets 
+                            query +=    `SELECT COUNT(appno_doc_num) AS number, '' AS application, '' AS patent, rf_id FROM (
+                                SELECT appno_doc_num, grant_doc_num, rf_id FROM db_new_application.lost_assets 
                                 WHERE company_id IN (:company_id) AND organisation_id = :organisationID  ${parties.length > 0 ? ' AND assignor_id IN (:assignor_id) ' : ''} GROUP BY appno_doc_num) AS temp`; 
                             break;
                         case 18:
@@ -76,7 +76,7 @@ route.post("/", [authJWT.verifyToken], async(req, res, next) => {
                              * Encumbrances
                              */
                             where.convey_ty = "namechg";
-                            query += `SELECT SUM(count_transactions) AS number, '' AS application, '' AS patent, transaction AS rf_id FROM (SELECT COUNT(rac.rf_id) AS count_transactions, rac.rf_id As transaction, d.appno_doc_num, d.grant_doc_num FROM db_uspto.documentid AS d 
+                            query += `SELECT SUM(count_transactions) AS number, appno_doc_num AS application, grant_doc_num AS patent, '' AS rf_id FROM (SELECT COUNT(rac.rf_id) AS count_transactions, rac.rf_id As transaction, d.appno_doc_num, d.grant_doc_num FROM db_uspto.documentid AS d 
                             INNER JOIN db_uspto.representative_assignment_conveyance AS rac ON rac.rf_id = d.rf_id AND rac.convey_ty NOT IN (:convey_ty)
                             INNER JOIN db_uspto.assignee AS ass ON ass.rf_id = rac.rf_id 
                             INNER JOIN db_uspto.assignor AS aor ON aor.rf_id = rac.rf_id
@@ -311,9 +311,9 @@ route.post("/", [authJWT.verifyToken], async(req, res, next) => {
                             break;
                         case 17:
                             /**
-                             * Loss Assets
+                             * Incorrect Names
                              */
-                            query = `SELECT COUNT(appno) AS number, appno AS application, grantNo AS patent, '' AS rf_id FROM (SELECT recorded_assignor_and_assignee_id, appno, appnoDt, grantNo, grantDt, rf_id, name, representative_name FROM (
+                            query = `SELECT COUNT(appno) AS number, '' AS application, '' AS patent, rf_id FROM (SELECT recorded_assignor_and_assignee_id, appno, appnoDt, grantNo, grantDt, rf_id, name, representative_name FROM (
                                 SELECT apt.recorded_assignor_and_assignee_id, MAX(appno_doc_num) AS appno, MAX(appno_date) AS appnoDt, MAX(grant_doc_num) AS grantNo, MAX(grant_date) AS grantDt,  rac.rf_id, aaa.name AS name,
                                                     (SELECT representative_name FROM db_uspto.representative WHERE representative_id = aaa.representative_id) AS representative_name  FROM db_new_application.activity_parties_transactions AS apt
                                 INNER JOIN db_uspto.documentid AS doc ON doc.rf_id = apt.rf_id
@@ -330,7 +330,7 @@ route.post("/", [authJWT.verifyToken], async(req, res, next) => {
                              * Encumbrances
                              */
                             where.convey_ty = "namechg";
-                            query = `SELECT SUM(count_transactions) AS number, '' AS application, '' AS patent, transaction AS rf_id FROM (SELECT COUNT(rac.rf_id) AS count_transactions, rac.rf_id As transaction, d.appno_doc_num, d.grant_doc_num FROM db_uspto.documentid AS d 
+                            query = `SELECT SUM(count_transactions) AS number, appno_doc_num AS application, grant_doc_num AS patent, '' AS rf_id FROM (SELECT COUNT(rac.rf_id) AS count_transactions, rac.rf_id As transaction, d.appno_doc_num, d.grant_doc_num FROM db_uspto.documentid AS d 
                             INNER JOIN db_uspto.representative_assignment_conveyance AS rac ON rac.rf_id = d.rf_id AND rac.convey_ty NOT IN (:convey_ty)
                             INNER JOIN db_uspto.assignee AS ass ON ass.rf_id = rac.rf_id 
                             INNER JOIN db_uspto.assignor AS aor ON aor.rf_id = rac.rf_id
