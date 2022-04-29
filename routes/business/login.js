@@ -119,7 +119,7 @@ route.post("/verify", (req, res, next) => {
             transporter.sendMail(mailOptions, (err, response) => {
                if(err) {
                    console.log("Error while sending email "+ err);
-                   res.status(500).json({message:'Not able to send email to your addess.'});
+                   res.status(500).json({message:'Not able to send email to your address.'});
                } else {
                    res.status(200).json({message:'We have sent you an email, please check your inbox.'});
                }
