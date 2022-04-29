@@ -190,6 +190,122 @@ route.get("/timeline", [authJWT.verifyToken], async(req, res, next) => {
     }
 })
 
+route.get("/timeline/security", [authJWT.verifyToken], async(req, res, next) => {
+    let {companies, tabs, customers, rf_ids, layout, exclude, limit, offset } = req.query, list = [], groups = []
+    try {                
+        
+        const replacements = { organisation_id: req.orgId, year: 1997 }
+
+        if(typeof companies != 'undefined' && companies != '') {            
+            companies = JSON.parse(companies)
+        }
+
+        if(typeof tabs != 'undefined' && tabs != '') {
+            tabs = JSON.parse(tabs)
+        }
+
+        if(typeof customers != 'undefined' && customers != '') {
+            customers = JSON.parse(customers);
+        }
+
+        if(typeof rf_ids != 'undefined' &&  rf_ids != '' ) {
+            rf_ids = JSON.parse(rf_ids);
+        }
+
+
+        let transactionQuery = " "
+
+        if( companies.length > 0 ) {
+            transactionQuery += " AND assets.company_id IN (:companies)"
+        }
+
+        if( typeof layout != 'undefined' ) {
+            transactionQuery += " AND assets.layout_id IN (:layout)"
+        }
+        
+        let query = "SELECT activity_parties_transactions.rf_id as id, exec_dt, IF(representative.representative_name <> '', representative.representative_name, assignor_and_assignee.name)  AS customerName, activity_id AS tab_id, (CASE WHEN (activity_id = 8 OR activity_id = 9 OR activity_id = 14) THEN 1 WHEN (activity_id = 5 OR activity_id = 11 OR activity_id = 12 OR activity_id = 13) THEN 2 WHEN (activity_id = 3 OR activity_id = 4) THEN 3 WHEN (activity_id = 1 OR activity_id = 2 OR activity_id = 6 OR activity_id = 7) THEN 4 WHEN (activity_id = 10) THEN 5 END) AS `group`, company_id AS `company`, (SELECT count(asset) FROM ( SELECT IF(dd.grant_doc_num <> '', dd.grant_doc_num, dd.appno_doc_num) AS asset FROM db_uspto.documentid AS dd WHERE dd.rf_id = activity_parties_transactions.rf_id GROUP BY asset ) AS temp) AS totalAssets FROM activity_parties_transactions INNER JOIN db_uspto.assignor_and_assignee AS assignor_and_assignee ON assignor_and_assignee.assignor_and_assignee_id = activity_parties_transactions.assignor_and_assignee_id LEFT JOIN db_uspto.representative AS representative ON representative.representative_id = assignor_and_assignee.representative_id WHERE activity_parties_transactions.organisation_id = :organisation_id "
+
+        let groupQuery = "SELECT activity_id AS `group` FROM activity_parties_transactions WHERE activity_parties_transactions.organisation_id = :organisation_id "
+                
+
+        if( companies.length > 0 ) {
+            query += " AND activity_parties_transactions.company_id IN (:companies)"
+            groupQuery += " AND activity_parties_transactions.company_id IN (:companies)"
+            replacements.companies = companies
+        }
+
+        if( tabs.length > 0 ) {
+            query += " AND activity_parties_transactions.activity_id IN (:tabs)"
+            groupQuery += " AND activity_parties_transactions.activity_id IN (:tabs)"
+            replacements.tabs = tabs
+        }
+
+        if((tabs.length == 0 || !tabs.includes(10)) && exclude != 'true') {
+            query += " AND activity_parties_transactions.activity_id <> 10 "
+            groupQuery += " AND activity_parties_transactions.activity_id <> 10 "
+        }
+
+        if( customers.length > 0 ) {
+            query += " AND activity_parties_transactions.assignor_and_assignee_id IN (:customers)"
+            groupQuery += " AND activity_parties_transactions.assignor_and_assignee_id IN (:customers)"
+            replacements.customers = customers
+        }
+
+        if( rf_ids.length > 0 ) {
+            query += " AND activity_parties_transactions.rf_id IN (:rf_ids)"
+            groupQuery += " AND activity_parties_transactions.rf_id IN (:rf_ids)"
+            replacements.rf_ids = rf_ids
+        } else {
+            query += " AND activity_parties_transactions.rf_id IN (SELECT documentid.rf_id FROM db_uspto.documentid AS documentid WHERE date_format(documentid.appno_date, '%Y') > :year AND documentid.appno_doc_num IN (SELECT assets.appno_doc_num FROM assets WHERE assets.organisation_id = :organisation_id "
+
+            groupQuery += " AND activity_parties_transactions.rf_id IN (SELECT documentid.rf_id FROM db_uspto.documentid AS documentid WHERE date_format(documentid.appno_date, '%Y') > :year AND documentid.appno_doc_num IN (SELECT assets.appno_doc_num FROM assets WHERE assets.organisation_id = :organisation_id "
+
+
+            if( typeof layout != 'undefined' ) {
+                query += " AND assets.layout_id IN (:layout)"
+
+                groupQuery += " AND assets.layout_id IN (:layout)"
+            }
+
+            if( companies.length > 0 ) {
+                query += " AND assets.company_id IN (:companies)"
+
+                groupQuery += " AND assets.company_id IN (:companies)"
+            }
+
+            query += " ) GROUP BY documentid.rf_id)"
+
+            groupQuery += " ) GROUP BY documentid.rf_id)"
+        }
+
+        query += " GROUP BY activity_parties_transactions.rf_id ORDER BY exec_dt DESC "
+        replacements.layout = helpers.findLayout(layout)   
+
+
+       /*  list =  await connection.applicationNew.query(query, {
+                type: connection.Sequelize.QueryTypes.SELECT,
+                raw: true,
+                logging: console.log,
+                replacements: replacements,
+            }
+        );  */
+
+        /* groupQuery += " GROUP BY activity_id"
+        groups =  await connection.applicationNew.query(groupQuery, {
+                type: connection.Sequelize.QueryTypes.SELECT,
+                raw: true,
+                logging: console.log,
+                replacements: replacements,
+            }
+        ); */ 
+        res.status(200).json({list, groups});
+        
+    } catch ( err ) {
+        console.log("Timeline:"+err);
+        res.status(500).send("Internal server error.");
+    }
+})
+
 route.get("/asset_types", [authJWT.verifyToken, clientDBConnection.connect], async(req, res, next) => {
     try {
         let {companies} = req.query, tabs = [];
@@ -325,7 +441,7 @@ route.get("/asset_types/assignments", [authJWT.verifyToken, clientDBConnection.c
         const replacements  = { companies, organisation_id: req.orgId, tabs, customers }
         replacements.layout = helpers.findLayout(layout)   
        
-        let query = `SELECT activity_parties_transactions.rf_id, activity_parties_transactions.exec_dt AS date, (SELECT COUNT(distinct assets1.appno_doc_num) FROM assets AS assets1  INNER JOIN db_uspto.documentid AS documentid_1 ON assets1.appno_doc_num = documentid_1.appno_doc_num AND assets1.grant_doc_num = documentid_1.grant_doc_num WHERE documentid_1.rf_id = activity_parties_transactions.rf_id) AS assets FROM activity_parties_transactions AS activity_parties_transactions WHERE activity_parties_transactions.organisation_id = :organisation_id `
+        let query = `SELECT activity_parties_transactions.rf_id, date_format(activity_parties_transactions.exec_dt, '%m-%d-%y') AS date, (SELECT COUNT(distinct assets1.appno_doc_num) FROM assets AS assets1  INNER JOIN db_uspto.documentid AS documentid_1 ON assets1.appno_doc_num = documentid_1.appno_doc_num AND assets1.grant_doc_num = documentid_1.grant_doc_num WHERE documentid_1.rf_id = activity_parties_transactions.rf_id) AS assets FROM activity_parties_transactions AS activity_parties_transactions WHERE activity_parties_transactions.organisation_id = :organisation_id `
         
         if(Array.isArray(companies) && companies.length > 0 ) {
             query += `  AND activity_parties_transactions.company_id IN (:companies) `
@@ -489,6 +605,101 @@ route.get("/asset_types/assets", [authJWT.verifyToken, clientDBConnection.connec
             }
         }
         res.status(200).json({list: result, total_records });
+    } catch ( err ) {
+        console.log(err);
+        res.status(500).send("Internal server error.");
+    }
+})
+
+
+route.get("/asset_types/assets/family", [authJWT.verifyToken, clientDBConnection.connect], async(req, res, next) => {
+    try {
+        let {companies, tabs, customers, assignments, limit, offset } = req.query, result = []
+
+        if(companies && companies != '') {
+            companies = JSON.parse( companies )
+        } 
+
+        if( !companies || companies.length == 0 ) {
+            const getCompaniesList = await helpers.getCompaniesList(req.connection_db);
+            companies = []
+            if(getCompaniesList.length > 0) {                   
+                getCompaniesList.forEach(p =>  companies.push(p.representative_id));
+            }
+        }
+
+        if(tabs && tabs != '') {
+            tabs = JSON.parse( tabs )
+        } else {
+            tabs = []
+        }
+
+        if(customers && customers!= '') {
+            customers = JSON.parse(customers)
+            const findOtherNormaliseCustomers = await AssignorAndAssignee.findAll({
+                attributes: ['assignor_and_assignee_id'],
+                where: { assignor_and_assignee_id: customers, representative_id: {[connection.Op.gt]: 0}}
+            })
+
+            if( findOtherNormaliseCustomers.length > 0 ) {
+                const promise = findOtherNormaliseCustomers.map( customer => {
+                    if( !customers.includes(customer.assignor_and_assignee_id) ) {
+                        customers.push( customer.assignor_and_assignee_id )
+                    }
+                })
+                await Promise.all(promise)
+            }
+        } else {
+            customers = []
+        }
+
+        if(assignments && assignments != '') {
+            assignments = JSON.parse( assignments )
+        } else {
+            assignments = []
+        }
+        
+        const where  = {representative_id: companies, organisation_id: req.orgId}
+
+        if( tabs.length > 0 ) {
+            where.tabs = tabs
+        }
+
+        if( customers.length > 0 ) {
+            where.customers = customers
+        }
+
+        if( assignments.length > 0 ) {
+            where.assignments = assignments
+        }
+
+        let query = "SELECT appno_doc_num, grant_doc_num, CASE WHEN grant_doc_num = '' OR grant_doc_num IS NULL THEN FORMAT(appno_doc_num,0) ELSE FORMAT(grant_doc_num,0) END AS format_asset, CASE WHEN grant_doc_num = '' THEN appno_doc_num ELSE  grant_doc_num END as asset, 0 as child_count FROM documentid WHERE rf_id IN (SELECT rf_id FROM tree_parties_collection WHERE REPLACE_WHERE ) GROUP BY appno_doc_num, grant_doc_num";
+
+        let whereCondition = ' representative_id IN (:representative_id)  AND organisation_id = :organisation_id';
+
+        if(tabs.length > 0) {
+            whereCondition += ' AND tab_id IN (:tabs) '
+        }
+
+        if(customers.length > 0) {
+            whereCondition += ' AND assignor_and_assignee_id IN (:customers) '
+        }
+
+        if(assignments.length > 0) {
+            whereCondition += ' AND rf_id IN (:assignments) '
+        }
+
+        result = [
+            ['Country', 'Popularity'],
+            ['Germany', 200],
+            ['United States', 300],
+            ['Brazil', 400],
+            ['Canada', 500],
+            ['France', 600],
+            ['RU', 700]
+        ]
+
+        res.status(200).json(result);
     } catch ( err ) {
         console.log(err);
         res.status(500).send("Internal server error.");

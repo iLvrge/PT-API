@@ -67,6 +67,7 @@ let createJSON = async(itemDetails, rfID) => {
 
         itemDetails.assignor.forEach( (assignor, index) => {
             let boxName = assignor.normalize_name;
+            let originalName = assignor.original_name
             let assignorID = assignor.id + ''+ index;
             if( boxName  === '' || boxName == null) {
                 boxName = assignor.or_name;
@@ -80,7 +81,7 @@ let createJSON = async(itemDetails, rfID) => {
                 earliestDate = moment(new Date(assignor.exec_dt)).format('YYYY-MM-DD');
             }
 
-            assignors.push(boxName);
+            assignors.push({recorded_name: assignor.original_name, normalize_name: boxName});
             if(itemDetails.assignment.status === 1) {
                 mainDocument = cdnURL + rfIDno + ext;
                 document_form = mainDocument
@@ -109,6 +110,7 @@ let createJSON = async(itemDetails, rfID) => {
             let boxObj = {
                 id: assignorID.toString(),
                 name: boxName,
+                original_name: originalName,
                 assignment_no: 0,
                 date_1: fakeDate.format('YYYY-MM-DD'),
                 execution_date: fakeDate.format('YYYY-MM-DD'),
@@ -156,13 +158,13 @@ let createJSON = async(itemDetails, rfID) => {
         itemDetails.assignee.forEach( assignee => {
             let assigneeID = "";
             boxName = assignee.normalize_name;
-
+            originalName = assignee.original_name
 
             if( boxName  === '' || boxName == null) {
                 boxName = assignee.ee_name;
             }
 
-            assignees.push(boxName);
+            assignees.push({recorded_name: assignee.original_name, normalize_name: boxName});
             assigneesAddress1.push(assignee.ee_address_1);
             assigneesAddress2.push(assignee.ee_address_2);
             assigneesCity.push(assignee.ee_city);
@@ -207,6 +209,7 @@ let createJSON = async(itemDetails, rfID) => {
                 boxObj = {
                     id: assigneeID,
                     name: boxName,
+                    original_name: originalName,
                     date_1: execDate,
                     assignment_no: 1,
                     execution_date: execDate,
@@ -239,7 +242,8 @@ let createJSON = async(itemDetails, rfID) => {
             if(index === 0){
                 execDate = moment(new Date(assignor.exec_dt)).format('YYYY-MM-DD');
                 fakeDate = moment(new Date(assignor.exec_dt)).subtract(9, 'days');
-                recordedDate = moment(new Date(itemDetails.assignment.record_dt)).subtract(9, 'days');
+                /* recordedDate = moment(new Date(itemDetails.assignment.record_dt)).subtract(9, 'days'); */
+                recordedDate = moment(new Date(itemDetails.assignment.record_dt));
             }
             let type = "Ownership";
             if(itemDetails.assignee.length > 0){
@@ -290,7 +294,7 @@ let createJSON = async(itemDetails, rfID) => {
                         }
                         let commentObj = {};
                         commentObj[itemDetails.assignment.reel_no + "-" +  itemDetails.assignment.frame_no] = ["",""];
-                        connections.push({id: assigneeID, assignment_no1 :1, color: connectionLine[0].color, type: type, type_line: lineType, ref_id: assignee.rf_id, start_id: assignorID, end_id: assigneeID, box_creator_id: 0, box_creator_id2:0,popup: [itemDetails.assignment.reel_no + "-" +  itemDetails.assignment.frame_no],comment: [commentObj],user_files: [""], tooltip: connectionLine[0].name, date: execDate, document1: mainDocument, document1_form: document_form, document1_agreement: document_agreement,document2: "",note1: "", pdf1: "", note2: "", pdf2: "", popuptop: itemDetails.assignment.reel_no + "-" +  itemDetails.assignment.frame_no, popupbottom: ""});
+                        connections.push({id: assigneeID, assignment_no1 :1, color: connectionLine[0].color, type: type, type_line: lineType, ref_id: assignee.rf_id, start_id: assignorID, end_id: assigneeID, box_creator_id: 0, box_creator_id2:0,popup: [itemDetails.assignment.reel_no + "-" +  itemDetails.assignment.frame_no],comment: [commentObj],user_files: [""], tooltip: connectionLine[0].name, date: execDate, recorded: recordedDate, document1: mainDocument, document1_form: document_form, document1_agreement: document_agreement,document2: "",note1: "", pdf1: "", note2: "", pdf2: "", popuptop: itemDetails.assignment.reel_no + "-" +  itemDetails.assignment.frame_no, popupbottom: ""});
                     }
                 });
             }
