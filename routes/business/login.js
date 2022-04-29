@@ -121,7 +121,7 @@ route.post("/verify", (req, res, next) => {
                    console.log("Error while sending email "+ err);
                    res.status(500).json({message:'Not able to send email to your address.'});
                } else {
-                   res.status(200).json({message:'We have sent you an email, please check your inbox.'});
+                   res.status(200).json({message:'Please enter below the code that we just emailed you.'});
                }
            });					
         }); 
