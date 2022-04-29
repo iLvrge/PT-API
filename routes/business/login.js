@@ -110,8 +110,7 @@ route.post("/verify", (req, res, next) => {
             });
            const mailOptions = {
                 from: 'no-reply@patentrack.com',
-                /* to: `${user.email_address}`, */
-                to: 'er.vivek2512@gmail.com',
+                to: `${user.email_address}`,
                 subject: 'Six digit code for PatenTrack.com',
                 /* text: `You are receiving this because you have requested to reset of the password for your account.\n\n Please click on the following link, or paste this into your browser to complete the process within one hour of receiving it. \n\n https://patentrack.com/?t=reset&e=${user.email_address}&auth=${token} \n\n If you did not request this, please ignore this email and your password will remain unchanged. \n Thanks \n Team PatenTrack` */
                 html: `Six digit code <b>${token}</b> <br/> Thanks <br/> Team PatenTrack`
