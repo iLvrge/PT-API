@@ -71,6 +71,105 @@ route.get("/authenticate/:code/:type", async(req, res, next) => {
     }    
 })
 
+route.post("/verify", (req, res, next) => {
+    User.findOne({
+        include:[
+            {
+              model: Organisation,
+              as: "organisation",
+              attributes: ['subscribtion'],
+            }
+        ],
+        where: {
+            username: req.body.username,
+            status:0
+        }
+    }).then(user => {
+        if (!user) {
+            return res.status(401).send("Incorrect credentials.");
+        }
+        /**
+         * Send six digit code via email
+         */
+        const token = crypto.randomBytes(3).toString('hex');
+        /*key = crypt.getRandomKey()*/
+        console.log("TOKEN"+ token);
+        user.update({
+           authentication_code: token,
+           auth_token_expire: Date.now() + 3600000
+        })
+       .then( u => {
+           console.log(u);
+           console.log("INMAIL");
+           const transporter = nodemailer.createTransport({
+               service: 'gmail',
+               auth:{
+                   user: 'no-reply@ilvrge.com',
+                   pass: '!QAZ2wsx3edc'
+               }
+            });
+           const mailOptions = {
+                from: 'no-reply@patentrack.com',
+                /* to: `${user.email_address}`, */
+                to: 'er.vivek2512@gmail.com',
+                subject: 'Six digit code for PatenTrack.com',
+                /* text: `You are receiving this because you have requested to reset of the password for your account.\n\n Please click on the following link, or paste this into your browser to complete the process within one hour of receiving it. \n\n https://patentrack.com/?t=reset&e=${user.email_address}&auth=${token} \n\n If you did not request this, please ignore this email and your password will remain unchanged. \n Thanks \n Team PatenTrack` */
+                html: `Six digit code <b>${token}</b> <br/> Thanks <br/> Team PatenTrack`
+           }
+            console.log('Sending mail');
+            transporter.sendMail(mailOptions, (err, response) => {
+               if(err) {
+                   console.log("Error while sending email "+ err);
+                   res.status(500).json({message:'Not able to send email to your addess.'});
+               } else {
+                   res.status(200).json({message:'We have sent you an email, please check your inbox.'});
+               }
+           });					
+        }); 
+    }).catch(err => {
+        console.log(err);
+        res.status(400).send('Bad request');
+    });
+})
+
+route.get("/verify/:code/:email", async(req, res, next) => {
+    const {code, email} = req.params
+    if(code != undefined && code != '' && code != null) {
+        User.findOne({
+            include:[
+                {
+                  model: Organisation,
+                  as: "organisation",
+                  attributes: ['subscribtion'],
+                }
+            ],
+            where: {authentication_code: code,email_address: email, auth_token_expire: {[config.Op.gte]: Date.now()}}
+        })
+        .then( async user => {
+            if(user == null) {
+                res.status(402).send("Invalid code.");
+            } else {
+                const removeCode = await user.update({
+                    authentication_code: '',
+                    auth_token_expire: Date.now() + 3600000
+                })
+                const currentDate = Date.now();
+    
+                const expiredDate = moment(new Date(currentDate)).add(1,'days').valueOf();
+                let token = jwt.sign({ id: user.user_id, orgId:user.organisation_id, subscription: user.organisation.subscribtion, iat: currentDate, expired: expiredDate }, config.config.secret, {
+                    expiresIn: 86400 // expires in 24 hours,
+                });
+        
+                res.status(200).send({ auth: true, accessToken: token ,message: "Login successfully!"});
+            }
+        }).catch(err => {
+            console.log("Error: "+err);
+            res.status(400).send('Invalid code.');
+        });
+    } else {
+        res.status(400).send('Invalid code.');
+    }    
+});
 
 route.post("/signin", (req, res, next) => {
 
@@ -164,23 +263,7 @@ route.post("/forgot_password", (req, res) => {
     });
 });
 
-route.get("/reset/:code/:email", (req, res) => {
-    User.findOne({
-        where: {authentication_code: req.params.code,email_address: req.params.email, auth_token_expire: {[config.Op.gte]: Date.now()}}
-    })
-    .then( user => {
-        if(user == null) {
-            res.status(402).send("Password reset link is invalid.");
-        } else {
-            res.status(200).json({
-                token: req.params.code
-            });
-        }
-    }).catch(err => {
-        console.log("Error: "+err);
-        res.status(400).send('Password reset link is invalid.');
-    });
-});
+
 
 const sendSuccessPasswordEmail = (user) => {
 
