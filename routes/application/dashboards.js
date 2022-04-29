@@ -281,7 +281,7 @@ route.post("/", [authJWT.verifyToken], async(req, res, next) => {
                     queryAssets += ` AND assets.appno_doc_num IN (  SELECT documentid.appno_doc_num FROM db_uspto.documentid WHERE rf_id  IN ( SELECT activity_parties_transactions.rf_id  FROM db_new_application.activity_parties_transactions WHERE activity_parties_transactions.organisation_id = :organisationID   ` 
 
                     if(Array.isArray(companies) && companies.length > 0 ) {
-                        query += ` AND activity_parties_transactions.company_id IN (:company_id) `
+                        queryAssets += ` AND activity_parties_transactions.company_id IN (:company_id) `
                     }
 
                     queryAssets += ` GROUP BY activity_parties_transactions.rf_id )  GROUP BY documentid.appno_doc_num) `
@@ -302,103 +302,105 @@ route.post("/", [authJWT.verifyToken], async(req, res, next) => {
                 }   
                 total = assetsList.length;
                 where.list = list
-                switch(parseInt(type)) {
-                    case 1:
-                        query = `SELECT COUNT(appno_doc_num) AS number, max(grant_doc_num) AS patent, max(appno_doc_num) AS application, '' AS rf_id, ${total} AS total  FROM ( SELECT appno_doc_num, grant_doc_num FROM db_new_application.assets AS assets  WHERE date_format(assets.appno_date, '%Y') > :year AND assets.layout_id = :layoutID AND assets.organisation_id = :organisationID  AND assets.appno_doc_num IN (:list) GROUP BY appno_doc_num ) AS temp `;
-                        break;
-                    case 17:
-                        /**
-                         * Incorrect Names
-                         */
-                        query = `SELECT COUNT(appno) AS number, '' AS application, '' AS patent, rf_id, ${total} AS total FROM (SELECT recorded_assignor_and_assignee_id, appno, appnoDt, grantNo, grantDt, rf_id, name, representative_name FROM (
-                            SELECT apt.recorded_assignor_and_assignee_id, MAX(appno_doc_num) AS appno, MAX(appno_date) AS appnoDt, MAX(grant_doc_num) AS grantNo, MAX(grant_date) AS grantDt,  rac.rf_id, aaa.name AS name,
-                                                (SELECT representative_name FROM db_uspto.representative WHERE representative_id = aaa.representative_id) AS representative_name  FROM db_new_application.activity_parties_transactions AS apt
-                            INNER JOIN db_uspto.documentid AS doc ON doc.rf_id = apt.rf_id
-                            INNER JOIN db_uspto.representative_assignment_conveyance AS rac ON rac.rf_id = apt.rf_id 
-                            INNER JOIN db_uspto.conveyance AS con ON con.convey_name = rac.convey_ty AND con.is_ota = 1 
-                            INNER JOIN db_uspto.assignor_and_assignee AS aaa ON aaa.assignor_and_assignee_id = apt.recorded_assignor_and_assignee_id
-                            WHERE apt.company_id = (:company_id) AND apt.organisation_id = :organisationID AND appno_doc_num IN (:list)
-                            GROUP BY apt.recorded_assignor_and_assignee_id, appno_doc_num, rac.rf_id
-                            ) AS temp
-                            WHERE representative_name <> '' AND LOWER(name) <> LOWER(representative_name)) temp1`                            
-                        break;
-                    case 18:
-                        /**
-                         * Encumbrances
-                         */
-                        where.convey_ty = "namechg";
-                        query = `SELECT SUM(count_transactions) AS number, appno_doc_num AS application, grant_doc_num AS patent, '' AS rf_id, ${total} AS total FROM (SELECT COUNT(rac.rf_id) AS count_transactions, rac.rf_id As transaction, d.appno_doc_num, d.grant_doc_num FROM db_uspto.documentid AS d 
-                        INNER JOIN db_uspto.representative_assignment_conveyance AS rac ON rac.rf_id = d.rf_id AND rac.convey_ty NOT IN (:convey_ty)
-                        INNER JOIN db_uspto.assignee AS ass ON ass.rf_id = rac.rf_id 
-                        INNER JOIN db_uspto.assignor AS aor ON aor.rf_id = rac.rf_id
-                        INNER JOIN LATERAL (
-                            SELECT assets.appno_doc_num, apt.assignor_and_assignee_id AS assignor_id, apt.exec_dt, apt.rf_id FROM db_new_application.assets AS assets
-                            INNER JOIN db_new_application.activity_parties_transactions AS apt ON apt.rf_id = assets.rf_id
-                            WHERE assets.company_id IN (:company_id) AND assets.organisation_id = :organisationID
-                            AND assets.appno_doc_num IN (:list)
-                            GROUP BY assignor_id, rf_id
-                        ) AS max_date ON max_date.appno_doc_num = d.appno_doc_num AND aor.exec_dt > max_date.exec_dt AND max_date.rf_id <> rac.rf_id AND aor.assignor_and_assignee_id = max_date.assignor_id
-                        GROUP BY rac.rf_id) AS temp`;
-                        break;
-                    case 23:
-                        /**
-                         * Late Maintainence
-                         */
-                        query = `SELECT appno_doc_num AS application, grant_doc_num AS patent, '' AS rf_id, COUNT(event_code) AS number, ${total} AS total FROM (SELECT tawb.appno_doc_num, emf.grant_doc_num,  event_code                                
-                            FROM db_new_application.assets as tawb
-                            INNER JOIN db_patent_maintainence_fee.event_maintainence_fees AS emf ON emf.appno_doc_num = tawb.appno_doc_num
-                            WHERE company_id IN (:company_id) 
-                            AND organisation_id = :organisationID 
-                            AND tawb.appno_doc_num IN (:list)
-                            AND emf.event_code IN ('F176', 'M1554', 'M1555', 'M1556', 'M1557', 'M1558', 'M176', 'M177', 'M178', 'M181', 'M182', 'M186', 'M187', 'M188', 'M2554', 'M2555', 'M2556', 'M2558', 'M277', 'M281', 'M282', 'M286', 'M3554', 'M3555', 'M3556', 'M3557', 'M3558')) AS temp`           
-                        break;
-                    case 24:
-                        /**
-                         * Incorrect Recordings
-                         */
-                        where.convey_ty = 'correct'
-                        query = `SELECT '' AS application, ''  AS patent, MAX(rf_id) AS rf_id, SUM(total_transactions) AS number, ${total} AS total FROM (SELECT rac.rf_id, COUNT(rac.rf_id) AS total_transactions 
+                if(list.length > 0) {
+                    switch(parseInt(type)) {
+                        case 1:
+                            query = `SELECT COUNT(appno_doc_num) AS number, max(grant_doc_num) AS patent, max(appno_doc_num) AS application, '' AS rf_id, ${total} AS total  FROM ( SELECT appno_doc_num, grant_doc_num FROM db_new_application.assets AS assets  WHERE date_format(assets.appno_date, '%Y') > :year AND assets.layout_id = :layoutID AND assets.organisation_id = :organisationID  AND assets.appno_doc_num IN (:list) GROUP BY appno_doc_num ) AS temp `;
+                            break;
+                        case 17:
+                            /**
+                             * Incorrect Names
+                             */
+                            query = `SELECT COUNT(appno) AS number, '' AS application, '' AS patent, rf_id, ${total} AS total FROM (SELECT recorded_assignor_and_assignee_id, appno, appnoDt, grantNo, grantDt, rf_id, name, representative_name FROM (
+                                SELECT apt.recorded_assignor_and_assignee_id, MAX(appno_doc_num) AS appno, MAX(appno_date) AS appnoDt, MAX(grant_doc_num) AS grantNo, MAX(grant_date) AS grantDt,  rac.rf_id, aaa.name AS name,
+                                                    (SELECT representative_name FROM db_uspto.representative WHERE representative_id = aaa.representative_id) AS representative_name  FROM db_new_application.activity_parties_transactions AS apt
+                                INNER JOIN db_uspto.documentid AS doc ON doc.rf_id = apt.rf_id
+                                INNER JOIN db_uspto.representative_assignment_conveyance AS rac ON rac.rf_id = apt.rf_id 
+                                INNER JOIN db_uspto.conveyance AS con ON con.convey_name = rac.convey_ty AND con.is_ota = 1 
+                                INNER JOIN db_uspto.assignor_and_assignee AS aaa ON aaa.assignor_and_assignee_id = apt.recorded_assignor_and_assignee_id
+                                WHERE apt.company_id = (:company_id) AND apt.organisation_id = :organisationID AND appno_doc_num IN (:list)
+                                GROUP BY apt.recorded_assignor_and_assignee_id, appno_doc_num, rac.rf_id
+                                ) AS temp
+                                WHERE representative_name <> '' AND LOWER(name) <> LOWER(representative_name)) temp1`                            
+                            break;
+                        case 18:
+                            /**
+                             * Encumbrances
+                             */
+                            where.convey_ty = "namechg";
+                            query = `SELECT SUM(count_transactions) AS number, appno_doc_num AS application, grant_doc_num AS patent, '' AS rf_id, ${total} AS total FROM (SELECT COUNT(rac.rf_id) AS count_transactions, rac.rf_id As transaction, d.appno_doc_num, d.grant_doc_num FROM db_uspto.documentid AS d 
+                            INNER JOIN db_uspto.representative_assignment_conveyance AS rac ON rac.rf_id = d.rf_id AND rac.convey_ty NOT IN (:convey_ty)
+                            INNER JOIN db_uspto.assignee AS ass ON ass.rf_id = rac.rf_id 
+                            INNER JOIN db_uspto.assignor AS aor ON aor.rf_id = rac.rf_id
+                            INNER JOIN LATERAL (
+                                SELECT assets.appno_doc_num, apt.assignor_and_assignee_id AS assignor_id, apt.exec_dt, apt.rf_id FROM db_new_application.assets AS assets
+                                INNER JOIN db_new_application.activity_parties_transactions AS apt ON apt.rf_id = assets.rf_id
+                                WHERE assets.company_id IN (:company_id) AND assets.organisation_id = :organisationID
+                                AND assets.appno_doc_num IN (:list)
+                                GROUP BY assignor_id, rf_id
+                            ) AS max_date ON max_date.appno_doc_num = d.appno_doc_num AND aor.exec_dt > max_date.exec_dt AND max_date.rf_id <> rac.rf_id AND aor.assignor_and_assignee_id = max_date.assignor_id
+                            GROUP BY rac.rf_id) AS temp`;
+                            break;
+                        case 23:
+                            /**
+                             * Late Maintainence
+                             */
+                            query = `SELECT appno_doc_num AS application, grant_doc_num AS patent, '' AS rf_id, COUNT(event_code) AS number, ${total} AS total FROM (SELECT tawb.appno_doc_num, emf.grant_doc_num,  event_code                                
                                 FROM db_new_application.assets as tawb
-                                INNER JOIN (
-                                    SELECT appno_doc_num, rf_id FROM db_uspto.documentid
-                                    WHERE appno_doc_num IN (:list)   
-                                    GROUP BY appno_doc_num, rf_id                                         
-                                ) AS doc ON doc.appno_doc_num = tawb.appno_doc_num
-                                INNER JOIN db_uspto.representative_assignment_conveyance AS rac ON rac.rf_id = doc.rf_id
+                                INNER JOIN db_patent_maintainence_fee.event_maintainence_fees AS emf ON emf.appno_doc_num = tawb.appno_doc_num
                                 WHERE company_id IN (:company_id) 
                                 AND organisation_id = :organisationID 
-                                AND rac.convey_ty = :convey_ty
-                                GROUP BY tawb.appno_doc_num) AS temp`;
-                        break;
-                    case 25:
-                        /**
-                         * Late Recordings
-                         */
-                        where.days = 90
-                        query = `SELECT '' AS application, ''  AS patent, MAX(rf_id) AS rf_id, COUNT(rf_id) AS number, ${total} AS total FROM (SELECT temp_exec_dt.rf_id, DATEDIFF(ass.record_dt, temp_exec_dt.exec_dt) AS noOfDays   
-                                FROM db_new_application.assets as tawb
-                                INNER JOIN (
-                                    SELECT appno_doc_num, rf_id FROM db_uspto.documentid
-                                    WHERE appno_doc_num IN (:list)
-                                    GROUP BY appno_doc_num, rf_id
-                                ) AS doc ON doc.appno_doc_num = tawb.appno_doc_num
-                                INNER JOIN db_uspto.assignment AS ass ON ass.rf_id = doc.rf_id
-                                INNER JOIN LATERAL (
-                                    SELECT aor.rf_id, aor.exec_dt FROM db_uspto.assignor AS aor
+                                AND tawb.appno_doc_num IN (:list)
+                                AND emf.event_code IN ('F176', 'M1554', 'M1555', 'M1556', 'M1557', 'M1558', 'M176', 'M177', 'M178', 'M181', 'M182', 'M186', 'M187', 'M188', 'M2554', 'M2555', 'M2556', 'M2558', 'M277', 'M281', 'M282', 'M286', 'M3554', 'M3555', 'M3556', 'M3557', 'M3558')) AS temp`           
+                            break;
+                        case 24:
+                            /**
+                             * Incorrect Recordings
+                             */
+                            where.convey_ty = 'correct'
+                            query = `SELECT '' AS application, ''  AS patent, MAX(rf_id) AS rf_id, SUM(total_transactions) AS number, ${total} AS total FROM (SELECT rac.rf_id, COUNT(rac.rf_id) AS total_transactions 
+                                    FROM db_new_application.assets as tawb
+                                    INNER JOIN (
+                                        SELECT appno_doc_num, rf_id FROM db_uspto.documentid
+                                        WHERE appno_doc_num IN (:list)   
+                                        GROUP BY appno_doc_num, rf_id                                         
+                                    ) AS doc ON doc.appno_doc_num = tawb.appno_doc_num
+                                    INNER JOIN db_uspto.representative_assignment_conveyance AS rac ON rac.rf_id = doc.rf_id
+                                    WHERE company_id IN (:company_id) 
+                                    AND organisation_id = :organisationID 
+                                    AND rac.convey_ty = :convey_ty
+                                    GROUP BY tawb.appno_doc_num) AS temp`;
+                            break;
+                        case 25:
+                            /**
+                             * Late Recordings
+                             */
+                            where.days = 90
+                            query = `SELECT '' AS application, ''  AS patent, MAX(rf_id) AS rf_id, COUNT(rf_id) AS number, ${total} AS total FROM (SELECT temp_exec_dt.rf_id, DATEDIFF(ass.record_dt, temp_exec_dt.exec_dt) AS noOfDays   
+                                    FROM db_new_application.assets as tawb
                                     INNER JOIN (
                                         SELECT appno_doc_num, rf_id FROM db_uspto.documentid
                                         WHERE appno_doc_num IN (:list)
                                         GROUP BY appno_doc_num, rf_id
-                                    ) AS doc1 ON doc1.rf_id = aor.rf_id
-                                    INNER JOIN db_new_application.assets AS tawb1 ON tawb1.appno_doc_num = doc1.appno_doc_num
+                                    ) AS doc ON doc.appno_doc_num = tawb.appno_doc_num
+                                    INNER JOIN db_uspto.assignment AS ass ON ass.rf_id = doc.rf_id
+                                    INNER JOIN LATERAL (
+                                        SELECT aor.rf_id, aor.exec_dt FROM db_uspto.assignor AS aor
+                                        INNER JOIN (
+                                            SELECT appno_doc_num, rf_id FROM db_uspto.documentid
+                                            WHERE appno_doc_num IN (:list)
+                                            GROUP BY appno_doc_num, rf_id
+                                        ) AS doc1 ON doc1.rf_id = aor.rf_id
+                                        INNER JOIN db_new_application.assets AS tawb1 ON tawb1.appno_doc_num = doc1.appno_doc_num
+                                        WHERE company_id IN (:company_id) 
+                                        AND organisation_id = :organisationID 
+                                        GROUP BY aor.rf_id
+                                    ) AS temp_exec_dt ON  temp_exec_dt.rf_id = ass.rf_id
                                     WHERE company_id IN (:company_id) 
-                                    AND organisation_id = :organisationID 
-                                    GROUP BY aor.rf_id
-                                ) AS temp_exec_dt ON  temp_exec_dt.rf_id = ass.rf_id
-                                WHERE company_id IN (:company_id) 
-                                AND organisation_id = :organisationID  
-                                HAVING noOfDays > :days ) AS temp`;
-                        break;
+                                    AND organisation_id = :organisationID  
+                                    HAVING noOfDays > :days ) AS temp`;
+                            break;
+                    }
                 }
             }
 
