@@ -2301,70 +2301,84 @@ let shareURL = async (params) => {
 };
 
 let getShareList = async (code, type) => {
-    const assetsList = []
-    let query = "SELECT  `share_lists`.`asset` AS asset, `share_lists`.`type` FROM `share` AS `share` INNER JOIN `share_list` AS `share_lists` ON `share`.`share_id` = `share_lists`.`share_id` WHERE `share`.`code` = :code  AND share.type = :type"
-    
-    /* if(type !== 'undefined' && type !== undefined && parseInt(type) === 2) {
-        query += " AND share.type = :type"
+    console.log('type', code, type)
+    if(type == 9) {
+        let query = "SELECT share.transactions FROM share  WHERE code = :code  AND type = :type"
+        const shareData = await connection.applicationNew.query(query,{
+                type: connection.Sequelize.QueryTypes.SELECT,
+                raw: true,
+                logging: console.log,
+                replacements: {code, type},
+                plain: true
+            }
+        );
+        return shareData;
     } else {
-        query += " AND share.type <> :type"
-    } */
-
-    const shareList = await connection.applicationNew.query(query,{
-        type: connection.Sequelize.QueryTypes.SELECT,
-        raw: true,
-        logging: console.log,
-        replacements: {code, type},
-        }
-    );
-
-    if( shareList.length > 0 ) {
-        const grant = [], app = []
+        const assetsList = []
+        let query = "SELECT  `share_lists`.`asset` AS asset, `share_lists`.`type` FROM `share` AS `share` INNER JOIN `share_list` AS `share_lists` ON `share`.`share_id` = `share_lists`.`share_id` WHERE `share`.`code` = :code  AND share.type = :type"
         
-        shareList.forEach( row => {
-            if(row.type === 4) {
-                grant.push(row.asset)
-            } else {
-                app.push(row.asset)
+        /* if(type !== 'undefined' && type !== undefined && parseInt(type) === 2) {
+            query += " AND share.type = :type"
+        } else {
+            query += " AND share.type <> :type"
+        } */
+
+        const shareList = await connection.applicationNew.query(query,{
+            type: connection.Sequelize.QueryTypes.SELECT,
+            raw: true,
+            logging: console.log,
+            replacements: {code, type},
             }
-        })
+        );
 
-        if(grant.length > 0) {
-            const queryGrant = "SELECT appno_doc_num, grant_doc_num, CASE WHEN grant_doc_num = '' THEN appno_doc_num ELSE grant_doc_num END AS asset, CASE WHEN grant_doc_num = '' THEN 1 ELSE 0 END AS asset_type, '' AS channel, 0 AS child_count  FROM db_uspto.documentid WHERE grant_doc_num IN (:grant) GROUP BY appno_doc_num"
-
-            const grantData = await connection.applicationNew.query(queryGrant,{
-                type: connection.Sequelize.QueryTypes.SELECT,
-                raw: true,
-                logging: console.log,
-                replacements: {grant},
+        if( shareList.length > 0 ) {
+            const grant = [], app = []
+            
+            shareList.forEach( row => {
+                if(row.type === 4) {
+                    grant.push(row.asset)
+                } else {
+                    app.push(row.asset)
                 }
-            );
+            })
 
-            if(grantData.length > 0) {
-                grantData.forEach( row => {
-                    assetsList.push(row)
-                })
-            }
-        }
+            if(grant.length > 0) {
+                const queryGrant = "SELECT appno_doc_num, grant_doc_num, CASE WHEN grant_doc_num = '' THEN appno_doc_num ELSE grant_doc_num END AS asset, CASE WHEN grant_doc_num = '' THEN 1 ELSE 0 END AS asset_type, '' AS channel, 0 AS child_count  FROM db_uspto.documentid WHERE grant_doc_num IN (:grant) GROUP BY appno_doc_num"
 
-        if(app.length > 0) {
-            const queryApp = "SELECT appno_doc_num, grant_doc_num, CASE WHEN grant_doc_num = '' THEN appno_doc_num ELSE grant_doc_num END AS asset, CASE WHEN grant_doc_num = '' THEN 1 ELSE 0 END AS asset_type, '' AS channel, 0 AS child_count  FROM db_uspto.documentid WHERE appno_doc_num IN (:app) GROUP BY appno_doc_num"
+                const grantData = await connection.applicationNew.query(queryGrant,{
+                    type: connection.Sequelize.QueryTypes.SELECT,
+                    raw: true,
+                    logging: console.log,
+                    replacements: {grant},
+                    }
+                );
 
-            const appData = await connection.applicationNew.query(queryApp,{
-                type: connection.Sequelize.QueryTypes.SELECT,
-                raw: true,
-                logging: console.log,
-                replacements: {app},
+                if(grantData.length > 0) {
+                    grantData.forEach( row => {
+                        assetsList.push(row)
+                    })
                 }
-            );
-
-            if(appData.length > 0) {
-                appData.forEach( row => {
-                    assetsList.push(row)
-                })
             }
+
+            if(app.length > 0) {
+                const queryApp = "SELECT appno_doc_num, grant_doc_num, CASE WHEN grant_doc_num = '' THEN appno_doc_num ELSE grant_doc_num END AS asset, CASE WHEN grant_doc_num = '' THEN 1 ELSE 0 END AS asset_type, '' AS channel, 0 AS child_count  FROM db_uspto.documentid WHERE appno_doc_num IN (:app) GROUP BY appno_doc_num"
+
+                const appData = await connection.applicationNew.query(queryApp,{
+                    type: connection.Sequelize.QueryTypes.SELECT,
+                    raw: true,
+                    logging: console.log,
+                    replacements: {app},
+                    }
+                );
+
+                if(appData.length > 0) {
+                    appData.forEach( row => {
+                        assetsList.push(row)
+                    })
+                }
+            }
+            return assetsList;
         }
-        return assetsList;
     }
 }
 

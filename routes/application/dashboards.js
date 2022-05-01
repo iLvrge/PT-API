@@ -6,6 +6,8 @@ const connection = require("../../config/db.config");
 
 const Dashboards = require("../../model/application/Dashboards");
 
+const Share = require("../../model/application/Share");
+
 
 route.get("/", [authJWT.verifyToken], async(req, res, next) => {
     let {companies} = req.query
@@ -421,5 +423,32 @@ route.post("/", [authJWT.verifyToken], async(req, res, next) => {
     }    
 });
 
-
+route.post("/share", [authJWT.verifyToken], async(req, res, next) => {
+    try {
+        let { selectedCompanies, tabs, customers } = req.body
+        if(selectedCompanies.length > 0) {
+            let code = await helpers.getNewCode();
+            if(code != undefined) {
+                const params = {
+                    organisation_id: req.orgId,
+                    user_id: req.userId,
+                    type: 9,
+                    transactions: JSON.stringify({selectedCompanies, tabs, customers}),
+                    code
+                }
+                const insertRecord = await Share.create(params);
+                if(insertRecord != null && insertRecord.share_id > 0) {  
+                    res.status(200).send(`https://dashboard.patentrack.com/${params.code}`); 
+                }
+            } else {
+                res.status(500).send("Unable to create share url.");
+            }
+        } else {
+            res.status(500).send("Unable to create share url.");
+        }
+    } catch (e) {
+        console.log(e)
+        res.status(500).json({message: "Unable to retrieve assets"})
+    }
+})
 module.exports = route;
