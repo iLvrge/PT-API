@@ -194,6 +194,23 @@ route.get("/share/timeline/list/:code", async (req, res) =>{
     }
 })
 
+route.get("/share/dashboard/list/:code", async (req, res) =>{  
+    const { code } = req.params;
+    try {
+        if( code != "") {
+            const data = await helpers.getShareList(code, 9);
+            if(data != null) {
+                res.status(200).json(JSON.parse(data.transactions));
+            } else {
+                res.status(402).send("Invalid code.");
+            }
+        }
+    } catch (err) {
+        console.log("SHARE DASHBOARD=> ERROR", err)
+        res.status(500).send("Internal server error.");
+    }
+})
+
 route.get("/share/illustrate/show/:code", async (req, res) =>{     
     const { code } = req.params;
     try {
