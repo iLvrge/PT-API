@@ -91,10 +91,10 @@ route.post("/verify", (req, res, next) => {
         /**
          * Send six digit code via email
          */
-        const token = crypto.randomBytes(3).toString('hex');
+        const code = crypto.randomBytes(3).toString('hex');
         /*key = crypt.getRandomKey()*/
         user.update({
-           authentication_code: token,
+           authentication_code: code,
            auth_token_expire: Date.now() + 3600000
         })
        .then( u => {
@@ -110,9 +110,9 @@ route.post("/verify", (req, res, next) => {
            const mailOptions = {
                 from: '"PatenTrack" <no-reply@patentrack.com>',
                 to: `${user.email_address}`,
-                subject: 'Verification code for login to Patentrack',
+                subject: `Patentrack confirmation code: ${code}`,
                 /* text: `You are receiving this because you have requested to reset of the password for your account.\n\n Please click on the following link, or paste this into your browser to complete the process within one hour of receiving it. \n\n https://patentrack.com/?t=reset&e=${user.email_address}&auth=${token} \n\n If you did not request this, please ignore this email and your password will remain unchanged. \n Thanks \n Team PatenTrack` */
-                html: `Hello, Please copy and paste the follwing code to log in:<br/><h2><b>${token}</b></h2> Welcome in,<br/> Team PatenTrack`
+                html: `Hello, The confirmation code is below — enter it in your open brower window to login in:<br/><h2><b>${code}</b></h2> Welcome in,<br/> PatenTrack <br/><br/>If you didn’t request this email, there’s nothing to worry about — you can safely ignore it.`
            }
             console.log('Sending mail');
             transporter.sendMail(mailOptions, (err, response) => {
