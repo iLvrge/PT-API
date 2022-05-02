@@ -112,7 +112,7 @@ route.post("/verify", (req, res, next) => {
                 to: `${user.email_address}`,
                 subject: `Patentrack confirmation code: ${code}`,
                 /* text: `You are receiving this because you have requested to reset of the password for your account.\n\n Please click on the following link, or paste this into your browser to complete the process within one hour of receiving it. \n\n https://patentrack.com/?t=reset&e=${user.email_address}&auth=${token} \n\n If you did not request this, please ignore this email and your password will remain unchanged. \n Thanks \n Team PatenTrack` */
-                html: `Hello, The confirmation code is below — enter it in your open brower window to login in:<br/><h2><b>${code}</b></h2> Welcome in,<br/> PatenTrack <br/><br/>If you didn’t request this email, there’s nothing to worry about — you can safely ignore it.`
+                html: `Hello,<br/> The confirmation code is below — enter it in your open brower window to login in:<br/><h2><b>${code}</b></h2> Welcome in,<br/> PatenTrack <br/><br/>If you didn’t request this email, there’s nothing to worry about — you can safely ignore it.`
            }
             console.log('Sending mail');
             transporter.sendMail(mailOptions, (err, response) => {
