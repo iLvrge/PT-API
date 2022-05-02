@@ -108,11 +108,11 @@ route.post("/verify", (req, res, next) => {
                }
             });
            const mailOptions = {
-                from: 'no-reply@patentrack.com',
+                from: '"PatenTrack" <no-reply@patentrack.com>',
                 to: `${user.email_address}`,
-                subject: 'Six digit code for PatenTrack.com',
+                subject: 'Verification code for login to Patentrack',
                 /* text: `You are receiving this because you have requested to reset of the password for your account.\n\n Please click on the following link, or paste this into your browser to complete the process within one hour of receiving it. \n\n https://patentrack.com/?t=reset&e=${user.email_address}&auth=${token} \n\n If you did not request this, please ignore this email and your password will remain unchanged. \n Thanks \n Team PatenTrack` */
-                html: `Please copy and paste the follwing code to log in:<br/><h2><center><b>${token}</b></center></h2> Welcome in,<br/> Team PatenTrack`
+                html: `Please copy and paste the follwing code to log in:<br/><h2><b>${token}</b></h2> Welcome in,<br/> Team PatenTrack`
            }
             console.log('Sending mail');
             transporter.sendMail(mailOptions, (err, response) => {
