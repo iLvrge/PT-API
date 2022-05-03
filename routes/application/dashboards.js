@@ -176,7 +176,11 @@ route.post("/", [authJWT.verifyToken], async(req, res, next) => {
                         if(total > 0) {
                             where.convey_ty = 'correct'
                             where.assets = assets
-                            query += `SELECT '' AS application, ''  AS patent, MAX(rf_id) AS rf_id, SUM(total_transactions) AS number, ${total} AS total FROM (SELECT rac.rf_id, COUNT(rac.rf_id) AS total_transactions 
+                            query += `SELECT '' AS application, ''  AS patent, MAX(rf_id) AS rf_id, SUM(total_transactions) AS number,(SELECT COUNT(transactions) FROM ( 
+                                SELECT  rf_id AS transactions FROM db_uspto.documentid
+                                   WHERE appno_doc_num IN (:assets)
+                                   GROUP BY rf_id                                
+                               ) as temp1) AS total FROM (SELECT rac.rf_id, COUNT(rac.rf_id) AS total_transactions 
                                     FROM db_new_application.assets_with_bank as tawb
                                     INNER JOIN (
                                         SELECT appno_doc_num, rf_id FROM db_uspto.documentid
@@ -198,7 +202,11 @@ route.post("/", [authJWT.verifyToken], async(req, res, next) => {
                         if(total > 0) {
                             where.assets = assets
                             where.days = 90
-                            query += `SELECT '' AS application, ''  AS patent, MAX(rf_id) AS rf_id, COUNT(rf_id) AS number, ${total} AS total FROM (SELECT temp_exec_dt.rf_id, DATEDIFF(ass.record_dt, temp_exec_dt.exec_dt) AS noOfDays   
+                            query += `SELECT '' AS application, ''  AS patent, MAX(rf_id) AS rf_id, COUNT(rf_id) AS number, (SELECT COUNT(transactions) FROM ( 
+                                SELECT  rf_id AS transactions FROM db_uspto.documentid
+                                   WHERE appno_doc_num IN (:assets)
+                                   GROUP BY rf_id                                
+                               ) as temp1) AS total FROM (SELECT temp_exec_dt.rf_id, DATEDIFF(ass.record_dt, temp_exec_dt.exec_dt) AS noOfDays   
                                     FROM db_new_application.assets_with_bank as tawb
                                     INNER JOIN (
                                         SELECT appno_doc_num, rf_id FROM db_uspto.documentid
@@ -220,6 +228,7 @@ route.post("/", [authJWT.verifyToken], async(req, res, next) => {
                                     ) AS temp_exec_dt ON  temp_exec_dt.rf_id = ass.rf_id
                                     WHERE company_id IN (:company_id) 
                                     AND organisation_id = :organisationID  
+                                    GROUP BY temp_exec_dt.rf_id
                                     HAVING noOfDays > :days ) AS temp`;
                         }
                         break;
@@ -360,7 +369,11 @@ route.post("/", [authJWT.verifyToken], async(req, res, next) => {
                              * Incorrect Recordings
                              */
                             where.convey_ty = 'correct'
-                            query = `SELECT '' AS application, ''  AS patent, MAX(rf_id) AS rf_id, SUM(total_transactions) AS number, ${total} AS total FROM (SELECT rac.rf_id, COUNT(rac.rf_id) AS total_transactions 
+                            query = `SELECT '' AS application, ''  AS patent, MAX(rf_id) AS rf_id, SUM(total_transactions) AS number, (SELECT COUNT(transactions) FROM ( 
+                                SELECT  rf_id AS transactions FROM db_uspto.documentid
+                                   WHERE appno_doc_num IN (:list)
+                                   GROUP BY rf_id                                
+                               ) as temp1) AS total FROM (SELECT rac.rf_id, COUNT(rac.rf_id) AS total_transactions 
                                     FROM db_new_application.assets as tawb
                                     INNER JOIN (
                                         SELECT appno_doc_num, rf_id FROM db_uspto.documentid
@@ -378,7 +391,11 @@ route.post("/", [authJWT.verifyToken], async(req, res, next) => {
                              * Late Recordings
                              */
                             where.days = 90
-                            query = `SELECT '' AS application, ''  AS patent, MAX(rf_id) AS rf_id, COUNT(rf_id) AS number, ${total} AS total FROM (SELECT temp_exec_dt.rf_id, DATEDIFF(ass.record_dt, temp_exec_dt.exec_dt) AS noOfDays   
+                            query = `SELECT '' AS application, ''  AS patent, MAX(rf_id) AS rf_id, COUNT(rf_id) AS number, (SELECT COUNT(transactions) FROM ( 
+                                SELECT  rf_id AS transactions FROM db_uspto.documentid
+                                   WHERE appno_doc_num IN (:list)
+                                   GROUP BY rf_id                                
+                               ) as temp1) AS total FROM (SELECT temp_exec_dt.rf_id, DATEDIFF(ass.record_dt, temp_exec_dt.exec_dt) AS noOfDays   
                                     FROM db_new_application.assets as tawb
                                     INNER JOIN (
                                         SELECT appno_doc_num, rf_id FROM db_uspto.documentid
@@ -400,7 +417,8 @@ route.post("/", [authJWT.verifyToken], async(req, res, next) => {
                                     ) AS temp_exec_dt ON  temp_exec_dt.rf_id = ass.rf_id
                                     WHERE company_id IN (:company_id) 
                                     AND organisation_id = :organisationID  
-                                    HAVING noOfDays > :days ) AS temp`;
+                                    GROUP BY temp_exec_dt.rf_id
+                                    HAVING noOfDays > :days ) AS temp`;   
                             break;
                     }
                 }
