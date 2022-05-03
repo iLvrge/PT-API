@@ -2121,7 +2121,7 @@ let getCollectionByID = async(Collection, CollectionCompany, collectionID) => {
 }
 
 let getAssignmentDataByrfID = async (rfID, t = 0) => {
-	const assignorQuery = `SELECT a.original_name AS original_name, aaa.name as or_name, r.representative_name as normalize_name, (SELECT or_name FROM assignor 
+	const assignorQuery = `SELECT a.original_name AS original_name, aaa.name as or_name, r.representative_name as normalize_name, (SELECT original_name FROM assignor 
         WHERE assignor_and_assignee_id IN (
             SELECT assignor_and_assignee_id FROM assignor_and_assignee 
             WHERE representative_id = aaa.representative_id AND assignor_and_assignee.representative_id  <> 0 AND assignor_and_assignee.name = r.representative_name
@@ -2131,7 +2131,7 @@ let getAssignmentDataByrfID = async (rfID, t = 0) => {
         LIMIT 1 
     ) AS representative_original_name
     , date_format(a.exec_dt,"%Y-%m-%d %h:%i:%s") as exec_dt, aaa.assignor_and_assignee_id as id FROM assignor as a INNER JOIN assignor_and_assignee as aaa ON aaa.assignor_and_assignee_id = a.assignor_and_assignee_id LEFT JOIN representative as r ON r.representative_id = aaa.representative_id WHERE a.rf_id = :rfID  GROUP BY aaa.name, normalize_name ORDER BY a.exec_dt ASC`;
-	const assigneeQuery = `SELECT a.*, aaa.name as ee_name, r.representative_name as normalize_name, (SELECT ee_name FROM assignee 
+	const assigneeQuery = `SELECT a.*, aaa.name as ee_name, r.representative_name as normalize_name, (SELECT original_name FROM assignee 
         WHERE assignor_and_assignee_id IN (
             SELECT assignor_and_assignee_id FROM assignor_and_assignee 
             WHERE representative_id = aaa.representative_id AND assignor_and_assignee.representative_id  <> 0 AND assignor_and_assignee.name = r.representative_name
