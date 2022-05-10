@@ -3005,7 +3005,7 @@ const findFilterAssets = async(req) => {
                         query = `SELECT appno_doc_num FROM db_new_application.assets_for_sale AS assets WHERE assets.organisation_id = :organisationID `
                     } else {
                         if(typeof type !== 'undefined') {
-                            where.layoutID = helpers.findLayout(type)        
+                            where.layoutID = findLayout(type)        
                         } else {
                             where.layoutID = 15
                         }
