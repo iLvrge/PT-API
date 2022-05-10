@@ -617,10 +617,11 @@ route.post("/asset_types/assets/family", [authJWT.verifyToken, clientDBConnectio
         
 
         const list = await helpers.findFilterAssets(req);
-        console.log('list', list)
+        
         let result = [['Country', 'Assets']]
         if(list != '' && Array.isArray(list) && list.length > 0) {
-            const query = `SELECT application_country, SUM(country_count) AS number FROM( SELECT  application_country, COUNT(application_country)  AS country_count FROM db_uspto.assets_family WHERE grant_doc_num IN (SELECT grant_doc_num FROM db_uspto.documentid WHERE appno_doc_num IN (:list) AND grant_doc_num <> '' GROUP BY grant_doc_num) AND application_country <> 'WO' GROUP BY application_number, application_country) AS temp GROUP BY application_country ORDER BY number DESC`;
+            const query = `SELECT application_country, SUM(country_count) AS number FROM( SELECT  application_country, COUNT(application_country)  AS country_count FROM db_uspto.assets_family             
+            WHERE grant_doc_num IN (SELECT grant_doc_num FROM db_uspto.documentid WHERE appno_doc_num IN (:list) AND grant_doc_num <> '' GROUP BY grant_doc_num) AND application_country <> 'WO' GROUP BY application_number, application_country) AS temp GROUP BY application_country ORDER BY number DESC`;
 
             const getList = await connection.application.query(query,{
                     type: connection.Sequelize.QueryTypes.SELECT,
@@ -634,6 +635,30 @@ route.post("/asset_types/assets/family", [authJWT.verifyToken, clientDBConnectio
                 getList.forEach(row => {
                     result.push([row.application_country, parseInt(row.number)])
                 })
+            }
+
+
+            const queryNoFamily = `SELECT COUNT(*) AS counter FROM (SELECT            assets.*
+                FROM              db_new_application.assets AS assets
+                LEFT OUTER JOIN db_uspto.assets_family AS af ON af.grant_doc_num = assets.grant_doc_num
+                WHERE             af.grant_doc_num IS NULL
+                AND assets.appno_doc_num IN (:list)
+                GROUP BY assets.appno_doc_num) AS temp;`
+
+
+            const getNoFamilyCounter = await connection.application.query(queryNoFamily,{
+                    type: connection.Sequelize.QueryTypes.SELECT,
+                    raw: true,
+                    logging: console.log,
+                    replacements: {list},
+                    plain: true
+                }
+            ); 
+            if(getNoFamilyCounter != null && getNoFamilyCounter.counter > 0) {
+                const findIndex = result.findIndex( item => item[0] == 'US');
+                if(findIndex !== -1){
+                    result[findIndex][1] = result[findIndex][1] + getNoFamilyCounter.counter
+                }
             }
         }
         /* result = [
