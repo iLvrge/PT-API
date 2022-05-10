@@ -35,7 +35,7 @@ route.get("/", [authJWT.verifyToken], async(req, res, next) => {
 
 route.post("/", [authJWT.verifyToken], async(req, res, next) => {
     try{
-        let {selectedCompanies, customers} = req.body, getData = {}
+        let {selectedCompanies, customers, type} = req.body, getData = {}
         const where = { year: 1997, organisationID: req.orgId, type: parseInt(type)}
         let query = '';
         const companies = JSON.parse(selectedCompanies)
@@ -48,54 +48,52 @@ route.post("/", [authJWT.verifyToken], async(req, res, next) => {
                 where.assignor_id = parties
             }
             switch(parseInt(type)) {
-                case 1:
-                    /**
-                     * Broken
-                     */
-                    query =    `SELECT COUNT(appno_doc_num) AS number, appno_doc_num AS application, grant_doc_num AS patent, '' AS rf_id, ${total} AS total FROM (
-                        SELECT appno_doc_num, grant_doc_num FROM db_new_application.assets_bank_broken 
-                        WHERE organisation_id = :organisationID ${company_id.length > 0 ? ' AND company_id IN (:company_id) ' : ''} ${parties.length > 0 ? ' AND assignor_id IN (:assignor_id) ' : ''} GROUP BY appno_doc_num) AS temp`; 
-                    break;
-                case 17: 
-                    /**
-                     * Incorrect Names
-                     */
-                    query =    `SELECT COUNT(appno_doc_num) AS number, '' AS application, '' AS patent, rf_id, ${total} AS total FROM (
-                        SELECT appno_doc_num, grant_doc_num, rf_id FROM db_new_application.lost_assets 
-                        WHERE organisation_id = :organisationID ${company_id.length > 0 ? ' AND company_id IN (:company_id) ' : ''}  ${parties.length > 0 ? ' AND assignor_id IN (:assignor_id) ' : ''} GROUP BY appno_doc_num) AS temp`; 
-                    break;
+                case 1: 
                 case 18:
                 case 23:
                     /**
-                     * Incorrect Names
+                     * Encumbrances
+                     * Broken Chain 
+                     * Maintainence
                      */
                     query = `SELECT COUNT(application) AS number, application, patent, rf_id, total FROM (SELECT application, patent, rf_id, total FROM dashboard_items 
-                        WHERE type = :type AND organisation_id = :organisationID  ${parties.length > 0 ? ' AND assignor_id IN (:assignor_id) ' : ''} ${company_id.length > 0 ? ' AND company_id IN (:company_id) ' : ''}  GROUP BY application) AS temp`
+                        WHERE type = :type AND organisation_id = :organisationID  ${parties.length > 0 ? ' AND assignor_id IN (:assignor_id) ' : ''} ${companies.length > 0 ? ' AND representative_id IN (:company_id) ' : ''}  GROUP BY application) AS temp`
                     break;
+                case 17: 
                 case 24:
                 case 25:
+                    /**
+                     * Incorrect Names
+                     * Incorrect Recording
+                     * Late Recording
+                     */
                     query = `SELECT COUNT(rf_id) AS number, '' AS application, '' AS patent, rf_id, total FROM (SELECT rf_id, total FROM dashboard_items 
-                        WHERE type = :type AND organisation_id = :organisationID ${company_id.length > 0 ? ' AND company_id IN (:company_id) ' : ''} ${parties.length > 0 ? ' AND assignor_id IN (:assignor_id) ' : ''} GROUP BY rf_id) AS temp`
+                        WHERE type = :type AND organisation_id = :organisationID ${companies.length > 0 ? ' AND representative_id IN (:company_id) ' : ''} ${parties.length > 0 ? ' AND assignor_id IN (:assignor_id) ' : ''} GROUP BY rf_id) AS temp`
                     break;
             }
         } else {
             switch(parseInt(type)) {
                 case 1:
-                    query = `SELECT COUNT(appno_doc_num) AS number, max(grant_doc_num) AS patent, max(appno_doc_num) AS application, '' AS rf_id, ${total} AS total  FROM ( SELECT appno_doc_num, grant_doc_num FROM db_new_application.assets AS assets  WHERE date_format(assets.appno_date, '%Y') > :year AND assets.layout_id = :layoutID AND assets.organisation_id = :organisationID ${company_id.length > 0 ? ' AND assets.representative_id IN (:company_id) ' : ''}  GROUP BY appno_doc_num ) AS temp `;
-                    break;
                 case 18:
                 case 23:
                     /**
-                     * Incorrect Names
+                     * Encumbrances
+                     * Broken Chain 
+                     * Maintainence
                      */
                     query = `SELECT COUNT(application) AS number, application, patent, rf_id, total FROM (SELECT application, patent, rf_id, total FROM dashboard_items 
-                        WHERE type = :type AND organisation_id = :organisationID ${company_id.length > 0 ? ' AND company_id IN (:company_id) ' : ''} GROUP BY application) AS temp`
+                        WHERE type = :type AND organisation_id = :organisationID ${companies.length > 0 ? ' AND representative_id IN (:company_id) ' : ''} GROUP BY application) AS temp`
                     break;
                 case 17:
                 case 24:
                 case 25:
+                    /**
+                     * Incorrect Names
+                     * Incorrect Recording
+                     * Late Recording
+                     */
                     query = `SELECT COUNT(rf_id) AS number, '' AS application, '' AS patent, rf_id, total FROM (SELECT rf_id, total FROM dashboard_items 
-                        WHERE type = :type AND organisation_id = :organisationID ${company_id.length > 0 ? ' AND company_id IN (:company_id) ' : ''} GROUP BY rf_id) AS temp`
+                        WHERE type = :type AND organisation_id = :organisationID ${companies.length > 0 ? ' AND representative_id IN (:company_id) ' : ''} GROUP BY rf_id) AS temp`
                     break;
             }
         }
@@ -111,7 +109,7 @@ route.post("/", [authJWT.verifyToken], async(req, res, next) => {
         }
         res.status(200).json(getData);
     } catch (err) {
-        console.log(e)
+        console.log(err)
         res.status(500).json({message: "Unable to retrieve data."})
     }
 })
