@@ -32,7 +32,91 @@ route.get("/", [authJWT.verifyToken], async(req, res, next) => {
     });
 });
 
+
 route.post("/", [authJWT.verifyToken], async(req, res, next) => {
+    try{
+        let {selectedCompanies, customers} = req.body, getData = {}
+        const where = { year: 1997, organisationID: req.orgId, type: parseInt(type)}
+        let query = '';
+        const companies = JSON.parse(selectedCompanies)
+        if(companies.length > 0) {
+            where.company_id = companies
+        }
+        if(typeof format_type != 'undefined' && format_type.toLowerCase() == 'bank') {
+            const parties = JSON.parse(customers)
+            if(parties.length > 0) {
+                where.assignor_id = parties
+            }
+            switch(parseInt(type)) {
+                case 1:
+                    /**
+                     * Broken
+                     */
+                    query =    `SELECT COUNT(appno_doc_num) AS number, appno_doc_num AS application, grant_doc_num AS patent, '' AS rf_id, ${total} AS total FROM (
+                        SELECT appno_doc_num, grant_doc_num FROM db_new_application.assets_bank_broken 
+                        WHERE organisation_id = :organisationID ${company_id.length > 0 ? ' AND company_id IN (:company_id) ' : ''} ${parties.length > 0 ? ' AND assignor_id IN (:assignor_id) ' : ''} GROUP BY appno_doc_num) AS temp`; 
+                    break;
+                case 17: 
+                    /**
+                     * Incorrect Names
+                     */
+                    query =    `SELECT COUNT(appno_doc_num) AS number, '' AS application, '' AS patent, rf_id, ${total} AS total FROM (
+                        SELECT appno_doc_num, grant_doc_num, rf_id FROM db_new_application.lost_assets 
+                        WHERE organisation_id = :organisationID ${company_id.length > 0 ? ' AND company_id IN (:company_id) ' : ''}  ${parties.length > 0 ? ' AND assignor_id IN (:assignor_id) ' : ''} GROUP BY appno_doc_num) AS temp`; 
+                    break;
+                case 18:
+                case 23:
+                    /**
+                     * Incorrect Names
+                     */
+                    query = `SELECT COUNT(application) AS number, application, patent, rf_id, total FROM (SELECT application, patent, rf_id, total FROM dashboard_items 
+                        WHERE type = :type AND organisation_id = :organisationID  ${parties.length > 0 ? ' AND assignor_id IN (:assignor_id) ' : ''} ${company_id.length > 0 ? ' AND company_id IN (:company_id) ' : ''}  GROUP BY application) AS temp`
+                    break;
+                case 24:
+                case 25:
+                    query = `SELECT COUNT(rf_id) AS number, '' AS application, '' AS patent, rf_id, total FROM (SELECT rf_id, total FROM dashboard_items 
+                        WHERE type = :type AND organisation_id = :organisationID ${company_id.length > 0 ? ' AND company_id IN (:company_id) ' : ''} ${parties.length > 0 ? ' AND assignor_id IN (:assignor_id) ' : ''} GROUP BY rf_id) AS temp`
+                    break;
+            }
+        } else {
+            switch(parseInt(type)) {
+                case 1:
+                    query = `SELECT COUNT(appno_doc_num) AS number, max(grant_doc_num) AS patent, max(appno_doc_num) AS application, '' AS rf_id, ${total} AS total  FROM ( SELECT appno_doc_num, grant_doc_num FROM db_new_application.assets AS assets  WHERE date_format(assets.appno_date, '%Y') > :year AND assets.layout_id = :layoutID AND assets.organisation_id = :organisationID ${company_id.length > 0 ? ' AND assets.representative_id IN (:company_id) ' : ''}  GROUP BY appno_doc_num ) AS temp `;
+                    break;
+                case 18:
+                case 23:
+                    /**
+                     * Incorrect Names
+                     */
+                    query = `SELECT COUNT(application) AS number, application, patent, rf_id, total FROM (SELECT application, patent, rf_id, total FROM dashboard_items 
+                        WHERE type = :type AND organisation_id = :organisationID ${company_id.length > 0 ? ' AND company_id IN (:company_id) ' : ''} GROUP BY application) AS temp`
+                    break;
+                case 17:
+                case 24:
+                case 25:
+                    query = `SELECT COUNT(rf_id) AS number, '' AS application, '' AS patent, rf_id, total FROM (SELECT rf_id, total FROM dashboard_items 
+                        WHERE type = :type AND organisation_id = :organisationID ${company_id.length > 0 ? ' AND company_id IN (:company_id) ' : ''} GROUP BY rf_id) AS temp`
+                    break;
+            }
+        }
+
+        if(query != '') {
+            getData =  await connection.applicationNew.query(query,{
+                type: connection.Sequelize.QueryTypes.SELECT,
+                raw: true,
+                logging: console.log,
+                replacements: where,
+                plain: true
+            })
+        }
+        res.status(200).json(getData);
+    } catch (err) {
+        console.log(e)
+        res.status(500).json({message: "Unable to retrieve data."})
+    }
+})
+
+route.post("/temp", [authJWT.verifyToken], async(req, res, next) => {
     try {
         let { list, type, format_type,  total, selectedCompanies, tabs, customers, assignments } = req.body, getData = { }
 

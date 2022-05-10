@@ -614,82 +614,28 @@ route.get("/asset_types/assets", [authJWT.verifyToken, clientDBConnection.connec
 
 route.get("/asset_types/assets/family", [authJWT.verifyToken, clientDBConnection.connect], async(req, res, next) => {
     try {
-        let {companies, tabs, customers, assignments, limit, offset } = req.query, result = []
-
-        if(companies && companies != '') {
-            companies = JSON.parse( companies )
-        } 
-
-        if( !companies || companies.length == 0 ) {
-            const getCompaniesList = await helpers.getCompaniesList(req.connection_db);
-            companies = []
-            if(getCompaniesList.length > 0) {                   
-                getCompaniesList.forEach(p =>  companies.push(p.representative_id));
-            }
-        }
-
-        if(tabs && tabs != '') {
-            tabs = JSON.parse( tabs )
-        } else {
-            tabs = []
-        }
-
-        if(customers && customers!= '') {
-            customers = JSON.parse(customers)
-            const findOtherNormaliseCustomers = await AssignorAndAssignee.findAll({
-                attributes: ['assignor_and_assignee_id'],
-                where: { assignor_and_assignee_id: customers, representative_id: {[connection.Op.gt]: 0}}
-            })
-
-            if( findOtherNormaliseCustomers.length > 0 ) {
-                const promise = findOtherNormaliseCustomers.map( customer => {
-                    if( !customers.includes(customer.assignor_and_assignee_id) ) {
-                        customers.push( customer.assignor_and_assignee_id )
-                    }
-                })
-                await Promise.all(promise)
-            }
-        } else {
-            customers = []
-        }
-
-        if(assignments && assignments != '') {
-            assignments = JSON.parse( assignments )
-        } else {
-            assignments = []
-        }
         
-        const where  = {representative_id: companies, organisation_id: req.orgId}
 
-        if( tabs.length > 0 ) {
-            where.tabs = tabs
+        const list = helpers.findFilterAssets(req);
+        let result = [['Country', 'Popularity']]
+        if(list != '' && Array.isArray(list) && list.length > 0) {
+            const query = `SELECT application_country, SUM(country_count) AS number FROM( SELECT  application_country, COUNT(application_country)  AS country_count FROM db_uspto.assets_family WHERE grant_doc_num IN (SELECT grant_doc_num FROM db_uspto.documentid WHERE appno_doc_num IN (:list) AND grant_doc_num <> '' GROUP BY grant_doc_num) AND application_country <> 'WO' GROUP BY application_number, application_country) AS temp GROUP BY application_country`;
+
+            const getList = await connection.application.query(query,{
+                    type: connection.Sequelize.QueryTypes.SELECT,
+                    raw: true,
+                    logging: console.log,
+                    replacements: {list},
+                }
+            ); 
+
+            if( getList != null && getList.length > 0) {
+                getList.forEach(row => {
+                    result.push([row.application_country, row.number])
+                })
+            }
         }
-
-        if( customers.length > 0 ) {
-            where.customers = customers
-        }
-
-        if( assignments.length > 0 ) {
-            where.assignments = assignments
-        }
-
-        let query = "SELECT appno_doc_num, grant_doc_num, CASE WHEN grant_doc_num = '' OR grant_doc_num IS NULL THEN FORMAT(appno_doc_num,0) ELSE FORMAT(grant_doc_num,0) END AS format_asset, CASE WHEN grant_doc_num = '' THEN appno_doc_num ELSE  grant_doc_num END as asset, 0 as child_count FROM documentid WHERE rf_id IN (SELECT rf_id FROM tree_parties_collection WHERE REPLACE_WHERE ) GROUP BY appno_doc_num, grant_doc_num";
-
-        let whereCondition = ' representative_id IN (:representative_id)  AND organisation_id = :organisation_id';
-
-        if(tabs.length > 0) {
-            whereCondition += ' AND tab_id IN (:tabs) '
-        }
-
-        if(customers.length > 0) {
-            whereCondition += ' AND assignor_and_assignee_id IN (:customers) '
-        }
-
-        if(assignments.length > 0) {
-            whereCondition += ' AND rf_id IN (:assignments) '
-        }
-
-        result = [
+        /* result = [
             ['Country', 'Popularity'],
             ['Germany', 200],
             ['United States', 300],
@@ -697,8 +643,7 @@ route.get("/asset_types/assets/family", [authJWT.verifyToken, clientDBConnection
             ['Canada', 500],
             ['France', 600],
             ['RU', 700]
-        ]
-
+        ] */
         res.status(200).json(result);
     } catch ( err ) {
         console.log(err);
