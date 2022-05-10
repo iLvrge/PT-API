@@ -620,7 +620,7 @@ route.post("/asset_types/assets/family", [authJWT.verifyToken, clientDBConnectio
         console.log('list', list)
         let result = [['Country', 'Popularity']]
         if(list != '' && Array.isArray(list) && list.length > 0) {
-            const query = `SELECT application_country, SUM(country_count) AS number FROM( SELECT  application_country, COUNT(application_country)  AS country_count FROM db_uspto.assets_family WHERE grant_doc_num IN (SELECT grant_doc_num FROM db_uspto.documentid WHERE appno_doc_num IN (:list) AND grant_doc_num <> '' GROUP BY grant_doc_num) AND application_country <> 'WO' GROUP BY application_number, application_country) AS temp GROUP BY application_country`;
+            const query = `SELECT application_country, SUM(country_count) AS number FROM( SELECT  application_country, COUNT(application_country)  AS country_count FROM db_uspto.assets_family WHERE grant_doc_num IN (SELECT grant_doc_num FROM db_uspto.documentid WHERE appno_doc_num IN (:list) AND grant_doc_num <> '' GROUP BY grant_doc_num) AND application_country <> 'WO' GROUP BY application_number, application_country) AS temp GROUP BY application_country ORDER BY number DESC`;
 
             const getList = await connection.application.query(query,{
                     type: connection.Sequelize.QueryTypes.SELECT,
@@ -632,7 +632,7 @@ route.post("/asset_types/assets/family", [authJWT.verifyToken, clientDBConnectio
 
             if( getList != null && getList.length > 0) {
                 getList.forEach(row => {
-                    result.push([row.application_country, row.number])
+                    result.push([row.application_country, parseInt(row.number)])
                 })
             }
         }
