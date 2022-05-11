@@ -35,7 +35,7 @@ route.get("/", [authJWT.verifyToken], async(req, res, next) => {
 
 route.post("/", [authJWT.verifyToken], async(req, res, next) => {
     try{
-        let {selectedCompanies, customers, type} = req.body, getData = {}
+        let {selectedCompanies, customers, type, data_format} = req.body, getData = {}
         const where = { year: 1997, organisationID: req.orgId, type: parseInt(type)}
         let query = '';
         const companies = JSON.parse(selectedCompanies)
@@ -81,9 +81,20 @@ route.post("/", [authJWT.verifyToken], async(req, res, next) => {
                      * Broken Chain 
                      * Maintainence
                      */
-                    query = `SELECT COUNT(application) AS number, application, patent, rf_id, total FROM (SELECT application, patent, rf_id, total FROM dashboard_items 
-                        WHERE type = :type AND organisation_id = :organisationID ${companies.length > 0 ? ' AND representative_id IN (:company_id) ' : ''} GROUP BY application) AS temp`
-                    break;
+                    where.layoutID = parseInt(type) == 1 ? 1 : 15;
+                    if(parseInt(data_format) === 1) {
+                        query = `SELECT year, COUNT(year) AS number, application, patent, '' AS rf_id FROM( SELECT assets.appno_doc_num AS application, assets.grant_doc_num AS patent, date_format(assets.appno_date, '%Y') AS year FROM db_new_application.dashboard_items AS dt
+                        INNER JOIN db_new_application.assets AS assets ON assets.appno_doc_num = dt.application
+                        WHERE dt.organisation_id = :organisationID 
+                        AND assets.organisation_id = :organisationID 
+                        AND assets.layout_id = :layoutID AND assets.company_id IN (:company_id)  AND dt.type = :type
+                        AND dt.representative_id IN (:company_id)
+                        GROUP BY assets.appno_doc_num) AS temp GROUP BY year`;
+                    } else {
+                        query = `SELECT COUNT(application) AS number, application, patent, rf_id, total FROM (SELECT application, patent, rf_id, total FROM dashboard_items 
+                            WHERE type = :type AND organisation_id = :organisationID ${companies.length > 0 ? ' AND representative_id IN (:company_id) ' : ''} GROUP BY application) AS temp`
+                    }                    
+                    break;                    
                 case 17:
                 case 24:
                 case 25:
@@ -92,9 +103,22 @@ route.post("/", [authJWT.verifyToken], async(req, res, next) => {
                      * Incorrect Recording
                      * Late Recording
                      */
-                    query = `SELECT COUNT(rf_id) AS number, '' AS application, '' AS patent, rf_id, total FROM (SELECT rf_id, total FROM dashboard_items 
-                        WHERE type = :type AND organisation_id = :organisationID ${companies.length > 0 ? ' AND representative_id IN (:company_id) ' : ''} GROUP BY rf_id) AS temp`
-                    break;
+                     where.layoutID = 15;
+                     if(parseInt(data_format) === 1) {
+                        query = `SELECT year, COUNT(year) AS number, '' AS application, '' AS patent, rf_id FROM( 
+                            SELECT dt.rf_id, date_format(apt.exec_dt, '%Y') AS year FROM db_new_application.dashboard_items AS dt
+                            INNER JOIN db_new_application.activity_parties_transactions AS apt ON apt.rf_id = dt.rf_id
+                            WHERE dt.organisation_id = :organisationID
+                            AND apt.organisation_id = :organisationID
+                            AND apt.company_id IN (:company_id)
+                            AND dt.representative_id IN (:company_id)
+                            AND dt.type = :type
+                            GROUP BY dt.rf_id) AS temp GROUP BY year`;
+                    } else {
+                        query = `SELECT COUNT(rf_id) AS number, '' AS application, '' AS patent, rf_id, total FROM (SELECT rf_id, total FROM dashboard_items 
+                            WHERE type = :type AND organisation_id = :organisationID ${companies.length > 0 ? ' AND representative_id IN (:company_id) ' : ''} GROUP BY rf_id) AS temp`
+                        break;
+                    }
             }
         }
 
