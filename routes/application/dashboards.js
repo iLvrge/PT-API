@@ -128,7 +128,7 @@ route.post("/", [authJWT.verifyToken], async(req, res, next) => {
                 raw: true,
                 logging: console.log,
                 replacements: where,
-                plain: true
+                plain: parseInt(data_format) === 1 ? false : true
             })
         }
         res.status(200).json(getData);
