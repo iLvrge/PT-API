@@ -89,9 +89,15 @@ route.get("/assets", [authJWT.verifyToken], async(req, res, next) => {
     });
 });
 
+
+
+
+
+
+
 route.post("/assets/cpc", [authJWT.verifyToken], async(req, res, next) => {
     try{
-        let { list, total, type, selectedCompanies, tabs, customers, assignments, range, scope, year, other_mode } = req.body, getList = [], group = [], sales = []
+        let { list, total, type, selectedCompanies, tabs, customers, assignments, range, scope, year, other_mode, data_type } = req.body, getList = [], group = [], sales = []
 
         if( list != '' ) {
             list = JSON.parse(list)
@@ -242,12 +248,21 @@ route.post("/assets/cpc", [authJWT.verifyToken], async(req, res, next) => {
                 const replacements = {date: 1997}
 
                 if( scope != undefined && scope != 'undefined' && scope != null) {
-                    scopeCondition = ` AND ${rangeConcat} IN (:scopeList) `
+                    if(data_type == 1) {
+                        scopeCondition = ` AND section IN (:scopeList) `
+                    } else {
+                        scopeCondition = ` AND ${rangeConcat} IN (:scopeList) `
+                    }
+                    
                     replacements.scopeList = JSON.parse(scope)
                 }
 
-                if(typeof year !== 'undefined' && year.length > 0) {
-                    replacements.date = JSON.parse(year)
+                if(typeof year !== 'undefined' && year != null) {
+                    year = JSON.parse(year)
+
+                    if(year.length > 0) {
+                        replacements.date = year
+                    }
                 }
                 let stringYear = ">= :date"
 
@@ -255,6 +270,7 @@ route.post("/assets/cpc", [authJWT.verifyToken], async(req, res, next) => {
                     stringYear = "IN (:date)"
                 }
                 replacements.list = list
+                console.log(replacements)
                 query = `SELECT REPLACE_STRING FROM ( SELECT temp.grant_doc_num AS patent_number, temp.appno_doc_num AS application_number, date_format(temp.appno_date, '%Y') AS fillingYear, ${rangeConcat} AS cpc_code, section, class, sub_class, main_group, sub_group, (SELECT GROUP_CONCAT(distinct IF(representative_name <> '' , representative_name, name) SEPARATOR '@@ ') FROM db_uspto.assignee INNER JOIN db_uspto.assignor_and_assignee ON assignor_and_assignee.assignor_and_assignee_id = assignee.assignor_and_assignee_id LEFT JOIN db_uspto.representative ON representative.representative_id = assignor_and_assignee.representative_id INNER JOIN db_uspto.assignment_conveyance ON assignment_conveyance.rf_id = assignee.rf_id WHERE assignee.rf_id IN (     SELECT rf_id FROM db_uspto.documentid WHERE documentid.appno_doc_num = application_cpc.application_number) AND assignment_conveyance.employer_assign = 1 ) AS origin FROM db_patent_application_bibliographic.patent_cpc AS application_cpc INNER JOIN (SELECT documentid.appno_doc_num, documentid.grant_doc_num, documentid.appno_date FROM db_uspto.documentid AS documentid WHERE date_format(documentid.appno_date, '%Y') ${stringYear} AND documentid.appno_doc_num IN(:list) AND documentid.grant_doc_num <> ''  GROUP BY documentid.appno_doc_num) AS temp ON temp.appno_doc_num = application_cpc.application_number WHERE application_cpc.type = 0  ${scopeCondition} GROUP BY temp.appno_doc_num  UNION SELECT temp.grant_doc_num AS patent_number, temp.appno_doc_num AS application_number, date_format(temp.appno_date, '%Y') AS fillingYear, ${rangeConcat} AS cpc_code, section, class, sub_class, main_group, sub_group, (SELECT GROUP_CONCAT(distinct IF(representative_name <> '' , representative_name, name) SEPARATOR '@@ ') FROM db_uspto.assignee INNER JOIN db_uspto.assignor_and_assignee ON assignor_and_assignee.assignor_and_assignee_id = assignee.assignor_and_assignee_id LEFT JOIN db_uspto.representative ON representative.representative_id = assignor_and_assignee.representative_id INNER JOIN db_uspto.assignment_conveyance ON assignment_conveyance.rf_id = assignee.rf_id WHERE assignee.rf_id IN (     SELECT rf_id FROM db_uspto.documentid WHERE documentid.appno_doc_num = application_cpc.application_number) AND assignment_conveyance.employer_assign = 1 ) AS origin FROM db_patent_grant_bibliographic.application_cpc AS application_cpc INNER JOIN (SELECT documentid.appno_doc_num, documentid.grant_doc_num, documentid.appno_date FROM db_uspto.documentid AS documentid WHERE date_format(documentid.appno_date, '%Y') ${stringYear} AND documentid.appno_doc_num IN(:list) AND documentid.grant_doc_num = ''  GROUP BY documentid.appno_doc_num) AS temp ON temp.appno_doc_num = application_cpc.application_number WHERE application_cpc.type = 0  ${scopeCondition} GROUP BY temp.appno_doc_num  ) AS temp1 GROUP_STRING `
 
                 /* const query = `SELECT REPLACE_STRING FROM ( SELECT temp.grant_doc_num AS patent_number, temp.appno_doc_num AS application_number, date_format(temp.appno_date, '%Y') AS fillingYear, ${rangeConcat} AS cpc_code, section, class, sub_class, main_group, sub_group, (SELECT GROUP_CONCAT(distinct ee_name SEPARATOR '@@ ') FROM db_uspto.assignee INNER JOIN db_uspto.assignment_conveyance ON assignment_conveyance.rf_id = assignee.rf_id WHERE assignee.rf_id IN (     SELECT rf_id FROM db_uspto.documentid WHERE documentid.appno_doc_num = application_cpc.application_number) AND assignment_conveyance.employer_assign = 1 ) AS origin FROM db_patent_grant_bibliographic.application_cpc AS application_cpc INNER JOIN (SELECT DISTINCT documentid.appno_doc_num, documentid.grant_doc_num, documentid.appno_date FROM db_uspto.documentid AS documentid WHERE date_format(documentid.appno_date, '%Y') ${stringYear} AND (documentid.appno_doc_num IN(:list) OR documentid.grant_doc_num IN(:list)) GROUP BY documentid.appno_doc_num) AS temp ON temp.appno_doc_num = application_cpc.application_number WHERE application_cpc.type = 0  ${scopeCondition} GROUP BY temp.appno_doc_num ) AS temp1 GROUP_STRING ` */
