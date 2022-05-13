@@ -8,6 +8,10 @@ const Dashboards = require("../../model/application/Dashboards");
 
 const Share = require("../../model/application/Share");
 
+const Representatives = require("../../model/client/Representatives");
+
+const clientDBConnection = require("../../helpers/clientDBConnection");
+
 
 route.get("/", [authJWT.verifyToken], async(req, res, next) => {
     let {companies} = req.query
@@ -31,6 +35,56 @@ route.get("/", [authJWT.verifyToken], async(req, res, next) => {
         res.status(500).json({message: "Unable to retrieve assets"})
     });
 });
+
+route.post('/parties', [authJWT.verifyToken, clientDBConnection.connect], async(req, res, next) => {
+    try{
+        let {selectedCompanies} = req.body, getList = [];
+        /**
+         * Activity acquisition, mergerIn, employees
+         */
+        if(selectedCompanies != '' && typeof selectedCompanies != 'undefined' && selectedCompanies != null) {
+            selectedCompanies = JSON.parse(selectedCompanies)
+        }
+        /**
+         * Find company name
+         */
+        const Representative = req.connection_db.define('Representatives', Representatives.mainStructure, Representatives.options);
+        const getRepresentativeName = await Representative.findOne({
+            attributes: ['representative_name'],
+            where: {
+                representative_id: selectedCompanies
+            }
+        });
+
+        if( getRepresentativeName != null) {
+            const query = `SELECT aaa.assignor_and_assignee_id, aaa.representative_id, aaa.name, COUNT(DISTINCT appno_doc_num) AS app_count, "${getRepresentativeName.representative_name}" as assignee  FROM db_new_application.activity_parties_transactions AS apt
+            INNER JOIN db_new_application.assets AS ass ON ass.rf_id = apt.rf_id
+            INNER JOIN db_uspto.assignor_and_assignee AS aaa ON aaa.assignor_and_assignee_id = apt.assignor_and_assignee_id
+            WHERE apt.organisation_id = :organisationID and apt.company_id IN (:selectedCompanies) AND ass.layout_id = :layoutID
+            AND activity_id IN (:acitivityID) AND date_format(ass.appno_date, '%Y') > :year
+            GROUP BY aaa.assignor_and_assignee_id`
+
+            getList =  await connection.applicationNew.query(query,{
+                type: connection.Sequelize.QueryTypes.SELECT,
+                raw: true,
+                logging: console.log,
+                replacements: {
+                    organisationID: req.orgId,
+                    selectedCompanies,
+                    layoutID: 15,
+                    acitivityID: [1, 6, 10],
+                    year: 1997
+                }
+            })
+        }
+        
+        res.status(200).json(getList);
+
+    } catch (err) {
+        console.log(err);
+        res.status(500).json({message: "Unable to retrieve data"})
+    }
+})
 
 
 route.post("/", [authJWT.verifyToken], async(req, res, next) => {
