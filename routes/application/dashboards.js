@@ -57,12 +57,13 @@ route.post('/parties', [authJWT.verifyToken, clientDBConnection.connect], async(
         });
 
         if( getRepresentativeName != null) {
-            const query = `SELECT aaa.assignor_and_assignee_id, aaa.representative_id, aaa.name, COUNT(DISTINCT appno_doc_num) AS app_count, "${getRepresentativeName.representative_name}" as assignee  FROM db_new_application.activity_parties_transactions AS apt
+            const query = `SELECT name, assignee, SUM(app_count) as number FROM (SELECT aaa.assignor_and_assignee_id, aaa.representative_id, IF(r.representative_name <> "", r.representative_name, aaa.name) AS name, COUNT(DISTINCT appno_doc_num) AS app_count, "${getRepresentativeName.representative_name}" as assignee  FROM db_new_application.activity_parties_transactions AS apt
             INNER JOIN db_new_application.assets AS ass ON ass.rf_id = apt.rf_id
             INNER JOIN db_uspto.assignor_and_assignee AS aaa ON aaa.assignor_and_assignee_id = apt.assignor_and_assignee_id
+            LEFT JOIN db_uspto.representative As r ON r.representative_id = aaa.representative_id
             WHERE apt.organisation_id = :organisationID and apt.company_id IN (:selectedCompanies) AND ass.layout_id = :layoutID
             AND activity_id IN (:acitivityID) AND date_format(ass.appno_date, '%Y') > :year
-            GROUP BY aaa.assignor_and_assignee_id`
+            GROUP BY aaa.assignor_and_assignee_id) AS temp GROUP BY name`
 
             getList =  await connection.applicationNew.query(query,{
                 type: connection.Sequelize.QueryTypes.SELECT,
@@ -72,7 +73,7 @@ route.post('/parties', [authJWT.verifyToken, clientDBConnection.connect], async(
                     organisationID: req.orgId,
                     selectedCompanies,
                     layoutID: 15,
-                    acitivityID: [1, 6, 10],
+                    acitivityID: [1, 6],
                     year: 1997
                 }
             })
