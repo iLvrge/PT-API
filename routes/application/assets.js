@@ -249,13 +249,13 @@ route.post("/assets/cpc", [authJWT.verifyToken], async(req, res, next) => {
                 const replacements = {date: 1997}
 
                 if( scope != undefined && scope != 'undefined' && scope != null) {
+                    replacements.scopeList = JSON.parse(scope)
                     if(data_type == 1) {
                         scopeCondition = ` AND section IN (:scopeList) `
-                    } else {
+                    } else if(replacements.scopeList.length > 0){
                         scopeCondition = ` AND ${rangeConcat} IN (:scopeList) `
                     }
                     
-                    replacements.scopeList = JSON.parse(scope)
                 }
 
                 if(typeof year !== 'undefined' && year != null) {
