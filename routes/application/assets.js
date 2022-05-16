@@ -103,24 +103,25 @@ route.post("/assets/cpc", [authJWT.verifyToken], async(req, res, next) => {
             list = JSON.parse(list)
 
             if( list.length > 0 ) {
-                let rangeConcat = 'CONCAT(section, class, sub_class)'
+                let rangeConcat = 'CONCAT(section, class)'
 
                 if( range != undefined && range != 'undefined' && range != null) {
                     switch(parseInt(range)) {
                         case 5:
                             rangeConcat = 'section'
-                            break;
-                        case 4:
-                            rangeConcat = 'CONCAT(section, class)'
+                            break;                        
+                        case 3:
+                            rangeConcat = 'CONCAT(section, class, sub_class)'
                             break;
                         case 2:
                             rangeConcat = 'CONCAT(section, class, sub_class, main_group, "/00")'
                             break;
                         case 1:
                             rangeConcat = 'CONCAT(section, class, sub_class, main_group, "/", sub_group)'
-                            break;
+                            break;                            
+                        case 4:
                         default:
-                            rangeConcat = 'CONCAT(section, class, sub_class)'
+                            rangeConcat = 'CONCAT(section, class)'
                             break;
                     }
                 }
