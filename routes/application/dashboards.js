@@ -63,7 +63,7 @@ route.post('/parties', [authJWT.verifyToken, clientDBConnection.connect], async(
             LEFT JOIN db_uspto.representative As r ON r.representative_id = aaa.representative_id
             WHERE apt.organisation_id = :organisationID and apt.company_id IN (:selectedCompanies) AND ass.layout_id = :layoutID
             AND activity_id IN (:acitivityID) AND date_format(ass.appno_date, '%Y') > :year
-            GROUP BY aaa.assignor_and_assignee_id) AS temp GROUP BY name ORDER BY number DESC, name ASC ` 
+            GROUP BY aaa.assignor_and_assignee_id) AS temp GROUP BY name HAVING name <> assignee ORDER BY number DESC, name ASC ` 
 
             getList =  await connection.applicationNew.query(query,{
                 type: connection.Sequelize.QueryTypes.SELECT,
