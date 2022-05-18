@@ -63,7 +63,7 @@ route.post('/parties', [authJWT.verifyToken, clientDBConnection.connect], async(
             LEFT JOIN db_uspto.representative As r ON r.representative_id = aaa.representative_id
             WHERE apt.organisation_id = :organisationID and apt.company_id IN (:selectedCompanies) AND ass.layout_id = :layoutID
             AND activity_id IN (:acitivityID) AND date_format(ass.appno_date, '%Y') > :year
-            GROUP BY aaa.assignor_and_assignee_id) AS temp GROUP BY name HAVING name <> assignee ORDER BY number DESC, name ASC ` 
+            GROUP BY aaa.assignor_and_assignee_id) AS temp GROUP BY name HAVING assignee <> name ORDER BY number DESC, name ASC ` 
 
             getList =  await connection.applicationNew.query(query,{
                 type: connection.Sequelize.QueryTypes.SELECT,
@@ -138,13 +138,14 @@ route.post("/", [authJWT.verifyToken], async(req, res, next) => {
                      */
                     where.layoutID = parseInt(type) == 1 ? 1 : 15;
                     if(parseInt(data_format) === 1) {
-                        query = `SELECT year, COUNT(year) AS number, application, patent, '' AS rf_id FROM( SELECT assets.appno_doc_num AS application, assets.grant_doc_num AS patent, date_format(assets.appno_date, '%Y') AS year FROM db_new_application.dashboard_items AS dt
+                        query = `SELECT year, sum(number) over (order by year) as number, application, patent, rf_id FROM (
+                            SELECT year, COUNT(year) AS number, sum(number) over (order by year) as cumulative_sum,  application, patent, '' AS rf_id FROM( SELECT assets.appno_doc_num AS application, assets.grant_doc_num AS patent, date_format(assets.appno_date, '%Y') AS year FROM db_new_application.dashboard_items AS dt
                         INNER JOIN db_new_application.assets AS assets ON assets.appno_doc_num = dt.application
                         WHERE dt.organisation_id = :organisationID 
                         AND assets.organisation_id = :organisationID 
                         AND assets.layout_id = :layoutID AND assets.company_id IN (:company_id)  AND dt.type = :type
                         AND dt.representative_id IN (:company_id)
-                        GROUP BY assets.appno_doc_num) AS temp GROUP BY year`;
+                        GROUP BY assets.appno_doc_num) AS temp GROUP BY year) AS temp1`;
                     } else {
                         query = `SELECT COUNT(application) AS number, application, patent, rf_id, total FROM (SELECT application, patent, rf_id, total FROM dashboard_items 
                             WHERE type = :type AND organisation_id = :organisationID ${companies.length > 0 ? ' AND representative_id IN (:company_id) ' : ''} GROUP BY application) AS temp`
@@ -160,7 +161,8 @@ route.post("/", [authJWT.verifyToken], async(req, res, next) => {
                      */
                      where.layoutID = 15;
                      if(parseInt(data_format) === 1) {
-                        query = `SELECT year, COUNT(year) AS number, '' AS application, '' AS patent, rf_id FROM( 
+                        query = `SELECT year, sum(number) over (order by year) as number, application, patent, rf_id FROM (
+                            SELECT year, COUNT(year) AS number, '' AS application, '' AS patent, rf_id FROM( 
                             SELECT dt.rf_id, date_format(apt.exec_dt, '%Y') AS year FROM db_new_application.dashboard_items AS dt
                             INNER JOIN db_new_application.activity_parties_transactions AS apt ON apt.rf_id = dt.rf_id
                             WHERE dt.organisation_id = :organisationID
@@ -168,7 +170,7 @@ route.post("/", [authJWT.verifyToken], async(req, res, next) => {
                             AND apt.company_id IN (:company_id)
                             AND dt.representative_id IN (:company_id)
                             AND dt.type = :type
-                            GROUP BY dt.rf_id) AS temp GROUP BY year`;
+                            GROUP BY dt.rf_id) AS temp GROUP BY year) AS temp1`;
                     } else {
                         query = `SELECT COUNT(rf_id) AS number, '' AS application, '' AS patent, rf_id, total FROM (SELECT rf_id, total FROM dashboard_items 
                             WHERE type = :type AND organisation_id = :organisationID ${companies.length > 0 ? ' AND representative_id IN (:company_id) ' : ''} GROUP BY rf_id) AS temp`
