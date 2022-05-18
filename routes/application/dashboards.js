@@ -139,7 +139,7 @@ route.post("/", [authJWT.verifyToken], async(req, res, next) => {
                     where.layoutID = parseInt(type) == 1 ? 1 : 15;
                     if(parseInt(data_format) === 1) {
                         query = `SELECT year, sum(number) over (order by year) as number, application, patent, rf_id FROM (
-                            SELECT year, COUNT(year) AS number, sum(number) over (order by year) as cumulative_sum,  application, patent, '' AS rf_id FROM( SELECT assets.appno_doc_num AS application, assets.grant_doc_num AS patent, date_format(assets.appno_date, '%Y') AS year FROM db_new_application.dashboard_items AS dt
+                            SELECT year, COUNT(year) AS number, application, patent, '' AS rf_id FROM( SELECT assets.appno_doc_num AS application, assets.grant_doc_num AS patent, date_format(assets.appno_date, '%Y') AS year FROM db_new_application.dashboard_items AS dt
                         INNER JOIN db_new_application.assets AS assets ON assets.appno_doc_num = dt.application
                         WHERE dt.organisation_id = :organisationID 
                         AND assets.organisation_id = :organisationID 
