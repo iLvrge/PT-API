@@ -2960,9 +2960,21 @@ const findLayout = (layout) => {
             layoutID = 1
             break
         case 'clear_encumbrances':
-            layoutID = 2
+            layoutID = 18
             break
-        /* case 'correct_details':
+        case 'incorrect_names':
+            layoutID = 17
+            break
+        case 'late_maintainance':
+            layoutID = 23
+        break
+        case 'incorrect_recording':
+            layoutID = 24
+        break
+        case 'late_recording':
+            layoutID = 25
+        break
+        /*case 'correct_details':
             layoutID = 4
             break */
         default:
@@ -2986,7 +2998,7 @@ const ArrayInterString = (data) => {
 
 const findFilterAssets = async(req) => {
     try {
-        let { list, total, type, selectedCompanies, tabs, customers, assignments } = req.body
+        let { list, total, type, selectedCompanies, tabs, customers, assignments, format_type } = req.body
 
         if(list != '') {
             list = JSON.parse(list);

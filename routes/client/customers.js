@@ -83,6 +83,7 @@ route.get("/timeline", [authJWT.verifyToken], async(req, res, next) => {
             rf_ids = JSON.parse(rf_ids);
         }
 
+        replacements.layout = helpers.findLayout(layout)  
        
         /*let transactionQuery = "SELECT documentid.appno_doc_num FROM db_uspto.documentid AS documentid WHERE documentid.rf_id =  activity_parties_transactions.rf_id ) AND assets.organisation_id = :organisation_id  "
 
@@ -124,7 +125,7 @@ route.get("/timeline", [authJWT.verifyToken], async(req, res, next) => {
             replacements.tabs = tabs
         }
 
-        if((tabs.length == 0 || !tabs.includes(10)) && exclude != 'true') {
+        if((tabs.length == 0 || !tabs.includes(10)) && exclude != 'true' && replacements.layout == 15) {
             query += " AND activity_parties_transactions.activity_id <> 10 "
             groupQuery += " AND activity_parties_transactions.activity_id <> 10 "
         }
@@ -140,30 +141,37 @@ route.get("/timeline", [authJWT.verifyToken], async(req, res, next) => {
             groupQuery += " AND activity_parties_transactions.rf_id IN (:rf_ids)"
             replacements.rf_ids = rf_ids
         } else {
-            query += " AND activity_parties_transactions.rf_id IN (SELECT documentid.rf_id FROM db_uspto.documentid AS documentid WHERE date_format(documentid.appno_date, '%Y') > :year AND documentid.appno_doc_num IN (SELECT assets.appno_doc_num FROM assets WHERE assets.organisation_id = :organisation_id "
+            if(replacements.layout == 17 || replacements.layout == 18 || replacements.layout == 24 || replacements.layout == 25) {
+                query += " AND activity_parties_transactions.rf_id IN (SELECT rf_id FROM dashboard_items WHERE type = :layout AND organisation_id = :organisation_id AND representative_id IN (:companies) GROUP BY rf_id)";
 
-            groupQuery += " AND activity_parties_transactions.rf_id IN (SELECT documentid.rf_id FROM db_uspto.documentid AS documentid WHERE date_format(documentid.appno_date, '%Y') > :year AND documentid.appno_doc_num IN (SELECT assets.appno_doc_num FROM assets WHERE assets.organisation_id = :organisation_id "
+                groupQuery += "  AND activity_parties_transactions.rf_id IN (SELECT rf_id FROM dashboard_items WHERE type = :layout AND organisation_id = :organisation_id AND representative_id IN (:companies) GROUP BY rf_id)";
+            } else {
+                query += " AND activity_parties_transactions.rf_id IN (SELECT documentid.rf_id FROM db_uspto.documentid AS documentid WHERE date_format(documentid.appno_date, '%Y') > :year AND documentid.appno_doc_num IN (SELECT assets.appno_doc_num FROM assets WHERE assets.organisation_id = :organisation_id "
 
-
-            if( typeof layout != 'undefined' ) {
-                query += " AND assets.layout_id IN (:layout)"
-
-                groupQuery += " AND assets.layout_id IN (:layout)"
+                groupQuery += " AND activity_parties_transactions.rf_id IN (SELECT documentid.rf_id FROM db_uspto.documentid AS documentid WHERE date_format(documentid.appno_date, '%Y') > :year AND documentid.appno_doc_num IN (SELECT assets.appno_doc_num FROM assets WHERE assets.organisation_id = :organisation_id "
+    
+    
+                if( typeof layout != 'undefined' ) {
+                    query += " AND assets.layout_id IN (:layout)"
+    
+                    groupQuery += " AND assets.layout_id IN (:layout)"
+                }
+    
+                if( companies.length > 0 ) {
+                    query += " AND assets.company_id IN (:companies)"
+    
+                    groupQuery += " AND assets.company_id IN (:companies)"
+                }
+    
+                query += " ) GROUP BY documentid.rf_id)"
+    
+                groupQuery += " ) GROUP BY documentid.rf_id)"
             }
-
-            if( companies.length > 0 ) {
-                query += " AND assets.company_id IN (:companies)"
-
-                groupQuery += " AND assets.company_id IN (:companies)"
-            }
-
-            query += " ) GROUP BY documentid.rf_id)"
-
-            groupQuery += " ) GROUP BY documentid.rf_id)"
+            
         }
 
         query += " GROUP BY activity_parties_transactions.rf_id ORDER BY exec_dt DESC "
-        replacements.layout = helpers.findLayout(layout)   
+         
 
 
         list =  await connection.applicationNew.query(query, {
@@ -975,38 +983,58 @@ route.get("/:layout/transactions", [authJWT.verifyToken, clientDBConnection.conn
                         total_records: 0
                     }
         
-        replacements.layoutID = helpers.findLayout(req.params.layout)        
+        replacements.layoutID = helpers.findLayout(req.params.layout)    
 
         if(companies && companies != '') {
-            companies = JSON.parse( companies )
-            replacements.companies = companies.join(',')
+            companies = JSON.parse( companies )            
         }
-
-        if(tabs && tabs != '') {
-            tabs = JSON.parse( tabs )
-            replacements.tabs = tabs.join(',')
-        }
-
-        if(customers && customers != '') {
-            customers = JSON.parse( customers )
-            replacements.customers = customers.join(',')
-        }  
         
-        const procedureName = req.params.layout == 'correct_details' ? 'routine_correct_details' : 'routine_transactions'
-        
-        connection.applicationNew.query(`CALL ${procedureName} (:companies, :organisationID, :tabs, :customers, :layoutID);`,{
-            type: connection.Sequelize.QueryTypes.SELECT,
-            raw: true,
-            logging: console.log,
-            replacements: replacements,
+        if(replacements.layoutID == 17 || replacements.layoutID == 18 || replacements.layoutID == 24 || replacements.layoutID == 25) {
+            if(companies.length > 0) {
+                replacements.companies = companies
             }
-        ).spread(result => {
-            if (result) {
-                transactions.list = Object.values(result)
-                transactions.total_records = transactions.list.length
-            }
+            const query = "SELECT trans.rf_id, assignment.reel_no, assignment.frame_no, '' AS channel, trans.`date`, `assets`, sum(`assets`) OVER (ORDER BY rf_id) AS grand_total  FROM (SELECT activity_parties_transactions.rf_id, date_format(activity_parties_transactions.exec_dt,'%m-%d-%Y') AS date, (SELECT COUNT(distinct documentid.appno_doc_num) FROM db_uspto.documentid WHERE documentid.rf_id = activity_parties_transactions.rf_id ) AS assets FROM activity_parties_transactions WHERE activity_parties_transactions.rf_id IN (SELECT rf_id FROM dashboard_items WHERE organisation_id = :organisationID AND representative_id IN (:companies) AND type = :layoutID GROUP BY rf_id) AND organisation_id = :organisationID AND company_id IN (:companies) GROUP BY activity_parties_transactions.rf_id) AS trans INNER JOIN db_uspto.assignment AS assignment ON assignment.rf_id = trans.rf_id ORDER BY `date` DESC;";
+
+            transactions.list = await connection.applicationNew.query(query, {
+                type: connection.Sequelize.QueryTypes.SELECT,
+                raw: true,
+                logging: console.log,
+                replacements: replacements,
+            })
+            transactions.total_records = transactions.list.length
             res.status(200).json(transactions);
-        })
+        } else {
+            if(companies.length > 0) {
+                replacements.companies = companies.join(',')
+            }
+            if(tabs && tabs != '') {
+                tabs = JSON.parse( tabs )
+                replacements.tabs = tabs.join(',')
+            }
+    
+            if(customers && customers != '') {
+                customers = JSON.parse( customers )
+                replacements.customers = customers.join(',')
+            }  
+            
+            const procedureName = req.params.layout == 'correct_details' ? 'routine_correct_details' : 'routine_transactions'
+            
+            connection.applicationNew.query(`CALL ${procedureName} (:companies, :organisationID, :tabs, :customers, :layoutID);`,{
+                type: connection.Sequelize.QueryTypes.SELECT,
+                raw: true,
+                logging: console.log,
+                replacements: replacements,
+                }
+            ).spread(result => {
+                if (result) {
+                    transactions.list = Object.values(result)
+                    transactions.total_records = transactions.list.length
+                }
+                res.status(200).json(transactions);
+            })
+        }
+
+        
     } catch ( err ) {
         console.log(err);
         res.status(500).send("Internal server error.");
