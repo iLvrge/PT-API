@@ -653,7 +653,7 @@ route.post("/asset_types/assets/family", [authJWT.verifyToken, clientDBConnectio
                     replacements: {list},
                 }
             ); 
-
+           
             if( getList != null && getList.length > 0) {
                 getList.forEach(row => {
                     result.push([row.application_country, parseInt(row.number)])
@@ -661,10 +661,10 @@ route.post("/asset_types/assets/family", [authJWT.verifyToken, clientDBConnectio
             }
 
 
-            const queryNoFamily = `SELECT COUNT(*) AS counter FROM (SELECT            assets.*
-                FROM              db_new_application.assets AS assets
+            const queryNoFamily = `SELECT COUNT(*) AS counter FROM (SELECT assets.*
+                FROM db_new_application.assets AS assets
                 LEFT OUTER JOIN db_uspto.assets_family AS af ON af.grant_doc_num = assets.grant_doc_num
-                WHERE             af.grant_doc_num IS NULL
+                WHERE af.grant_doc_num IS NULL
                 AND assets.appno_doc_num IN (:list)
                 GROUP BY assets.appno_doc_num) AS temp;`
 
@@ -681,6 +681,8 @@ route.post("/asset_types/assets/family", [authJWT.verifyToken, clientDBConnectio
                 const findIndex = result.findIndex( item => item[0] == 'US');
                 if(findIndex !== -1){
                     result[findIndex][1] = result[findIndex][1] + getNoFamilyCounter.counter
+                } else {
+                    result.push(['US', parseInt(getNoFamilyCounter.counter)])
                 }
             }
         }
@@ -792,7 +794,7 @@ route.get("/:layout/assets", [authJWT.verifyToken, clientDBConnection.connect], 
         } else {
 
             replacements.layoutID = helpers.findLayout(req.params.layout)        
-
+            console.log()
             if(companies && companies != '') {
                 companies = JSON.parse( companies )
                 replacements.companies = companies
@@ -837,13 +839,15 @@ route.get("/:layout/assets", [authJWT.verifyToken, clientDBConnection.connect], 
                 if(Array.isArray(assignments) && assignments.length > 0 ) {
                     query += ` AND activity_parties_transactions.rf_id IN (:assignments)`
                 }
-    
-                if(Array.isArray(tabs) && tabs.length > 0 ) {
-                    query += ` AND activity_parties_transactions.activity_id IN (:tabs)`
-                } else {
-                    /**exclude employees */
-                    query += ' AND activity_parties_transactions.activity_id <> 10 ' 
-                } 
+                if(replacements.layoutID == 15) {
+                    if(Array.isArray(tabs) && tabs.length > 0 ) {
+                        query += ` AND activity_parties_transactions.activity_id IN (:tabs)`
+                    } else {
+                        /**exclude employees */
+                        
+                        query += ' AND activity_parties_transactions.activity_id <> 10 ' 
+                    } 
+                }
     
                 if(Array.isArray(customers) && customers.length > 0 ) {
                     query += ` AND activity_parties_transactions.assignor_and_assignee_id IN (:customers)`
@@ -857,8 +861,10 @@ route.get("/:layout/assets", [authJWT.verifyToken, clientDBConnection.connect], 
                 if(Array.isArray(companies) && companies.length > 0 ) {
                     query += `  AND activity_parties_transactions.company_id IN (:companies) `
                 }
-                
-                query += `  AND activity_parties_transactions.activity_id <> 10  GROUP BY activity_parties_transactions.rf_id )  GROUP BY documentid.appno_doc_num) ` 
+                if(replacements.layoutID == 15) {
+                    query += `  AND activity_parties_transactions.activity_id <> 10   `
+                }        
+                query += `  GROUP BY activity_parties_transactions.rf_id )  GROUP BY documentid.appno_doc_num) `        
             }
     
             query += ` GROUP BY asset`;
@@ -993,7 +999,7 @@ route.get("/:layout/transactions", [authJWT.verifyToken, clientDBConnection.conn
             if(companies.length > 0) {
                 replacements.companies = companies
             }
-            const query = "SELECT trans.rf_id, assignment.reel_no, assignment.frame_no, '' AS channel, trans.`date`, `assets`, sum(`assets`) OVER (ORDER BY rf_id) AS grand_total  FROM (SELECT activity_parties_transactions.rf_id, date_format(activity_parties_transactions.exec_dt,'%m-%d-%Y') AS date, (SELECT COUNT(distinct documentid.appno_doc_num) FROM db_uspto.documentid WHERE documentid.rf_id = activity_parties_transactions.rf_id ) AS assets FROM activity_parties_transactions WHERE activity_parties_transactions.rf_id IN (SELECT rf_id FROM dashboard_items WHERE organisation_id = :organisationID AND representative_id IN (:companies) AND type = :layoutID GROUP BY rf_id) AND organisation_id = :organisationID AND company_id IN (:companies) GROUP BY activity_parties_transactions.rf_id) AS trans INNER JOIN db_uspto.assignment AS assignment ON assignment.rf_id = trans.rf_id ORDER BY `date` DESC;";
+            const query = "SELECT trans.rf_id, assignment.reel_no, assignment.frame_no, '' AS channel, trans.`date`, `assets`, sum(`assets`) OVER (ORDER BY rf_id) AS grand_total  FROM (SELECT documentid.rf_id, (SELECT date_format(exec_dt,'%m-%d-%Y') FROM db_uspto.assignor AS assignor WHERE assignor.rf_id = documentid.rf_id LIMIT 1) AS date, COUNT(distinct documentid.appno_doc_num) AS assets FROM db_uspto.documentid As documentid WHERE documentid.rf_id IN (SELECT rf_id FROM dashboard_items WHERE organisation_id = :organisationID AND representative_id IN (:companies) AND type = :layoutID GROUP BY rf_id) GROUP BY documentid.rf_id) AS trans INNER JOIN db_uspto.assignment AS assignment ON assignment.rf_id = trans.rf_id ORDER BY `date` DESC";
 
             transactions.list = await connection.applicationNew.query(query, {
                 type: connection.Sequelize.QueryTypes.SELECT,
