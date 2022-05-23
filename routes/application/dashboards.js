@@ -62,7 +62,7 @@ route.post('/parties', [authJWT.verifyToken, clientDBConnection.connect], async(
             INNER JOIN db_uspto.assignor_and_assignee AS aaa ON aaa.assignor_and_assignee_id = apt.assignor_and_assignee_id
             LEFT JOIN db_uspto.representative As r ON r.representative_id = aaa.representative_id
             WHERE apt.organisation_id = :organisationID and apt.company_id IN (:selectedCompanies) AND ass.layout_id = :layoutID
-            AND activity_id IN (:acitivityID) AND date_format(ass.appno_date, '%Y') > :year
+            AND activity_id IN (:acitivityID) AND date_format(ass.appno_date, '%Y') > :year AND appno_doc_num IN (SELECT appno_doc_num FROM owned_assets WHERE organisation_id = :organisationID AND company_id IN (:selectedCompanies))
             GROUP BY aaa.assignor_and_assignee_id) AS temp GROUP BY name HAVING assignee <> name ORDER BY number DESC, name ASC ` 
 
             getList =  await connection.applicationNew.query(query,{

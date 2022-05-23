@@ -51,6 +51,7 @@ const clientDBConnection = require("../../helpers/clientDBConnection");
 const {google} = require('googleapis');
 
 const  AWS  = require('aws-sdk');
+const { Console } = require("console");
 
 const oauth2Client = new google.auth.OAuth2(
     process.env.GOOGLE_CLIENT_ID,
@@ -98,9 +99,17 @@ route.get("/assets", [authJWT.verifyToken], async(req, res, next) => {
 route.post("/assets/cpc", [authJWT.verifyToken], async(req, res, next) => {
     try{
         let { list, total, type, selectedCompanies, tabs, customers, assignments, range, scope, year, other_mode, data_type } = req.body, getList = [], group = [], sales = []
+        
+
+        if(typeof data_type !== 'undefined' && data_type == 1) {
+            list = await helpers.findFilterAssets(req)
+            total = list.length
+        }
 
         if( list != '' ) {
-            list = JSON.parse(list)
+            if(typeof data_type == 'undefined' || (typeof data_type !== 'undefined' && data_type == 0)) {
+                list = JSON.parse(list)
+            }            
 
             if( list.length > 0 ) {
                 let rangeConcat = 'CONCAT(section, class)'
@@ -280,7 +289,7 @@ route.post("/assets/cpc", [authJWT.verifyToken], async(req, res, next) => {
                 
 
                 let listQuery =  query.replace('REPLACE_STRING', "SUM(IF(patent_number != '' AND application_number >0, 1, 0)) AS patent_number, SUM(IF (patent_number = '' AND application_number > 0, 1, 0 )) AS application_number, GROUP_CONCAT(application_number) AS appNum, (SUM(if(patent_number != '' AND application_number >0, 1, 0)) + SUM(IF (patent_number = '' AND application_number > 0, 1, 0 ))) AS countAssets, fillingYear, cpc_code, section, class, sub_class, main_group, sub_group, GROUP_CONCAT(distinct origin SEPARATOR '@@ ') AS group_name").replace('GROUP_STRING', "GROUP BY fillingYear, cpc_code")
-console.log(listQuery)
+
                 
                 getList = await connection.applicationNew.query(listQuery, {
                     type: connection.Sequelize.QueryTypes.SELECT,
