@@ -639,6 +639,7 @@ route.post("/asset_types/assets/family", [authJWT.verifyToken, clientDBConnectio
                     SELECT grant_doc_num FROM db_uspto.documentid 
                     WHERE appno_doc_num IN (:list) 
                     AND grant_doc_num <> '' 
+                    AND date_format(ass.appno_date, '%Y') > :year
                     GROUP BY grant_doc_num
                 )
                 AND application_country <> 'WO' 
@@ -650,7 +651,7 @@ route.post("/asset_types/assets/family", [authJWT.verifyToken, clientDBConnectio
                     type: connection.Sequelize.QueryTypes.SELECT,
                     raw: true,
                     logging: console.log,
-                    replacements: {list},
+                    replacements: {list, year: 1997},
                 }
             ); 
            
@@ -666,6 +667,7 @@ route.post("/asset_types/assets/family", [authJWT.verifyToken, clientDBConnectio
                 LEFT OUTER JOIN db_uspto.assets_family AS af ON af.grant_doc_num = assets.grant_doc_num
                 WHERE af.grant_doc_num IS NULL
                 AND assets.appno_doc_num IN (:list)
+                AND date_format(ass.appno_date, '%Y') > :year
                 GROUP BY assets.appno_doc_num) AS temp;`
 
 
@@ -673,7 +675,7 @@ route.post("/asset_types/assets/family", [authJWT.verifyToken, clientDBConnectio
                     type: connection.Sequelize.QueryTypes.SELECT,
                     raw: true,
                     logging: console.log,
-                    replacements: {list},
+                    replacements: {list, year: 1997},
                     plain: true
                 }
             ); 
