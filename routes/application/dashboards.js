@@ -90,15 +90,14 @@ route.post('/parties/assignor', [authJWT.verifyToken, clientDBConnection.connect
                 INNER JOIN db_uspto.assignor_and_assignee AS aaa ON aaa.assignor_and_assignee_id = ass.assignor_and_assignee_id
                 LEFT JOIN db_uspto.representative As r ON r.representative_id = aaa.representative_id
                 INNER JOIN db_uspto.documentid AS doc ON doc.rf_id = ass.rf_id
+                INNER JOIN db_uspto.representative_assignment_conveyance AS rac ON rac.rf_id = ass.rf_id
+                INNER JOIN db_uspto.conveyance AS con ON con.convey_name = rac.convey_ty AND con.is_ota = 1 
                 WHERE ass.rf_id IN (
                 SELECT aor.rf_id
                  FROM db_new_application.activity_parties_transactions AS apt
                 INNER JOIN db_uspto.documentid AS doc ON doc.rf_id = apt.rf_id
-                INNER JOIN db_uspto.representative_assignment_conveyance AS rac ON rac.rf_id = apt.rf_id
-                INNER JOIN db_uspto.conveyance AS con ON con.convey_name = rac.convey_ty
                 INNER JOIN db_uspto.assignor AS aor ON aor.assignor_and_assignee_id = apt.recorded_assignor_and_assignee_id
-                WHERE con.is_ota = 1 
-                AND doc.appno_doc_num IN (:list)
+                WHERE doc.appno_doc_num IN (:list)
                 AND date_format(doc.appno_date, '%Y') > :year 
                 AND apt.organisation_id = :organisationID 
                 AND apt.company_id IN (:selectedCompanies)
