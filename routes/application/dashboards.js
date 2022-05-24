@@ -36,6 +36,93 @@ route.get("/", [authJWT.verifyToken], async(req, res, next) => {
     });
 });
 
+const getOwnedAssets = async( req ) => {
+    try {
+        let {selectedCompanies} = req.body, getList = [];
+        if(selectedCompanies != '' && typeof selectedCompanies != 'undefined' && selectedCompanies != null) {
+            selectedCompanies = JSON.parse(selectedCompanies)
+        }
+        const query = `SELECT appno_doc_num FROM owned_assets WHERE organisation_id = :organisationID AND company_id IN (:selectedCompanies)`
+
+        const list =  await connection.applicationNew.query(query,{
+            type: connection.Sequelize.QueryTypes.SELECT,
+            raw: true,
+            logging: console.log,
+            replacements: {
+                organisationID: req.orgId,
+                selectedCompanies,
+            }
+        })
+
+        if(list !== null && list.length > 0) {
+            list.forEach( row => {
+                getList.push(`${row.appno_doc_num}`)
+            })
+        }
+        return getList
+    } catch (err) {
+    }
+}
+
+route.post('/parties/assignor', [authJWT.verifyToken, clientDBConnection.connect], async(req, res, next) => {
+    try {
+        let {selectedCompanies} = req.body, getList = [];
+        if(selectedCompanies != '' && typeof selectedCompanies != 'undefined' && selectedCompanies != null) {
+            selectedCompanies = JSON.parse(selectedCompanies)
+        }
+        /**
+         * Find company name
+         */
+        const Representative = req.connection_db.define('Representatives', Representatives.mainStructure, Representatives.options);
+        const getRepresentativeName = await Representative.findOne({
+            attributes: ['representative_name'],
+            where: {
+                representative_id: selectedCompanies
+            }
+        });
+        if( getRepresentativeName != null) {
+            const list = await getOwnedAssets(req)
+            const query = `SELECT name, "${getRepresentativeName.representative_name}" as assignor, SUM(app_count) as number FROM
+            (SELECT  aaa.assignor_and_assignee_id, aaa.representative_id, 
+            (CASE  WHEN r.representative_name <> "" THEN r.representative_name ELSE aaa.name END) AS name,
+             COUNT(DISTINCT appno_doc_num) AS app_count FROM db_uspto.assignee AS ass
+            INNER JOIN db_uspto.assignor_and_assignee AS aaa ON aaa.assignor_and_assignee_id = ass.assignor_and_assignee_id
+            LEFT JOIN db_uspto.representative As r ON r.representative_id = aaa.representative_id
+            INNER JOIN db_uspto.documentid AS doc ON doc.rf_id = ass.rf_id
+            WHERE ass.rf_id IN (
+            SELECT aor.rf_id
+             FROM db_new_application.activity_parties_transactions AS apt
+            INNER JOIN db_uspto.documentid AS doc ON doc.rf_id = apt.rf_id
+            INNER JOIN db_uspto.representative_assignment_conveyance AS rac ON rac.rf_id = apt.rf_id
+            INNER JOIN db_uspto.conveyance AS con ON con.convey_name = rac.convey_ty
+            INNER JOIN db_uspto.assignor AS aor ON aor.assignor_and_assignee_id = apt.recorded_assignor_and_assignee_id
+            WHERE con.is_ota = 1 
+            AND doc.appno_doc_num IN (:list)
+            AND date_format(doc.appno_date, '%Y') > :year 
+            AND apt.organisation_id = :organisationID 
+            AND apt.company_id IN (:selectedCompanies)
+            GROUP BY aor.rf_id)
+            GROUP BY aaa.assignor_and_assignee_id)AS temp GROUP BY name ORDER BY number DESC, name ASC ;` 
+
+            getList =  await connection.applicationNew.query(query,{
+                type: connection.Sequelize.QueryTypes.SELECT,
+                raw: true,
+                logging: console.log,
+                replacements: {
+                    organisationID: req.orgId,
+                    list,
+                    selectedCompanies,
+                    year: 1997
+                }
+            })
+        }        
+        res.status(200).json(getList);
+    } catch (e) {
+        console.log(err);
+        res.status(500).json({message: "Unable to retrieve data"})
+    }
+})
+
 route.post('/parties', [authJWT.verifyToken, clientDBConnection.connect], async(req, res, next) => {
     try{
         let {selectedCompanies} = req.body, getList = [];
