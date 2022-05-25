@@ -83,7 +83,7 @@ route.post('/parties/assignor', [authJWT.verifyToken, clientDBConnection.connect
         if( getRepresentativeName != null) {
             const list = await getOwnedAssets(req)
             if(list.length > 0) {
-                const query = `SELECT name, "${getRepresentativeName.representative_name}" as assignor, SUM(app_count) as number FROM
+                /* const query = `SELECT name, "${getRepresentativeName.representative_name}" as assignor, SUM(app_count) as number FROM
                 (SELECT  aaa.assignor_and_assignee_id, aaa.representative_id, 
                 (CASE  WHEN r.representative_name <> "" THEN r.representative_name ELSE aaa.name END) AS name,
                  COUNT(DISTINCT appno_doc_num) AS app_count FROM db_uspto.assignee AS ass
@@ -102,7 +102,28 @@ route.post('/parties/assignor', [authJWT.verifyToken, clientDBConnection.connect
                 AND apt.organisation_id = :organisationID 
                 AND apt.company_id IN (:selectedCompanies)
                 GROUP BY aor.rf_id)
-                GROUP BY aaa.assignor_and_assignee_id)AS temp GROUP BY name ORDER BY number DESC, name ASC ;` 
+                GROUP BY aaa.assignor_and_assignee_id)AS temp GROUP BY name ORDER BY number DESC, name ASC ;`  */
+
+                const query = `SELECT name, "${getRepresentativeName.representative_name}" as assignor, SUM(app_count) as number FROM
+                (SELECT  aaa.assignor_and_assignee_id, aaa.representative_id, 
+                (CASE  WHEN r.representative_name <> "" THEN r.representative_name ELSE aaa.name END) AS name,
+                 COUNT(DISTINCT appno_doc_num) AS app_count FROM db_uspto.assignee AS ass
+                INNER JOIN db_uspto.assignor_and_assignee AS aaa ON aaa.assignor_and_assignee_id = ass.assignor_and_assignee_id
+                LEFT JOIN db_uspto.representative As r ON r.representative_id = aaa.representative_id
+                INNER JOIN db_uspto.documentid AS doc ON doc.rf_id = ass.rf_id
+                INNER JOIN db_uspto.representative_assignment_conveyance AS rac ON rac.rf_id = ass.rf_id
+                INNER JOIN db_uspto.conveyance AS con ON con.convey_name = rac.convey_ty AND con.is_ota = 1
+                INNER JOIN (
+                SELECT aor.rf_id
+                 FROM db_new_application.activity_parties_transactions AS apt
+                INNER JOIN db_uspto.documentid AS doc ON doc.rf_id = apt.rf_id
+                INNER JOIN db_uspto.assignor AS aor ON aor.assignor_and_assignee_id = apt.recorded_assignor_and_assignee_id
+                WHERE  doc.appno_doc_num IN (:list)
+                AND date_format(doc.appno_date, '%Y') > :year 
+                AND apt.organisation_id = :organisationID  
+                AND apt.company_id IN (:selectedCompanies)
+                GROUP BY aor.rf_id) AS tempOR ON tempOR.rf_id = ass.rf_id
+                GROUP BY aaa.assignor_and_assignee_id)AS temp GROUP BY name ORDER BY number DESC, name ASC`
     
                 getList =  await connection.applicationNew.query(query,{
                     type: connection.Sequelize.QueryTypes.SELECT,
