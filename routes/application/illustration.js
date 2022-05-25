@@ -31,7 +31,8 @@ let createJSON = async(itemDetails, rfID) => {
         {id:4,name:'Security',tooltip:'Security',color:'#ffaa00',line_type:0,segment:2,order_no:3,explanation:''},
         {id:5,name:'License',tooltip:'License',color:'#E6E600',line_type:0,segment:2,order_no:4,explanation:''},
         {id:7,name:'Release',tooltip:'Release',color:'#70A800',line_type:0,segment:3,order_no:5,explanation:''},
-        {id:8,name:'License End',tooltip:'License End',color:'#E38B4F',line_type:0,segment:1,order_no:6,explanation:''}
+        {id:8,name:'License End',tooltip:'License End',color:'#E38B4F',line_type:0,segment:1,order_no:6,explanation:''},
+        {id:9,name:'Correct',tooltip:'Correct',color:'#FFFFFF',line_type:1,segment:1,order_no:7,explanation:''}
     ];
 
     let cdnURL = "https://s3-us-west-1.amazonaws.com/static.patentrack.com/assignments/var/www/html/beta/resources/shared/data/"; usptoURL = "https://legacy-assignments.uspto.gov/assignments/",  url = "https://patentrack.com/", sourceID =  "/var/www/html/beta/", mainDocument = "", document_form = "", document_agreement = "", path="resources/shared/data/", rfIDno = "";
@@ -256,7 +257,7 @@ let createJSON = async(itemDetails, rfID) => {
                 } else if(itemDetails.assignment.convey_ty === "assignment"){
                     type = "Ownership";
                 } else if(itemDetails.assignment.convey_ty === "correct"){
-                    type = "Ownership";
+                    type = "Correct";
                 }
 
                 itemDetails.assignee.forEach( assignee => {
