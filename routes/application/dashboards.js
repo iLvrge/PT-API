@@ -104,8 +104,8 @@ route.post('/parties/assignor', [authJWT.verifyToken, clientDBConnection.connect
                 GROUP BY aor.rf_id)
                 GROUP BY aaa.assignor_and_assignee_id)AS temp GROUP BY name ORDER BY number DESC, name ASC ;`  */
 
-                const query = `SELECT name, "${getRepresentativeName.representative_name}" as assignor, SUM(app_count) as number FROM
-                (SELECT  aaa.assignor_and_assignee_id, aaa.representative_id, 
+                const query = `SELECT name, assignor, SUM(app_count) as number FROM
+                (SELECT  aaa.assignor_and_assignee_id, "${getRepresentativeName.representative_name}" as assignor, aaa.representative_id, 
                 (CASE  WHEN r.representative_name <> "" THEN r.representative_name ELSE aaa.name END) AS name,
                  COUNT(DISTINCT appno_doc_num) AS app_count FROM db_uspto.assignee AS ass
                 INNER JOIN db_uspto.assignor_and_assignee AS aaa ON aaa.assignor_and_assignee_id = ass.assignor_and_assignee_id
@@ -123,7 +123,7 @@ route.post('/parties/assignor', [authJWT.verifyToken, clientDBConnection.connect
                 AND apt.organisation_id = :organisationID  
                 AND apt.company_id IN (:selectedCompanies)
                 GROUP BY aor.rf_id) AS tempOR ON tempOR.rf_id = ass.rf_id
-                GROUP BY aaa.assignor_and_assignee_id)AS temp GROUP BY name ORDER BY number DESC, name ASC`
+                GROUP BY aaa.assignor_and_assignee_id)AS temp GROUP BY name HAVING name <> assignor ORDER BY number DESC, name ASC`
     
                 getList =  await connection.applicationNew.query(query,{
                     type: connection.Sequelize.QueryTypes.SELECT,
