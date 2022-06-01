@@ -317,10 +317,17 @@ route.post("/assets/cpc", [authJWT.verifyToken], async(req, res, next) => {
 
 route.post("/assets/cpc/:year/:cpcCode", [authJWT.verifyToken], async(req, res, next) => {
     try {
-        let { list, total, type,  selectedCompanies, range } = req.body, getList = []
+        let { list, total, type,  selectedCompanies, range, data_type } = req.body, getList = []
+
+        if(typeof data_type !== 'undefined' && data_type == 1) {
+            list = await helpers.findFilterAssets(req)
+            total = list.length
+        }
 
         if( list != '' ) {
-            list = JSON.parse(list)
+            if(typeof data_type == 'undefined' || (typeof data_type !== 'undefined' && data_type == 0)) {
+                list = JSON.parse(list)
+            }
 
             if( list.length > 0 ) {
                 
