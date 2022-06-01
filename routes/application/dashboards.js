@@ -198,7 +198,7 @@ route.post('/parties', [authJWT.verifyToken, clientDBConnection.connect], async(
 route.post("/", [authJWT.verifyToken], async(req, res, next) => {
     try{
         let {selectedCompanies, customers, type, data_format} = req.body, getData = {}
-        const where = { year: 1997, organisationID: req.orgId, type: parseInt(type)}
+        const where = { year: 1997, organisationID: req.orgId, type: parseInt(type)}, typeList = [38, 39, 40, 41]
         let query = '';
         const companies = JSON.parse(selectedCompanies)
         if(companies.length > 0) {
@@ -234,7 +234,15 @@ route.post("/", [authJWT.verifyToken], async(req, res, next) => {
                     break;
             }
         } else {
-            switch(parseInt(type)) {
+            const qType = parseInt(type);
+            let ownedAssets = []
+            if(qType == 30 || qType == 38){
+                ownedAssets = await getOwnedAssets(req)
+                if(ownedAssets.length > 0) {
+                    where.list = ownedAssets
+                }
+            }
+            switch(parseInt(qType)) {
                 case 1:
                 case 18:
                 case 23:
@@ -243,7 +251,7 @@ route.post("/", [authJWT.verifyToken], async(req, res, next) => {
                      * Broken Chain 
                      * Maintainence
                      */
-                    where.layoutID = parseInt(type) == 1 ? 1 : 15;
+                    where.layoutID = qType == 1 ? 1 : 15;
                     if(parseInt(data_format) === 1) {
                         query = `SELECT year, sum(number) over (order by year) as number, application, patent, rf_id FROM (
                             SELECT year, COUNT(year) AS number, application, patent, '' AS rf_id FROM( SELECT assets.appno_doc_num AS application, assets.grant_doc_num AS patent, date_format(assets.appno_date, '%Y') AS year FROM db_new_application.dashboard_items AS dt
@@ -283,6 +291,40 @@ route.post("/", [authJWT.verifyToken], async(req, res, next) => {
                             WHERE type = :type AND organisation_id = :organisationID ${companies.length > 0 ? ' AND representative_id IN (:company_id) ' : ''} GROUP BY rf_id) AS temp`
                         break;
                     }
+                case 30:
+                    if(ownedAssets.length > 0) {
+                        query = `SELECT COUNT(*) as number, '' AS application, grant_doc_num, '' AS rf_id, 0 AS total FROM (SELECT grant_doc_num FROM db_uspto.documentid WHERE appno_doc_num IN (:list) AND grant_doc_num <> '' GROUP BY grant_doc_num) AS temp`
+                    }
+                    break;
+                case 31:
+                case 32:
+                case 34:
+                case 36:
+                    query = `SELECT COUNT(id) AS number, application, '' AS patent, rf_id, total FROM dashboard_items WHERE type = :type AND organisation_id = :organisationID ${companies.length > 0 ? ' AND representative_id IN (:company_id) ' : ''}`
+                    break;                
+                case 37:
+                    query = `SELECT SUM(total) AS number, application, '' AS patent, rf_id, 0 AS total FROM dashboard_items WHERE type = :type AND organisation_id = :organisationID ${companies.length > 0 ? ' AND representative_id IN (:company_id) ' : ''}`
+                    break;
+                case 38:
+                    if(ownedAssets.length > 0) {
+                        query = `SELECT application_country AS name, COUNT(application_country) AS number, grant_doc_num AS patent, '' AS application, '' AS rf_id, 0 AS total FROM (
+                                SELECT grant_doc_num, application_number, application_country FROM db_uspto.assets_family AS af WHERE grant_doc_num IN (
+                                    SELECT grant_doc_num FROM db_uspto.documentid AS di WHERE appno_doc_num IN (:list)
+                                    AND application_country <> 'WO' 
+                                    GROUP BY grant_doc_num
+                                ) GROUP BY application_number) AS temp GROUP BY application_country ORDER BY number DESC, name ASC LIMIT 5`
+                    }
+                    break; 
+                case 39:
+                case 41:
+                    /**
+                     * Lendor or inventor
+                     */
+                    query = `SELECT inventorName AS name, COUNT(application) AS number, application, '' As patent, '' AS rf_id, 0 AS total FROM (SELECT aaa.assignor_and_assignee_id, IF(aaa.representative_id <> '', r.representative_name, aaa.name) AS inventorName, application FROM dashboard_items AS di INNER JOIN db_uspto.assignor_and_assignee AS aaa ON aaa.assignor_and_assignee_id = di.assignor_id LEFT JOIN db_uspto.representative AS r ON r.representative_id = aaa.representative_id WHERE di.type = :type AND di.organisation_id = :organisationID ${companies.length > 0 ? ' AND di.representative_id IN (:company_id) ' : ''} ) AS temp GROUP BY inventorName ORDER BY number DESC, name ASC LIMIT 5`
+                    break;
+                case 40:
+                    query = `SELECT lawfirm AS name, COUNT(application) AS number, application, '' As patent, '' AS rf_id, 0 AS total FROM dashboard_items WHERE type = :type AND organisation_id = :organisationID ${companies.length > 0 ? ' AND representative_id IN (:company_id) ' : ''} GROUP BY lawfirm ORDER BY number DESC, name ASC LIMIT 5`
+                    break;
             }
         }
 
@@ -292,7 +334,7 @@ route.post("/", [authJWT.verifyToken], async(req, res, next) => {
                 raw: true,
                 logging: console.log,
                 replacements: where,
-                plain: parseInt(data_format) === 1 ? false : true
+                plain: parseInt(data_format) === 1 || typeList.includes(where.type) ? false : true
             })
         }
         res.status(200).json(getData);
