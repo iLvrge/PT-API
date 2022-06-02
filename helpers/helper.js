@@ -2967,13 +2967,49 @@ const findLayout = (layout) => {
             break
         case 'late_maintainance':
             layoutID = 23
-        break
+            break
         case 'incorrect_recording':
             layoutID = 24
-        break
+            break
         case 'late_recording':
             layoutID = 25
-        break
+            break
+        case 'non_expired_patents':
+            layoutID = 30
+            break
+        case 'patents_acquired':
+            layoutID = 31
+            break
+        case 'patents_invented':
+            layoutID = 32
+            break
+        case 'unmaintained_patents':
+            layoutID = 33
+            break
+        case 'pending_applications':
+            layoutID = 34
+            break
+        case 'filed_applications':
+            layoutID = 35
+            break
+        case 'acquired_applications':
+            layoutID = 36
+            break
+        case 'maintenance_budget':
+            layoutID = 37
+            break
+        case 'top_non_us_members':
+            layoutID = 38
+            break
+        case 'proliferate_inventors':
+            layoutID = 39
+            break
+        case 'top_law_firms':
+            layoutID = 40
+            break
+        case 'top_lenders':
+            layoutID = 41
+            break
         /*case 'correct_details':
             layoutID = 4
             break */

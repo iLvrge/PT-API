@@ -293,7 +293,7 @@ route.post("/", [authJWT.verifyToken], async(req, res, next) => {
                     }
                 case 30:
                     if(ownedAssets.length > 0) {
-                        query = `SELECT COUNT(*) as number, '' AS application, grant_doc_num, '' AS rf_id, 0 AS total FROM (SELECT grant_doc_num FROM db_uspto.documentid WHERE appno_doc_num IN (:list) AND grant_doc_num <> '' GROUP BY grant_doc_num) AS temp`
+                        query = `SELECT COUNT(*) as number, '' AS application, grant_doc_num AS patent, '' AS rf_id, 0 AS total FROM (SELECT grant_doc_num FROM db_uspto.documentid WHERE appno_doc_num IN (:list) AND grant_doc_num <> '' GROUP BY grant_doc_num ORDER BY grant_date DESC) AS temp`
                     }
                     break;
                 case 31:
@@ -309,10 +309,9 @@ route.post("/", [authJWT.verifyToken], async(req, res, next) => {
                     if(ownedAssets.length > 0) {
                         query = `SELECT application_country AS name, COUNT(application_country) AS number, grant_doc_num AS patent, '' AS application, '' AS rf_id, 0 AS total FROM (
                                 SELECT grant_doc_num, application_number, application_country FROM db_uspto.assets_family AS af WHERE grant_doc_num IN (
-                                    SELECT grant_doc_num FROM db_uspto.documentid AS di WHERE appno_doc_num IN (:list)
-                                    AND application_country <> 'WO' 
+                                    SELECT grant_doc_num FROM db_uspto.documentid AS di WHERE appno_doc_num IN (:list)                                     
                                     GROUP BY grant_doc_num
-                                ) GROUP BY application_number) AS temp GROUP BY application_country ORDER BY number DESC, name ASC LIMIT 5`
+                                ) AND application_country NOT IN ('WO', 'US') GROUP BY application_number) AS temp GROUP BY application_country ORDER BY number DESC, name ASC LIMIT 5`
                     }
                     break; 
                 case 39:
