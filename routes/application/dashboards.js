@@ -4,6 +4,8 @@ const route = express.Router();
 
 const connection = require("../../config/db.config");
 
+const RepresentativeResources = require("../../model/resources/Representatives");
+
 const Dashboards = require("../../model/application/Dashboards");
 
 const Share = require("../../model/application/Share");
@@ -11,6 +13,10 @@ const Share = require("../../model/application/Share");
 const Representatives = require("../../model/client/Representatives");
 
 const clientDBConnection = require("../../helpers/clientDBConnection");
+
+const AssignorAndAssignee = require("../../model/resources/AssignorAndAssignee");
+const { Op } = require("../../config/db.config");
+
 
 
 route.get("/", [authJWT.verifyToken], async(req, res, next) => {
@@ -194,7 +200,102 @@ route.post('/parties', [authJWT.verifyToken, clientDBConnection.connect], async(
     }
 })
 
+route.post("/timeline", [authJWT.verifyToken, clientDBConnection.connect], async(req, res, next) => {
+    try{
+        let {selectedCompanies, type} = req.body, getList = [];
+        if(selectedCompanies != '' && typeof selectedCompanies != 'undefined' && selectedCompanies != null) {
+            selectedCompanies = JSON.parse(selectedCompanies)
+        }
+        /**
+         * Find company name
+         */
+        const Representative = req.connection_db.define('Representatives', Representatives.mainStructure, Representatives.options);
+        const getRepresentativeName = await Representative.findOne({
+            attributes: ['representative_name'],
+            where: {
+                representative_id: selectedCompanies
+            }
+        });
 
+        if(getRepresentativeName !== null) {
+            const findRepresentative = await RepresentativeResources.findOne({
+                attributes: ['representative_id'],
+                where: {
+                    representative_name: getRepresentativeName.get('representative_name')
+                }
+            })
+
+            if(findRepresentative !== null) {
+                const findAllAssignorIDs = await AssignorAndAssignee.findAll({
+                    attributes: ['assignor_and_assignee_id'],
+                    where:{
+                        [Op.or]: {
+                            name: getRepresentativeName.get('representative_name'),
+                            representative_id: findRepresentative.get('representative_id')
+                        }
+                    },
+                    group: ['assignor_and_assignee_id']
+                })
+                if(findAllAssignorIDs.length > 0) {
+                    const assignorAssigneeIDs = []
+                    findAllAssignorIDs.forEach( item => {
+                        assignorAssigneeIDs.push(item.assignor_and_assignee_id)
+                    })
+
+                    if(assignorAssigneeIDs.length > 0) {
+                        const list = await getOwnedAssets(req)
+                        const query = `SELECT apt.rf_id as id, exec_dt, IF(r.representative_name <> '', r.representative_name,aaa.name)  AS customerName, activity_id AS tab_id, company_id AS company, (SELECT count(asset) FROM ( SELECT IF(dd.grant_doc_num <> '', dd.grant_doc_num, dd.appno_doc_num) AS asset FROM db_uspto.documentid AS dd WHERE dd.rf_id = apt.rf_id GROUP BY asset ) AS temp) AS totalAssets FROM activity_parties_transactions AS apt
+                        INNER JOIN db_uspto.assignor_and_assignee AS aaa ON aaa.assignor_and_assignee_id = apt.assignor_and_assignee_id LEFT JOIN db_uspto.representative AS r ON r.representative_id = aaa.representative_id WHERE apt.organisation_id = :organisationID AND company_id IN (:companyIDs) AND apt.rf_id IN (
+                            SELECT rf_id FROM db_uspto.documentid WHERE appno_doc_num IN (:list) AND date_format(appno_date, '%Y') > :year GROUP BY rf_id
+                        ) AND apt.activity_id IN (:activityIDs) AND apt.recorded_assignor_and_assignee_id IN (:assignorAssigneeIDs) AND date_format(apt.exec_dt, '%Y') > :year GROUP BY apt.rf_id ORDER BY exec_dt DESC `;
+
+                        let activityIDs = [];
+
+                        switch(parseInt(type)) {
+                            case 1:
+                                activityIDs = [1, 6]
+                                break
+                            case 2:
+                                activityIDs = [2, 7]
+                                break
+                            case 3:
+                                activityIDs = [3, 4]
+                                break
+                            case 4:
+                                activityIDs = [5, 12, 13, 11]
+                                break
+                            case 5:
+                                activityIDs = [10]
+                                break
+                            case 6:
+                                activityIDs = [9]
+                                break
+                        }
+
+                        const where = {
+                            organisationID: req.orgId,
+                            companyIDs: selectedCompanies,
+                            year: 1997,
+                            list,
+                            activityIDs,
+                            assignorAssigneeIDs
+                        }
+                        getList =  await connection.applicationNew.query(query,{
+                            type: connection.Sequelize.QueryTypes.SELECT,
+                            raw: true,
+                            logging: console.log,
+                            replacements: where,
+                        })                        
+                    }
+                }
+            }
+        }
+        res.status(200).json(getList);
+    } catch (err){
+        console.log('ERROR in dashboard timeline', err)
+        res.status(500).json({message: "Unable to retrieve data."})
+    }
+})
 route.post("/", [authJWT.verifyToken], async(req, res, next) => {
     try{
         let {selectedCompanies, customers, type, data_format} = req.body, getData = {}
