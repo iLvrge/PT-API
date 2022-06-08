@@ -73,6 +73,7 @@ route.get("/timeline", [authJWT.verifyToken], async(req, res, next) => {
 
         if(typeof tabs != 'undefined' && tabs != '') {
             tabs = JSON.parse(tabs)
+            tabs = helpers.checkTabs(tabs)
         }
 
         if(typeof customers != 'undefined' && customers != '') {
@@ -210,6 +211,7 @@ route.get("/timeline/security", [authJWT.verifyToken], async(req, res, next) => 
 
         if(typeof tabs != 'undefined' && tabs != '') {
             tabs = JSON.parse(tabs)
+            tabs = helpers.checkTabs(tabs)
         }
 
         if(typeof customers != 'undefined' && customers != '') {
