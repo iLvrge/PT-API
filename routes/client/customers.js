@@ -436,6 +436,7 @@ route.get("/asset_types/assignments", [authJWT.verifyToken, clientDBConnection.c
 
         if(tabs && tabs != '') {
             tabs = JSON.parse( tabs )
+            tabs = helpers.checkTabs(tabs)
         }
         
         if( tabs == '' || tabs.length == 0 ){
@@ -527,6 +528,7 @@ route.get("/asset_types/assets", [authJWT.verifyToken, clientDBConnection.connec
 
         if(tabs && tabs != '') {
             tabs = JSON.parse( tabs )
+            tabs = helpers.checkTabs(tabs)
         } else {
             tabs = []
         }
@@ -826,6 +828,7 @@ route.get("/:layout/assets", [authJWT.verifyToken, clientDBConnection.connect], 
         
                 if(tabs && tabs != '') {
                     tabs = JSON.parse( tabs )
+                    tabs = helpers.checkTabs(tabs)
                     replacements.tabs = tabs
                 }
         
@@ -1033,6 +1036,7 @@ route.get("/:layout/transactions", [authJWT.verifyToken, clientDBConnection.conn
             }
             if(tabs && tabs != '') {
                 tabs = JSON.parse( tabs )
+                tabs = helpers.checkTabs(tabs)
                 replacements.tabs = tabs.join(',')
             }
     
@@ -1119,6 +1123,7 @@ route.get("/transactions/address", [authJWT.verifyToken], async(req, res, next) 
 
         if(tabs && tabs != '') {
             tabs = JSON.parse( tabs )
+            tabs = helpers.checkTabs(tabs)
             replacements.tabs = tabs.join(',')
         }
 
@@ -1171,6 +1176,7 @@ route.get("/transactions/name", [authJWT.verifyToken], async(req, res, next) => 
 
         if(tabs && tabs != '') {
             tabs = JSON.parse( tabs )
+            tabs = helpers.checkTabs(tabs)
             replacements.tabs = tabs.join(',')
         }
 
@@ -1307,6 +1313,7 @@ route.get("/:layout/parties", [authJWT.verifyToken, clientDBConnection.connect],
 
         if(tabs && tabs != '') {
             tabs = JSON.parse( tabs )
+            tabs = helpers.checkTabs(tabs)
             replacements.tabs = tabs.join(',')
         }
         

@@ -161,6 +161,7 @@ route.post("/assets/cpc", [authJWT.verifyToken], async(req, res, next) => {
                         
                         if(tabs && tabs != '') {
                             tabs = JSON.parse( tabs )
+                            tabs = helpers.checkTabs(tabs)
                             where.tabs = tabs
                         }
     

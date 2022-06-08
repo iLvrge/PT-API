@@ -662,6 +662,7 @@ route.post("/temp", [authJWT.verifyToken], async(req, res, next) => {
                 let queryAssets = `SELECT appno_doc_num FROM db_new_application.assets AS assets WHERE date_format(assets.appno_date, '%Y') > :year AND assets.layout_id = :layoutID AND assets.organisation_id = :organisationID `
                 if(tabs && tabs != '') {
                     tabs = JSON.parse( tabs )
+                    tabs = helpers.checkTabs(tabs)
                     where.tabs = tabs
                 }
 

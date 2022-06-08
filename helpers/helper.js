@@ -3158,7 +3158,18 @@ const findFilterAssets = async(req) => {
     }
 }
 
+const checkTabs = (tabs) => {
+    if(tabs.includes(81) && ( !tabs.includes(5) && !tabs.includes(11) && !tabs.includes(12) && !tabs.includes(13)) ) {
+        tabs.push(5)
+        tabs.push(11)
+        tabs.push(12)
+        tabs.push(13)
+    }
+    return tabs
+}
+
 const helper = {};
+helper.checkTabs = checkTabs;
 helper.findFilterAssets = findFilterAssets;
 helper.ArrayInterString = ArrayInterString;
 helper.getXML = getXML;
