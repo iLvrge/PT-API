@@ -70,6 +70,35 @@ const getOwnedAssets = async( req ) => {
     }
 }
 
+const getAllTransactionAssets = async( req ) => {
+    try {
+        let {selectedCompanies} = req.body, getList = [];
+        if(selectedCompanies != '' && typeof selectedCompanies != 'undefined' && selectedCompanies != null) {
+            selectedCompanies = JSON.parse(selectedCompanies)
+        }
+        const query = `SELECT appno_doc_num FROM assets WHERE layout_id = :layoutID AND organisation_id = :organisationID AND company_id IN (:selectedCompanies) GROUP BY appno_doc_num`
+
+        const list =  await connection.applicationNew.query(query,{
+            type: connection.Sequelize.QueryTypes.SELECT,
+            raw: true,
+            logging: console.log,
+            replacements: {
+                organisationID: req.orgId,
+                layoutID: 15,
+                selectedCompanies,
+            }
+        })
+
+        if(list !== null && list.length > 0) {
+            list.forEach( row => {
+                getList.push(`${row.appno_doc_num}`)
+            })
+        }
+        return getList
+    } catch (err) {
+    }
+}
+
 route.post('/parties/assignor', [authJWT.verifyToken, clientDBConnection.connect], async(req, res, next) => {
     try {
         let {selectedCompanies} = req.body, getList = [];
@@ -117,18 +146,15 @@ route.post('/parties/assignor', [authJWT.verifyToken, clientDBConnection.connect
                 INNER JOIN db_uspto.assignor_and_assignee AS aaa ON aaa.assignor_and_assignee_id = ass.assignor_and_assignee_id
                 LEFT JOIN db_uspto.representative As r ON r.representative_id = aaa.representative_id
                 INNER JOIN db_uspto.documentid AS doc ON doc.rf_id = ass.rf_id
-                INNER JOIN db_uspto.representative_assignment_conveyance AS rac ON rac.rf_id = ass.rf_id
-                INNER JOIN db_uspto.conveyance AS con ON con.convey_name = rac.convey_ty AND con.is_ota = 1
-                INNER JOIN (
-                SELECT aor.rf_id
-                 FROM db_new_application.activity_parties_transactions AS apt
-                INNER JOIN db_uspto.documentid AS doc ON doc.rf_id = apt.rf_id
-                INNER JOIN db_uspto.assignor AS aor ON aor.assignor_and_assignee_id = apt.recorded_assignor_and_assignee_id
-                WHERE  date_format(doc.appno_date, '%Y') > :year 
+                INNER JOIN db_new_application.activity_parties_transactions AS apt ON doc.rf_id = apt.rf_id
+                INNER JOIN db_uspto.assignor AS aor ON aor.assignor_and_assignee_id = apt.recorded_assignor_and_assignee_id /*AND apt.rf_id = aor.rf_id*/
+                WHERE  date_format(doc.appno_date, '%Y') > :year AND date_format(aor.exec_dt, '%Y') > :year 
                 AND apt.organisation_id = :organisationID  
                 AND apt.company_id IN (:selectedCompanies)
-                GROUP BY aor.rf_id) AS tempOR ON tempOR.rf_id = ass.rf_id
-                GROUP BY aaa.assignor_and_assignee_id)AS temp GROUP BY name HAVING name <> assignor ORDER BY number DESC, name ASC`
+                AND activity_id IN (:activityID)
+                GROUP BY aaa.assignor_and_assignee_id )AS temp 
+                GROUP BY name 
+                HAVING name <> assignor ORDER BY number DESC, name ASC`
     
                 getList =  await connection.applicationNew.query(query,{
                     type: connection.Sequelize.QueryTypes.SELECT,
@@ -137,6 +163,8 @@ route.post('/parties/assignor', [authJWT.verifyToken, clientDBConnection.connect
                     replacements: {
                         organisationID: req.orgId,
                         selectedCompanies,
+                        layoutID: 15,
+                        activityID: [2, 7],
                         year: 1997
                     }
                 })
@@ -171,11 +199,11 @@ route.post('/parties', [authJWT.verifyToken, clientDBConnection.connect], async(
 
         if( getRepresentativeName != null) {
             const query = `SELECT name, assignee, SUM(app_count) as number FROM (SELECT aaa.assignor_and_assignee_id, aaa.representative_id, (CASE  WHEN apt.activity_id = 10 THEN "Employees" WHEN r.representative_name <> "" THEN r.representative_name ELSE aaa.name END) AS name, COUNT(DISTINCT appno_doc_num) AS app_count, "${getRepresentativeName.representative_name}" as assignee  FROM db_new_application.activity_parties_transactions AS apt
-            INNER JOIN db_new_application.assets AS ass ON ass.rf_id = apt.rf_id
+            INNER JOIN db_uspto.documentid AS doc ON doc.rf_id = apt.rf_id
             INNER JOIN db_uspto.assignor_and_assignee AS aaa ON aaa.assignor_and_assignee_id = apt.assignor_and_assignee_id
             LEFT JOIN db_uspto.representative As r ON r.representative_id = aaa.representative_id
             WHERE apt.organisation_id = :organisationID and apt.company_id IN (:selectedCompanies) AND ass.layout_id = :layoutID
-            AND activity_id IN (:acitivityID) AND date_format(ass.appno_date, '%Y') > :year /*AND appno_doc_num IN (SELECT appno_doc_num FROM owned_assets WHERE organisation_id = :organisationID AND company_id IN (:selectedCompanies))*/
+            AND activity_id IN (:acitivityID) AND date_format(doc.appno_date, '%Y') > :year AND appno_doc_num IN (SELECT appno_doc_num FROM owned_assets WHERE organisation_id = :organisationID AND company_id IN (:selectedCompanies))
             GROUP BY aaa.assignor_and_assignee_id) AS temp GROUP BY name HAVING assignee <> name ORDER BY number DESC, name ASC ` 
 
             getList =  await connection.applicationNew.query(query,{
@@ -243,7 +271,12 @@ route.post("/timeline", [authJWT.verifyToken, clientDBConnection.connect], async
                     })
 
                     if(assignorAssigneeIDs.length > 0) {
-                        const list = await getOwnedAssets(req)
+                        let list = []
+                        if(parseInt(type) !== 2) {
+                            list = await getOwnedAssets(req)
+                        } else {
+                            list = await getAllTransactionAssets(req)
+                        }
                         const query = `SELECT apt.rf_id as id, exec_dt, release_rf_id, release_exec_dt, IF(r.representative_name <> '', r.representative_name,aaa.name)  AS customerName, activity_id AS tab_id, company_id AS company, (SELECT count(asset) FROM ( SELECT IF(dd.grant_doc_num <> '', dd.grant_doc_num, dd.appno_doc_num) AS asset FROM db_uspto.documentid AS dd WHERE dd.rf_id = apt.rf_id GROUP BY asset ) AS temp) AS totalAssets FROM activity_parties_transactions AS apt
                         INNER JOIN db_uspto.assignor_and_assignee AS aaa ON aaa.assignor_and_assignee_id = apt.assignor_and_assignee_id LEFT JOIN db_uspto.representative AS r ON r.representative_id = aaa.representative_id WHERE apt.organisation_id = :organisationID AND company_id IN (:companyIDs) AND apt.rf_id IN (
                             SELECT rf_id FROM db_uspto.documentid WHERE appno_doc_num IN (:list) AND date_format(appno_date, '%Y') > :year GROUP BY rf_id
@@ -420,7 +453,7 @@ route.post("/", [authJWT.verifyToken], async(req, res, next) => {
                 case 39:
                 case 41:
                     /**
-                     * Lendor or inventor
+                     * Lender or inventor
                      */
                     query = `SELECT inventorName AS name, COUNT(application) AS number, application, '' As patent, '' AS rf_id, 0 AS total FROM (SELECT aaa.assignor_and_assignee_id, IF(aaa.representative_id <> '', r.representative_name, aaa.name) AS inventorName, application FROM dashboard_items AS di INNER JOIN db_uspto.assignor_and_assignee AS aaa ON aaa.assignor_and_assignee_id = di.assignor_id LEFT JOIN db_uspto.representative AS r ON r.representative_id = aaa.representative_id WHERE di.type = :type AND di.organisation_id = :organisationID ${companies.length > 0 ? ' AND di.representative_id IN (:company_id) ' : ''} ) AS temp GROUP BY inventorName ORDER BY number DESC, name ASC LIMIT 5`
                     break;
