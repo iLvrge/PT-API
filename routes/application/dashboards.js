@@ -401,6 +401,7 @@ route.post("/", [authJWT.verifyToken], async(req, res, next) => {
                     }                    
                     break;                    
                 case 17:
+                case 19:
                 case 24:
                 case 25:
                     /**
