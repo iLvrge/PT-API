@@ -1817,6 +1817,33 @@ route.get("/customers/:organisation_id/publish", [authJWT.verifyToken, authJWT.i
     } 
 });
 
+route.get("/customers/:organisation_id/address/publish", [authJWT.verifyToken, authJWT.isAdmin], async(req, res, next) => {
+    try{
+        let organisationID = req.params.organisation_id;
+        if(organisationID > 0){
+            let org = await helpers.findOrganisationbyID( organisationID );
+            if(org != null && org.organisation_id > 0) {
+                console.log(`php -f /var/www/html/trash/update_client_companies_address.php "${organisationID}"  ""`);
+                    await exec(`php -f /var/www/html/trash/update_client_companies_address.php "${organisationID}"  ""`, async (error, stdout, stderr) => {    
+                        console.log("tree_script");
+                        console.log(error);
+                        console.log(stderr);
+                        res.status(200).send("UPDATED!");                        
+                    });
+            } else {
+                res.status(402).send("Bad Inputs");
+            }
+        } else {
+            res.status(402).send("Bad Inputs");
+        }
+        
+    } catch(e) {
+        console.log("ERROR:");
+        console.log(e);
+        res.status(402).send("Not found ");
+    } 
+});
+
 route.put("/customers/:id/flag_update_manually", [authJWT.verifyToken, authJWT.isAdmin, authJWT.addClientID, clientDBConnection.connect], async(req, res, next) => {
     let inventors = req.body.inventors, organisationID = req.params.id, flag = req.body.flag;
 
