@@ -20,6 +20,8 @@ const Organisations = require('../../model/business/Organisations');
 
 const Representatives = require('../../model/resources/Representatives');
 
+const RepresentativeAddress = require('../../model/resources/RepresentativeAddress');
+
 const RepresentativeCustomer = require('../../model/client/Representatives');
 
 const RepresentativeAssignmentConveyance = require('../../model/resources/RepresentativeAssignmentConveyance');
@@ -154,6 +156,29 @@ route.get("/company/:ID/search/address_with_transactions/:type", [authJWT.verify
             companyAddressWithTransactions  = await helpers.getAddressWithTransactionsListByCompanyID(ID, type);
         }
         res.status(200).json(companyAddressWithTransactions);           
+    } catch(e) {
+        console.log(e);
+        res.status(402).send("Not found ");
+    }
+});
+
+route.put("/company/:ID/search/address_with_transactions/:type", [authJWT.verifyToken, authJWT.isAdmin], async (req, res, next) => {
+    try {
+        let companyAddressWithTransactions = null, addData = null;
+        const {ID, type} = req.params;	
+        const {address1, address2} = req.body
+
+        if(ID != null && ID != undefined && ID.length > 0) {  
+            companyAddressWithTransactions  = await helpers.getAddressDataFromLastTransaction(ID, address1, address2);
+            if(companyAddressWithTransactions != null && companyAddressWithTransactions.rf_id > 0) {
+                addData = await RepresentativeAddress.bulkCreate([{
+                    representative_id: companyAddressWithTransactions.representativeID,
+                    rf_id: companyAddressWithTransactions.rf_id,
+                    assignor_and_assignee_id: companyAddressWithTransactions.assignor_and_assignee_id
+                }], {ignoreDuplicates: true})
+            }
+        }
+        res.status(200).json(addData);      
     } catch(e) {
         console.log(e);
         res.status(402).send("Not found ");
