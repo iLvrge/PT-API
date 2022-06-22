@@ -515,6 +515,7 @@ let getAddressWithTransactionsListByCompanyID = async( ID, type ) => {
             raw: true,
             replacements: replacements,
             logging: console.log,
+            plain: true
           }
         );
 
