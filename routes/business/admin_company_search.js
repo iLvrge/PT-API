@@ -145,6 +145,21 @@ route.get("/company/:ID/search/address/:type", [authJWT.verifyToken, authJWT.isA
     }
 });
 
+route.get("/company/:ID/search/address_with_transactions/:type", [authJWT.verifyToken, authJWT.isAdmin], async (req, res, next) => {
+    try {
+        let companyAddressWithTransactions = [];
+        const {ID, type} = req.params;	
+
+        if(ID != null && ID != undefined && ID.length > 0) {  
+            companyAddressWithTransactions  = await helpers.getAddressWithTransactionsListByCompanyID(ID, type);
+        }
+        res.status(200).json(companyAddressWithTransactions);           
+    } catch(e) {
+        console.log(e);
+        res.status(402).send("Not found ");
+    }
+});
+
 route.post("/lawfirm/:ID/search/address/all", [authJWT.verifyToken, authJWT.isAdmin], async (req, res, next) => {
     try {
         let searchCompanies = [];

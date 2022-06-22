@@ -4,9 +4,19 @@ const route = express.Router();
 
 const connection = require("../../config/db.config");
 
+const RepresentativeResources = require("../../model/resources/Representatives");
+
 const Dashboards = require("../../model/application/Dashboards");
 
 const Share = require("../../model/application/Share");
+
+const Representatives = require("../../model/client/Representatives");
+
+const clientDBConnection = require("../../helpers/clientDBConnection");
+
+const AssignorAndAssignee = require("../../model/resources/AssignorAndAssignee");
+const { Op } = require("../../config/db.config");
+
 
 
 route.get("/", [authJWT.verifyToken], async(req, res, next) => {
@@ -32,11 +42,297 @@ route.get("/", [authJWT.verifyToken], async(req, res, next) => {
     });
 });
 
+const getOwnedAssets = async( req ) => {
+    try {
+        let {selectedCompanies} = req.body, getList = [];
+        if(selectedCompanies != '' && typeof selectedCompanies != 'undefined' && selectedCompanies != null) {
+            selectedCompanies = JSON.parse(selectedCompanies)
+        }
+        const query = `SELECT appno_doc_num FROM owned_assets WHERE organisation_id = :organisationID AND company_id IN (:selectedCompanies)`
 
+        const list =  await connection.applicationNew.query(query,{
+            type: connection.Sequelize.QueryTypes.SELECT,
+            raw: true,
+            logging: console.log,
+            replacements: {
+                organisationID: req.orgId,
+                selectedCompanies,
+            }
+        })
+
+        if(list !== null && list.length > 0) {
+            list.forEach( row => {
+                getList.push(`${row.appno_doc_num}`)
+            })
+        }
+        return getList
+    } catch (err) {
+    }
+}
+
+const getAllTransactionAssets = async( req ) => {
+    try {
+        let {selectedCompanies} = req.body, getList = [];
+        if(selectedCompanies != '' && typeof selectedCompanies != 'undefined' && selectedCompanies != null) {
+            selectedCompanies = JSON.parse(selectedCompanies)
+        }
+        const query = `SELECT appno_doc_num FROM assets WHERE layout_id = :layoutID AND organisation_id = :organisationID AND company_id IN (:selectedCompanies) GROUP BY appno_doc_num`
+
+        const list =  await connection.applicationNew.query(query,{
+            type: connection.Sequelize.QueryTypes.SELECT,
+            raw: true,
+            logging: console.log,
+            replacements: {
+                organisationID: req.orgId,
+                layoutID: 15,
+                selectedCompanies,
+            }
+        })
+
+        if(list !== null && list.length > 0) {
+            list.forEach( row => {
+                getList.push(`${row.appno_doc_num}`)
+            })
+        }
+        return getList
+    } catch (err) {
+    }
+}
+
+route.post('/parties/assignor', [authJWT.verifyToken, clientDBConnection.connect], async(req, res, next) => {
+    try {
+        let {selectedCompanies} = req.body, getList = [];
+        if(selectedCompanies != '' && typeof selectedCompanies != 'undefined' && selectedCompanies != null) {
+            selectedCompanies = JSON.parse(selectedCompanies)
+        }
+        /**
+         * Find company name
+         */
+        const Representative = req.connection_db.define('Representatives', Representatives.mainStructure, Representatives.options);
+        const getRepresentativeName = await Representative.findOne({
+            attributes: ['representative_name'],
+            where: {
+                representative_id: selectedCompanies
+            }
+        });
+        if( getRepresentativeName != null) {
+            //const list = await getOwnedAssets(req)
+            /*if(list.length > 0) {*/
+                /* const query = `SELECT name, "${getRepresentativeName.representative_name}" as assignor, SUM(app_count) as number FROM
+                (SELECT  aaa.assignor_and_assignee_id, aaa.representative_id, 
+                (CASE  WHEN r.representative_name <> "" THEN r.representative_name ELSE aaa.name END) AS name,
+                 COUNT(DISTINCT appno_doc_num) AS app_count FROM db_uspto.assignee AS ass
+                INNER JOIN db_uspto.assignor_and_assignee AS aaa ON aaa.assignor_and_assignee_id = ass.assignor_and_assignee_id
+                LEFT JOIN db_uspto.representative As r ON r.representative_id = aaa.representative_id
+                INNER JOIN db_uspto.documentid AS doc ON doc.rf_id = ass.rf_id
+                INNER JOIN db_uspto.representative_assignment_conveyance AS rac ON rac.rf_id = ass.rf_id
+                INNER JOIN db_uspto.conveyance AS con ON con.convey_name = rac.convey_ty AND con.is_ota = 1 
+                WHERE ass.rf_id IN (
+                SELECT aor.rf_id
+                 FROM db_new_application.activity_parties_transactions AS apt
+                INNER JOIN db_uspto.documentid AS doc ON doc.rf_id = apt.rf_id
+                INNER JOIN db_uspto.assignor AS aor ON aor.assignor_and_assignee_id = apt.recorded_assignor_and_assignee_id
+                WHERE doc.appno_doc_num IN (:list)
+                AND date_format(doc.appno_date, '%Y') > :year 
+                AND apt.organisation_id = :organisationID 
+                AND apt.company_id IN (:selectedCompanies)
+                GROUP BY aor.rf_id)
+                GROUP BY aaa.assignor_and_assignee_id)AS temp GROUP BY name ORDER BY number DESC, name ASC ;`  */
+
+                const query = `SELECT name, assignor, SUM(app_count) as number FROM
+                (SELECT  aaa.assignor_and_assignee_id, "${getRepresentativeName.representative_name}" as assignor, aaa.representative_id, 
+                (CASE  WHEN r.representative_name <> "" THEN r.representative_name ELSE aaa.name END) AS name,
+                 COUNT(DISTINCT appno_doc_num) AS app_count FROM db_uspto.assignee AS ass
+                INNER JOIN db_uspto.assignor_and_assignee AS aaa ON aaa.assignor_and_assignee_id = ass.assignor_and_assignee_id
+                LEFT JOIN db_uspto.representative As r ON r.representative_id = aaa.representative_id
+                INNER JOIN db_uspto.documentid AS doc ON doc.rf_id = ass.rf_id
+                INNER JOIN db_new_application.activity_parties_transactions AS apt ON doc.rf_id = apt.rf_id
+                INNER JOIN db_uspto.assignor AS aor ON aor.assignor_and_assignee_id = apt.recorded_assignor_and_assignee_id /*AND apt.rf_id = aor.rf_id*/
+                WHERE  date_format(doc.appno_date, '%Y') > :year AND date_format(aor.exec_dt, '%Y') > :year 
+                AND apt.organisation_id = :organisationID  
+                AND apt.company_id IN (:selectedCompanies)
+                AND activity_id IN (:activityID)
+                GROUP BY aaa.assignor_and_assignee_id )AS temp 
+                GROUP BY name 
+                HAVING name <> assignor ORDER BY number DESC, name ASC`
+    
+                getList =  await connection.applicationNew.query(query,{
+                    type: connection.Sequelize.QueryTypes.SELECT,
+                    raw: true,
+                    logging: console.log,
+                    replacements: {
+                        organisationID: req.orgId,
+                        selectedCompanies,
+                        layoutID: 15,
+                        activityID: [2, 7],
+                        year: 1997
+                    }
+                })
+            /*} */           
+        }        
+        res.status(200).json(getList);
+    } catch (err) {
+        console.log(err);
+        res.status(500).json({message: "Unable to retrieve data"})
+    }
+})
+
+route.post('/parties', [authJWT.verifyToken, clientDBConnection.connect], async(req, res, next) => {
+    try{
+        let {selectedCompanies} = req.body, getList = [];
+        /**
+         * Activity acquisition, mergerIn, employees
+         */
+        if(selectedCompanies != '' && typeof selectedCompanies != 'undefined' && selectedCompanies != null) {
+            selectedCompanies = JSON.parse(selectedCompanies)
+        }
+        /**
+         * Find company name
+         */
+        const Representative = req.connection_db.define('Representatives', Representatives.mainStructure, Representatives.options);
+        const getRepresentativeName = await Representative.findOne({
+            attributes: ['representative_name'],
+            where: {
+                representative_id: selectedCompanies
+            }
+        }); 
+
+        if( getRepresentativeName != null) {
+            const query = `SELECT name, assignee, SUM(app_count) as number FROM (SELECT aaa.assignor_and_assignee_id, aaa.representative_id, (CASE  WHEN apt.activity_id = 10 THEN "Employees" WHEN r.representative_name <> "" THEN r.representative_name ELSE aaa.name END) AS name, COUNT(DISTINCT appno_doc_num) AS app_count, "${getRepresentativeName.representative_name}" as assignee  FROM db_new_application.activity_parties_transactions AS apt
+            INNER JOIN db_uspto.documentid AS doc ON doc.rf_id = apt.rf_id
+            INNER JOIN db_uspto.assignor_and_assignee AS aaa ON aaa.assignor_and_assignee_id = apt.assignor_and_assignee_id
+            LEFT JOIN db_uspto.representative As r ON r.representative_id = aaa.representative_id
+            WHERE apt.organisation_id = :organisationID and apt.company_id IN (:selectedCompanies)
+            AND activity_id IN (:acitivityID) AND date_format(doc.appno_date, '%Y') > :year AND appno_doc_num IN (SELECT appno_doc_num FROM owned_assets WHERE organisation_id = :organisationID AND company_id IN (:selectedCompanies))
+            GROUP BY aaa.assignor_and_assignee_id) AS temp GROUP BY name HAVING assignee <> name ORDER BY number DESC, name ASC ` 
+
+            getList =  await connection.applicationNew.query(query,{
+                type: connection.Sequelize.QueryTypes.SELECT,
+                raw: true,
+                logging: console.log,
+                replacements: {
+                    organisationID: req.orgId,
+                    selectedCompanies,
+                    layoutID: 15,
+                    acitivityID: [1, 6, 10],
+                    year: 1997
+                }
+            })
+        }
+        
+        res.status(200).json(getList);
+
+    } catch (err) {
+        console.log(err);
+        res.status(500).json({message: "Unable to retrieve data"})
+    }
+})
+
+route.post("/timeline", [authJWT.verifyToken, clientDBConnection.connect], async(req, res, next) => {
+    try{
+        let {selectedCompanies, type} = req.body, getList = [];
+        if(selectedCompanies != '' && typeof selectedCompanies != 'undefined' && selectedCompanies != null) {
+            selectedCompanies = JSON.parse(selectedCompanies)
+        }
+        /**
+         * Find company name
+         */
+        const Representative = req.connection_db.define('Representatives', Representatives.mainStructure, Representatives.options);
+        const getRepresentativeName = await Representative.findOne({
+            attributes: ['representative_name'],
+            where: {
+                representative_id: selectedCompanies
+            }
+        });
+
+        if(getRepresentativeName !== null) {
+            const findRepresentative = await RepresentativeResources.findOne({
+                attributes: ['representative_id'],
+                where: {
+                    representative_name: getRepresentativeName.get('representative_name')
+                }
+            })
+
+            if(findRepresentative !== null) {
+                const findAllAssignorIDs = await AssignorAndAssignee.findAll({
+                    attributes: ['assignor_and_assignee_id'],
+                    where:{
+                        [Op.or]: {
+                            name: getRepresentativeName.get('representative_name'),
+                            representative_id: findRepresentative.get('representative_id')
+                        }
+                    },
+                    group: ['assignor_and_assignee_id']
+                })
+                if(findAllAssignorIDs.length > 0) {
+                    const assignorAssigneeIDs = []
+                    findAllAssignorIDs.forEach( item => {
+                        assignorAssigneeIDs.push(item.assignor_and_assignee_id)
+                    })
+
+                    if(assignorAssigneeIDs.length > 0) {
+                        let list = []
+                        if(parseInt(type) !== 2) {
+                            list = await getOwnedAssets(req)
+                        } else {
+                            list = await getAllTransactionAssets(req)
+                        }
+                        const query = `SELECT apt.rf_id as id, exec_dt, release_rf_id, release_exec_dt, IF(r.representative_name <> '', r.representative_name,aaa.name)  AS customerName, activity_id AS tab_id, company_id AS company, (SELECT count(asset) FROM ( SELECT IF(dd.grant_doc_num <> '', dd.grant_doc_num, dd.appno_doc_num) AS asset FROM db_uspto.documentid AS dd WHERE dd.rf_id = apt.rf_id GROUP BY asset ) AS temp) AS totalAssets FROM activity_parties_transactions AS apt
+                        INNER JOIN db_uspto.assignor_and_assignee AS aaa ON aaa.assignor_and_assignee_id = apt.assignor_and_assignee_id LEFT JOIN db_uspto.representative AS r ON r.representative_id = aaa.representative_id WHERE apt.organisation_id = :organisationID AND company_id IN (:companyIDs) AND apt.rf_id IN (
+                            SELECT rf_id FROM db_uspto.documentid WHERE appno_doc_num IN (:list) AND date_format(appno_date, '%Y') > :year GROUP BY rf_id
+                        ) AND apt.activity_id IN (:activityIDs) AND apt.recorded_assignor_and_assignee_id IN (:assignorAssigneeIDs) AND date_format(apt.exec_dt, '%Y') > :year GROUP BY apt.rf_id ORDER BY exec_dt DESC `;
+
+                        let activityIDs = [];
+
+                        switch(parseInt(type)) {
+                            case 1:
+                                activityIDs = [1, 6]
+                                break
+                            case 2:
+                                activityIDs = [2, 7]
+                                break
+                            case 3:
+                                activityIDs = [3, 4]
+                                break
+                            case 4:
+                                activityIDs = [5, 12, 13, 11]
+                                break
+                            case 5:
+                                activityIDs = [10]
+                                break
+                            case 6:
+                                activityIDs = [9]
+                                break
+                        }
+
+                        const where = {
+                            organisationID: req.orgId,
+                            companyIDs: selectedCompanies,
+                            year: 1997,
+                            list,
+                            activityIDs,
+                            assignorAssigneeIDs
+                        }
+                        getList =  await connection.applicationNew.query(query,{
+                            type: connection.Sequelize.QueryTypes.SELECT,
+                            raw: true,
+                            logging: console.log,
+                            replacements: where,
+                        })                        
+                    }
+                }
+            }
+        }
+        res.status(200).json(getList);
+    } catch (err){
+        console.log('ERROR in dashboard timeline', err)
+        res.status(500).json({message: "Unable to retrieve data."})
+    }
+})
 route.post("/", [authJWT.verifyToken], async(req, res, next) => {
     try{
-        let {selectedCompanies, customers, type} = req.body, getData = {}
-        const where = { year: 1997, organisationID: req.orgId, type: parseInt(type)}
+        let {selectedCompanies, customers, type, data_format} = req.body, getData = {}
+        const where = { year: 1997, organisationID: req.orgId, type: parseInt(type)}, typeList = [38, 39, 40, 41]
         let query = '';
         const companies = JSON.parse(selectedCompanies)
         if(companies.length > 0) {
@@ -72,7 +368,15 @@ route.post("/", [authJWT.verifyToken], async(req, res, next) => {
                     break;
             }
         } else {
-            switch(parseInt(type)) {
+            const qType = parseInt(type);
+            let ownedAssets = []
+            if(qType == 30 || qType == 38){
+                ownedAssets = await getOwnedAssets(req)
+                if(ownedAssets.length > 0) {
+                    where.list = ownedAssets
+                }
+            }
+            switch(parseInt(qType)) {
                 case 1:
                 case 18:
                 case 23:
@@ -81,10 +385,23 @@ route.post("/", [authJWT.verifyToken], async(req, res, next) => {
                      * Broken Chain 
                      * Maintainence
                      */
-                    query = `SELECT COUNT(application) AS number, application, patent, rf_id, total FROM (SELECT application, patent, rf_id, total FROM dashboard_items 
-                        WHERE type = :type AND organisation_id = :organisationID ${companies.length > 0 ? ' AND representative_id IN (:company_id) ' : ''} GROUP BY application) AS temp`
-                    break;
+                    where.layoutID = qType == 1 ? 1 : 15;
+                    if(parseInt(data_format) === 1) {
+                        query = `SELECT year, sum(number) over (order by year) as number, application, patent, rf_id FROM (
+                            SELECT year, COUNT(year) AS number, application, patent, '' AS rf_id FROM( SELECT assets.appno_doc_num AS application, assets.grant_doc_num AS patent, date_format(assets.appno_date, '%Y') AS year FROM db_new_application.dashboard_items AS dt
+                        INNER JOIN db_new_application.assets AS assets ON assets.appno_doc_num = dt.application
+                        WHERE dt.organisation_id = :organisationID 
+                        AND assets.organisation_id = :organisationID 
+                        AND assets.layout_id = :layoutID AND assets.company_id IN (:company_id)  AND dt.type = :type
+                        AND dt.representative_id IN (:company_id)
+                        GROUP BY assets.appno_doc_num) AS temp GROUP BY year) AS temp1`;
+                    } else {
+                        query = `SELECT COUNT(application) AS number, application, patent, rf_id, total FROM (SELECT application, patent, rf_id, total FROM dashboard_items 
+                            WHERE type = :type AND organisation_id = :organisationID ${companies.length > 0 ? ' AND representative_id IN (:company_id) ' : ''} GROUP BY application) AS temp`
+                    }                    
+                    break;                    
                 case 17:
+                case 19:
                 case 24:
                 case 25:
                     /**
@@ -92,8 +409,57 @@ route.post("/", [authJWT.verifyToken], async(req, res, next) => {
                      * Incorrect Recording
                      * Late Recording
                      */
-                    query = `SELECT COUNT(rf_id) AS number, '' AS application, '' AS patent, rf_id, total FROM (SELECT rf_id, total FROM dashboard_items 
-                        WHERE type = :type AND organisation_id = :organisationID ${companies.length > 0 ? ' AND representative_id IN (:company_id) ' : ''} GROUP BY rf_id) AS temp`
+                     where.layoutID = 15;
+                     if(parseInt(data_format) === 1) {
+                        query = `SELECT year, sum(number) over (order by year) as number, application, patent, rf_id FROM (
+                            SELECT year, COUNT(year) AS number, '' AS application, '' AS patent, rf_id FROM( 
+                            SELECT dt.rf_id, date_format(apt.exec_dt, '%Y') AS year FROM db_new_application.dashboard_items AS dt
+                            INNER JOIN db_new_application.activity_parties_transactions AS apt ON apt.rf_id = dt.rf_id
+                            WHERE dt.organisation_id = :organisationID
+                            AND apt.organisation_id = :organisationID
+                            AND apt.company_id IN (:company_id)
+                            AND dt.representative_id IN (:company_id)
+                            AND dt.type = :type
+                            GROUP BY dt.rf_id) AS temp GROUP BY year) AS temp1`;
+                    } else {
+                        query = `SELECT COUNT(rf_id) AS number, '' AS application, '' AS patent, rf_id, total FROM (SELECT rf_id, total FROM dashboard_items 
+                            WHERE type = :type AND organisation_id = :organisationID ${companies.length > 0 ? ' AND representative_id IN (:company_id) ' : ''} GROUP BY rf_id) AS temp`
+                        break;
+                    }
+                case 30:
+                    if(ownedAssets.length > 0) {
+                        query = `SELECT COUNT(*) as number, '' AS application, grant_doc_num AS patent, '' AS rf_id, 0 AS total FROM (SELECT grant_doc_num FROM db_uspto.documentid WHERE appno_doc_num IN (:list) AND grant_doc_num <> '' GROUP BY grant_doc_num ORDER BY grant_date DESC) AS temp`
+                    }
+                    break;
+                case 31:
+                case 32:
+                case 34:
+                case 36:
+                    query = `SELECT COUNT(id) AS number, application, '' AS patent, rf_id, total FROM dashboard_items WHERE type = :type AND organisation_id = :organisationID ${companies.length > 0 ? ' AND representative_id IN (:company_id) ' : ''}`
+                    break;                
+                case 37:
+                    query = `SELECT SUM(total) AS number, application, '' AS patent, rf_id, 0 AS total FROM dashboard_items WHERE type = :type AND organisation_id = :organisationID ${companies.length > 0 ? ' AND representative_id IN (:company_id) ' : ''}`
+                    break;
+                case 38:
+                    if(ownedAssets.length > 0) {
+                        query = `SELECT cwc.name AS name, COUNT(application_country) AS number, grant_doc_num AS patent, '' AS application, '' AS rf_id, 0 AS total FROM (
+                                SELECT grant_doc_num, application_number, application_country FROM db_uspto.assets_family AS af WHERE grant_doc_num IN (
+                                    SELECT grant_doc_num FROM db_uspto.documentid AS di WHERE appno_doc_num IN (:list)                                     
+                                    GROUP BY grant_doc_num
+                                ) AND application_country NOT IN ('WO', 'US') GROUP BY application_number) AS temp 
+                                INNER JOIN db_uspto.country_with_codes AS cwc ON cwc.country_code = temp.application_country 
+                                GROUP BY application_country ORDER BY number DESC, name ASC LIMIT 5`
+                    }
+                    break; 
+                case 39:
+                case 41:
+                    /**
+                     * Lender or inventor
+                     */
+                    query = `SELECT inventorName AS name, COUNT(application) AS number, application, '' As patent, '' AS rf_id, 0 AS total FROM (SELECT aaa.assignor_and_assignee_id, IF(aaa.representative_id <> '', r.representative_name, aaa.name) AS inventorName, application FROM dashboard_items AS di INNER JOIN db_uspto.assignor_and_assignee AS aaa ON aaa.assignor_and_assignee_id = di.assignor_id LEFT JOIN db_uspto.representative AS r ON r.representative_id = aaa.representative_id WHERE di.type = :type AND di.organisation_id = :organisationID ${companies.length > 0 ? ' AND di.representative_id IN (:company_id) ' : ''} ) AS temp GROUP BY inventorName ORDER BY number DESC, name ASC LIMIT 5`
+                    break;
+                case 40:
+                    query = `SELECT lawfirm AS name, COUNT(application) AS number, application, '' As patent, '' AS rf_id, 0 AS total FROM dashboard_items WHERE type = :type AND organisation_id = :organisationID ${companies.length > 0 ? ' AND representative_id IN (:company_id) ' : ''} GROUP BY lawfirm ORDER BY number DESC, name ASC LIMIT 5`
                     break;
             }
         }
@@ -104,7 +470,7 @@ route.post("/", [authJWT.verifyToken], async(req, res, next) => {
                 raw: true,
                 logging: console.log,
                 replacements: where,
-                plain: true
+                plain: parseInt(data_format) === 1 || typeList.includes(where.type) ? false : true
             })
         }
         res.status(200).json(getData);
@@ -332,6 +698,7 @@ route.post("/temp", [authJWT.verifyToken], async(req, res, next) => {
                 let queryAssets = `SELECT appno_doc_num FROM db_new_application.assets AS assets WHERE date_format(assets.appno_date, '%Y') > :year AND assets.layout_id = :layoutID AND assets.organisation_id = :organisationID `
                 if(tabs && tabs != '') {
                     tabs = JSON.parse( tabs )
+                    tabs = helpers.checkTabs(tabs)
                     where.tabs = tabs
                 }
 

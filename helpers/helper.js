@@ -447,6 +447,88 @@ let searchCompanyByCountry = async( name ) => {
     return searchResult;
 }
 
+let getAddressWithTransactionsListByCompanyID = async( ID, type ) => {
+    let addresses = [], latestTransaction = null;
+    if(ID > 0) {
+        const query = `SELECT representative_id, name FROM assignor_and_assignee WHERE assignor_and_assignee_id = :ID`
+
+        const representative = await connection.resources.query(query,{
+            type: connection.Sequelize.QueryTypes.SELECT,
+            raw: true,
+            replacements: { ID },
+            logging: console.log,
+            plain: true
+          }
+        );
+
+        let representativeQuery = ''
+
+        const replacements = { ID: ID, year: 1997, conveyanceType: ['security', 'restatedsecurity'] };
+
+        if(representative !== null && representative.representative_id > 0) {
+            const representativeNameQuery =  `SELECT representative_id FROM representative WHERE representative_name = :name`;
+            const representativeName = await connection.resources.query(representativeNameQuery,{
+                type: connection.Sequelize.QueryTypes.SELECT,
+                raw: true,
+                replacements: { name: representative.name },
+                logging: console.log,
+                plain: true
+              }
+            );
+            if(representativeName !== null && representativeName.representative_id > 0) {
+                replacements.representativeID = representativeName.representative_id
+                representativeQuery = `SELECT assignor_and_assignee.assignor_and_assignee_id FROM  assignor_and_assignee WHERE
+                assignor_and_assignee.representative_id = :representativeID GROUP BY assignor_and_assignee.assignor_and_assignee_id`
+            } else {
+                representativeQuery = `:ID`
+            }
+        } else {
+            representativeQuery = `:ID`
+        }
+
+        let queryFindIDS = `SELECT address, COUNT(rf_id) AS counter FROM (SELECT ee_address_1 as address, assignee.rf_id FROM assignee 
+            INNER JOIN assignment ON assignment.rf_id = assignee.rf_id
+            WHERE  date_format(assignment.record_dt, '%Y') >= :year AND ee_address_1 <> '' AND assignor_and_assignee_id IN (${representativeQuery})  
+            UNION 
+        SELECT ee_address_2 as address, assignee.rf_id FROM assignee 
+            INNER JOIN assignment ON assignment.rf_id = assignee.rf_id
+            WHERE  date_format(assignment.record_dt, '%Y') >= :year AND ee_address_2 <> '' AND assignor_and_assignee_id  IN (${representativeQuery}) 
+            ) as temp GROUP BY address  ORDER BY address ASC`;
+
+        if(isNaN(type) === false && type == 1) { 
+            queryFindIDS = `SELECT address, COUNT(rf_id) AS counter  FROM (SELECT ee_address_1 as address, assignee.rf_id FROM assignee 
+                INNER JOIN assignment ON assignment.rf_id = assignee.rf_id
+                INNER JOIN representative_assignment_conveyance ON assignment.rf_id = representative_assignment_conveyance.rf_id
+                WHERE representative_assignment_conveyance.convey_ty IN (:conveyanceType) AND date_format(assignment.record_dt, '%Y') >= :year AND ee_address_1 <> '' AND assignor_and_assignee_id IN (${representativeQuery}) 
+                UNION 
+            SELECT ee_address_2 as address, assignee.rf_id FROM assignee 
+                INNER JOIN assignment ON assignment.rf_id = assignee.rf_id
+                INNER JOIN representative_assignment_conveyance ON assignment.rf_id = representative_assignment_conveyance.rf_id
+                WHERE representative_assignment_conveyance.convey_ty IN (:conveyanceType) AND date_format(assignment.record_dt, '%Y') >= :year AND ee_address_2 <> '' AND assignor_and_assignee_id IN (${representativeQuery}) 
+                ) as temp GROUP BY address  ORDER BY address ASC`;
+        }
+
+        const getLastTransaction = `SELECT ee_address_1, ee_address_2 FROM assignee INNER JOIN assignor ON assignor.rf_id = assignee.rf_id WHERE assignee.assignor_and_assignee_id IN (${representativeQuery}) AND (ee_address_1 <> '' OR ee_address_2 <> '') ORDER BY exec_dt DESC LIMIT 1`;
+
+        latestTransaction = await connection.resources.query(getLastTransaction,{
+            type: connection.Sequelize.QueryTypes.SELECT,
+            raw: true,
+            replacements: replacements,
+            logging: console.log,
+          }
+        );
+
+        addresses = await connection.resources.query(queryFindIDS,{
+            type: connection.Sequelize.QueryTypes.SELECT,
+            raw: true,
+            replacements: replacements,
+            logging: console.log,
+          }
+        );
+    }
+    return {list: addresses, latestTransaction };
+}
+
 let getAddressListByCompanyID = async( ID, type ) => {
     let addresses = [];
     if(ID > 0) {
@@ -2960,9 +3042,57 @@ const findLayout = (layout) => {
             layoutID = 1
             break
         case 'clear_encumbrances':
-            layoutID = 2
+            layoutID = 18
             break
-        /* case 'correct_details':
+        case 'incorrect_names':
+            layoutID = 17
+            break
+        case 'late_maintainance':
+            layoutID = 23
+            break
+        case 'incorrect_recording':
+            layoutID = 24
+            break
+        case 'late_recording':
+            layoutID = 25
+            break
+        case 'non_expired_patents':
+            layoutID = 30
+            break
+        case 'patents_acquired':
+            layoutID = 31
+            break
+        case 'patents_invented':
+            layoutID = 32
+            break
+        case 'unmaintained_patents':
+            layoutID = 33
+            break
+        case 'pending_applications':
+            layoutID = 34
+            break
+        case 'filed_applications':
+            layoutID = 35
+            break
+        case 'acquired_applications':
+            layoutID = 36
+            break
+        case 'maintenance_budget':
+            layoutID = 37
+            break
+        case 'top_non_us_members':
+            layoutID = 38
+            break
+        case 'proliferate_inventors':
+            layoutID = 39
+            break
+        case 'top_law_firms':
+            layoutID = 40
+            break
+        case 'top_lenders':
+            layoutID = 41
+            break
+        /*case 'correct_details':
             layoutID = 4
             break */
         default:
@@ -2986,121 +3116,142 @@ const ArrayInterString = (data) => {
 
 const findFilterAssets = async(req) => {
     try {
-        let { list, total, type, selectedCompanies, tabs, customers, assignments } = req.body
+        let { list, total, type, selectedCompanies, tabs, customers, assignments, data_type, format_type } = req.body
+        
+        const where = { year: 1997, organisationID: req.orgId}  
 
-        if(list != '') {
-            list = JSON.parse(list);
-
-            if(list.length > 0) {
-                let query = '';
-                
-                if(parseInt(total) != list.length) {
-                    /**
-                     * Get List
-                     */
-
-                    const where = { year: 1997, organisationID: req.orgId}   
-
-                    if(typeof other_mode != 'undefined' && other_mode == 'true') {
-                        query = `SELECT appno_doc_num FROM db_new_application.assets_for_sale AS assets WHERE assets.organisation_id = :organisationID `
-                    } else {
-                        if(typeof type !== 'undefined') {
-                            where.layoutID = findLayout(type)        
-                        } else {
-                            where.layoutID = 15
-                        }
+        const companies = JSON.parse(selectedCompanies)
+        if(companies.length > 0) {
+            where.company_id = companies
+        }
+        let query = '';
+        if(typeof data_type != 'undefined' && data_type == 1) {
+            query = "SELECT appno_doc_num FROM owned_assets WHERE organisation_id = :organisationID AND company_id IN (:company_id)"
+        } else {
+            if(list != '') {
+                list = JSON.parse(list);
     
-                        const companies = JSON.parse(selectedCompanies)
-                        if(companies.length > 0) {
-                            where.company_id = companies
-                        }
-    
-                        
-                        if(tabs && tabs != '') {
-                            tabs = JSON.parse( tabs )
-                            where.tabs = tabs
-                        }
-    
-                        if(customers && customers != '') {
-                            customers = JSON.parse( customers )
-                            where.customers = customers
-                        }
-    
-                        if(assignments && assignments != '') {
-                            assignments = JSON.parse( assignments )
-                            where.assignments = assignments
-                        }
-    
-                        query = `SELECT appno_doc_num FROM db_new_application.assets AS assets `
-    
-    
-                        query += ` WHERE date_format(assets.appno_date, '%Y') > :year AND assets.layout_id = :layoutID AND assets.organisation_id = :organisationID `
-                        
-    
-                        if(Array.isArray(companies) && companies.length > 0) {
-                            query += ` AND assets.company_id IN (:company_id)`
-                        }
-    
-                        if((Array.isArray(assignments) && assignments.length > 0 ) || (Array.isArray(tabs) && tabs.length > 0) || (Array.isArray(customers) && customers.length > 0)) {
-                            query += ` AND assets.appno_doc_num IN ( SELECT documentid.appno_doc_num FROM db_uspto.documentid WHERE rf_id  IN ( SELECT activity_parties_transactions.rf_id  FROM db_new_application.activity_parties_transactions WHERE activity_parties_transactions.organisation_id = :organisationID  `
-
-                            if(Array.isArray(companies) && companies.length > 0 ) {
-                                query += ` AND activity_parties_transactions.company_id IN (:company_id) `
-                            }
-    
-                            if(Array.isArray(assignments) && assignments.length > 0 ) {
-                                query += ` AND activity_parties_transactions.rf_id IN (:assignments)`
-                            }
-    
-                            if(Array.isArray(tabs) && tabs.length > 0 ) {
-                                query += ` AND activity_parties_transactions.activity_id IN (:tabs)`
-                            } else {
-                                /**exclude employees */
-                                query += ' AND activity_parties_transactions.activity_id <> 10 ' 
-                            } 
-    
-                            if(Array.isArray(customers) && customers.length > 0 ) {
-                                query += ` AND activity_parties_transactions.assignor_and_assignee_id IN (:customers)`
-                            }
-    
-                            query += ` GROUP BY activity_parties_transactions.rf_id ) GROUP BY documentid.appno_doc_num) `
-                        } else  if(Array.isArray(tabs) && tabs.length === 0) {
-                            /**exclude employees */
-                            query += ` AND assets.appno_doc_num IN (  SELECT documentid.appno_doc_num FROM db_uspto.documentid WHERE rf_id  IN ( SELECT activity_parties_transactions.rf_id  FROM db_new_application.activity_parties_transactions WHERE activity_parties_transactions.organisation_id = :organisationID AND activity_parties_transactions.activity_id <> 10  ` 
-
-                            if(Array.isArray(companies) && companies.length > 0 ) {
-                                query += ` AND activity_parties_transactions.company_id IN (:company_id) `
-                            }
-
-                            query += ` GROUP BY activity_parties_transactions.rf_id )  GROUP BY documentid.appno_doc_num) `
-                        }
-                    }
+                if(list.length > 0) {
                     
-                    query += ` GROUP BY appno_doc_num`;
-
-                    const appList =  await connection.applicationNew.query(query,{
-                        type: connection.Sequelize.QueryTypes.SELECT,
-                        raw: true,
-                        logging: console.log,
-                        replacements: where,
-                    })
-
-                    if(appList !== null && appList.length > 0) {
-                        list = [];
-                        appList.forEach( row => {
-                            list.push(`${row.appno_doc_num}`)
-                        })
+                    
+                    if(parseInt(total) != list.length) {
+                        /**
+                         * Get List
+                         */
+    
+                         
+    
+                        if(typeof other_mode != 'undefined' && other_mode == 'true') {
+                            query = `SELECT appno_doc_num FROM db_new_application.assets_for_sale AS assets WHERE assets.organisation_id = :organisationID `
+                        } else {
+                            if(typeof type !== 'undefined') {
+                                where.layoutID = findLayout(type)        
+                            } else {
+                                where.layoutID = 15
+                            }
+        
+                            
+        
+                            
+                            if(tabs && tabs != '') {
+                                tabs = JSON.parse( tabs )
+                                where.tabs = tabs
+                            }
+        
+                            if(customers && customers != '') {
+                                customers = JSON.parse( customers )
+                                where.customers = customers
+                            }
+        
+                            if(assignments && assignments != '') {
+                                assignments = JSON.parse( assignments )
+                                where.assignments = assignments
+                            }
+        
+                            query = `SELECT appno_doc_num FROM db_new_application.assets AS assets `
+        
+        
+                            query += ` WHERE date_format(assets.appno_date, '%Y') > :year AND assets.layout_id = :layoutID AND assets.organisation_id = :organisationID `
+                            
+        
+                            if(Array.isArray(companies) && companies.length > 0) {
+                                query += ` AND assets.company_id IN (:company_id)`
+                            }
+        
+                            if((Array.isArray(assignments) && assignments.length > 0 ) || (Array.isArray(tabs) && tabs.length > 0) || (Array.isArray(customers) && customers.length > 0)) {
+                                query += ` AND assets.appno_doc_num IN ( SELECT documentid.appno_doc_num FROM db_uspto.documentid WHERE rf_id  IN ( SELECT activity_parties_transactions.rf_id  FROM db_new_application.activity_parties_transactions WHERE activity_parties_transactions.organisation_id = :organisationID  `
+    
+                                if(Array.isArray(companies) && companies.length > 0 ) {
+                                    query += ` AND activity_parties_transactions.company_id IN (:company_id) `
+                                }
+        
+                                if(Array.isArray(assignments) && assignments.length > 0 ) {
+                                    query += ` AND activity_parties_transactions.rf_id IN (:assignments)`
+                                }
+        
+                                if(Array.isArray(tabs) && tabs.length > 0 ) {
+                                    query += ` AND activity_parties_transactions.activity_id IN (:tabs)`
+                                } else {
+                                    /**exclude employees */
+                                    query += ' AND activity_parties_transactions.activity_id <> 10 ' 
+                                } 
+        
+                                if(Array.isArray(customers) && customers.length > 0 ) {
+                                    query += ` AND activity_parties_transactions.assignor_and_assignee_id IN (:customers)`
+                                }
+        
+                                query += ` GROUP BY activity_parties_transactions.rf_id ) GROUP BY documentid.appno_doc_num) `
+                            } else  if(Array.isArray(tabs) && tabs.length === 0) {
+                                /**exclude employees */
+                                query += ` AND assets.appno_doc_num IN (  SELECT documentid.appno_doc_num FROM db_uspto.documentid WHERE rf_id  IN ( SELECT activity_parties_transactions.rf_id  FROM db_new_application.activity_parties_transactions WHERE activity_parties_transactions.organisation_id = :organisationID AND activity_parties_transactions.activity_id <> 10  ` 
+    
+                                if(Array.isArray(companies) && companies.length > 0 ) {
+                                    query += ` AND activity_parties_transactions.company_id IN (:company_id) `
+                                }
+    
+                                query += ` GROUP BY activity_parties_transactions.rf_id )  GROUP BY documentid.appno_doc_num) `
+                            }
+                        }
+                        
+                        query += ` GROUP BY appno_doc_num`;
                     }
                 }
             }
         }
+        if(query != '') {
+            const appList =  await connection.applicationNew.query(query,{
+                type: connection.Sequelize.QueryTypes.SELECT,
+                raw: true,
+                logging: console.log,
+                replacements: where,
+            })
+
+            if(appList !== null && appList.length > 0) {
+                list = [];
+                appList.forEach( row => {
+                    list.push(`${row.appno_doc_num}`)
+                })
+            }
+        }
+        
         return list;
     } catch (e) {
         console.log('Get Filter list', e)
     }
 }
 
+const checkTabs = (tabs) => {
+    if(tabs.includes(81) && ( !tabs.includes(5) && !tabs.includes(11) && !tabs.includes(12) && !tabs.includes(13)) ) {
+        tabs.push(5)
+        tabs.push(11)
+        tabs.push(12)
+        tabs.push(13)
+    }
+    return tabs
+}
+
 const helper = {};
+helper.checkTabs = checkTabs;
 helper.findFilterAssets = findFilterAssets;
 helper.ArrayInterString = ArrayInterString;
 helper.getXML = getXML;
@@ -3124,6 +3275,7 @@ helper.searchCompanyByCountry = searchCompanyByCountry;
 helper.searchCompanyIDByAddress = searchCompanyIDByAddress;
 helper.searchLawfirmIDByAddress = searchLawfirmIDByAddress;
 helper.getAddressListByCompanyID = getAddressListByCompanyID;
+helper.getAddressWithTransactionsListByCompanyID = getAddressWithTransactionsListByCompanyID;
 helper.getAddressListByLawfirmID = getAddressListByLawfirmID;
 helper.checkRepresentativeCompany = checkRepresentativeCompany;
 helper.checkCustomerCompany = checkCustomerCompany;
