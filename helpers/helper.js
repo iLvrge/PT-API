@@ -447,6 +447,88 @@ let searchCompanyByCountry = async( name ) => {
     return searchResult;
 }
 
+let getAddressWithTransactionsListByCompanyID = async( ID, type ) => {
+    let addresses = [], latestTransaction = null;
+    if(ID > 0) {
+        const query = `SELECT representative_id, name FROM assignor_and_assignee WHERE assignor_and_assignee_id = :ID`
+
+        const representative = await connection.resources.query(query,{
+            type: connection.Sequelize.QueryTypes.SELECT,
+            raw: true,
+            replacements: { ID },
+            logging: console.log,
+            plain: true
+          }
+        );
+
+        let representativeQuery = ''
+
+        const replacements = { ID: ID, year: 1997, conveyanceType: ['security', 'restatedsecurity'] };
+
+        if(representative !== null && representative.representative_id > 0) {
+            const representativeNameQuery =  `SELECT representative_id FROM representative WHERE representative_name = :name`;
+            const representativeName = await connection.resources.query(representativeNameQuery,{
+                type: connection.Sequelize.QueryTypes.SELECT,
+                raw: true,
+                replacements: { name: representative.name },
+                logging: console.log,
+                plain: true
+              }
+            );
+            if(representativeName !== null && representativeName.representative_id > 0) {
+                replacements.representativeID = representativeName.representative_id
+                representativeQuery = `SELECT assignor_and_assignee.assignor_and_assignee_id FROM  assignor_and_assignee WHERE
+                assignor_and_assignee.representative_id = :representativeID GROUP BY assignor_and_assignee.assignor_and_assignee_id`
+            } else {
+                representativeQuery = `:ID`
+            }
+        } else {
+            representativeQuery = `:ID`
+        }
+
+        let queryFindIDS = `SELECT address, COUNT(rf_id) AS counter FROM (SELECT ee_address_1 as address, assignee.rf_id FROM assignee 
+            INNER JOIN assignment ON assignment.rf_id = assignee.rf_id
+            WHERE  date_format(assignment.record_dt, '%Y') >= :year AND ee_address_1 <> '' AND assignor_and_assignee_id IN (${representativeQuery})  
+            UNION 
+        SELECT ee_address_2 as address, assignee.rf_id FROM assignee 
+            INNER JOIN assignment ON assignment.rf_id = assignee.rf_id
+            WHERE  date_format(assignment.record_dt, '%Y') >= :year AND ee_address_2 <> '' AND assignor_and_assignee_id  IN (${representativeQuery}) 
+            ) as temp GROUP BY address  ORDER BY address ASC`;
+
+        if(isNaN(type) === false && type == 1) { 
+            queryFindIDS = `SELECT address, COUNT(rf_id) AS counter  FROM (SELECT ee_address_1 as address, assignee.rf_id FROM assignee 
+                INNER JOIN assignment ON assignment.rf_id = assignee.rf_id
+                INNER JOIN representative_assignment_conveyance ON assignment.rf_id = representative_assignment_conveyance.rf_id
+                WHERE representative_assignment_conveyance.convey_ty IN (:conveyanceType) AND date_format(assignment.record_dt, '%Y') >= :year AND ee_address_1 <> '' AND assignor_and_assignee_id IN (${representativeQuery}) 
+                UNION 
+            SELECT ee_address_2 as address, assignee.rf_id FROM assignee 
+                INNER JOIN assignment ON assignment.rf_id = assignee.rf_id
+                INNER JOIN representative_assignment_conveyance ON assignment.rf_id = representative_assignment_conveyance.rf_id
+                WHERE representative_assignment_conveyance.convey_ty IN (:conveyanceType) AND date_format(assignment.record_dt, '%Y') >= :year AND ee_address_2 <> '' AND assignor_and_assignee_id IN (${representativeQuery}) 
+                ) as temp GROUP BY address  ORDER BY address ASC`;
+        }
+
+        const getLastTransaction = `SELECT ee_address_1, ee_address_2 FROM assignee INNER JOIN assignor ON assignor.rf_id = assignee.rf_id WHERE assignee.assignor_and_assignee_id IN (${representativeQuery}) AND (ee_address_1 <> '' OR ee_address_2 <> '') ORDER BY exec_dt DESC LIMIT 1`;
+
+        latestTransaction = await connection.resources.query(getLastTransaction,{
+            type: connection.Sequelize.QueryTypes.SELECT,
+            raw: true,
+            replacements: replacements,
+            logging: console.log,
+          }
+        );
+
+        addresses = await connection.resources.query(queryFindIDS,{
+            type: connection.Sequelize.QueryTypes.SELECT,
+            raw: true,
+            replacements: replacements,
+            logging: console.log,
+          }
+        );
+    }
+    return {list: addresses, latestTransaction };
+}
+
 let getAddressListByCompanyID = async( ID, type ) => {
     let addresses = [];
     if(ID > 0) {
@@ -3193,6 +3275,7 @@ helper.searchCompanyByCountry = searchCompanyByCountry;
 helper.searchCompanyIDByAddress = searchCompanyIDByAddress;
 helper.searchLawfirmIDByAddress = searchLawfirmIDByAddress;
 helper.getAddressListByCompanyID = getAddressListByCompanyID;
+helper.getAddressWithTransactionsListByCompanyID = getAddressWithTransactionsListByCompanyID;
 helper.getAddressListByLawfirmID = getAddressListByLawfirmID;
 helper.checkRepresentativeCompany = checkRepresentativeCompany;
 helper.checkCustomerCompany = checkCustomerCompany;
