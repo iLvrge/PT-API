@@ -447,6 +447,55 @@ let searchCompanyByCountry = async( name ) => {
     return searchResult;
 }
 
+let getAddressDataFromLastTransaction = async( ID, address1, address2 ) => {
+    let latestTransaction = null ;
+    if(ID > 0) {
+
+        const query = `SELECT representative_id, name FROM assignor_and_assignee WHERE assignor_and_assignee_id = :ID`
+
+        const representative = await connection.resources.query(query,{
+            type: connection.Sequelize.QueryTypes.SELECT,
+            raw: true,
+            replacements: { ID },
+            logging: console.log,
+            plain: true
+          }
+        );
+        const replacements = { ID: ID, address1, address2, year: 1997, conveyanceType: ['security', 'restatedsecurity'] };
+        let representativeQuery = ''
+        if(representative !== null && representative.representative_id > 0) {
+            const representativeNameQuery =  `SELECT representative_id FROM representative WHERE representative_name = :name`;
+            const representativeName = await connection.resources.query(representativeNameQuery,{
+                type: connection.Sequelize.QueryTypes.SELECT,
+                raw: true,
+                replacements: { name: representative.name },
+                logging: console.log,
+                plain: true
+              }
+            );
+
+            if(representativeName !== null && representativeName.representative_id > 0) {
+                replacements.representativeID = representativeName.representative_id;
+
+                representativeQuery = `SELECT assignor_and_assignee.assignor_and_assignee_id FROM  assignor_and_assignee WHERE
+                assignor_and_assignee.representative_id = :representativeID GROUP BY assignor_and_assignee.assignor_and_assignee_id`
+
+
+                const getLastTransaction = `SELECT assignee.*, ${replacements.representativeID} AS representativeID FROM assignee INNER JOIN assignor ON assignor.rf_id = assignee.rf_id WHERE assignee.assignor_and_assignee_id IN (${representativeQuery}) AND (ee_address_1 = :address1 OR ee_address_2 = :address2) ORDER BY exec_dt DESC LIMIT 1`;
+
+                latestTransaction = await connection.resources.query(getLastTransaction,{
+                    type: connection.Sequelize.QueryTypes.SELECT,
+                    raw: true,
+                    replacements: replacements,
+                    logging: console.log,
+                    plain: true
+                });
+            }
+        }
+    }  
+    return  latestTransaction;
+}
+
 let getAddressWithTransactionsListByCompanyID = async( ID, type ) => {
     let addresses = [], latestTransaction = null;
     if(ID > 0) {
@@ -3277,6 +3326,7 @@ helper.searchCompanyIDByAddress = searchCompanyIDByAddress;
 helper.searchLawfirmIDByAddress = searchLawfirmIDByAddress;
 helper.getAddressListByCompanyID = getAddressListByCompanyID;
 helper.getAddressWithTransactionsListByCompanyID = getAddressWithTransactionsListByCompanyID;
+helper.getAddressDataFromLastTransaction = getAddressDataFromLastTransaction;
 helper.getAddressListByLawfirmID = getAddressListByLawfirmID;
 helper.checkRepresentativeCompany = checkRepresentativeCompany;
 helper.checkCustomerCompany = checkCustomerCompany;
