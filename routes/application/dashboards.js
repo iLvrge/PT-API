@@ -399,9 +399,9 @@ route.post("/", [authJWT.verifyToken], async(req, res, next) => {
                         AND dt.representative_id IN (:company_id)
                         GROUP BY assets.appno_doc_num) AS temp GROUP BY year) AS temp1`;
                     } else {
-                        let countQ = `COUNT(application) AS number,`, groupBy = `GROUP BY application`
+                        let countQ = `COUNT(application) AS number`, groupBy = `GROUP BY application`
                         if(parseInt(qType) === 22) {
-                            countQ = `COUNT(patent) AS number,`, groupBy = `GROUP BY patent`
+                            countQ = `COUNT(patent) AS number`, groupBy = `GROUP BY patent`
                         }
                         query = `SELECT ${countQ}, application, patent, rf_id, total FROM (SELECT application, patent, rf_id, total FROM dashboard_items 
                             WHERE type = :type AND organisation_id = :organisationID ${companies.length > 0 ? ' AND representative_id IN (:company_id) ' : ''} ${groupBy}) AS temp`
