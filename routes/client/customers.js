@@ -1018,7 +1018,7 @@ route.get("/:layout/transactions", [authJWT.verifyToken, clientDBConnection.conn
             companies = JSON.parse( companies )            
         }
         
-        if(replacements.layoutID == 17 || replacements.layoutID == 18 || replacements.layoutID == 24 || replacements.layoutID == 25) {
+        if(replacements.layoutID == 17 || replacements.layoutID == 18 || replacements.layoutID == 19 || replacements.layoutID == 24 || replacements.layoutID == 25) {
             if(companies.length > 0) {
                 replacements.companies = companies
             }
