@@ -379,6 +379,9 @@ route.post("/", [authJWT.verifyToken], async(req, res, next) => {
             switch(parseInt(qType)) {
                 case 1:
                 case 18:
+                case 20:
+                case 21:
+                case 22:
                 case 23:
                     /**
                      * Encumbrances
