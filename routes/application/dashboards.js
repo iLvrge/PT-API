@@ -99,6 +99,42 @@ const getAllTransactionAssets = async( req ) => {
     }
 }
 
+route.post('/collateral', [authJWT.verifyToken], async(req, res, next) => {
+    try {
+        let {selectedCompanies, assignor_id} = req.body, getList = [];
+        if(selectedCompanies != '' && typeof selectedCompanies != 'undefined' && selectedCompanies != null) {
+            selectedCompanies = JSON.parse(selectedCompanies)
+        }
+
+        if(assignor_id != '' && typeof assignor_id != 'undefined' && assignor_id != null) {
+            assignor_id = JSON.parse(assignor_id)
+        }
+        let query = `SELECT rf_id, total, COUNT(application) AS number FROM dashboard_items WHERE organisation_id = :organisationID AND representative_id IN (:selectedCompanies) AND type = :type`
+
+        if(assignor_id != null && assignor_id != undefined && assignor_id != '' && assignor_id.length > 0) {
+            query += ` AND assignor_id IN (:assignor_id)`
+        }
+
+        query += ` GROUP BY rf_id`
+
+        getList =  await connection.applicationNew.query(query,{
+            type: connection.Sequelize.QueryTypes.SELECT,
+            raw: true,
+            logging: console.log,
+            replacements: {
+                organisationID: req.orgId,
+                type: 26,
+                selectedCompanies,
+                assignor_id
+            }
+        })
+        res.status(200).json(getList);
+    } catch (err) {
+        console.log(err);
+        res.status(500).json({message: "Unable to retrieve data"})
+    }
+})
+
 route.post('/parties/assignor', [authJWT.verifyToken, clientDBConnection.connect], async(req, res, next) => {
     try {
         let {selectedCompanies} = req.body, getList = [];
@@ -329,6 +365,7 @@ route.post("/timeline", [authJWT.verifyToken, clientDBConnection.connect], async
         res.status(500).json({message: "Unable to retrieve data."})
     }
 })
+
 route.post("/", [authJWT.verifyToken], async(req, res, next) => {
     try{
         let {selectedCompanies, customers, type, data_format} = req.body, getData = {}
@@ -383,6 +420,7 @@ route.post("/", [authJWT.verifyToken], async(req, res, next) => {
                 case 21:
                 case 22:
                 case 23:
+                case 26:
                     /**
                      * Encumbrances
                      * Broken Chain 

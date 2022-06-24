@@ -1315,10 +1315,10 @@ route.get("/:layout/parties", [authJWT.verifyToken, clientDBConnection.connect],
 
         if(tabs && tabs != '') {
             tabs = JSON.parse( tabs )
-            tabs = helpers.checkTabs(tabs)
+            tabs = helpers.checkTabs(tabs) /**If it bank then check all the tabs should include */
             replacements.tabs = tabs.join(',')
         }
-        
+        console.log(replacements)
         connection.applicationNew.query("CALL `routine_parties`(:companies, :organisationID, :tabs, :layoutID, :customerType);",{
             type: connection.Sequelize.QueryTypes.SELECT,
             raw: true,
