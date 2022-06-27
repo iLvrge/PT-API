@@ -439,6 +439,7 @@ route.post("/", [authJWT.verifyToken], async(req, res, next) => {
                         AND assets.organisation_id = :organisationID 
                         AND assets.layout_id = :layoutID AND assets.company_id IN (:company_id)  AND dt.type = :type
                         AND dt.representative_id IN (:company_id)
+                        AND date_format(assets.appno_date, '%Y') > :year
                         GROUP BY assets.appno_doc_num) AS temp GROUP BY year) AS temp1`;
                     } else {
                         let countQ = `COUNT(application) AS number`, groupBy = `GROUP BY application`
@@ -469,6 +470,7 @@ route.post("/", [authJWT.verifyToken], async(req, res, next) => {
                             AND apt.company_id IN (:company_id)
                             AND dt.representative_id IN (:company_id)
                             AND dt.type = :type
+                            AND date_format(apt.exec_dt, '%Y') > :year
                             GROUP BY dt.rf_id) AS temp GROUP BY year) AS temp1`;
                     } else {
                         query = `SELECT COUNT(rf_id) AS number, '' AS application, '' AS patent, rf_id, total FROM (SELECT rf_id, total FROM dashboard_items 
