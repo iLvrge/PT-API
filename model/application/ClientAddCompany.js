@@ -13,6 +13,10 @@ const ClientAddCompany = connection.applicationNew.define('client_add_company',{
         type: Sequelize.STRING,
         allowNull: false,
     },
+    organisation_id:{
+        type: Sequelize.INTEGER,
+        allowNull: false,
+    },
     status:{
         type: Sequelize.INTEGER,
         allowNull: false,
