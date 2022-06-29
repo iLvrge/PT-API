@@ -48,6 +48,7 @@ const clientDBConnection = require("../../helpers/clientDBConnection");
 const SlackHelper = require('../../helpers/slack')
 
 const {google} = require('googleapis');
+const ClientAddCompany = require("../../model/application/ClientAddCompany");
 
 const oauth2Client = new google.auth.OAuth2(
     process.env.GOOGLE_CLIENT_ID,
@@ -55,6 +56,69 @@ const oauth2Client = new google.auth.OAuth2(
     process.env.REDIRECT_URL
 );
 
+
+/**
+ * Add company reuqest
+ */
+
+route.post("/request", [authJWT.verifyToken], async(req, res, next) => {
+    try {
+        let { name } = req.body
+
+        if( name != '' ) {
+            ClientAddCompany
+            .findOne({ where: {name} })
+            .then(async company => {
+                // update
+                if(company) {
+                    res.status(200).json(company); 
+                } else {
+                    const addCompany = await ClientAddCompany.create({name, status: 0, organisation_id: req.orgId});
+                    res.status(200).json(addCompany); 
+                }
+            })
+        } else {
+            res.status(500).json({message: "Invalid inputs"})
+        } 
+    } catch (err) {
+        console.log(err);
+        res.status(500).json({message: "Unable to retrieve companies"})
+    }
+});
+
+route.get("/request", [authJWT.verifyToken], async(req, res, next) => {
+    try {
+        const list = await ClientAddCompany.findAll({
+            where: { organisation_id: req.orgId }
+        })
+
+        req.status(200).json(list)
+        
+    } catch (err) {
+        console.log(err);
+        res.status(500).json({message: "Unable to retrieve companies"})
+    }
+});
+
+route.put("/request", [authJWT.verifyToken], async(req, res, next) => {
+    try {
+        let { status, company_id } = req.body
+
+        if( status != '' ) {
+            const update = await ClientAddCompany.update({
+                status
+            }, {
+                company_id
+            })
+            req.status(200).json(update)
+        } else {
+            res.status(500).json({message: "Invalid inputs"})
+        } 
+    } catch (err) {
+        console.log(err);
+        res.status(500).json({message: "Unable to retrieve companies"})
+    }
+});
 
 /**Get all companies */
 route.get("/", [authJWT.verifyToken, clientDBConnection.connect], async(req, res, next) => {
