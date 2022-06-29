@@ -92,7 +92,7 @@ route.get("/request", [authJWT.verifyToken], async(req, res, next) => {
             where: { organisation_id: req.orgId }
         })
 
-        req.status(200).json(list)
+        res.status(200).json(list)
         
     } catch (err) {
         console.log(err);
@@ -110,7 +110,7 @@ route.put("/request", [authJWT.verifyToken], async(req, res, next) => {
             }, {
                 company_id
             })
-            req.status(200).json(update)
+            res.status(200).json(update)
         } else {
             res.status(500).json({message: "Invalid inputs"})
         } 
