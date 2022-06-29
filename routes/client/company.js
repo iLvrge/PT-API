@@ -988,38 +988,34 @@ route.post("/", [authJWT.verifyToken, clientDBConnection.connect], async(req, re
                                     mainCompanies.map(async (company, index) => {
                                         console.log(`php -f /var/www/html/trash/add_representative_rfids.php "${req.orgId}" "${company}"`);
                                         await exec(`php -f /var/www/html/trash/add_representative_rfids.php "${req.orgId}" "${company}"`, async (error, stdout, stderr) => {
-                                            console.log(error);
-                                            console.log(stdout);
-                                            console.log(stderr);
+                                            console.log("Error add_representative_rfids", error);
+                                            console.log("stdout add_representative_rfids", stdout);
+                                            console.log("stderr add_representative_rfids", stderr);
                                             exec(`php -f /var/www/html/trash/create_data_for_company_db_application.php "${req.orgId}" "${company}"`, (error, stdd, stderr)=> {
-                                                console.log("fill database ....")
-                                                console.log(error); 
-                                                console.log(stderr);
-                                                console.log(stdd);
-                                                console.log("DONE");
+                                                console.log("error create_data_for_company_db_application", error); 
+                                                console.log("stderr create_data_for_company_db_application", stderr);
+                                                console.log("stdd create_data_for_company_db_application", stdd);
+                                                console.log("create_data_for_company_db_application DONE");
                                             });
 
                                             exec(`php -f /var/www/html/trash/admin_report_represetative_assets_transactions_by_account.php "${req.orgId}" "${company}"`, (error, stdd, stderr)=> {
-                                                console.log("fill admin_report_represetative_assets_transactions_by_account.php ....")
-                                                console.log(error); 
-                                                console.log(stderr);
-                                                console.log(stdd);
-                                                console.log("DONE");
+                                                console.log("error admin_report_represetative_assets_transactions_by_account", error); 
+                                                console.log("stderr admin_report_represetative_assets_transactions_by_account", stderr);
+                                                console.log("stdd admin_report_represetative_assets_transactions_by_account", stdd);
+                                                console.log("error admin_report_represetative_assets_transactions_by_account  DONE");
                                                 exec(`php -f /var/www/html/trash/report_represetative_assets_transactions_by_account.php "${req.orgId}" "${company}"`, (error, stdd, stderr)=> {
-                                                        console.log("fill report_represetative_assets_transactions_by_account.php ....")
-                                                        console.log(error); 
-                                                        console.log(stderr);
-                                                        console.log(stdd);
-                                                        console.log("DONE");
-                                                    });
+                                                    console.log("error report_represetative_assets_transactions_by_account", error); 
+                                                    console.log("stderr report_represetative_assets_transactions_by_account", stderr);
+                                                    console.log("stdd report_represetative_assets_transactions_by_account", stdd);
+                                                    console.log("error report_represetative_assets_transactions_by_account  DONE");
+                                                });
                                             });
         
                                             exec(`php -f /var/www/html/trash/download_all_pdf.php "${req.orgId}"`, (error, stdd, stderr)=> {
-                                                console.log("donwload_all_pdf....")
-                                                console.log(error); 
-                                                console.log(stderr);
-                                                console.log(stdd);
-                                                console.log("DONE");
+                                                console.log("error download_all_pdf", error); 
+                                                console.log("stderr download_all_pdf", stderr);
+                                                console.log("stdd download_all_pdf", stdd);
+                                                console.log("error download_all_pdf  DONE");
                                             });
                                         });
                                     });
