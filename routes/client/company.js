@@ -991,6 +991,7 @@ route.post("/", [authJWT.verifyToken, clientDBConnection.connect], async(req, re
                                             console.log("Error add_representative_rfids", error);
                                             console.log("stdout add_representative_rfids", stdout);
                                             console.log("stderr add_representative_rfids", stderr);
+                                            console.log(`php -f /var/www/html/trash/create_data_for_company_db_application.php "${req.orgId}" "${company}"`)
                                             exec(`php -f /var/www/html/trash/create_data_for_company_db_application.php "${req.orgId}" "${company}"`, (error, stdd, stderr)=> {
                                                 console.log("error create_data_for_company_db_application", error); 
                                                 console.log("stderr create_data_for_company_db_application", stderr);
