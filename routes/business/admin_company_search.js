@@ -55,6 +55,7 @@ const RepresentativeTransactions = require('../../model/resources/Representative
 const List2 = require('../../model/resources/List2');
 
 const SheetsHelper = require('../../helpers/sheets');
+const ClientAddCompany = require("../../model/application/ClientAddCompany");
 
 
 const oauth2Client = new google.auth.OAuth2(
@@ -75,6 +76,42 @@ let authenticateGoogleToken = async( code ) => {
     
     return getTokens
 }
+
+
+route.get("/company/request", [authJWT.verifyToken, authJWT.isAdmin], async(req, res, next) => {
+    try {
+        const list = await ClientAddCompany.findAll({
+            where: { status: 0 }
+        })
+
+        res.status(200).json(list)
+        
+    } catch (err) {
+        console.log(err);
+        res.status(500).json({message: "Unable to retrieve companies"})
+    }
+});
+
+route.put("/company/request", [authJWT.verifyToken, authJWT.isAdmin], async(req, res, next) => {
+    try {
+        let { status, company_id, representative_id } = req.body
+
+        if( status != '' ) {
+            const update = await ClientAddCompany.update({
+                status: 1,
+                representative_id
+            }, {
+                company_id
+            })
+            res.status(200).json(update)
+        } else {
+            res.status(500).json({message: "Invalid inputs"})
+        } 
+    } catch (err) {
+        console.log(err);
+        res.status(500).json({message: "Unable to retrieve companies"})
+    }
+});
 
 /**
  * Search entity by name

@@ -100,25 +100,7 @@ route.get("/request", [authJWT.verifyToken], async(req, res, next) => {
     }
 });
 
-route.put("/request", [authJWT.verifyToken], async(req, res, next) => {
-    try {
-        let { status, company_id } = req.body
 
-        if( status != '' ) {
-            const update = await ClientAddCompany.update({
-                status
-            }, {
-                company_id
-            })
-            res.status(200).json(update)
-        } else {
-            res.status(500).json({message: "Invalid inputs"})
-        } 
-    } catch (err) {
-        console.log(err);
-        res.status(500).json({message: "Unable to retrieve companies"})
-    }
-});
 
 /**Get all companies */
 route.get("/", [authJWT.verifyToken, clientDBConnection.connect], async(req, res, next) => {

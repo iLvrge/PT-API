@@ -17,6 +17,10 @@ const ClientAddCompany = connection.applicationNew.define('client_add_company',{
         type: Sequelize.INTEGER,
         allowNull: false,
     },
+    representative_id: {
+        type: Sequelize.INTEGER,
+        allowNull: true,
+    },
     status:{
         type: Sequelize.INTEGER,
         allowNull: false,
