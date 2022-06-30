@@ -108,7 +108,7 @@ route.put("/company/request", [authJWT.verifyToken, authJWT.isAdmin], async(req,
                 res.status(200).json(update)
             } else {
                 res.status(500).json({message: "Invalid inputs"})
-            }
+            }   
         } else {
             res.status(500).json({message: "Invalid inputs"})
         } 
