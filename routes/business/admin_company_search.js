@@ -94,16 +94,21 @@ route.get("/company/request", [authJWT.verifyToken, authJWT.isAdmin], async(req,
 
 route.put("/company/request", [authJWT.verifyToken, authJWT.isAdmin], async(req, res, next) => {
     try {
-        let { status, company_id, representative_id } = req.body
+        let { company_ids, representative_id } = req.body
 
-        if( status != '' ) {
-            const update = await ClientAddCompany.update({
-                status: 1,
-                representative_id
-            }, {
-                company_id
-            })
-            res.status(200).json(update)
+        if( company_ids != '' ) {
+            const company_id = JSON.parse(company_ids)
+            if(company_id.length > 0 && representative_id > 0) {
+                const update = await ClientAddCompany.update({
+                    status: 1,
+                    representative_id
+                }, {
+                    company_id: JSON.stringify(company_ids)
+                })
+                res.status(200).json(update)
+            } else {
+                res.status(500).json({message: "Invalid inputs"})
+            }
         } else {
             res.status(500).json({message: "Invalid inputs"})
         } 
@@ -122,7 +127,7 @@ route.put("/company/request", [authJWT.verifyToken, authJWT.isAdmin], async(req,
     try{
         const {name} = req.params;	
 
-        const query = `SELECT representative_id, representative_name FROM db_uspto.representative WHERE MATCH(representative_name) AGAINST (":name" IN BOOLEAN MODE)`
+        const query = `SELECT representative_id, representative_name FROM db_uspto.representative WHERE MATCH(representative_name) AGAINST (:name IN BOOLEAN MODE)`
 
         const list  = await connection.resources.query(query,{
                 type: connection.Sequelize.QueryTypes.SELECT,
