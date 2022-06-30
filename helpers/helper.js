@@ -3100,6 +3100,15 @@ const findLayout = (layout) => {
         case 'incorrect_names':
             layoutID = 17
             break
+        case 'to_be_monitized':
+            layoutID = 20
+            break
+        case 'unnecessary_patents':
+            layoutID = 21
+            break
+        case 'missed_monetization':
+            layoutID = 22
+            break
         case 'late_maintainance':
             layoutID = 23
             break
@@ -3108,6 +3117,9 @@ const findLayout = (layout) => {
             break
         case 'late_recording':
             layoutID = 25
+            break
+        case 'deflated_collaterals':
+            layoutID = 26
             break
         case 'non_expired_patents':
             layoutID = 30

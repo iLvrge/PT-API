@@ -99,6 +99,42 @@ const getAllTransactionAssets = async( req ) => {
     }
 }
 
+route.post('/collateral', [authJWT.verifyToken], async(req, res, next) => {
+    try {
+        let {selectedCompanies, assignor_id} = req.body, getList = [];
+        if(selectedCompanies != '' && typeof selectedCompanies != 'undefined' && selectedCompanies != null) {
+            selectedCompanies = JSON.parse(selectedCompanies)
+        }
+
+        if(assignor_id != '' && typeof assignor_id != 'undefined' && assignor_id != null) {
+            assignor_id = JSON.parse(assignor_id)
+        }
+        let query = `SELECT rf_id, total, COUNT(application) AS number FROM dashboard_items WHERE organisation_id = :organisationID AND representative_id IN (:selectedCompanies) AND type = :type`
+
+        if(assignor_id != null && assignor_id != undefined && assignor_id != '' && assignor_id.length > 0) {
+            query += ` AND assignor_id IN (:assignor_id)`
+        }
+
+        query += ` GROUP BY rf_id`
+
+        getList =  await connection.applicationNew.query(query,{
+            type: connection.Sequelize.QueryTypes.SELECT,
+            raw: true,
+            logging: console.log,
+            replacements: {
+                organisationID: req.orgId,
+                type: 26,
+                selectedCompanies,
+                assignor_id
+            }
+        })
+        res.status(200).json(getList);
+    } catch (err) {
+        console.log(err);
+        res.status(500).json({message: "Unable to retrieve data"})
+    }
+})
+
 route.post('/parties/assignor', [authJWT.verifyToken, clientDBConnection.connect], async(req, res, next) => {
     try {
         let {selectedCompanies} = req.body, getList = [];
@@ -329,6 +365,7 @@ route.post("/timeline", [authJWT.verifyToken, clientDBConnection.connect], async
         res.status(500).json({message: "Unable to retrieve data."})
     }
 })
+
 route.post("/", [authJWT.verifyToken], async(req, res, next) => {
     try{
         let {selectedCompanies, customers, type, data_format} = req.body, getData = {}
@@ -379,7 +416,11 @@ route.post("/", [authJWT.verifyToken], async(req, res, next) => {
             switch(parseInt(qType)) {
                 case 1:
                 case 18:
+                case 20:
+                case 21:
+                case 22:
                 case 23:
+                case 26:
                     /**
                      * Encumbrances
                      * Broken Chain 
@@ -387,17 +428,26 @@ route.post("/", [authJWT.verifyToken], async(req, res, next) => {
                      */
                     where.layoutID = qType == 1 ? 1 : 15;
                     if(parseInt(data_format) === 1) {
+                        let innerJOIN = ` INNER JOIN db_new_application.assets AS assets ON assets.appno_doc_num = dt.application `;
+                        if(parseInt(qType) === 22) {
+                            innerJOIN = ` INNER JOIN db_new_application.assets AS assets ON assets.grant_doc_num = dt.patent `;
+                        }
                         query = `SELECT year, sum(number) over (order by year) as number, application, patent, rf_id FROM (
                             SELECT year, COUNT(year) AS number, application, patent, '' AS rf_id FROM( SELECT assets.appno_doc_num AS application, assets.grant_doc_num AS patent, date_format(assets.appno_date, '%Y') AS year FROM db_new_application.dashboard_items AS dt
-                        INNER JOIN db_new_application.assets AS assets ON assets.appno_doc_num = dt.application
+                        ${innerJOIN}
                         WHERE dt.organisation_id = :organisationID 
                         AND assets.organisation_id = :organisationID 
                         AND assets.layout_id = :layoutID AND assets.company_id IN (:company_id)  AND dt.type = :type
                         AND dt.representative_id IN (:company_id)
+                        AND date_format(assets.appno_date, '%Y') > :year
                         GROUP BY assets.appno_doc_num) AS temp GROUP BY year) AS temp1`;
                     } else {
-                        query = `SELECT COUNT(application) AS number, application, patent, rf_id, total FROM (SELECT application, patent, rf_id, total FROM dashboard_items 
-                            WHERE type = :type AND organisation_id = :organisationID ${companies.length > 0 ? ' AND representative_id IN (:company_id) ' : ''} GROUP BY application) AS temp`
+                        let countQ = `COUNT(application) AS number`, groupBy = `GROUP BY application`
+                        if(parseInt(qType) === 22) {
+                            countQ = `COUNT(patent) AS number`, groupBy = `GROUP BY patent`
+                        }
+                        query = `SELECT ${countQ}, application, patent, rf_id, total FROM (SELECT application, patent, rf_id, total FROM dashboard_items 
+                            WHERE type = :type AND organisation_id = :organisationID ${companies.length > 0 ? ' AND representative_id IN (:company_id) ' : ''} ${groupBy}) AS temp`
                     }                    
                     break;                    
                 case 17:
@@ -420,6 +470,7 @@ route.post("/", [authJWT.verifyToken], async(req, res, next) => {
                             AND apt.company_id IN (:company_id)
                             AND dt.representative_id IN (:company_id)
                             AND dt.type = :type
+                            AND date_format(apt.exec_dt, '%Y') > :year
                             GROUP BY dt.rf_id) AS temp GROUP BY year) AS temp1`;
                     } else {
                         query = `SELECT COUNT(rf_id) AS number, '' AS application, '' AS patent, rf_id, total FROM (SELECT rf_id, total FROM dashboard_items 
