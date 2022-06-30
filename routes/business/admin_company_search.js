@@ -113,6 +113,32 @@ route.put("/company/request", [authJWT.verifyToken, authJWT.isAdmin], async(req,
     }
 });
 
+
+/**
+ * Search entity by name
+ */
+
+ route.get("/company/representative/search/:name", [authJWT.verifyToken, authJWT.isAdmin], async (req, res, next) => {
+    try{
+        const {name} = req.params;	
+
+        const query = `SELECT representative_id, representative_name FROM db_uspto.representative WHERE MATCH(representative_name) AGAINST (":name" IN BOOLEAN MODE)`
+
+        const list  = await connection.resources.query(query,{
+                type: connection.Sequelize.QueryTypes.SELECT,
+                raw: true,
+                replacements: { name },
+                logging: console.log,
+            }
+        );
+        res.status(200).json(list);	
+
+    } catch( err ) {
+        console.log(err);
+        res.status(500).json({message: "Unable to retrieve companies"})
+    }
+ })
+
 /**
  * Search entity by name
  */
