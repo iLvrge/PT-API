@@ -32,7 +32,8 @@ let createJSON = async(itemDetails, rfID) => {
         {id:5,name:'License',tooltip:'License',color:'#E6E600',line_type:0,segment:2,order_no:4,explanation:''},
         {id:7,name:'Release',tooltip:'Release',color:'#70A800',line_type:0,segment:3,order_no:5,explanation:''},
         {id:8,name:'License End',tooltip:'License End',color:'#E38B4F',line_type:0,segment:1,order_no:6,explanation:''},
-        {id:9,name:'Correct',tooltip:'Correct',color:'#FFFFFF',line_type:1,segment:1,order_no:7,explanation:''}
+        {id:9,name:'Correct',tooltip:'Correct',color:'#FFFFFF',line_type:1,segment:1,order_no:7,explanation:''},
+        {id:9,name:'Partial Release',tooltip:'Partial Release',color:'#70A800',line_type:1,segment:3,order_no:8,explanation:''},
     ];
 
     let cdnURL = "https://s3-us-west-1.amazonaws.com/static.patentrack.com/assignments/var/www/html/beta/resources/shared/data/"; usptoURL = "https://legacy-assignments.uspto.gov/assignments/",  url = "https://patentrack.com/", sourceID =  "/var/www/html/beta/", mainDocument = "", document_form = "", document_agreement = "", path="resources/shared/data/", rfIDno = "";
@@ -198,9 +199,12 @@ let createJSON = async(itemDetails, rfID) => {
                 } else if(itemDetails.assignment.convey_ty === "release"){
                     checkType = "Release";
                     type = "Release";
+                } else if(itemDetails.assignment.convey_ty === "partialrelease"){
+                    checkType = "Release";
+                    type = "Partial Release";
                 } else if(itemDetails.assignment.convey_ty === "namechg"){
                     checkType = "Ownership";
-                    type = "Release";
+                    type = "Name Change";
                 }/*  else if(itemDetails.assignment.convey_ty === "assignment"){
                     checkType = "Ownership";
                 } else if(itemDetails.assignment.convey_ty === "correct"){
@@ -252,6 +256,8 @@ let createJSON = async(itemDetails, rfID) => {
                     type = "Security";
                 } else if(itemDetails.assignment.convey_ty === "release"){
                     type = "Release";
+                } else if(itemDetails.assignment.convey_ty === "partialrelease"){
+                    type = "Partial Release";
                 } else if(itemDetails.assignment.convey_ty === "namechg"){
                     type = "Name Change";
                 } else if(itemDetails.assignment.convey_ty === "assignment"){
