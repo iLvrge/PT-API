@@ -1157,12 +1157,13 @@ route.post("/assets/assets_for_sale",[authJWT.verifyToken, clientDBConnection.co
     try{
         const result = { message: ''}
         if(typeof req.connection_db != "undefined" && req.connection_db != null ) {
-            const {appno_doc_num, grant_doc_num} = req.body
+            const {appno_doc_num, grant_doc_num, type} = req.body
 
             if((typeof grant_doc_num !== 'undefined' && grant_doc_num !== '') || (typeof appno_doc_num !== 'undefined' && appno_doc_num !== '')) {
                 const data = await AssetsForSale.create({
                     appno_doc_num,
                     grant_doc_num,
+                    type,
                     organisation_id: req.orgId
                 })
 
