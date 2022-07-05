@@ -17,6 +17,10 @@ const AssetsForSale = connection.applicationNew.define('assets_for_sale',{
         type: Sequelize.STRING,
         allowNull: true,
     },
+    type:{
+        type: Sequelize.INTEGER,
+        allowNull: true,
+    },
     organisation_id: {
         type: Sequelize.INTEGER,
         allowNull: false,
