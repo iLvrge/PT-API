@@ -308,7 +308,7 @@ route.post("/timeline", [authJWT.verifyToken, clientDBConnection.connect], async
 
                     if(assignorAssigneeIDs.length > 0) {
                         let list = []
-                        if(parseInt(type) !== 2) {
+                        if(parseInt(type) !== 2 && parseInt(type) !== 7) {
                             list = await getOwnedAssets(req)
                         } else {
                             list = await getAllTransactionAssets(req)
@@ -339,6 +339,9 @@ route.post("/timeline", [authJWT.verifyToken, clientDBConnection.connect], async
                             case 6:
                                 activityIDs = [9]
                                 break
+                            case 7:
+                                activityIDs = [1,6,2,7,3,4,5,12,13,11,9]
+                                break
                         }
 
                         const where = {
@@ -368,7 +371,7 @@ route.post("/timeline", [authJWT.verifyToken, clientDBConnection.connect], async
 
 route.post("/", [authJWT.verifyToken], async(req, res, next) => {
     try{
-        let {selectedCompanies, customers, type, data_format} = req.body, getData = {}
+        let {selectedCompanies, customers, type, data_format, format_type} = req.body, getData = {}
         const where = { year: 1997, organisationID: req.orgId, type: parseInt(type)}, typeList = [38, 39, 40, 41]
         let query = '';
         const companies = JSON.parse(selectedCompanies)
@@ -380,10 +383,15 @@ route.post("/", [authJWT.verifyToken], async(req, res, next) => {
             if(parties.length > 0) {
                 where.assignor_id = parties
             }
+            
             switch(parseInt(type)) {
                 case 1: 
                 case 18:
+                case 20:
+                case 21:
+                case 22:
                 case 23:
+                case 26:
                     /**
                      * Encumbrances
                      * Broken Chain 

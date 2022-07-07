@@ -399,7 +399,10 @@ route.get("/customers", [authJWT.verifyToken, authJWT.isAdmin], (req, res, next)
 
     Organisations.findAll({
         attributes: [['organisation_id', 'id'], 'name','logo', 'organisation_type', [connection.Sequelize.literal(0, 'no_of_parties'), 'share_url'], [connection.Sequelize.literal(0, 'assets'), 'assets'], [connection.Sequelize.literal(0, 'no_of_transactions'),'no_of_transactions'], [connection.Sequelize.literal(0, 'no_of_parties'), 'no_of_parties'], [connection.Sequelize.literal(0, 'product'), 'product']],
-        where: {type:{[connection.Op.ne]: 2}}
+        where: {type:{[connection.Op.ne]: 2}},
+        order:[
+            ['name', 'ASC']
+        ]
     })
     .then((list)=>{
         res.status(200).json(list);
