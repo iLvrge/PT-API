@@ -808,6 +808,11 @@ route.get("/:layout/assets", [authJWT.verifyToken, clientDBConnection.connect], 
                 replacements.companies = companies
             }
 
+            if(customers && customers != '') {
+                customers = JSON.parse( customers )
+                replacements.customers = customers
+            }
+
             if(replacements.layoutID != 15) {
                 query += ` WHERE date_format(assets.appno_date, '%Y') > :date AND assets.layout_id = 15 AND assets.organisation_id = :organisationID `
 
@@ -824,7 +829,7 @@ route.get("/:layout/assets", [authJWT.verifyToken, clientDBConnection.connect], 
                         GROUP BY grant_doc_num
                     ) AND application_country NOT IN ('WO', 'US') GROUP BY grant_doc_num)`
                 } else {
-                    query += ` AND appno_doc_num IN (SELECT application FROM db_new_application.dashboard_items WHERE organisation_id = :organisationID AND representative_id IN (:companies) AND type = :layoutID GROUP BY application)`
+                    query += ` AND appno_doc_num IN (SELECT application FROM db_new_application.dashboard_items WHERE organisation_id = :organisationID AND representative_id IN (:companies) ${customers != '' && customers.length > 0 ? ' AND assignor_id IN (:customers) ' : '' } AND type = :layoutID GROUP BY application)`
                 }                
             } else {                
         
@@ -832,11 +837,6 @@ route.get("/:layout/assets", [authJWT.verifyToken, clientDBConnection.connect], 
                     tabs = JSON.parse( tabs )
                     tabs = helpers.checkTabs(tabs)
                     replacements.tabs = tabs
-                }
-        
-                if(customers && customers != '') {
-                    customers = JSON.parse( customers )
-                    replacements.customers = customers
                 }
         
                 if(assignments && assignments != '') {
