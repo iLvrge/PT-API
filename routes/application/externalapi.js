@@ -303,6 +303,7 @@ route.get('/generate_thumbnail', async (req, res) => {
                 height: 150,  //default
             }
         })).then((data) /*is a stream*/ =>{
+            console.log(data)
             const stream = data.pipe(fileSystem.createWriteStream("/var/www/html/trash/assignment-pat-49940-821.png"))
             stream.on('finish', function () { 
                 res.status(200).send(`https://php.patentrack.com/assignment-pat-49940-821.png`);
