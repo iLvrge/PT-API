@@ -293,18 +293,9 @@ route.post("/citation", [authJWT.verifyToken], async (req, res) => {
 route.get('/generate_thumbnail', async (req, res) => {
     const pdfURL = req.query.file
     try {
-        generatePdfThumbnails(fileSystem.readFileSync('/var/www/html/trash/assignment-pat-49940-821.pdf', {
-            compress: {
-              type: 'PNG',  
-              quality: 90  
-            },
-            resize: {
-                width: 150,   //default
-                height: 150,  //default
-            }
-        })).then((data) /*is a stream*/ =>{
+        generatePdfThumbnails(fileSystem.readFileSync('/Users/vivekkapoor/Documents/assignment-pat-49940-821.pdf')).then( data => {
             console.log(data)
-            const stream = data.pipe(fileSystem.createWriteStream("/var/www/html/trash/assignment-pat-49940-821.png"))
+            const stream = data.pipe(fileSystem.createWriteStream("./previewBuffer.jpg"))
             stream.on('finish', function () { 
                 res.status(200).send(`https://php.patentrack.com/assignment-pat-49940-821.png`);
             });

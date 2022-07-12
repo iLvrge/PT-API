@@ -918,7 +918,12 @@ route.get("/:layout/assets", [authJWT.verifyToken, clientDBConnection.connect], 
                     direction = 'DESC'
                 }
     
-                query += `   ORDER BY asset_type ASC, ${column} ${direction} `;
+                if(column == 'asset') {
+                    query += `   ORDER BY asset_type ASC, ABS(${column}) ${direction} `
+                } else {
+                    query += `   ORDER BY asset_type ASC, ${column} ${direction} `;
+                }
+
                 if(parseInt(limit) !== 0) {
                     query += `  LIMIT :offset, :limit`;
                 }
