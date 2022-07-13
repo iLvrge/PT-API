@@ -454,7 +454,7 @@ route.post("/", [authJWT.verifyToken], async(req, res, next) => {
             }
         } else { 
             let ownedAssets = []
-            if(qType == 30 || qType == 38){
+            if(qType == 38){
                 ownedAssets = await getOwnedAssets(req)
                 if(ownedAssets.length > 0) {
                     where.list = ownedAssets
@@ -525,12 +525,9 @@ route.post("/", [authJWT.verifyToken], async(req, res, next) => {
                         break;
                     }
                 case 30:
-                    if(ownedAssets.length > 0) {
-                        query = `SELECT COUNT(*) as number, '' AS application, grant_doc_num AS patent, '' AS rf_id, 0 AS total FROM (SELECT grant_doc_num FROM db_uspto.documentid WHERE appno_doc_num IN (:list) AND grant_doc_num <> '' GROUP BY grant_doc_num ORDER BY grant_date DESC) AS temp`
-                    }
-                    break;
                 case 31:
                 case 32:
+                case 33:
                 case 34:
                 case 36:
                     query = `SELECT COUNT(id) AS number, application, '' AS patent, rf_id, total FROM dashboard_items WHERE type = :type AND organisation_id = :organisationID ${companies.length > 0 ? ' AND representative_id IN (:company_id) ' : ''}`
