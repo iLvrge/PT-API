@@ -3312,6 +3312,9 @@ const checkTabs = (tabs) => {
         tabs.push(12)
         tabs.push(13)
         tabs.push(16)
+    } else if (tabs.includes(17)) {
+        tabs.push(1)
+        tabs.push(6)
     }
     return tabs
 }

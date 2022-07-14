@@ -442,7 +442,7 @@ route.get("/asset_types/assignments", [authJWT.verifyToken, clientDBConnection.c
         }
         
         if( tabs == '' || tabs.length == 0 ){
-            tabs = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]
+            tabs = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16]
         }
 
         if(customers && customers!= '') {
@@ -1365,10 +1365,10 @@ route.get("/:layout/activites", [authJWT.verifyToken, clientDBConnection.connect
         }
 
         connection.applicationNew.query("CALL `routine_activities`(:companies, :organisationID, :layoutID);",{
-            type: connection.Sequelize.QueryTypes.SELECT,
-            raw: true,
-            logging: console.log,
-            replacements: replacements,
+                type: connection.Sequelize.QueryTypes.SELECT,
+                raw: true,
+                logging: console.log,
+                replacements: replacements,
             }
         ).spread(result => {
             if (result) {
