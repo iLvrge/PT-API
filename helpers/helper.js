@@ -3315,6 +3315,9 @@ const checkTabs = (tabs) => {
     } else if (tabs.includes(17)) {
         tabs.push(1)
         tabs.push(6)
+        /**
+         * Later add other assets
+         */
     }
     return tabs
 }
