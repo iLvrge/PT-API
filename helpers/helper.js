@@ -267,7 +267,7 @@ let searchCompany = async(query, t) => {
  
             queryApplicant += ` GROUP BY a.name ORDER BY counter DESC`;
  
-            let applicantQueryResult = await connection.resources.query(queryCompany,{
+            let applicantQueryResult = await connection.resources.query(queryApplicant,{
                 type: connection.Sequelize.QueryTypes.SELECT,
                 raw: true,
                 replacements: { search: search, year: 1997 },

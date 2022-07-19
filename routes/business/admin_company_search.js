@@ -439,11 +439,26 @@ let allRepresentativesFirmCheckAndDelete = async (allRepresentatives) => {
 route.put("/company/search/all/", [authJWT.verifyToken, authJWT.isAdmin], async (req, res, next) => {
     try {
 
-        let normalize_name = req.body.normalize_name, IDs = JSON.parse(req.body.IDs);
+        let {normalize_name, IDs, selected_rows}  = req.body.normalize_name ;
         const otherIDs = [];
         if(IDs.length > 0) {
             if(normalize_name != "") {
                 console.log("POST->ID", IDs);
+
+                let applicantAssignorAndAssigneeIDs = [];
+
+                if(selected_rows.length > 0) {
+                    if(selected_rows[0].flag != undefined) {
+                        IDs = []
+                        selected_rows.forEach(row => {
+                            if(row.flag == 2) {
+                                applicantAssignorAndAssigneeIDs.push(row.id)
+                            } else {
+                                IDs.push(row.id)
+                            }
+                        })
+                    }
+                }
                 
                 let getList = await AssignorAndAssignee.findAll({
                     where:{assignor_and_assignee_id: IDs}
@@ -534,6 +549,12 @@ route.put("/company/search/all/", [authJWT.verifyToken, authJWT.isAdmin], async 
 
                 // Associate the Rep with Rep
                 await AssignorAndAssignee.update(item, {where: {name: normalize_name}}); 
+
+                // Check Applicant Assignees
+
+                if(applicantAssignorAndAssigneeIDs.length > 0) {
+                    await ApplicantAssignorAndAssignee.update(item, {where: {assignor_and_assignee_id: applicantAssignorAndAssigneeIDs}}); 
+                }
                 
                 // Delete other rep
                 if(allRepresentatives > 0) {
@@ -541,6 +562,7 @@ route.put("/company/search/all/", [authJWT.verifyToken, authJWT.isAdmin], async 
                     await allRepresentativesCheckAndDelete(allRepresentatives);
                 }	
             } else {
+                // Remove Representative
                 let getList = await AssignorAndAssignee.findAll({
                     attributes:['assignor_and_assignee_id', 'representative_id', 'name'],
                     where:{assignor_and_assignee_id: IDs}
@@ -585,13 +607,20 @@ route.put("/company/search/all/", [authJWT.verifyToken, authJWT.isAdmin], async 
 
                     await AssignorAndAssignee.update({representative_id: 0}, {where: {assignor_and_assignee_id: IDs}});
 
+
+                    // Check Applicant Assignees
+
+                    if(applicantAssignorAndAssigneeIDs.length > 0) {
+                        await ApplicantAssignorAndAssignee.update({representative_id: 0}, {where: {assignor_and_assignee_id: applicantAssignorAndAssigneeIDs}}); 
+                    }
+
                     if(allRepresentatives > 0) {
                         await allRepresentativesCheckAndDelete(allRepresentatives);
                     }
                 }   
             }
             // Get all list including normalize company and other names
-            let queryCompany = `SELECT a.assignor_and_assignee_id as id, a.assignor_and_assignee_id, a.name, a.instances as counter, c.representative_name as normalize_name, (select rr.representative_name FROM representative as rr WHERE rr.representative_name = a.name GROUP BY rr.representative_name) as representative_company, (SELECT concat(ass.reel_no,'-', ass.frame_no) FROM assignee as ee INNER JOIN assignment as ass ON ass.rf_id = ee.rf_id WHERE ee.assignor_and_assignee_id = a.assignor_and_assignee_id LIMIT 1) as assigneeRFID, (SELECT concat(asss.reel_no,'-', asss.frame_no) FROM assignor as assi INNER JOIN assignment as asss ON asss.rf_id = assi.rf_id WHERE assi.assignor_and_assignee_id = a.assignor_and_assignee_id LIMIT 1) as assignorRFID  FROM assignor_and_assignee as a LEFT JOIN representative as c ON c.representative_id = a.representative_id WHERE a.assignor_and_assignee_id IN (:IDs) OR a.name = :normalizeName `;
+            let queryCompany = `SELECT a.assignor_and_assignee_id as id, a.assignor_and_assignee_id, a.name, a.instances as counter, c.representative_name as normalize_name, (select rr.representative_name FROM representative as rr WHERE rr.representative_name = a.name GROUP BY rr.representative_name) as representative_company, (SELECT concat(ass.reel_no,'-', ass.frame_no) FROM assignee as ee INNER JOIN assignment as ass ON ass.rf_id = ee.rf_id WHERE ee.assignor_and_assignee_id = a.assignor_and_assignee_id LIMIT 1) as assigneeRFID, (SELECT concat(asss.reel_no,'-', asss.frame_no) FROM assignor as assi INNER JOIN assignment as asss ON asss.rf_id = assi.rf_id WHERE assi.assignor_and_assignee_id = a.assignor_and_assignee_id LIMIT 1) as assignorRFID, '1' AS flag FROM assignor_and_assignee as a LEFT JOIN representative as c ON c.representative_id = a.representative_id WHERE a.assignor_and_assignee_id IN (:IDs) OR a.name = :normalizeName `;
 
             const replacements = {normalizeName:  normalize_name, IDs}
 
@@ -607,7 +636,31 @@ route.put("/company/search/all/", [authJWT.verifyToken, authJWT.isAdmin], async 
                 logging: console.log,
                 }
             );
-            res.status(200).json(getList);
+
+            let applicantList = []
+
+            if(applicantAssignorAndAssigneeIDs.length > 0) {
+                // Get all list including normalize company and other names
+                let queryApplicant = `SELECT a.assignor_and_assignee_id as id, a.assignor_and_assignee_id, a.name, a.instances as counter, c.representative_name as normalize_name, (select rr.representative_name FROM representative as rr WHERE rr.representative_name = a.name GROUP BY rr.representative_name) as representative_company, SELECT appno_doc_num FROM db_patent_application_bibliographic.applicant WHERE name = a.name LIMIT 1) as assigneeRFID, (SELECT appno_doc_num FROM db_patent_grant_bibliographic.applicant WHERE name = a.name LIMIT 1) as assignorRFID, '2' AS flag FROM db_patent_application_bibliographic.assignor_and_assignee as a LEFT JOIN db_uspto.representative as c ON c.representative_id = a.representative_id WHERE a.assignor_and_assignee_id IN (:IDs) OR a.name = :normalizeName `;
+
+                const replacement = {normalizeName:  normalize_name, applicantAssignorAndAssigneeIDs}
+
+                if(otherIDs.length > 0) {
+                    replacement.representative_id = otherIDs
+                    queryCompany += ` OR a.representative_id IN (:representative_id)`
+                }
+
+                applicantList = await connection.resources.query(queryApplicant,{
+                    type: connection.Sequelize.QueryTypes.SELECT,
+                    raw: true,
+                    replacements: replacement,
+                    logging: console.log,
+                    }
+                );
+            }
+            
+
+            res.status(200).json([...getList, ...applicantList]);
         }     
     } catch(e) {
         console.log(e);
