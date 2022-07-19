@@ -266,7 +266,7 @@ route.post('/parties', [authJWT.verifyToken, clientDBConnection.connect], async(
 
 route.post("/timeline", [authJWT.verifyToken, clientDBConnection.connect], async(req, res, next) => {
     try{
-        let {selectedCompanies, type} = req.body, getList = [];
+        let {selectedCompanies, type, customers} = req.body, getList = [];
         if(selectedCompanies != '' && typeof selectedCompanies != 'undefined' && selectedCompanies != null) {
             selectedCompanies = JSON.parse(selectedCompanies)
         }
@@ -313,10 +313,6 @@ route.post("/timeline", [authJWT.verifyToken, clientDBConnection.connect], async
                         } else {
                             list = await getAllTransactionAssets(req)
                         }
-                        const query = `SELECT apt.rf_id as id, exec_dt, release_rf_id, release_exec_dt, IF(r.representative_name <> '', r.representative_name,aaa.name)  AS customerName, activity_id AS tab_id, company_id AS company, (SELECT count(asset) FROM ( SELECT IF(dd.grant_doc_num <> '', dd.grant_doc_num, dd.appno_doc_num) AS asset FROM db_uspto.documentid AS dd WHERE dd.rf_id = apt.rf_id GROUP BY asset ) AS temp) AS totalAssets FROM activity_parties_transactions AS apt
-                        INNER JOIN db_uspto.assignor_and_assignee AS aaa ON aaa.assignor_and_assignee_id = apt.assignor_and_assignee_id LEFT JOIN db_uspto.representative AS r ON r.representative_id = aaa.representative_id WHERE apt.organisation_id = :organisationID AND company_id IN (:companyIDs) AND apt.rf_id IN (
-                            SELECT rf_id FROM db_uspto.documentid WHERE appno_doc_num IN (:list) AND date_format(appno_date, '%Y') > :year GROUP BY rf_id
-                        ) AND apt.activity_id IN (:activityIDs) AND apt.recorded_assignor_and_assignee_id IN (:assignorAssigneeIDs) AND date_format(apt.exec_dt, '%Y') > :year GROUP BY apt.rf_id ORDER BY exec_dt DESC `;
 
                         let activityIDs = [];
 
@@ -352,6 +348,18 @@ route.post("/timeline", [authJWT.verifyToken, clientDBConnection.connect], async
                             activityIDs,
                             assignorAssigneeIDs
                         }
+
+                        const parties = JSON.parse(customers)
+                        if(parties.length > 0) {
+                            where.assignor_id = parties
+                        }
+
+                        const query = `SELECT apt.rf_id as id, exec_dt, release_rf_id, release_exec_dt, IF(r.representative_name <> '', r.representative_name,aaa.name)  AS customerName, activity_id AS tab_id, company_id AS company, (SELECT count(asset) FROM ( SELECT IF(dd.grant_doc_num <> '', dd.grant_doc_num, dd.appno_doc_num) AS asset FROM db_uspto.documentid AS dd WHERE dd.rf_id = apt.rf_id GROUP BY asset ) AS temp) AS totalAssets FROM activity_parties_transactions AS apt
+                        INNER JOIN db_uspto.assignor_and_assignee AS aaa ON aaa.assignor_and_assignee_id = apt.assignor_and_assignee_id LEFT JOIN db_uspto.representative AS r ON r.representative_id = aaa.representative_id WHERE apt.organisation_id = :organisationID AND company_id IN (:companyIDs) AND apt.rf_id IN (
+                            SELECT rf_id FROM db_uspto.documentid WHERE appno_doc_num IN (:list) AND date_format(appno_date, '%Y') > :year GROUP BY rf_id
+                        ) AND apt.activity_id IN (:activityIDs) ${parties.length > 0 ? ' AND apt.assignor_and_assignee_id IN (:assignor_id) ' : ''} AND apt.recorded_assignor_and_assignee_id IN (:assignorAssigneeIDs) AND date_format(apt.exec_dt, '%Y') > :year GROUP BY apt.rf_id ORDER BY exec_dt DESC `;
+
+                        
                         getList =  await connection.applicationNew.query(query,{
                             type: connection.Sequelize.QueryTypes.SELECT,
                             raw: true,
@@ -446,7 +454,7 @@ route.post("/", [authJWT.verifyToken], async(req, res, next) => {
             }
         } else { 
             let ownedAssets = []
-            if(qType == 30 || qType == 38){
+            if(qType == 38){
                 ownedAssets = await getOwnedAssets(req)
                 if(ownedAssets.length > 0) {
                     where.list = ownedAssets
@@ -517,12 +525,9 @@ route.post("/", [authJWT.verifyToken], async(req, res, next) => {
                         break;
                     }
                 case 30:
-                    if(ownedAssets.length > 0) {
-                        query = `SELECT COUNT(*) as number, '' AS application, grant_doc_num AS patent, '' AS rf_id, 0 AS total FROM (SELECT grant_doc_num FROM db_uspto.documentid WHERE appno_doc_num IN (:list) AND grant_doc_num <> '' GROUP BY grant_doc_num ORDER BY grant_date DESC) AS temp`
-                    }
-                    break;
                 case 31:
                 case 32:
+                case 33:
                 case 34:
                 case 36:
                     query = `SELECT COUNT(id) AS number, application, '' AS patent, rf_id, total FROM dashboard_items WHERE type = :type AND organisation_id = :organisationID ${companies.length > 0 ? ' AND representative_id IN (:company_id) ' : ''}`

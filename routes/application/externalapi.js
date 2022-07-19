@@ -8,7 +8,11 @@ const express = require("express"),
 
     connection = require("../../config/db.config"),
 
-    OrganisationApplication = require("../../model/application/OrganisationApplication");
+    OrganisationApplication = require("../../model/application/OrganisationApplication"),
+
+    fileSystem = require('fs'),
+
+    generatePdfThumbnails = require('pdf-thumbnail');
     
 const { v4: uuidv4  } = require('uuid');
 
@@ -284,5 +288,23 @@ route.post("/citation", [authJWT.verifyToken], async (req, res) => {
         res.status(500).send('Error while rendering asset details')
     }
 })
+
+
+route.get('/generate_thumbnail', async (req, res) => {
+    const pdfURL = req.query.file
+    try {
+        generatePdfThumbnails(fileSystem.readFileSync('/Users/vivekkapoor/Documents/assignment-pat-49940-821.pdf')).then( data => {
+            console.log(data)
+            const stream = data.pipe(fileSystem.createWriteStream("./previewBuffer.jpg"))
+            stream.on('finish', function () { 
+                res.status(200).send(`https://php.patentrack.com/assignment-pat-49940-821.png`);
+            });
+        });
+        
+    } catch (err) {
+        console.error(err);
+    }
+})
+
 
 module.exports = route;

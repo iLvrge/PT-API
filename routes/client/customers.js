@@ -442,7 +442,7 @@ route.get("/asset_types/assignments", [authJWT.verifyToken, clientDBConnection.c
         }
         
         if( tabs == '' || tabs.length == 0 ){
-            tabs = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]
+            tabs = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16]
         }
 
         if(customers && customers!= '') {
@@ -808,6 +808,11 @@ route.get("/:layout/assets", [authJWT.verifyToken, clientDBConnection.connect], 
                 replacements.companies = companies
             }
 
+            if(customers && customers != '') {
+                customers = JSON.parse( customers )
+                replacements.customers = customers
+            }
+
             if(replacements.layoutID != 15) {
                 query += ` WHERE date_format(assets.appno_date, '%Y') > :date AND assets.layout_id = 15 AND assets.organisation_id = :organisationID `
 
@@ -824,7 +829,7 @@ route.get("/:layout/assets", [authJWT.verifyToken, clientDBConnection.connect], 
                         GROUP BY grant_doc_num
                     ) AND application_country NOT IN ('WO', 'US') GROUP BY grant_doc_num)`
                 } else {
-                    query += ` AND appno_doc_num IN (SELECT application FROM db_new_application.dashboard_items WHERE organisation_id = :organisationID AND representative_id IN (:companies) AND type = :layoutID GROUP BY application)`
+                    query += ` AND appno_doc_num IN (SELECT application FROM db_new_application.dashboard_items WHERE organisation_id = :organisationID AND representative_id IN (:companies) ${customers != '' && customers.length > 0 ? ' AND assignor_id IN (:customers) ' : '' } AND type = :layoutID GROUP BY application)`
                 }                
             } else {                
         
@@ -832,11 +837,6 @@ route.get("/:layout/assets", [authJWT.verifyToken, clientDBConnection.connect], 
                     tabs = JSON.parse( tabs )
                     tabs = helpers.checkTabs(tabs)
                     replacements.tabs = tabs
-                }
-        
-                if(customers && customers != '') {
-                    customers = JSON.parse( customers )
-                    replacements.customers = customers
                 }
         
                 if(assignments && assignments != '') {
@@ -918,7 +918,12 @@ route.get("/:layout/assets", [authJWT.verifyToken, clientDBConnection.connect], 
                     direction = 'DESC'
                 }
     
-                query += `   ORDER BY asset_type ASC, ${column} ${direction} `;
+                if(column == 'asset') {
+                    query += `   ORDER BY asset_type ASC, ABS(${column}) ${direction} `
+                } else {
+                    query += `   ORDER BY asset_type ASC, ${column} ${direction} `;
+                }
+
                 if(parseInt(limit) !== 0) {
                     query += `  LIMIT :offset, :limit`;
                 }
@@ -1360,10 +1365,10 @@ route.get("/:layout/activites", [authJWT.verifyToken, clientDBConnection.connect
         }
 
         connection.applicationNew.query("CALL `routine_activities`(:companies, :organisationID, :layoutID);",{
-            type: connection.Sequelize.QueryTypes.SELECT,
-            raw: true,
-            logging: console.log,
-            replacements: replacements,
+                type: connection.Sequelize.QueryTypes.SELECT,
+                raw: true,
+                logging: console.log,
+                replacements: replacements,
             }
         ).spread(result => {
             if (result) {
