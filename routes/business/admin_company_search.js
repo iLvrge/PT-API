@@ -441,10 +441,14 @@ let allRepresentativesFirmCheckAndDelete = async (allRepresentatives) => {
 route.put("/company/search/all/", [authJWT.verifyToken, authJWT.isAdmin], async (req, res, next) => {
     try {
 
-        let {normalize_name, IDs, selected_rows}  = req.body.normalize_name ;
+        let {normalize_name, IDs, selected_rows}  = req.body ;
         const otherIDs = [];
-        if(IDs.length > 0) {
+        if(IDs.length > 0 || selected_rows != undefined) {
             let applicantAssignorAndAssigneeIDs = [];
+            if(selected_rows != undefined) {
+                selected_rows = JSON.parse(selected_rows)
+            }
+            
             if(selected_rows.length > 0) {
                 if(selected_rows[0].flag != undefined) {
                     IDs = []
@@ -461,11 +465,10 @@ route.put("/company/search/all/", [authJWT.verifyToken, authJWT.isAdmin], async 
             if(normalize_name != "") {
                 console.log("POST->ID", IDs);
                 
-                let getList = await AssignorAndAssignee.findAll({
-                    where:{assignor_and_assignee_id: IDs}
-                });
+                
+                
 
-                console.log("getList->length", getList.length);
+                
                 /**
                  * Is Rep is already a Rep
                 */
@@ -473,122 +476,50 @@ route.put("/company/search/all/", [authJWT.verifyToken, authJWT.isAdmin], async 
 
                 console.log("representativeCompany", representativeCompany)
 
-                
                 let allRepresentatives = []; 
+                if(IDs.length > 0) {
+                    let getList = await AssignorAndAssignee.findAll({
+                        where:{assignor_and_assignee_id: IDs}
+                    });
+                    
+                    console.log("getList->length", getList.length);
+                    const replaceNames = [];
 
-                const replaceNames = [];
 
-                const promiseName = getList.map( company => {
-                    replaceNames.push(company.name)  
-                })
-                await Promise.all(promiseName)
-                /**
-                 * Is Target a Rep
-                 */
-                const getReplaceNameRepresentative = await Representatives.findAll({
-                    where:{ representative_name: replaceNames}
-                })
-               
-                console.log("Replaced Old normalize company list length->", getReplaceNameRepresentative.length)
-
-                if(getReplaceNameRepresentative.length > 0) {
-                    //Yes
-                    /**
-                     * Is Rep is already a Rep
-                    */
-                    if(representativeCompany == null) {
-                        //NO
-                        const firstCompany = getReplaceNameRepresentative[0].representative_id;
-                        
-                        await Representatives.update({
-                            representative_name: normalize_name
-                        }, {where: {representative_id: firstCompany} });
-
-                        representativeCompany  = await Representatives.findOne({
-                            where:{representative_id: firstCompany}
-                        });
-                    } 
-                    const promiseIDs = getReplaceNameRepresentative.map( representative => otherIDs.push(representative.representative_id))
-                    await Promise.all(promiseIDs)
-                    console.log("UPDATE", otherIDs)
-
-                    const findOldRows = await AssignorAndAssignee.findAll({
-                        attributes:['assignor_and_assignee_id'],
-                        where: {
-                            [connection.Op.or]: [
-                            {representative_id: otherIDs},
-                            {name: replaceNames}
-                        ]}
+                    const promiseName = getList.map( company => {
+                        replaceNames.push(company.name)  
                     })
-
-                    console.log("findOldRows", findOldRows)
-
-                    if(findOldRows.length > 0) {
-                        console.log("findOldRowsIDs", IDs)
-                        const promiseR = findOldRows.map(row => IDs.push(row.assignor_and_assignee_id))
-                        await Promise.all(promiseR)
-                        console.log("findOldRowsIDs1", IDs)
-                        allRepresentatives = [...allRepresentatives, ...otherIDs]
-                        console.log("allRepresentatives", allRepresentatives)
-                    }
-                } else {
-                    //NO
-                    if(representativeCompany == null) {
-                        //NO
-                        representativeCompany = await Representatives.create({
-                            representative_name: normalize_name
-                        });
-                    }
-                    console.log("Update old representatives", otherIDs)                    
-                } 
-              
-                console.log("RepresentativeID->", representativeCompany.representative_id)
-                const item = {representative_id: representativeCompany.representative_id};
-                
-                //Associate Target With Rep
-                await AssignorAndAssignee.update(item, {where: {assignor_and_assignee_id: IDs}}); 
-
-                // Associate the Rep with Rep
-                await AssignorAndAssignee.update(item, {where: {name: normalize_name}}); 
-
-                // Check Applicant Assignees
-
-                if(applicantAssignorAndAssigneeIDs.length > 0) {
-                    await ApplicantAssignorAndAssignee.update(item, {where: {assignor_and_assignee_id: applicantAssignorAndAssigneeIDs}}); 
-                }
-                
-                // Delete other rep
-                if(allRepresentatives > 0) {
-                    console.log("allRepresentatives1", allRepresentatives)
-                    await allRepresentativesCheckAndDelete(allRepresentatives);
-                }	
-            } else {
-                // Remove Representative
-                let getList = await AssignorAndAssignee.findAll({
-                    attributes:['assignor_and_assignee_id', 'representative_id', 'name'],
-                    where:{assignor_and_assignee_id: IDs}
-                });                
-
-                
-                if(getList.length > 0) {
-                    const  allRepresentatives = [], replaceNames = [], otherIDs = [];
-                    IDs = []
-                    const promise = getList.map(r => {
-                        IDs.push(r.assignor_and_assignee_id)
-                        if(r.representative_id > 0) {
-                            allRepresentatives.push(r.representative_id)
-                        }
-                        replaceNames.push(r.name)
-                        return r;
-                    })
-                    await Promise.all(promise);
-
+                    await Promise.all(promiseName)
+                     /**
+                     * Is Target a Rep
+                     */
                     const getReplaceNameRepresentative = await Representatives.findAll({
                         where:{ representative_name: replaceNames}
                     })
+                
+                    console.log("Replaced Old normalize company list length->", getReplaceNameRepresentative.length)
+
                     if(getReplaceNameRepresentative.length > 0) {
+                        //Yes
+                        /**
+                         * Is Rep is already a Rep
+                        */
+                        if(representativeCompany == null) {
+                            //NO
+                            const firstCompany = getReplaceNameRepresentative[0].representative_id;
+                            
+                            await Representatives.update({
+                                representative_name: normalize_name
+                            }, {where: {representative_id: firstCompany} });
+    
+                            representativeCompany  = await Representatives.findOne({
+                                where:{representative_id: firstCompany}
+                            });
+                        } 
                         const promiseIDs = getReplaceNameRepresentative.map( representative => otherIDs.push(representative.representative_id))
                         await Promise.all(promiseIDs)
+                        console.log("UPDATE", otherIDs)
+    
                         const findOldRows = await AssignorAndAssignee.findAll({
                             attributes:['assignor_and_assignee_id'],
                             where: {
@@ -597,28 +528,119 @@ route.put("/company/search/all/", [authJWT.verifyToken, authJWT.isAdmin], async 
                                 {name: replaceNames}
                             ]}
                         })
+    
+                        console.log("findOldRows", findOldRows)
+    
                         if(findOldRows.length > 0) {
                             console.log("findOldRowsIDs", IDs)
                             const promiseR = findOldRows.map(row => IDs.push(row.assignor_and_assignee_id))
                             await Promise.all(promiseR)
-                            console.log("findOldRowsIDs1", IDs)                            
+                            console.log("findOldRowsIDs1", IDs)
+                            allRepresentatives = [...allRepresentatives, ...otherIDs]
+                            console.log("allRepresentatives", allRepresentatives)
                         }
+                    } else {
+                        //NO
+                        if(representativeCompany == null) {
+                            //NO
+                            representativeCompany = await Representatives.create({
+                                representative_name: normalize_name
+                            });
+                        }
+                        console.log("Update old representatives", otherIDs)                    
                     }
+                }
+                
+               
+
+                 
+              
+                console.log("RepresentativeID->", representativeCompany.representative_id)
+                const item = {representative_id: representativeCompany.representative_id};
+
+                if(IDs.length > 0) {
+
+                
+                    //Associate Target With Rep
+                    await AssignorAndAssignee.update(item, {where: {assignor_and_assignee_id: IDs}}); 
+    
+                    // Associate the Rep with Rep
+                    await AssignorAndAssignee.update(item, {where: {name: normalize_name}}); 
 
 
-                    await AssignorAndAssignee.update({representative_id: 0}, {where: {assignor_and_assignee_id: IDs}});
+                }
 
+                // Check Applicant Assignees
 
-                    // Check Applicant Assignees
-
-                    if(applicantAssignorAndAssigneeIDs.length > 0) {
-                        await ApplicantAssignorAndAssignee.update({representative_id: 0}, {where: {assignor_and_assignee_id: applicantAssignorAndAssigneeIDs}}); 
+                if(applicantAssignorAndAssigneeIDs.length > 0) {
+                    await ApplicantAssignorAndAssignee.update(item, {where: {assignor_and_assignee_id: applicantAssignorAndAssigneeIDs}}); 
+                }
+                
+                // Delete other rep
+                if(allRepresentatives.length > 0) {
+                    console.log("allRepresentatives1", allRepresentatives)
+                    await allRepresentativesCheckAndDelete(allRepresentatives);
+                }	
+            } else {
+                // Remove Representative
+                const  allRepresentatives = [], replaceNames = [], otherIDs = [];
+                if(IDs.length > 0) {
+                    let getList = await AssignorAndAssignee.findAll({
+                        attributes:['assignor_and_assignee_id', 'representative_id', 'name'],
+                        where:{assignor_and_assignee_id: IDs}
+                    });                
+    
+                    
+                    if(getList.length > 0) {
+                        IDs = []
+                        const promise = getList.map(r => {
+                            IDs.push(r.assignor_and_assignee_id)
+                            if(r.representative_id > 0) {
+                                allRepresentatives.push(r.representative_id)
+                            }
+                            replaceNames.push(r.name)
+                            return r;
+                        })
+                        await Promise.all(promise);
+    
+                        const getReplaceNameRepresentative = await Representatives.findAll({
+                            where:{ representative_name: replaceNames}
+                        })
+                        if(getReplaceNameRepresentative.length > 0) {
+                            const promiseIDs = getReplaceNameRepresentative.map( representative => otherIDs.push(representative.representative_id))
+                            await Promise.all(promiseIDs)
+                            const findOldRows = await AssignorAndAssignee.findAll({
+                                attributes:['assignor_and_assignee_id'],
+                                where: {
+                                    [connection.Op.or]: [
+                                    {representative_id: otherIDs},
+                                    {name: replaceNames}
+                                ]}
+                            })
+                            if(findOldRows.length > 0) {
+                                console.log("findOldRowsIDs", IDs)
+                                const promiseR = findOldRows.map(row => IDs.push(row.assignor_and_assignee_id))
+                                await Promise.all(promiseR)
+                                console.log("findOldRowsIDs1", IDs)                            
+                            }
+                        }
+    
+    
+                        await AssignorAndAssignee.update({representative_id: 0}, {where: {assignor_and_assignee_id: IDs}});
                     }
+                }
+                
 
-                    if(allRepresentatives > 0) {
-                        await allRepresentativesCheckAndDelete(allRepresentatives);
-                    }
-                }   
+
+                // Check Applicant Assignees
+
+                if(applicantAssignorAndAssigneeIDs.length > 0) {
+                    await ApplicantAssignorAndAssignee.update({representative_id: 0}, {where: {assignor_and_assignee_id: applicantAssignorAndAssigneeIDs}}); 
+                }
+
+                if(allRepresentatives > 0) {
+                    await allRepresentativesCheckAndDelete(allRepresentatives);
+                }
             }
             // Get all list including normalize company and other names
             let queryCompany = `SELECT a.assignor_and_assignee_id as id, a.assignor_and_assignee_id, a.name, a.instances as counter, c.representative_name as normalize_name, (select rr.representative_name FROM representative as rr WHERE rr.representative_name = a.name GROUP BY rr.representative_name) as representative_company, (SELECT concat(ass.reel_no,'-', ass.frame_no) FROM assignee as ee INNER JOIN assignment as ass ON ass.rf_id = ee.rf_id WHERE ee.assignor_and_assignee_id = a.assignor_and_assignee_id LIMIT 1) as assigneeRFID, (SELECT concat(asss.reel_no,'-', asss.frame_no) FROM assignor as assi INNER JOIN assignment as asss ON asss.rf_id = assi.rf_id WHERE assi.assignor_and_assignee_id = a.assignor_and_assignee_id LIMIT 1) as assignorRFID, '1' AS flag FROM assignor_and_assignee as a LEFT JOIN representative as c ON c.representative_id = a.representative_id WHERE a.assignor_and_assignee_id IN (:IDs) OR a.name = :normalizeName `;
@@ -642,7 +664,7 @@ route.put("/company/search/all/", [authJWT.verifyToken, authJWT.isAdmin], async 
 
             if(applicantAssignorAndAssigneeIDs.length > 0) {
                 // Get all list including normalize company and other names
-                let queryApplicant = `SELECT a.assignor_and_assignee_id as id, a.assignor_and_assignee_id, a.name, a.instances as counter, c.representative_name as normalize_name, (select rr.representative_name FROM representative as rr WHERE rr.representative_name = a.name GROUP BY rr.representative_name) as representative_company, SELECT appno_doc_num FROM db_patent_application_bibliographic.applicant WHERE name = a.name LIMIT 1) as assigneeRFID, (SELECT appno_doc_num FROM db_patent_grant_bibliographic.applicant WHERE name = a.name LIMIT 1) as assignorRFID, '2' AS flag FROM db_patent_application_bibliographic.assignor_and_assignee as a LEFT JOIN db_uspto.representative as c ON c.representative_id = a.representative_id WHERE a.assignor_and_assignee_id IN (:IDs) OR a.name = :normalizeName `;
+                let queryApplicant = `SELECT a.assignor_and_assignee_id as id, a.assignor_and_assignee_id, a.name, a.instances as counter, c.representative_name as normalize_name, (select rr.representative_name FROM representative as rr WHERE rr.representative_name = a.name GROUP BY rr.representative_name) as representative_company, SELECT appno_doc_num FROM db_patent_application_bibliographic.applicant WHERE name = a.name LIMIT 1) as assigneeRFID, (SELECT appno_doc_num FROM db_patent_grant_bibliographic.applicant WHERE name = a.name LIMIT 1) as assignorRFID, '2' AS flag FROM db_patent_application_bibliographic.assignor_and_assignee as a LEFT JOIN db_uspto.representative as c ON c.representative_id = a.representative_id WHERE a.assignor_and_assignee_id IN (:applicantAssignorAndAssigneeIDs) OR a.name = :normalizeName `;
 
                 const replacement = {normalizeName:  normalize_name, applicantAssignorAndAssigneeIDs}
 
