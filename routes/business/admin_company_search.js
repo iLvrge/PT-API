@@ -36,6 +36,8 @@ const Assignors = require('../../model/resources/Assignors');
 
 const Assignees = require('../../model/resources/Assignees');
 
+const ApplicantAssignorAndAssignee = require('../../model/resources/ApplicantAssignorAndAssignee');
+
 const AssignorAndAssignee = require('../../model/resources/AssignorAndAssignee');
 
 const RecentTransaction = require('../../model/resources/RecentTransaction');

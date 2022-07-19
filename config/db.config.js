@@ -60,6 +60,32 @@ const maintainence = new Sequelize(process.env.DATABASE_MAINTAINENCE, process.en
   }*/
 });
 
+const biblioGrant = new Sequelize(process.env.DATABASE_GRANT_BIBLIO, process.env.USER, process.env.PASSWORD, {
+  host: '167.172.195.92',
+  dialect: 'mysql',
+  operatorsAliases: Op,
+ /*
+  pool: {
+    max: 1000,
+    min: 0,
+    acquire: 1000000, 
+    idle: 10000
+  }*/
+});
+
+const biblioApplication = new Sequelize(process.env.DATABASE_APPLICATION_BIBLIO, process.env.USER, process.env.PASSWORD, {
+  host: '167.172.195.92',
+  dialect: 'mysql',
+  operatorsAliases: Op,
+ /*
+  pool: {
+    max: 1000,
+    min: 0,
+    acquire: 1000000,
+    idle: 10000
+  }*/
+});
+
 const config = {
   'secret': process.env.SECRET || 'p@nt3nt8@60',
   'pusher_appId': '938985',
@@ -90,6 +116,6 @@ const slackConfig = {
 
 const DEFAULT_LIMIT = 100 
 
-const db = { Sequelize, Op, application, applicationNew, resources, business, maintainence, config, bucketConfig, slackConfig, DEFAULT_LIMIT };
+const db = { Sequelize, Op, application, applicationNew, resources, business, maintainence, biblioGrant, biblioApplication, config, bucketConfig, slackConfig, DEFAULT_LIMIT };
  
 module.exports = db;
