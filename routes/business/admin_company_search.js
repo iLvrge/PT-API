@@ -444,23 +444,22 @@ route.put("/company/search/all/", [authJWT.verifyToken, authJWT.isAdmin], async 
         let {normalize_name, IDs, selected_rows}  = req.body.normalize_name ;
         const otherIDs = [];
         if(IDs.length > 0) {
+            let applicantAssignorAndAssigneeIDs = [];
+            if(selected_rows.length > 0) {
+                if(selected_rows[0].flag != undefined) {
+                    IDs = []
+                    selected_rows.forEach(row => {
+                        if(row.flag == 2) {
+                            applicantAssignorAndAssigneeIDs.push(row.id)
+                        } else {
+                            IDs.push(row.id)
+                        }
+                    })
+                }
+            }
+            
             if(normalize_name != "") {
                 console.log("POST->ID", IDs);
-
-                let applicantAssignorAndAssigneeIDs = [];
-
-                if(selected_rows.length > 0) {
-                    if(selected_rows[0].flag != undefined) {
-                        IDs = []
-                        selected_rows.forEach(row => {
-                            if(row.flag == 2) {
-                                applicantAssignorAndAssigneeIDs.push(row.id)
-                            } else {
-                                IDs.push(row.id)
-                            }
-                        })
-                    }
-                }
                 
                 let getList = await AssignorAndAssignee.findAll({
                     where:{assignor_and_assignee_id: IDs}
