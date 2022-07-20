@@ -540,7 +540,7 @@ route.post("/", [authJWT.verifyToken], async(req, res, next) => {
                 case 37: */
                 case 38:
                     if(ownedAssets.length > 0) {
-                        query = `SELECT cwc.name AS name, COUNT(application_country) AS number, grant_doc_num AS patent, '' AS application, '' AS rf_id, 0 AS total, type  FROM (
+                        query = `SELECT cwc.name AS name, COUNT(application_country) AS number, grant_doc_num AS patent, '' AS application, '' AS rf_id, 0 AS total  FROM (
                                 SELECT grant_doc_num, application_number, application_country FROM db_uspto.assets_family AS af WHERE grant_doc_num IN (
                                     SELECT grant_doc_num FROM db_uspto.documentid AS di WHERE appno_doc_num IN (:list)                                     
                                     GROUP BY grant_doc_num
