@@ -1,6 +1,6 @@
 const express = require("express"),
 
-    request = require('request'),
+    rp = require('request-promise'),
 
     route = express.Router(),
 
@@ -23,34 +23,35 @@ route.get("/ptab/:asset", [authJWT.verifyToken], async (req, res) => {
         if(typeof asset !== 'undefined' && asset !== '' && asset !== null) {
             const url = `https://developer.uspto.gov/ptab-api/proceedings?applicationNumberText=${asset}`
 
-            request(url, (error, response, body) => {
-                if (!error && response.statusCode == 200) {
-                    const responseBody = JSON.parse(body)
-                    const ptabEvents = []
-                    if(responseBody.results.length > 0) {
-                        responseBody.results.forEach( item => {
-                            ptabEvents.push({
-                                id: uuidv4(),
-                                start: item.proceedingFilingDate + ' 00:00:00',
-                                end: item.decisionDate + ' 00:00:00',
-                                name: item.respondentPartyName,
-                                status: item.proceedingStatusCategory,
-                                otherInfo: item
-                            })
+           
+            const option = {
+                method: 'GET',
+                uri: firstRequest,
+                strictSSL: false
+             }
+
+            rp(option)
+            .then( body => {
+                let responseBody = JSON.parse(body);
+                console.log(responseBody)
+                const {results, recordTotalQuantity} = responseBody
+                const ptabEvents = []
+                if(results.length > 0) {
+                    results.forEach( item => {
+                        ptabEvents.push({
+                            id: uuidv4(),
+                            start: item.proceedingFilingDate + ' 00:00:00',
+                            end: item.decisionDate + ' 00:00:00',
+                            name: item.respondentPartyName,
+                            status: item.proceedingStatusCategory,
+                            otherInfo: item
                         })
-                    }
-                    if(typeof counter !== 'undefined') {
-                        res.status(200).send(`${ptabEvents.length}`);
-                    } else {
-                        res.status(200).json(ptabEvents);
-                    }
+                    })
+                }
+                if(typeof counter !== 'undefined') {
+                    res.status(200).send(`${ptabEvents.length}`);
                 } else {
-                    console.log('ERROR => /ptab/', error)
-                    if(typeof counter !== 'undefined') {
-                        res.status(200).send(`0`);
-                    } else {
-                        res.status(200).json({});
-                    }
+                    res.status(200).json(ptabEvents);
                 }
             })
         } else {

@@ -2,6 +2,8 @@ const express = require("express");
 
 const route = express.Router();
 
+const rp = require('request-promise');
+
 const connection = require("../../config/db.config");
 
 const RepresentativeResources = require("../../model/resources/Representatives");
@@ -379,7 +381,7 @@ route.post("/timeline", [authJWT.verifyToken, clientDBConnection.connect], async
 
 route.post("/", [authJWT.verifyToken], async(req, res, next) => {
     try{
-        let {selectedCompanies, customers, type, data_format, format_type} = req.body, getData = {}
+        let {selectedCompanies, customers, type, data_format, format_type, company} = req.body, getData = {}
         const where = { year: 1997, organisationID: req.orgId, type: parseInt(type)}, typeList = [38, 39, 40, 41]
         let query = '';
         const companies = JSON.parse(selectedCompanies)
@@ -561,7 +563,7 @@ route.post("/", [authJWT.verifyToken], async(req, res, next) => {
                     break;
             }
         }
-
+        console.log('Type', parseInt(qType), query)
         if(query != '') {
             getData =  await connection.applicationNew.query(query,{
                 type: connection.Sequelize.QueryTypes.SELECT,
@@ -570,8 +572,53 @@ route.post("/", [authJWT.verifyToken], async(req, res, next) => {
                 replacements: where,
                 plain: parseInt(data_format) === 1 || typeList.includes(where.type) ? false : true
             })
+            res.status(200).json(getData);
+        } else if(parseInt(qType) === 37 && (typeof format_type == 'undefined' || format_type.toLowerCase() != 'bank')) {
+            console.log('asdsadsad')
+            const url = `https://developer.uspto.gov/ptab-api/proceedings?patentOwnerName=%22${company.replace(/ /g,'%20')}%22`
+
+            const firstRequest = url + `&recordTotalQuantity=1`
+            //require('https').globalAgent.options.ca = require('ssl-root-cas').create();
+            const option = {
+                method: 'GET',
+                uri: firstRequest,
+                strictSSL: false
+             }
+            rp(option)
+            .then( body => {
+                let responseBody = JSON.parse(body);
+                console.log(responseBody)
+                const {results, recordTotalQuantity} = responseBody
+                if(recordTotalQuantity != undefined && parseInt(recordTotalQuantity) > 0) {
+                    if( parseInt(recordTotalQuantity) > 1 ) {
+                        const secondRequest = url + `&recordTotalQuantity=${responseBody.recordTotalQuantity}`
+                        option.uri = secondRequest
+                        rp(option)
+                        .then( body => {
+                            responseBody = JSON.parse(body);
+                            const number = [], other_number = []
+                            const {results} = responseBody
+                            results.forEach(item => {
+                                const {appellantApplicationNumberText, appellantPatentNumber} = item
+                                if(appellantPatentNumber != undefined && !number.includes(appellantPatentNumber)) {
+                                    number.push(appellantPatentNumber)
+                                } else if (appellantApplicationNumberText != undefined && !other_number.includes(appellantApplicationNumberText)) {
+                                    other_number.push(appellantApplicationNumberText)
+                                }
+                            })
+                            getData = {number: number.length, other_number: other_number.length, patent: '', application: '', rf_id: '', total: number.length + other_number.length}
+                            res.status(200).json(getData);
+                        })
+                    } else {
+                        const {appellantApplicationNumberText, appellantPatentNumber} = responseBody.results[0]
+                        getData = {number: appellantPatentNumber != undefined ? 1 : 0, other_number: appellantPatentNumber == undefined && appellantApplicationNumberText != undefined ? 1 : 0, patent: '', application: '', rf_id: '', total: 1}
+                        res.status(200).json(getData);
+                    }
+                }
+            })
+        } else {
+            res.status(200).json(getData);
         }
-        res.status(200).json(getData);
     } catch (err) {
         console.log(err)
         res.status(500).json({message: "Unable to retrieve data."})
