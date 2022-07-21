@@ -530,6 +530,7 @@ route.post("/", [authJWT.verifyToken], async(req, res, next) => {
                 case 31:
                 case 32:
                 case 33:
+                case 36:
                     query = `SELECT COUNT(IF(patent <> '', patent, null)) AS number, COUNT(IF(patent = '', application, null)) AS other_number, COUNT(*) AS total, '' AS rf_id, type FROM dashboard_items WHERE type = :type AND organisation_id = :organisationID ${companies.length > 0 ? ' AND representative_id IN (:company_id) ' : ''}`
                     break;   
                 case 34:
