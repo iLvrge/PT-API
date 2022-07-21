@@ -549,7 +549,7 @@ route.post("/", [authJWT.verifyToken], async(req, res, next) => {
                                     GROUP BY grant_doc_num
                                 ) AND application_country NOT IN ('WO', 'US') GROUP BY application_number) AS temp 
                                 INNER JOIN db_uspto.country_with_codes AS cwc ON cwc.country_code = temp.application_country 
-                                GROUP BY application_country ORDER BY number DESC, name ASC LIMIT 5`
+                                GROUP BY application_country ORDER BY number DESC, name ASC `
                     }
                     break; 
                 case 39:
@@ -557,10 +557,10 @@ route.post("/", [authJWT.verifyToken], async(req, res, next) => {
                     /**
                      * Lender or inventor
                      */
-                    query = `SELECT inventorName AS name, COUNT(application) AS number, application, '' As patent, '' AS rf_id, 0 AS total FROM (SELECT aaa.assignor_and_assignee_id, IF(aaa.representative_id <> '', r.representative_name, aaa.name) AS inventorName, application FROM dashboard_items AS di INNER JOIN db_uspto.assignor_and_assignee AS aaa ON aaa.assignor_and_assignee_id = di.assignor_id LEFT JOIN db_uspto.representative AS r ON r.representative_id = aaa.representative_id WHERE di.type = :type AND di.organisation_id = :organisationID ${companies.length > 0 ? ' AND di.representative_id IN (:company_id) ' : ''} ) AS temp GROUP BY inventorName ORDER BY number DESC, name ASC LIMIT 5`
+                    query = `SELECT inventorName AS name, COUNT(application) AS number, application, '' As patent, '' AS rf_id, 0 AS total FROM (SELECT aaa.assignor_and_assignee_id, IF(aaa.representative_id <> '', r.representative_name, aaa.name) AS inventorName, application FROM dashboard_items AS di INNER JOIN db_uspto.assignor_and_assignee AS aaa ON aaa.assignor_and_assignee_id = di.assignor_id LEFT JOIN db_uspto.representative AS r ON r.representative_id = aaa.representative_id WHERE di.type = :type AND di.organisation_id = :organisationID ${companies.length > 0 ? ' AND di.representative_id IN (:company_id) ' : ''} ) AS temp GROUP BY inventorName ORDER BY number DESC, name ASC LIMIT 50`
                     break;
                 case 40:
-                    query = `SELECT lawfirm AS name, COUNT(application) AS number, application, '' As patent, '' AS rf_id, 0 AS total, type  FROM dashboard_items WHERE type = :type AND organisation_id = :organisationID ${companies.length > 0 ? ' AND representative_id IN (:company_id) ' : ''} GROUP BY lawfirm ORDER BY number DESC, name ASC LIMIT 5`
+                    query = `SELECT lawfirm AS name, COUNT(application) AS number, application, '' As patent, '' AS rf_id, 0 AS total, type  FROM dashboard_items WHERE type = :type AND organisation_id = :organisationID ${companies.length > 0 ? ' AND representative_id IN (:company_id) ' : ''} GROUP BY lawfirm ORDER BY number DESC, name ASC LIMIT 50`
                     break;
             }
         }
