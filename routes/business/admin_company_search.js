@@ -1605,7 +1605,7 @@ route.get("/company/raw/assignments/:id", [authJWT.verifyToken, authJWT.isAdmin,
         const where = {organisation_id: customerID};
         let whereRepresentative = {};
         if(representativeIDs.length > 0) {
-            where.representative_id = representativeIDs;
+            where.company_id = representativeIDs;
             whereRepresentative = {
                 [connection.Op.or]: [
                     {parent_id: representativeIDs},
@@ -1653,6 +1653,7 @@ route.get("/company/raw/assignments/:id", [authJWT.verifyToken, authJWT.isAdmin,
             whereAssignor.assignor_and_assignee_id = assignorAndAssigneeIDs;
         }
 
+        const query = "SELECT rf_id as id, rf_id, cname, caddress_1, caddress_2, caddress_7, caddress_5, caddress_6, caddress_3, caddress_4, reel_no, frame_no FROM db_uspto.assignment AS a INNER JOIN assignee"
         getList = await Assignments.findAll({
             attributes: [['rf_id', 'id'], 'rf_id', 'cname', 'caddress_1', 'caddress_2','caddress_7','caddress_5','caddress_6','caddress_3','caddress_4', 'reel_no', 'frame_no'],  
             /*where: {
@@ -1664,7 +1665,7 @@ route.get("/company/raw/assignments/:id", [authJWT.verifyToken, authJWT.isAdmin,
             group:['cname', 'caddress_1', 'caddress_2','caddress_7','caddress_5','caddress_6','caddress_3','caddress_4'],    
             include: [
                 {
-                    model: RepresentativeTransactions,
+                    model: List2,
                     as: "representativetransaction",
                     attributes: [],
                     where: where,
