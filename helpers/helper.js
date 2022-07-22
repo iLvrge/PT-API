@@ -2362,18 +2362,16 @@ let getAssignmentDataByrfID = async (rfID, t = 0) => {
 		plain:true,
 		replacements: { rfID: rfID },
 	});
-
-    if(releasedData != mull && releasedData.release_rf_id > 0) {
+    if(releasedData != null && releasedData.release_rf_id > 0) {
         releaseAssignor = await assignorData(releasedData.release_rf_id)
         releaseAssignee = await assigneeData(releasedData.release_rf_id)
         releaseAssignment = await assignmentData(releasedData.release_rf_id)
         if( t === 0 ) {
             releaseProperties = await documentData(releasedData.release_rf_id)
         }
+        console.log(releaseAssignor, releaseAssignee, releaseAssignment, releaseProperties)
     }
-    
-	const data = await {assignee, assignor, assignment, properties, releaseAssignor, releaseAssignee, releaseAssignment, releaseProperties}
-	return data;
+	return {assignee, assignor, assignment, properties, releaseAssignor, releaseAssignee, releaseAssignment, releaseProperties};
 }
 
 let generateJSON = async(req, res) => {
