@@ -2354,7 +2354,7 @@ let getAssignmentDataByrfID = async (rfID, t = 0) => {
     }
 	
     let releaseAssignor = [], releaseAssignee = [], releaseAssignment = [], releaseProperties = []
-    const queryCheckRelesed = 'SELECT release_rf_id FROM db_new_assignment.activity_parties_transactions WHERE rf_id = :rfID';
+    const queryCheckRelesed = 'SELECT release_rf_id FROM db_new_application.activity_parties_transactions WHERE rf_id = :rfID';
     let releasedData = await connection.resources.query(queryCheckRelesed,{
 		type: connection.Sequelize.QueryTypes.SELECT,
 		raw: true,
