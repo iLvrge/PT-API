@@ -566,7 +566,7 @@ route.post("/", [authJWT.verifyToken], async(req, res, next) => {
                     break;
             }
         }
-        console.log('Type', parseInt(qType), query)
+        
         if(query != '') {
             getData =  await connection.applicationNew.query(query,{
                 type: connection.Sequelize.QueryTypes.SELECT,
@@ -577,10 +577,11 @@ route.post("/", [authJWT.verifyToken], async(req, res, next) => {
             })
             res.status(200).json(getData);
         } else if(parseInt(qType) === 37 && (typeof format_type == 'undefined' || format_type.toLowerCase() != 'bank')) {
-            console.log('asdsadsad')
+            
             const url = `https://developer.uspto.gov/ptab-api/proceedings?patentOwnerName=%22${company.replace(/ /g,'%20')}%22`
 
             const firstRequest = url + `&recordTotalQuantity=1`
+            console.log('send request to ', firstRequest)
             //require('https').globalAgent.options.ca = require('ssl-root-cas').create();
             const option = {
                 method: 'GET',
@@ -617,6 +618,8 @@ route.post("/", [authJWT.verifyToken], async(req, res, next) => {
                         getData = {number: appellantPatentNumber != undefined ? 1 : 0, other_number: appellantPatentNumber == undefined && appellantApplicationNumberText != undefined ? 1 : 0, patent: '', application: '', rf_id: '', total: 1}
                         res.status(200).json(getData);
                     }
+                } else {
+                    res.status(200).json(getData);
                 }
             })
         } else {
