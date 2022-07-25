@@ -177,7 +177,7 @@ route.post('/parties/assignor', [authJWT.verifyToken, clientDBConnection.connect
                 GROUP BY aor.rf_id)
                 GROUP BY aaa.assignor_and_assignee_id)AS temp GROUP BY name ORDER BY number DESC, name ASC ;`  */
 
-                const query = `SELECT name, assignor, SUM(app_count) as number FROM
+                const query = `SELECT assignor_and_assignee_id AS id, name, assignor, SUM(app_count) as number FROM
                 (SELECT  aaa.assignor_and_assignee_id, "${getRepresentativeName.representative_name}" as assignor, aaa.representative_id, 
                 (CASE  WHEN r.representative_name <> "" THEN r.representative_name ELSE aaa.name END) AS name,
                  COUNT(DISTINCT appno_doc_num) AS app_count FROM db_uspto.assignee AS ass

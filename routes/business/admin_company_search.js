@@ -1801,18 +1801,27 @@ route.get("/company/assignments/:id", [authJWT.verifyToken, authJWT.isAdmin, aut
 
 route.put("/company/assignments", [authJWT.verifyToken, authJWT.isAdmin], async (req, res, next) => {
     try{
-        const rfID = req.body.rf_id;
-        if(rfID > 0) {
+        const {rf_id, cname, caddress_1, caddress_2, caddress_7, caddress_5, caddress_6, caddress_3, caddress_4} = req.body;
+        if(rf_id > 0) {
             const getData = await Assignments.findOne({
-                where: {rf_id: rfID}
+                where: {rf_id}
             });
     
             if(getData != null && getData.rf_id > 0) {
-                
+                getData.cname = cname
+                getData.caddress_1 = caddress_1
+                getData.caddress_2 = caddress_2
+                getData.caddress_7 = caddress_7
+                getData.caddress_5 = caddress_5
+                getData.caddress_6 = caddress_6
+                getData.caddress_3 = caddress_3
+                getData.caddress_4 = caddress_4
+                getData.save()
+                res.status(200).send("Records Updated");
                 /**
                  * Other Records
                  */
-                const findOtherRecords = await Assignments.findAll({
+                /* const findOtherRecords = await Assignments.findAll({
                     attributes: ['rf_id','law_firm_id', 'caddress_1', 'caddress_2'],
                     where: {caddress_1: getData.caddress_1, caddress_2: getData.caddress_2, law_firm_id:{[connection.Op.gt]: 0}}
                 })
@@ -1876,7 +1885,7 @@ route.put("/company/assignments", [authJWT.verifyToken, authJWT.isAdmin], async 
                     res.status(200).send("Records Updated");
                 } else {
                     res.status(401).send("Unable to update records");
-                }
+                } */
             } else {
                 res.status(402).send("Invalid inputs");
             }
