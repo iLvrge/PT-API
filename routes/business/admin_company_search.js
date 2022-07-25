@@ -1666,7 +1666,8 @@ route.get("/company/raw/assignments/:id", [authJWT.verifyToken, authJWT.isAdmin,
                     {caddress_2: {[connection.Op.ne]: ''}}
                 ]
             },  */  
-            group:['cname', 'caddress_1', 'caddress_2','caddress_7','caddress_5','caddress_6','caddress_3','caddress_4'],    
+            /* group:['cname', 'caddress_1', 'caddress_2','caddress_7','caddress_5','caddress_6','caddress_3','caddress_4'],    */ 
+            group:['cname', 'caddress_1', 'caddress_2'], 
             include: [
                 {
                     model: List2,
@@ -1801,13 +1802,23 @@ route.get("/company/assignments/:id", [authJWT.verifyToken, authJWT.isAdmin, aut
 
 route.put("/company/assignments", [authJWT.verifyToken, authJWT.isAdmin], async (req, res, next) => {
     try{
-        const {rf_id, cname, caddress_1, caddress_2, caddress_7, caddress_5, caddress_6, caddress_3, caddress_4} = req.body;
+        const {rf_id, type, cname, caddress_1, caddress_2, caddress_7, caddress_5, caddress_6, caddress_3, caddress_4} = req.body;
         if(rf_id > 0) {
             const getData = await Assignments.findOne({
                 where: {rf_id}
             });
     
             if(getData != null && getData.rf_id > 0) {
+                 /**
+                 * Other Records
+                 */
+                let findOtherRecords = [];
+                if(type == 1) {
+                    findOtherRecords = await Assignments.findAll({
+                        attributes: ['rf_id','law_firm_id', 'caddress_1', 'caddress_2'],
+                        where: {cname: getData.cname , caddress_1: getData.caddress_1, caddress_2: getData.caddress_2, law_firm_id:{[connection.Op.gt]: 0}}
+                    })
+                }
                 getData.cname = cname
                 getData.caddress_1 = caddress_1
                 getData.caddress_2 = caddress_2
@@ -1816,8 +1827,55 @@ route.put("/company/assignments", [authJWT.verifyToken, authJWT.isAdmin], async 
                 getData.caddress_6 = caddress_6
                 getData.caddress_3 = caddress_3
                 getData.caddress_4 = caddress_4
-                getData.save()
-                res.status(200).send("Records Updated");
+                await getData.save()
+                if(type == 1 && indOtherRecords.length > 0) {
+                    const promise = findOtherRecords.map(async assignment => {
+                        console.log(assignment);
+                        const updateData = {cname, caddress_1, caddress_2};
+
+                        const updateRecord = await Assignments.update(updateData, {where:{rf_id: assignment.rf_id}});
+                        if(updateRecord) {
+                            /* if(updateData.cname  != '') {   
+                                console.log(1);
+                                const lawyerData = await Lawyers.findOne({
+                                    where: {law_firm_id: assignment.law_firm_id,  name: assignment.caddress_1}
+                                });
+                                if(lawyerData != null && lawyerData.lawyer_id > 0) {
+                                    console.log(2);
+                                    const findAnother  = await Lawyers.findOne({
+                                        where: {law_firm_id: assignment.law_firm_id,  name: assignment.caddress_2}
+                                    });
+                                    if(findAnother == null) {
+                                        console.log(3);
+                                        await Lawyers.update({name: assignment.caddress_2},{where: {lawyer_id: lawyerData.lawyer_id}});
+                                    } else {
+                                        conßsole.log(4);
+                                        await Lawyers.destroy({where: {lawyer_id: lawyerData.lawyer_id}});
+                                        await Lawyers.update({instance: findAnother.instance + 1},{where: {lawyer_id: findAnother.lawyer_id}});
+                                    }
+                                }
+                            }
+                            if(updateData.caddress_1 == '') {
+                                console.log(5);
+                                const lawyerData = await Lawyers.findOne({
+                                    where: {law_firm_id: assignment.law_firm_id,  name: assignment.caddress_1}
+                                });
+        
+                                if(lawyerData != null && lawyerData.lawyer_id > 0) {
+                                    console.log(6);
+                                    await Lawyers.destroy({where: {lawyer_id: lawyerData.lawyer_id}});
+                                }
+                            } */
+                        }
+                        return assignment;
+                    })
+
+                    await Promise.all(promise);
+
+                    res.status(200).send("Records Updated");
+                } else {
+                    res.status(200).send("Records Updated");
+                }
                 /**
                  * Other Records
                  */
