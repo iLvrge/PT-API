@@ -1863,7 +1863,7 @@ route.put("/company/assignments", [authJWT.verifyToken, authJWT.isAdmin], async 
                 getData.caddress_3 = caddress_3
                 getData.caddress_4 = caddress_4
                 await getData.save()
-                if(type == 1 && findOtherRecords.length > 0) {
+                if(type == 0 && findOtherRecords.length > 0) {
                     const promise = findOtherRecords.map(async assignment => {
                         console.log(assignment);
                         const updateData = {cname, caddress_1, caddress_2};
