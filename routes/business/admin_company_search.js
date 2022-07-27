@@ -459,15 +459,14 @@ route.put("/company/search/all/", [authJWT.verifyToken, authJWT.isAdmin], async 
                             IDs.push(row.id)
                         }
                     })
+                } else {
+                    IDs = JSON.parse(IDs)
                 }
             }
             
             if(normalize_name != "") {
                 console.log("POST->ID", IDs);
                 
-                
-                
-
                 
                 /**
                  * Is Rep is already a Rep
@@ -1709,7 +1708,7 @@ route.get("/company/assignments", [authJWT.verifyToken, authJWT.isAdmin], async 
                 {caddress_2: {[connection.Op.ne]: ''}}
             ]
         }, 
-        group: ['caddress_1','caddress_2'],   
+        group: ['cname','caddress_1','caddress_2'],   
     });
     res.status(200).json(getList);
 });
@@ -1778,7 +1777,7 @@ route.get("/company/assignments/:id", [authJWT.verifyToken, authJWT.isAdmin, aut
                     {caddress_2: {[connection.Op.ne]: ''}}
                 ]
             },  
-            group: ['caddress_1','caddress_2'],           
+            group: ['cname','caddress_1','caddress_2'],           
             include: [
                 {
                     model: List2,
@@ -1816,7 +1815,7 @@ route.put("/company/assignments", [authJWT.verifyToken, authJWT.isAdmin], async 
                 if(type == 1) {
                     findOtherRecords = await Assignments.findAll({
                         attributes: ['rf_id','law_firm_id', 'caddress_1', 'caddress_2'],
-                        where: {cname: getData.cname , caddress_1: getData.caddress_1, caddress_2: getData.caddress_2, law_firm_id:{[connection.Op.gt]: 0}}
+                    where: {cname: getData.cname , caddress_1: getData.caddress_1, caddress_2: getData.caddress_2/*, law_firm_id:{[connection.Op.gt]: 0}*/}
                     })
                 }
                 getData.cname = cname
@@ -1828,7 +1827,7 @@ route.put("/company/assignments", [authJWT.verifyToken, authJWT.isAdmin], async 
                 getData.caddress_3 = caddress_3
                 getData.caddress_4 = caddress_4
                 await getData.save()
-                if(type == 1 && indOtherRecords.length > 0) {
+                if(type == 1 && findOtherRecords.length > 0) {
                     const promise = findOtherRecords.map(async assignment => {
                         console.log(assignment);
                         const updateData = {cname, caddress_1, caddress_2};
