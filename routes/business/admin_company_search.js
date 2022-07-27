@@ -1655,37 +1655,73 @@ route.get("/company/raw/assignments/:id", [authJWT.verifyToken, authJWT.isAdmin,
         if(assignorAndAssigneeIDs.length > 0) {
             whereAssignor.assignor_and_assignee_id = assignorAndAssigneeIDs;
         }
-
-        const query = "SELECT rf_id as id, rf_id, cname, caddress_1, caddress_2, caddress_7, caddress_5, caddress_6, caddress_3, caddress_4, reel_no, frame_no FROM db_uspto.assignment AS a INNER JOIN assignee"
-        getList = await Assignments.findAll({
-            attributes: [['rf_id', 'id'], 'rf_id', 'cname', 'caddress_1', 'caddress_2','caddress_7','caddress_5','caddress_6','caddress_3','caddress_4', 'reel_no', 'frame_no'],  
-            /*where: {
-                [connection.Op.or]: [
-                    {caddress_1: {[connection.Op.ne]: ''}},
-                    {caddress_2: {[connection.Op.ne]: ''}}
+        Promise.all([
+            Assignments.findAll({
+                attributes: [['rf_id', 'id'], 'rf_id', 'cname', 'caddress_1', 'caddress_2','caddress_7','caddress_5','caddress_6','caddress_3','caddress_4', 'reel_no', 'frame_no'],  
+                /*where: {
+                    [connection.Op.or]: [
+                        {caddress_1: {[connection.Op.ne]: ''}},
+                        {caddress_2: {[connection.Op.ne]: ''}}
+                    ]
+                },  */  
+                /* group:['cname', 'caddress_1', 'caddress_2','caddress_7','caddress_5','caddress_6','caddress_3','caddress_4'],    */ 
+                group:['cname', 'caddress_1', 'caddress_2'], 
+                include: [
+                    {
+                        model: List2,
+                        as: "representativetransaction",
+                        attributes: [],
+                        where: where,
+                        include: [
+                            {
+                                model: Assignees,
+                                as: 'assignee',
+                                attributes: [],
+                                where: whereAssignor
+                            }
+                        ]                      
+                    }
                 ]
-            },  */  
-            /* group:['cname', 'caddress_1', 'caddress_2','caddress_7','caddress_5','caddress_6','caddress_3','caddress_4'],    */ 
-            group:['cname', 'caddress_1', 'caddress_2'], 
-            include: [
-                {
-                    model: List2,
-                    as: "representativetransaction",
-                    attributes: [],
-                    where: where,
-                    include: [
-                        {
-                            model: Assignees,
-                            as: 'assignee',
-                            attributes: [],
-                            where: whereAssignor
-                        }
-                    ]                      
-                }
-            ]
-        });
-    }   
-    res.status(200).json(getList);
+            }),
+            Assignments.findAll({
+                attributes: [['rf_id', 'id'], 'rf_id', 'cname', 'caddress_1', 'caddress_2','caddress_7','caddress_5','caddress_6','caddress_3','caddress_4', 'reel_no', 'frame_no'],  
+                where: {
+                    caddress_1: '',
+                    caddress_2: '',
+                    cname: ''
+                }, 
+                /* group:['cname', 'caddress_1', 'caddress_2','caddress_7','caddress_5','caddress_6','caddress_3','caddress_4'],    */ 
+                
+                include: [
+                    {
+                        model: List2,
+                        as: "representativetransaction",
+                        attributes: [],
+                        where: where,
+                        include: [
+                            {
+                                model: Assignees,
+                                as: 'assignee',
+                                attributes: [],
+                                where: whereAssignor
+                            }
+                        ]                      
+                    }
+                ]
+            })
+        ]).then(modelReturn => {
+            if(modelReturn.length > 0) {
+                modelReturn.forEach(item => {
+                    getList = [...getList, ...item]
+                })
+                //console.log(getList)
+                res.status(200).json(getList);
+            }
+        })
+    }  else {
+        res.status(200).json(getList);
+    }
+    
 });
 
 route.put("/company/raw/assignments/:id", [authJWT.verifyToken, authJWT.isAdmin, authJWT.addClientID, clientDBConnection.connect], async (req, res, next) => {
