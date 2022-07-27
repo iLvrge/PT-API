@@ -532,12 +532,12 @@ route.post("/", [authJWT.verifyToken], async(req, res, next) => {
                 case 31:
                 case 32:
                 case 33:
-                    case 34:
+                case 34:
                 case 36:
-                    query = `SELECT COUNT(IF(patent <> '', patent, null)) AS number, COUNT(IF(patent = '', application, null)) AS other_number, COUNT(*) AS total, '' AS rf_id, type FROM dashboard_items WHERE type = :type AND organisation_id = :organisationID ${companies.length > 0 ? ' AND representative_id IN (:company_id) ' : ''}`
+                    query = `SELECT COUNT(IF(patent <> '', patent, null)) AS number, COUNT(IF(patent = '', application, null)) AS other_number, COUNT(*) AS total, patent, application, '' AS rf_id, type FROM dashboard_items WHERE type = :type AND organisation_id = :organisationID ${companies.length > 0 ? ' AND representative_id IN (:company_id) ' : ''}`
                     break;   
                 case 35:
-                    query = `SELECT SUM(total) AS number, application, '' AS patent, '' AS rf_id, 0 AS total, type FROM dashboard_items WHERE type = :type AND organisation_id = :organisationID ${companies.length > 0 ? ' AND representative_id IN (:company_id) ' : ''}`
+                    query = `SELECT SUM(total) AS number, application, patent, '' AS rf_id, 0 AS total, type FROM dashboard_items WHERE type = :type AND organisation_id = :organisationID ${companies.length > 0 ? ' AND representative_id IN (:company_id) ' : ''}`
                     break;
                 /* case 36:            
                 case 37: */
@@ -608,12 +608,12 @@ route.post("/", [authJWT.verifyToken], async(req, res, next) => {
                                     other_number.push(appellantApplicationNumberText)
                                 }
                             })
-                            getData = {number: number.length, other_number: other_number.length, patent: '', application: '', rf_id: '', total: number.length + other_number.length}
+                            getData = {number: number.length, other_number: other_number.length, patent: number.length > 0 ? number[0] : '', application: other_number.length > 0 ? other_number[0] : '', rf_id: '', total: number.length + other_number.length}
                             res.status(200).json(getData);
                         })
                     } else {
                         const {appellantApplicationNumberText, appellantPatentNumber} = responseBody.results[0]
-                        getData = {number: appellantPatentNumber != undefined ? 1 : 0, other_number: appellantPatentNumber == undefined && appellantApplicationNumberText != undefined ? 1 : 0, patent: '', application: '', rf_id: '', total: 1}
+                        getData = {number: appellantPatentNumber != undefined ? 1 : 0, other_number: appellantPatentNumber == undefined && appellantApplicationNumberText != undefined ? 1 : 0, patent: appellantPatentNumber != undefined ? appellantPatentNumber : '', application: appellantPatentNumber == undefined && appellantApplicationNumberText != undefined ? appellantApplicationNumberText : '', rf_id: '', total: 1}
                         res.status(200).json(getData);
                     }
                 } else {

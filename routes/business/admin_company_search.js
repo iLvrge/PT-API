@@ -1848,7 +1848,7 @@ route.put("/company/assignments", [authJWT.verifyToken, authJWT.isAdmin], async 
                  * Other Records
                  */
                 let findOtherRecords = [];
-                if(type == 1) {
+                if(type == 0) {
                     findOtherRecords = await Assignments.findAll({
                         attributes: ['rf_id','law_firm_id', 'caddress_1', 'caddress_2'],
                     where: {cname: getData.cname , caddress_1: getData.caddress_1, caddress_2: getData.caddress_2/*, law_firm_id:{[connection.Op.gt]: 0}*/}

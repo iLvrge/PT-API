@@ -3186,28 +3186,28 @@ const findLayout = (layout) => {
         case 'deflated_collaterals':
             layoutID = 26
             break
-        case 'non_expired_patents':
+        case 'assigned':
             layoutID = 30
             break
-        case 'patents_acquired':
+        case 'filled':
             layoutID = 31
             break
-        case 'patents_invented':
+        case 'acquired':
             layoutID = 32
             break
-        case 'unmaintained_patents':
+        case 'divested':
             layoutID = 33
             break
-        case 'pending_applications':
+        case 'collaterlized':
             layoutID = 34
             break
-        case 'filed_applications':
+        case 'maintenance_budget':
             layoutID = 35
             break
-        case 'acquired_applications':
+        case 'abandoned':
             layoutID = 36
             break
-        case 'maintenance_budget':
+        case 'ptab':
             layoutID = 37
             break
         case 'top_non_us_members':
