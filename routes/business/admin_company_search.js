@@ -1848,12 +1848,10 @@ route.put("/company/assignments", [authJWT.verifyToken, authJWT.isAdmin], async 
                  * Other Records
                  */
                 let findOtherRecords = [];
-                if(type == 0) {
-                    findOtherRecords = await Assignments.findAll({
-                        attributes: ['rf_id','law_firm_id', 'caddress_1', 'caddress_2'],
+                findOtherRecords = await Assignments.findAll({
+                    attributes: ['rf_id','law_firm_id', 'caddress_1', 'caddress_2'],
                     where: {cname: getData.cname , caddress_1: getData.caddress_1, caddress_2: getData.caddress_2/*, law_firm_id:{[connection.Op.gt]: 0}*/}
-                    })
-                }
+                })
                 const preCAddress1 = getData.caddress_1, preCName = getData.cname;
                 getData.cname = cname
                 getData.caddress_1 = caddress_1
@@ -1889,14 +1887,23 @@ route.put("/company/assignments", [authJWT.verifyToken, authJWT.isAdmin], async 
                                 await LawFirms.destroy({where: {law_firm_id: findLawFirmData.law_firm_id}});
                                 await Lawyers.destroy({where: {law_firm_id: findLawFirmData.law_firm_id}});
                             }
+                        } else {
+                            const getAllAssignmentsWithLawFirm = await Assignments.findAll({ where: {caddress_1}})
+                            let allFirmIDs = []
+                            if(getAllAssignmentsWithLawFirm.length > 0) {
+                                getAllAssignmentsWithLawFirm.forEach( item => {
+                                    allFirmIDs.push(item.rf_id)
+                                })
+                            }
+                            await Assignments.update({law_firm_id: lawfirmID},{where: {rf_id: allFirmIDs}})
                         }
                     }
-                } 
+                }
                 if(lawfirmID == 0) {
                     if(caddress_1 != '') {
                         const checkLawFirm = await LawFirms.findOne({where:{name: caddress_1}})
                         if(checkLawFirm == null) {
-                            const lawfirmData = await LawFirms.create({name: caddress_1, instances: 1})
+                            const lawfirmData = await LawFirms.create({name: caddress_1, instances: 1, representative_id : 0})
                             if(lawfirmData != null) {
                                 lawfirmID = lawfirmData.law_firm_id
                             }
@@ -1953,7 +1960,7 @@ route.put("/company/assignments", [authJWT.verifyToken, authJWT.isAdmin], async 
                 } */
 
 
-                if(type == 0 && findOtherRecords.length > 0) {
+                if(findOtherRecords.length > 0) {
                     const promise = findOtherRecords.map(async assignment => {
                         console.log(assignment);
                         const updateData = {cname, caddress_1, caddress_2};
