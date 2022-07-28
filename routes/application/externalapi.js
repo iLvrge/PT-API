@@ -20,9 +20,12 @@ const { v4: uuidv4  } = require('uuid');
 
 route.get("/ptab/:asset", [authJWT.verifyToken], async (req, res) => { 
     try {
-        const {asset} = req.params
+        let {asset} = req.params
         const {counter} = req.query;  
         if(typeof asset !== 'undefined' && asset !== '' && asset !== null) {
+            if(asset.toLowerCase().indexOf('us') !== -1){
+                asset = asset.substr(2, asset.length)
+            }
             const urlProceedings = `https://developer.uspto.gov/ptab-api/proceedings?applicationNumberText=${asset}`,
                   urlDocuments = `https://developer.uspto.gov/ptab-api/documents?applicationNumberText=${asset}`
 
@@ -67,9 +70,10 @@ route.get("/ptab/:asset", [authJWT.verifyToken], async (req, res) => {
                             documents.push({
                                 id: uuidv4(),
                                 identifier: document.documentIdentifier,
-                                date: document.documentFilingDate,
+                                start: document.documentFilingDate,
                                 name: document.documentName,
-                                title: document.documentTitleText
+                                status: document.documentCategory,
+                                title: document.documentTitleText,
                             })
                         })
                     }
@@ -79,7 +83,7 @@ route.get("/ptab/:asset", [authJWT.verifyToken], async (req, res) => {
                 if(typeof counter !== 'undefined') {
                     res.status(200).send(`${events.length}`);
                 } else {
-                    res.status(200).json({events, documents});
+                    res.status(200).json([...events, ...documents]);
                 }
             })
         } else {
