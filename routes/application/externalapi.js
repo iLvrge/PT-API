@@ -97,7 +97,7 @@ route.get("/ptab/:asset", [authJWT.verifyToken], async (req, res) => {
     }    
 });
 
-route.get("/ptab/document/:identifier", [authJWT.verifyToken], async (req, res) => { 
+route.get("/ptab/document/:identifier",  async (req, res) => { 
     try {
         let {identifier} = req.params
         if(identifier != null) {
