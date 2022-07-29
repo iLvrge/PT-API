@@ -511,8 +511,8 @@ route.post("/", [authJWT.verifyToken], async(req, res, next) => {
                     } else {
                         query = `SELECT COUNT(rf_id) AS number, '' AS application, '' AS patent, rf_id, total FROM (SELECT rf_id, total FROM dashboard_items 
                             WHERE type = :type AND organisation_id = :organisationID ${companies.length > 0 ? ' AND representative_id IN (:company_id) ' : ''} GROUP BY rf_id) AS temp`
-                        break;
                     }
+                    break;
                 case 30:
                 case 31:
                 case 32:
