@@ -74,6 +74,7 @@ route.get("/ptab/:asset", [authJWT.verifyToken], async (req, res) => {
                                 name: document.documentName,
                                 status: document.documentCategory,
                                 title: document.documentTitleText,
+                                otherInfo: document
                             })
                         })
                     }
@@ -87,14 +88,41 @@ route.get("/ptab/:asset", [authJWT.verifyToken], async (req, res) => {
                 }
             })
         } else {
-            console.log('ERROR => /ptab/', error)
-            res.status(401).send('Asset number is empty')
+            console.log('ERROR => /ptab/')
+            res.status(401).send('Invalid inputs')
         }
     } catch (e) {
         console.log('ERROR => /ptab/', error)
         res.status(500).send('Error while rendering asset details')
     }    
 });
+
+route.get("/ptab/document/:identifier", [authJWT.verifyToken], async (req, res) => { 
+    try {
+        let {identifier} = req.params
+        if(identifier != null) {
+            const  urlDocuments = `https://developer.uspto.gov/ptab-api/documents/${identifier}/download`
+
+           
+            optionDocuments = {
+                method: 'GET',
+                uri: urlDocuments,
+                strictSSL: false
+            }
+/*202000274115163901Appeal2021-09-01-13:20:38*/
+            rp(optionDocuments)
+            .then( body => {
+                res.status(200).send(body)
+            })
+        } else {
+            console.log('ERROR => /ptab/', )
+            res.status(401).send('Invalid inputs')
+        }
+    } catch (e) {
+        console.log('ERROR => /ptab/', e)
+        res.status(500).send('Unable to retrieve document')
+    }
+})
 
 
 route.get("/citation/:asset", [authJWT.verifyToken], async (req, res) => { 
