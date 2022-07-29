@@ -4,6 +4,8 @@ const express = require("express"),
 
     moment = require('moment'),
 
+    rp = require('request-promise'),
+
     connection = require("../../config/db.config"),
 
     Address = require("../../model/client/Address"),
@@ -795,8 +797,8 @@ route.get("/:layout/assets", [authJWT.verifyToken, clientDBConnection.connect], 
                     logging: console.log,
                     replacements: replacements,
                 })
-
             }
+            res.status(200).json(assets);
         } else {
 
             replacements.layoutID = helpers.findLayout(req.params.layout);
@@ -813,146 +815,234 @@ route.get("/:layout/assets", [authJWT.verifyToken, clientDBConnection.connect], 
                 replacements.customers = customers
             }
 
-            if(replacements.layoutID != 15) {
-                query += ` WHERE date_format(assets.appno_date, '%Y') > :date AND assets.layout_id = 15 AND assets.organisation_id = :organisationID `
-
-                if(Array.isArray(companies) && companies.length > 0) {
-                    query += ` AND assets.company_id IN (:companies)`
-                }
-                if(replacements.layoutID == 30) {
-                    query += ` AND appno_doc_num IN (SELECT appno_doc_num FROM db_new_application.owned_assets WHERE organisation_id = :organisationID AND company_id IN (:companies) GROUP BY appno_doc_num) AND grant_doc_num <> ''`
-                } else if (replacements.layoutID == 38) {
-                    query += ` AND grant_doc_num IN (SELECT grant_doc_num FROM db_uspto.assets_family AS af WHERE grant_doc_num IN (
-                        SELECT grant_doc_num FROM db_uspto.documentid AS di WHERE appno_doc_num IN (
-                            SELECT appno_doc_num FROM db_new_application.owned_assets WHERE organisation_id = :organisationID AND company_id IN (:companies) GROUP BY appno_doc_num
-                        )
-                        GROUP BY grant_doc_num
-                    ) AND application_country NOT IN ('WO', 'US') GROUP BY grant_doc_num)`
-                } else {
-                    query += ` AND appno_doc_num IN (SELECT application FROM db_new_application.dashboard_items WHERE organisation_id = :organisationID AND representative_id IN (:companies) ${customers != '' && customers.length > 0 ? ' AND assignor_id IN (:customers) ' : '' } AND type = :layoutID GROUP BY application)`
-                }                
-            } else {                
-        
-                if(tabs && tabs != '') {
-                    tabs = JSON.parse( tabs )
-                    tabs = helpers.checkTabs(tabs)
-                    replacements.tabs = tabs
-                }
-        
-                if(assignments && assignments != '') {
-                    assignments = JSON.parse( assignments )
-                    replacements.assignments = assignments
-                }        
-                               
-                query += ` WHERE date_format(assets.appno_date, '%Y') > :date AND assets.layout_id = :layoutID AND assets.organisation_id = :organisationID `                
-        
-                if(Array.isArray(companies) && companies.length > 0) {
-                    query += ` AND assets.company_id IN (:companies)`
-                }
-        
-               
-                if((Array.isArray(assignments) && assignments.length > 0 ) || (Array.isArray(tabs) && tabs.length > 0) || (Array.isArray(customers) && customers.length > 0)) {
-                    query += ` AND assets.appno_doc_num IN ( SELECT documentid.appno_doc_num FROM db_uspto.documentid WHERE rf_id  IN ( SELECT activity_parties_transactions.rf_id  FROM db_new_application.activity_parties_transactions WHERE activity_parties_transactions.organisation_id = :organisationID  `
-    
-                    if(Array.isArray(companies) && companies.length > 0 ) {
-                        query += `  AND activity_parties_transactions.company_id IN (:companies) `
-                    }
-        
-                    if(Array.isArray(assignments) && assignments.length > 0 ) {
-                        query += ` AND activity_parties_transactions.rf_id IN (:assignments)`
-                    }
-                    if(replacements.layoutID == 15) {
-                        if(Array.isArray(tabs) && tabs.length > 0 ) {
-                            query += ` AND activity_parties_transactions.activity_id IN (:tabs)`
-                        } else {
-                            /**exclude employees */
-                            
-                            query += ' AND activity_parties_transactions.activity_id <> 10 ' 
-                        } 
-                    }
-        
-                    if(Array.isArray(customers) && customers.length > 0 ) {
-                        query += ` AND activity_parties_transactions.assignor_and_assignee_id IN (:customers)`
-                    }
-        
-                    query += ` GROUP BY activity_parties_transactions.rf_id ) GROUP BY documentid.appno_doc_num) `
-                } else   if(Array.isArray(tabs) && tabs.length === 0) {
-                    /**exclude employees */
-                    query += ` AND assets.appno_doc_num IN (  SELECT documentid.appno_doc_num FROM db_uspto.documentid WHERE rf_id  IN ( SELECT activity_parties_transactions.rf_id  FROM db_new_application.activity_parties_transactions WHERE activity_parties_transactions.organisation_id = :organisationID `
-                    
-                    if(Array.isArray(companies) && companies.length > 0 ) {
-                        query += `  AND activity_parties_transactions.company_id IN (:companies) `
-                    }
-                    if(replacements.layoutID == 15) {
-                        query += `  AND activity_parties_transactions.activity_id <> 10   `
-                    }        
-                    query += `  GROUP BY activity_parties_transactions.rf_id )  GROUP BY documentid.appno_doc_num) `        
-                }
-            }
-            
-            query += ` GROUP BY asset`;
-
-            const countReplace = ` CASE WHEN assets.grant_doc_num = '' OR assets.grant_doc_num IS NULL THEN assets.appno_doc_num ELSE assets.grant_doc_num END AS asset `
-    
-    
-            const countquery = `SELECT COUNT(*) as total_records FROM (${query.replace('STRING_COLUMNS', countReplace)}) AS temp`
-    
-           
-            const countResult = await connection.applicationNew.query(countquery,{
-                type: connection.Sequelize.QueryTypes.SELECT,
-                raw: true,
-                plain: true,
-                logging: console.log,
-                replacements: replacements,
-            })
-    
-            if(countResult !== null) {
-                assets.total_records = countResult.total_records
-            }
-    
-            if(assets.total_records > 0) {
-                if(typeof column === 'undefined' || column === 'undefined') {
-                    column = 'asset'
-                }
-                if(typeof direction === 'undefined' || direction === 'undefined') {
-                    direction = 'DESC'
-                }
-    
-                if(column == 'asset') {
-                    query += `   ORDER BY asset_type ASC, ABS(${column}) ${direction} `
-                } else {
-                    query += `   ORDER BY asset_type ASC, ${column} ${direction} `;
-                }
-
-                if(parseInt(limit) !== 0) {
-                    query += `  LIMIT :offset, :limit`;
-                }
-    
-    
-                
+            if(replacements.layoutID == 37) { 
                 /**
-                for future
-                    , (SELECT COUNT(fees.grant_doc_num) FROM ${process.env.DATABASE_MAINTAINENCE}.event_maintainence_fees AS fees WHERE fees.appno_doc_num = assets.appno_doc_num AND event_code IN (:expiredEvents)  ) AS expired 
+                 * Send api request for PTAB data
                  */
-    
-                const  queryColumnReplace = `assets.organisation_id,
-                CASE WHEN assets.grant_doc_num = '' OR assets.grant_doc_num IS NULL THEN CONCAT(SUBSTRING(assets.appno_doc_num, 1, 2), '/', FORMAT(SUBSTRING(assets.appno_doc_num, 3), 0)) ELSE FORMAT(assets.grant_doc_num, 0) END AS format_asset,
-                CASE WHEN assets.grant_doc_num = '' OR assets.grant_doc_num IS NULL THEN assets.appno_doc_num ELSE assets.grant_doc_num END AS asset, 
-                CASE WHEN assets.grant_doc_num = '' OR assets.grant_doc_num IS NULL THEN 1 ELSE 0 END AS asset_type, assets.appno_doc_num, assets.grant_doc_num, 0 AS child_count, '' AS channel `
-    
-                assets.list = await connection.applicationNew.query(query.replace('STRING_COLUMNS', queryColumnReplace),{
+                const getRepresentativeName = await helpers.findCompanyName(req.connection_db, replacements.companies)
+                if( getRepresentativeName != null) {
+
+                    const company = getRepresentativeName.get('representative_name')
+                    const url = `https://developer.uspto.gov/ptab-api/proceedings?patentOwnerName=%22${company.replace(/ /g,'%20')}%22`
+
+                    const firstRequest = url + `&recordTotalQuantity=1`
+                    //require('https').globalAgent.options.ca = require('ssl-root-cas').create();
+                    const option = {
+                        method: 'GET',
+                        uri: firstRequest,
+                        strictSSL: false
+                    }
+                    rp(option)
+                    .then( async body => {
+                        let responseBody = JSON.parse(body);
+                        console.log(responseBody)
+                        const {results, recordTotalQuantity} = responseBody
+                        const number = [], other_number = [];
+                        let listData = [];
+                        if(recordTotalQuantity != undefined && parseInt(recordTotalQuantity) > 0) {
+                            if( parseInt(recordTotalQuantity) > 1 ) {
+                                const secondRequest = url + `&recordTotalQuantity=${responseBody.recordTotalQuantity}`
+                                option.uri = secondRequest
+                                const body = await rp(option)
+                                responseBody = JSON.parse(body);
+                                    
+                                const {results} = responseBody
+                                const promises =  results.map(item => {
+                                    const {appellantApplicationNumberText, appellantPatentNumber} = item
+                                    if(appellantPatentNumber != undefined && !number.includes(appellantPatentNumber)) {
+                                        number.push(appellantPatentNumber)
+                                        listData.push(item)
+                                    } else if (appellantApplicationNumberText != undefined && !other_number.includes(appellantApplicationNumberText)) {
+                                        other_number.push(appellantApplicationNumberText)
+                                        listData.push(item)
+                                    }
+                                    return item
+                                })
+                                await Promise.all(promises)
+                            } else {
+                                listData = [...responseBody.results]
+                                const {appellantApplicationNumberText, appellantPatentNumber} = listData[0]
+                                if(appellantPatentNumber != undefined) {
+                                    number.push(appellantPatentNumber)
+                                }
+                                if(appellantApplicationNumberText != undefined) {
+                                    other_number.push(appellantApplicationNumberText)
+                                }
+                            }
+                            console.log('SERVERRRRR')
+                            query = `SELECT ${req.orgId} AS organisation_id, CASE WHEN assets.grant_doc_num = '' OR assets.grant_doc_num IS NULL THEN CONCAT(SUBSTRING(assets.appno_doc_num, 1, 2), '/', FORMAT(SUBSTRING(assets.appno_doc_num, 3), 0)) ELSE FORMAT(assets.grant_doc_num, 0) END AS format_asset,
+                            CASE WHEN assets.grant_doc_num = '' OR assets.grant_doc_num IS NULL THEN assets.appno_doc_num ELSE assets.grant_doc_num END AS asset, 
+                            CASE WHEN assets.grant_doc_num = '' OR assets.grant_doc_num IS NULL THEN 1 ELSE 0 END AS asset_type, assets.appno_doc_num, assets.grant_doc_num, 0 AS child_count, '' AS channel FROM db_uspto.documentid AS assets WHERE `;
+
+                            if(number.length > 0) {
+                                query +=` assets.grant_doc_num IN (:number)`
+                            }
+                            if(other_number.length > 0) {
+                                if(number.length > 0) {
+                                    query +=` OR `;
+                                }
+                                query +=` assets.appno_doc_num IN (:other_number)`
+                            }
+                            query +=` GROUP BY assets.appno_doc_num`;
+
+                            assets.list = await connection.applicationNew.query(query,{
+                                type: connection.Sequelize.QueryTypes.SELECT,
+                                raw: true,
+                                logging: console.log,
+                                replacements: {number, other_number},
+                            })
+                            assets.total_records = assets.list.length
+                            assets.other_data = listData
+                            res.status(200).json(assets);
+                        }
+                    })
+                } else {
+                    res.status(200).json(assets);
+                }
+            } else {
+
+                if(replacements.layoutID != 15) {
+                    query += ` WHERE date_format(assets.appno_date, '%Y') > :date AND assets.layout_id = 15 AND assets.organisation_id = :organisationID `
+
+                    if(Array.isArray(companies) && companies.length > 0) {
+                        query += ` AND assets.company_id IN (:companies)`
+                    }
+                    if(replacements.layoutID == 30) {
+                        query += ` AND appno_doc_num IN (SELECT appno_doc_num FROM db_new_application.owned_assets WHERE organisation_id = :organisationID AND company_id IN (:companies) GROUP BY appno_doc_num) AND grant_doc_num <> ''`
+                    } else if (replacements.layoutID == 38) {
+                        query += ` AND grant_doc_num IN (SELECT grant_doc_num FROM db_uspto.assets_family AS af WHERE grant_doc_num IN (
+                            SELECT grant_doc_num FROM db_uspto.documentid AS di WHERE appno_doc_num IN (
+                                SELECT appno_doc_num FROM db_new_application.owned_assets WHERE organisation_id = :organisationID AND company_id IN (:companies) GROUP BY appno_doc_num
+                            )
+                            GROUP BY grant_doc_num
+                        ) AND application_country NOT IN ('WO', 'US') GROUP BY grant_doc_num)`
+                    } else {
+                        query += ` AND appno_doc_num IN (SELECT application FROM db_new_application.dashboard_items WHERE organisation_id = :organisationID AND representative_id IN (:companies) ${customers != '' && customers.length > 0 ? ' AND assignor_id IN (:customers) ' : '' } AND type = :layoutID GROUP BY application)`
+                    }                
+                } else {                
+            
+                    if(tabs && tabs != '') {
+                        tabs = JSON.parse( tabs )
+                        tabs = helpers.checkTabs(tabs)
+                        replacements.tabs = tabs
+                    }
+            
+                    if(assignments && assignments != '') {
+                        assignments = JSON.parse( assignments )
+                        replacements.assignments = assignments
+                    }        
+                                
+                    query += ` WHERE date_format(assets.appno_date, '%Y') > :date AND assets.layout_id = :layoutID AND assets.organisation_id = :organisationID `                
+            
+                    if(Array.isArray(companies) && companies.length > 0) {
+                        query += ` AND assets.company_id IN (:companies)`
+                    }
+            
+                
+                    if((Array.isArray(assignments) && assignments.length > 0 ) || (Array.isArray(tabs) && tabs.length > 0) || (Array.isArray(customers) && customers.length > 0)) {
+                        query += ` AND assets.appno_doc_num IN ( SELECT documentid.appno_doc_num FROM db_uspto.documentid WHERE rf_id  IN ( SELECT activity_parties_transactions.rf_id  FROM db_new_application.activity_parties_transactions WHERE activity_parties_transactions.organisation_id = :organisationID  `
+        
+                        if(Array.isArray(companies) && companies.length > 0 ) {
+                            query += `  AND activity_parties_transactions.company_id IN (:companies) `
+                        }
+            
+                        if(Array.isArray(assignments) && assignments.length > 0 ) {
+                            query += ` AND activity_parties_transactions.rf_id IN (:assignments)`
+                        }
+                        if(replacements.layoutID == 15) {
+                            if(Array.isArray(tabs) && tabs.length > 0 ) {
+                                query += ` AND activity_parties_transactions.activity_id IN (:tabs)`
+                            } else {
+                                /**exclude employees */
+                                
+                                query += ' AND activity_parties_transactions.activity_id <> 10 ' 
+                            } 
+                        }
+            
+                        if(Array.isArray(customers) && customers.length > 0 ) {
+                            query += ` AND activity_parties_transactions.assignor_and_assignee_id IN (:customers)`
+                        }
+            
+                        query += ` GROUP BY activity_parties_transactions.rf_id ) GROUP BY documentid.appno_doc_num) `
+                    } else   if(Array.isArray(tabs) && tabs.length === 0) {
+                        /**exclude employees */
+                        query += ` AND assets.appno_doc_num IN (  SELECT documentid.appno_doc_num FROM db_uspto.documentid WHERE rf_id  IN ( SELECT activity_parties_transactions.rf_id  FROM db_new_application.activity_parties_transactions WHERE activity_parties_transactions.organisation_id = :organisationID `
+                        
+                        if(Array.isArray(companies) && companies.length > 0 ) {
+                            query += `  AND activity_parties_transactions.company_id IN (:companies) `
+                        }
+                        if(replacements.layoutID == 15) {
+                            query += `  AND activity_parties_transactions.activity_id <> 10   `
+                        }        
+                        query += `  GROUP BY activity_parties_transactions.rf_id )  GROUP BY documentid.appno_doc_num) `        
+                    }
+                }
+                
+                query += ` GROUP BY asset`;
+
+                const countReplace = ` CASE WHEN assets.grant_doc_num = '' OR assets.grant_doc_num IS NULL THEN assets.appno_doc_num ELSE assets.grant_doc_num END AS asset `
+        
+        
+                const countquery = `SELECT COUNT(*) as total_records FROM (${query.replace('STRING_COLUMNS', countReplace)}) AS temp`
+        
+            
+                const countResult = await connection.applicationNew.query(countquery,{
                     type: connection.Sequelize.QueryTypes.SELECT,
                     raw: true,
+                    plain: true,
                     logging: console.log,
                     replacements: replacements,
                 })
+        
+                if(countResult !== null) {
+                    assets.total_records = countResult.total_records
+                }
+        
+                if(assets.total_records > 0) {
+                    if(typeof column === 'undefined' || column === 'undefined') {
+                        column = 'asset'
+                    }
+                    if(typeof direction === 'undefined' || direction === 'undefined') {
+                        direction = 'DESC'
+                    }
+        
+                    if(column == 'asset') {
+                        query += `   ORDER BY asset_type ASC, ABS(${column}) ${direction} `
+                    } else {
+                        query += `   ORDER BY asset_type ASC, ${column} ${direction} `;
+                    }
+
+                    if(parseInt(limit) !== 0) {
+                        query += `  LIMIT :offset, :limit`;
+                    }
+        
+        
+                    
+                    /**
+                    for future
+                        , (SELECT COUNT(fees.grant_doc_num) FROM ${process.env.DATABASE_MAINTAINENCE}.event_maintainence_fees AS fees WHERE fees.appno_doc_num = assets.appno_doc_num AND event_code IN (:expiredEvents)  ) AS expired 
+                    */
+        
+                    const  queryColumnReplace = `assets.organisation_id,
+                    CASE WHEN assets.grant_doc_num = '' OR assets.grant_doc_num IS NULL THEN CONCAT(SUBSTRING(assets.appno_doc_num, 1, 2), '/', FORMAT(SUBSTRING(assets.appno_doc_num, 3), 0)) ELSE FORMAT(assets.grant_doc_num, 0) END AS format_asset,
+                    CASE WHEN assets.grant_doc_num = '' OR assets.grant_doc_num IS NULL THEN assets.appno_doc_num ELSE assets.grant_doc_num END AS asset, 
+                    CASE WHEN assets.grant_doc_num = '' OR assets.grant_doc_num IS NULL THEN 1 ELSE 0 END AS asset_type, assets.appno_doc_num, assets.grant_doc_num, 0 AS child_count, '' AS channel `
+        
+                    assets.list = await connection.applicationNew.query(query.replace('STRING_COLUMNS', queryColumnReplace),{
+                        type: connection.Sequelize.QueryTypes.SELECT,
+                        raw: true,
+                        logging: console.log,
+                        replacements: replacements,
+                    })
+                }
+                res.status(200).json(assets);
             }
         }
         
 
         
 
-        res.status(200).json(assets);
+        
         
         /* connection.applicationNew.query("CALL `routine_assets_count`(:companies, :organisationID, :tabs, :customers, :assignments, :layoutID);",{
                 type: connection.Sequelize.QueryTypes.SELECT,

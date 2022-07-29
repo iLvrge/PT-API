@@ -137,6 +137,8 @@ route.post('/collateral', [authJWT.verifyToken], async(req, res, next) => {
     }
 })
 
+
+
 route.post('/parties/assignor', [authJWT.verifyToken, clientDBConnection.connect], async(req, res, next) => {
     try {
         let {selectedCompanies} = req.body, getList = [];
@@ -146,13 +148,7 @@ route.post('/parties/assignor', [authJWT.verifyToken, clientDBConnection.connect
         /**
          * Find company name
          */
-        const Representative = req.connection_db.define('Representatives', Representatives.mainStructure, Representatives.options);
-        const getRepresentativeName = await Representative.findOne({
-            attributes: ['representative_name'],
-            where: {
-                representative_id: selectedCompanies
-            }
-        });
+        const getRepresentativeName = await helpers.findCompanyName(req.connection_db, selectedCompanies)
         if( getRepresentativeName != null) {
             //const list = await getOwnedAssets(req)
             /*if(list.length > 0) {*/
@@ -227,13 +223,8 @@ route.post('/parties', [authJWT.verifyToken, clientDBConnection.connect], async(
         /**
          * Find company name
          */
-        const Representative = req.connection_db.define('Representatives', Representatives.mainStructure, Representatives.options);
-        const getRepresentativeName = await Representative.findOne({
-            attributes: ['representative_name'],
-            where: {
-                representative_id: selectedCompanies
-            }
-        }); 
+       
+        const getRepresentativeName = await helpers.findCompanyName(req.connection_db, selectedCompanies)
 
         if( getRepresentativeName != null) {
             const query = `SELECT assignor_and_assignee_id AS id, name, assignee, SUM(app_count) as number FROM (SELECT aaa.assignor_and_assignee_id, aaa.representative_id, (CASE  WHEN apt.activity_id = 10 THEN "Employees" WHEN r.representative_name <> "" THEN r.representative_name ELSE aaa.name END) AS name, COUNT(DISTINCT appno_doc_num) AS app_count, "${getRepresentativeName.representative_name}" as assignee  FROM db_new_application.activity_parties_transactions AS apt
@@ -275,13 +266,7 @@ route.post("/timeline", [authJWT.verifyToken, clientDBConnection.connect], async
         /**
          * Find company name
          */
-        const Representative = req.connection_db.define('Representatives', Representatives.mainStructure, Representatives.options);
-        const getRepresentativeName = await Representative.findOne({
-            attributes: ['representative_name'],
-            where: {
-                representative_id: selectedCompanies
-            }
-        });
+         const getRepresentativeName = await helpers.findCompanyName(req.connection_db, selectedCompanies)
 
         if(getRepresentativeName !== null) {
             const findRepresentative = await RepresentativeResources.findOne({
@@ -575,11 +560,12 @@ route.post("/", [authJWT.verifyToken], async(req, res, next) => {
             })
             res.status(200).json(getData);
         } else if(parseInt(qType) === 37 && (typeof format_type == 'undefined' || format_type.toLowerCase() != 'bank')) {
+
+            
             
             const url = `https://developer.uspto.gov/ptab-api/proceedings?patentOwnerName=%22${company.replace(/ /g,'%20')}%22`
 
             const firstRequest = url + `&recordTotalQuantity=1`
-            console.log('send request to ', firstRequest)
             //require('https').globalAgent.options.ca = require('ssl-root-cas').create();
             const option = {
                 method: 'GET',

@@ -3387,7 +3387,22 @@ const checkTabs = (tabs) => {
     return tabs
 }
 
+const findCompanyName = async(DBConnection, selectedCompanies) => {
+    /**
+     * Find company name
+     */
+    const Representative = DBConnection.define('Representatives', ClientRepesentative.mainStructure, ClientRepesentative.options);
+    const getRepresentativeName = await Representative.findOne({
+         attributes: ['representative_name'],
+         where: {
+             representative_id: selectedCompanies
+         }
+    });
+    return getRepresentativeName;
+}
+
 const helper = {};
+helper.findCompanyName = findCompanyName
 helper.checkTabs = checkTabs;
 helper.findFilterAssets = findFilterAssets;
 helper.ArrayInterString = ArrayInterString;
