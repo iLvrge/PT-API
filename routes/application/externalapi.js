@@ -112,6 +112,7 @@ route.get("/ptab/document/:identifier", async (req, res) => {
 /*202000274115163901Appeal2021-09-01-13:20:38*/
             rp(optionDocuments)
             .then( body => {
+                res.setHeader('Content-Type', 'application/octet-stream');
                 res.status(200).send(body)
             })
         } else {
