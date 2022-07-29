@@ -97,7 +97,7 @@ route.get("/ptab/:asset", [authJWT.verifyToken], async (req, res) => {
     }    
 });
 
-route.get("/ptab/document/:identifier", async (req, res) => { 
+route.get("/ptab/document/:identifier", [authJWT.verifyToken], async (req, res) => { 
     try {
         let {identifier} = req.params
         if(identifier != null) {
@@ -107,15 +107,24 @@ route.get("/ptab/document/:identifier", async (req, res) => {
             optionDocuments = {
                 method: 'GET',
                 uri: urlDocuments,
+                accept: 'application/octet-stream',
                 strictSSL: false
             }
 /*202000274115163901Appeal2021-09-01-13:20:38*/
             rp(optionDocuments)
             .then( body => {
-                res.setHeader("content-type", "application/octet-stream");
-                res.set('Content-Type', 'application/octet-stream');
-                res.status(200).send(body)
+                res.set('Content-Type', 'application/octet-stream')
+                res.format({
+                    'application/octet-stream': function () {
+                        res.send(body)
+                    }
+                })
             })
+
+            
+
+
+
         } else {
             console.log('ERROR => /ptab/', )
             res.status(401).send('Invalid inputs')
