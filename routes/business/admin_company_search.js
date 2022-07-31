@@ -447,22 +447,25 @@ route.put("/company/search/all/", [authJWT.verifyToken, authJWT.isAdmin], async 
             let applicantAssignorAndAssigneeIDs = [];
             if(selected_rows != undefined) {
                 selected_rows = JSON.parse(selected_rows)
-            }
-            
-            if(selected_rows.length > 0) {
-                if(selected_rows[0].flag != undefined) {
-                    IDs = []
-                    selected_rows.forEach(row => {
-                        if(row.flag == 2) {
-                            applicantAssignorAndAssigneeIDs.push(row.id)
-                        } else {
-                            IDs.push(row.id)
-                        }
-                    })
-                } else {
-                    IDs = JSON.parse(IDs)
+                if(selected_rows.length > 0) {
+                    if(selected_rows[0].flag != undefined) {
+                        IDs = []
+                        selected_rows.forEach(row => {
+                            if(row.flag == 2) {
+                                applicantAssignorAndAssigneeIDs.push(row.id)
+                            } else {
+                                IDs.push(row.id)
+                            }
+                        })
+                    } 
                 }
             }
+
+            if(Array.isArray(IDs) === false ) {
+                IDs = JSON.parse(IDs)
+            }
+            
+            
             
             if(normalize_name != "") {
                 console.log("POST->ID", IDs);
@@ -1086,15 +1089,17 @@ route.get("/company/law_firms/:id", [authJWT.verifyToken, authJWT.isAdmin, authJ
 
             if(list.length > 0) {
                 const promises = list.map( r => {
-                    const dataJson = r.lawfirm.toJSON()
-                    let representativeID = null, representativeName = null
-                    if( dataJson.representativelawfirm != null ) {
-                        representativeID = dataJson.representativelawfirm.representative_id
-                        representativeName = dataJson.representativelawfirm.representative_name
+                    if(r.lawfirm != null) {
+                        const dataJson = r.lawfirm.toJSON()
+                        let representativeID = null, representativeName = null
+                        if( dataJson.representativelawfirm != null ) {
+                            representativeID = dataJson.representativelawfirm.representative_id
+                            representativeName = dataJson.representativelawfirm.representative_name
+                        }
+                        dataJson.representative_id =  representativeID
+                        dataJson.representative_name =  representativeName
+                        findAllLawFirms.push(dataJson);
                     }
-                    dataJson.representative_id =  representativeID
-                    dataJson.representative_name =  representativeName
-                    findAllLawFirms.push(dataJson);
                     return r;
                 });
 

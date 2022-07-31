@@ -1,5 +1,7 @@
 const express = require("express"),
 
+    request = require('request'),
+
     rp = require('request-promise'),
 
     route = express.Router(),
@@ -18,51 +20,120 @@ const { v4: uuidv4  } = require('uuid');
 
 route.get("/ptab/:asset", [authJWT.verifyToken], async (req, res) => { 
     try {
-        const {asset} = req.params
+        let {asset} = req.params
         const {counter} = req.query;  
         if(typeof asset !== 'undefined' && asset !== '' && asset !== null) {
-            const url = `https://developer.uspto.gov/ptab-api/proceedings?applicationNumberText=${asset}`
+            if(asset.toLowerCase().indexOf('us') !== -1){
+                asset = asset.substr(2, asset.length)
+            }
+            const urlProceedings = `https://developer.uspto.gov/ptab-api/proceedings?applicationNumberText=${asset}`,
+                  urlDocuments = `https://developer.uspto.gov/ptab-api/documents?applicationNumberText=${asset}`
 
            
-            const option = {
+            const optionProceedings = {
                 method: 'GET',
-                uri: firstRequest,
+                uri: urlProceedings,
                 strictSSL: false
-             }
-
-            rp(option)
-            .then( body => {
-                let responseBody = JSON.parse(body);
-                console.log(responseBody)
-                const {results, recordTotalQuantity} = responseBody
-                const ptabEvents = []
-                if(results.length > 0) {
-                    results.forEach( item => {
-                        ptabEvents.push({
-                            id: uuidv4(),
-                            start: item.proceedingFilingDate + ' 00:00:00',
-                            end: item.decisionDate + ' 00:00:00',
-                            name: item.respondentPartyName,
-                            status: item.proceedingStatusCategory,
-                            otherInfo: item
+            },
+            optionDocuments = {
+                method: 'GET',
+                uri: urlDocuments,
+                strictSSL: false
+            }
+            const events = [], documents = []
+            Promise.all([
+                rp(optionProceedings)
+                .then( body => {
+                    let responseBody = JSON.parse(body);
+                    console.log(responseBody)
+                    const {results, recordTotalQuantity} = responseBody
+                    if(results.length > 0) {
+                        results.forEach( item => {
+                            events.push({
+                                id: uuidv4(),
+                                start: item.proceedingFilingDate + ' 00:00:00',
+                                end: item.proceedingLastModifiedDate + ' 00:00:00',
+                                name: `${item.respondentPartyName} / ${item.appellantPartyName}`,
+                                status: item.proceedingStatusCategory,
+                                otherInfo: item
+                            })
                         })
-                    })
-                }
+                    }
+                }),
+                rp(optionDocuments)
+                .then( body => {
+                    let responseBody = JSON.parse(body);
+                    console.log(responseBody)
+                    const {results, recordTotalQuantity} = responseBody
+                    if(results.length > 0) {
+                        results.forEach( document => {
+                            documents.push({
+                                id: uuidv4(),
+                                identifier: document.documentIdentifier,
+                                start: document.documentFilingDate,
+                                name: document.documentName,
+                                status: document.documentCategory,
+                                title: document.documentTitleText,
+                                otherInfo: document
+                            })
+                        })
+                    }
+                })
+            ]).then( requestComplete => {
+                console.log(requestComplete)
                 if(typeof counter !== 'undefined') {
-                    res.status(200).send(`${ptabEvents.length}`);
+                    res.status(200).send(`${events.length}`);
                 } else {
-                    res.status(200).json(ptabEvents);
+                    res.status(200).json([...events, ...documents]);
                 }
             })
         } else {
-            console.log('ERROR => /ptab/', error)
-            res.status(401).send('Asset number is empty')
+            console.log('ERROR => /ptab/')
+            res.status(401).send('Invalid inputs')
         }
     } catch (e) {
         console.log('ERROR => /ptab/', error)
         res.status(500).send('Error while rendering asset details')
     }    
 });
+
+route.get("/ptab/document/:identifier",  async (req, res) => { 
+    try {
+        let {identifier} = req.params
+        if(identifier != null) {
+            const  urlDocuments = `https://developer.uspto.gov/ptab-api/documents/${identifier}/download`
+
+           
+            optionDocuments = {
+                method: 'GET',
+                uri: urlDocuments,
+                accept: 'application/octet-stream',
+                strictSSL: false
+            }
+/*202000274115163901Appeal2021-09-01-13:20:38*/
+            rp(optionDocuments)
+            .then( body => {
+                res.set('Content-Type', 'application/octet-stream')
+                res.format({
+                    'application/octet-stream': function () {
+                        res.send(body)
+                    }
+                })
+            })
+
+            
+
+
+
+        } else {
+            console.log('ERROR => /ptab/', )
+            res.status(401).send('Invalid inputs')
+        }
+    } catch (e) {
+        console.log('ERROR => /ptab/', e)
+        res.status(500).send('Unable to retrieve document')
+    }
+})
 
 
 route.get("/citation/:asset", [authJWT.verifyToken], async (req, res) => { 
@@ -72,8 +143,9 @@ route.get("/citation/:asset", [authJWT.verifyToken], async (req, res) => {
         if(typeof asset !== 'undefined' && asset !== '' && asset !== null) {
             const queryString = ``
             const url = `https://api.patentsview.org/patents/query?q={"cited_patent_number":"${asset}"}&f=["patent_number","patent_date","patent_num_combined_citations","patent_title","assignee_organization"]`
-
+            console.log(url)
             request(url, async(error, response, body) => {
+                console.log(error)
                 if (!error && response.statusCode == 200) {
                     const responseBody = JSON.parse(body)
                     const citationEvents = []
@@ -134,7 +206,7 @@ route.get("/citation/:asset", [authJWT.verifyToken], async (req, res) => {
             res.status(401).send('Asset number is empty')
         }   
     } catch (e) {
-        console.log('ERROR => /citation/', error)
+        console.log('ERROR => /citation/', e)
         res.status(500).send('Error while rendering asset details')
     } 
 });
