@@ -58,6 +58,7 @@ const List2 = require('../../model/resources/List2');
 
 const SheetsHelper = require('../../helpers/sheets');
 const ClientAddCompany = require("../../model/application/ClientAddCompany");
+const e = require("express");
 
 
 const oauth2Client = new google.auth.OAuth2(
@@ -440,7 +441,6 @@ let allRepresentativesFirmCheckAndDelete = async (allRepresentatives) => {
  */
 route.put("/company/search/all/", [authJWT.verifyToken, authJWT.isAdmin], async (req, res, next) => {
     try {
-
         let {normalize_name, IDs, selected_rows}  = req.body ;
         const otherIDs = [];
         if(IDs.length > 0 || selected_rows != undefined) {
@@ -468,7 +468,7 @@ route.put("/company/search/all/", [authJWT.verifyToken, authJWT.isAdmin], async 
             
             
             if(normalize_name != "") {
-                console.log("POST->ID", IDs);
+                console.log("POST->ID11", IDs, applicantAssignorAndAssigneeIDs);
                 
                 
                 /**
@@ -476,7 +476,7 @@ route.put("/company/search/all/", [authJWT.verifyToken, authJWT.isAdmin], async 
                 */
                 let  representativeCompany = await helpers.checkRepresentativeCompany(normalize_name); 
 
-                console.log("representativeCompany", representativeCompany)
+                console.log("find representativeCompany", representativeCompany)
 
                 let allRepresentatives = []; 
                 if(IDs.length > 0) {
@@ -551,6 +551,13 @@ route.put("/company/search/all/", [authJWT.verifyToken, authJWT.isAdmin], async 
                         }
                         console.log("Update old representatives", otherIDs)                    
                     }
+                } else {
+                    if(representativeCompany == null) {
+                        //NO
+                        representativeCompany = await Representatives.create({
+                            representative_name: normalize_name
+                        });
+                    }
                 }
                 
                
@@ -570,6 +577,8 @@ route.put("/company/search/all/", [authJWT.verifyToken, authJWT.isAdmin], async 
                     await AssignorAndAssignee.update(item, {where: {name: normalize_name}}); 
 
 
+                } else if(applicantAssignorAndAssigneeIDs.length > 0) {
+                    await AssignorAndAssignee.update(item, {where: {name: normalize_name}}); 
                 }
 
                 // Check Applicant Assignees
@@ -664,6 +673,20 @@ route.put("/company/search/all/", [authJWT.verifyToken, authJWT.isAdmin], async 
                     }
                 );
     
+            } else {
+                let queryCompany = `SELECT a.assignor_and_assignee_id as id, a.assignor_and_assignee_id, a.name, a.instances as counter, c.representative_name as normalize_name, (select rr.representative_name FROM representative as rr WHERE rr.representative_name = a.name GROUP BY rr.representative_name) as representative_company, (SELECT concat(ass.reel_no,'-', ass.frame_no) FROM assignee as ee INNER JOIN assignment as ass ON ass.rf_id = ee.rf_id WHERE ee.assignor_and_assignee_id = a.assignor_and_assignee_id LIMIT 1) as assigneeRFID, (SELECT concat(asss.reel_no,'-', asss.frame_no) FROM assignor as assi INNER JOIN assignment as asss ON asss.rf_id = assi.rf_id WHERE assi.assignor_and_assignee_id = a.assignor_and_assignee_id LIMIT 1) as assignorRFID, '1' AS flag FROM assignor_and_assignee as a LEFT JOIN representative as c ON c.representative_id = a.representative_id WHERE a.name = :normalizeName `;
+
+                const replacements = {normalizeName:  normalize_name}
+    
+                
+    
+                list = await connection.resources.query(queryCompany,{
+                    type: connection.Sequelize.QueryTypes.SELECT,
+                    raw: true,
+                    replacements: replacements,
+                    logging: console.log,
+                    }
+                );
             }
             
             
