@@ -3156,6 +3156,9 @@ const findLayout = (layout) => {
         case 'restore_ownership':
             layoutID = 1
             break
+        case 'pay_maintainence_fee':
+            layoutID = 3
+            break;
         case 'clear_encumbrances':
             layoutID = 18
             break
