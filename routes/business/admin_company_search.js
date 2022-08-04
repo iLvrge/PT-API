@@ -106,7 +106,7 @@ route.put("/company/request", [authJWT.verifyToken, authJWT.isAdmin], async(req,
                     status: 1,
                     representative_id
                 }, {
-                    company_id: JSON.stringify(company_ids)
+                    where: {company_id}
                 })
                 res.status(200).json(update)
             } else {
