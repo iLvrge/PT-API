@@ -106,7 +106,7 @@ route.put("/company/request", [authJWT.verifyToken, authJWT.isAdmin], async(req,
                     status: 1,
                     representative_id
                 }, {
-                    company_id: JSON.stringify(company_ids)
+                    where: {company_id}
                 })
                 res.status(200).json(update)
             } else {
@@ -206,10 +206,14 @@ route.get("/company/:ID/search/address/:type", [authJWT.verifyToken, authJWT.isA
     try {
         let companyAddress = [];
         const {ID, type} = req.params;	
-
+        const  { flag } = req.query;
         if(ID != null && ID != undefined && ID.length > 0) {   
-            console.log(ID, type)         
-            companyAddress  = await helpers.getAddressListByCompanyID(ID, type);
+            console.log(ID, type)    
+            if(flag == '2') {
+                companyAddress  = await helpers.getAddressListByApplicantID(ID);
+            } else {
+                companyAddress  = await helpers.getAddressListByCompanyID(ID, type);
+            }  
         }
         res.status(200).json(companyAddress);           
     } catch(e) {

@@ -607,6 +607,66 @@ let getAddressWithTransactionsListByCompanyID = async( ID, type ) => {
     return {list: addresses, latestTransaction };
 }
 
+let getAddressListByApplicantID = async( ID ) => {
+    let addresses = [];
+    if(ID > 0) {
+        const query = `SELECT representative_id, name FROM db_patent_application_bibliographic.assignor_and_assignee WHERE assignor_and_assignee_id = :ID`
+
+        const representative = await connection.resources.query(query,{
+            type: connection.Sequelize.QueryTypes.SELECT,
+            raw: true,
+            replacements: { ID },
+            logging: console.log,
+            plain: true
+        });
+        const replacements = { ID: ID};
+        if(representative !== null && representative.representative_id > 0) {
+            const representativeNameQuery =  `SELECT representative_id FROM db_patent_application_bibliographic.representative WHERE representative_name = :name`;
+            const representativeName = await connection.resources.query(representativeNameQuery,{
+                type: connection.Sequelize.QueryTypes.SELECT,
+                raw: true,
+                replacements: { name: representative.name },
+                logging: console.log,
+                plain: true
+              }
+            );
+            if(representativeName !== null && representativeName.representative_id > 0) {
+                replacements.representativeID = representativeName.representative_id
+                representativeQuery = `SELECT assignor_and_assignee.assignor_and_assignee_id FROM db_patent_application_bibliographic.assignor_and_assignee WHERE
+                assignor_and_assignee.representative_id = :representativeID GROUP BY assignor_and_assignee.assignor_and_assignee_id`
+            } else {
+                representativeQuery = `:ID`
+            }
+        } else {
+            representativeQuery = `:ID`
+        }
+        let queryFindIDS = `SELECT address, appno_doc_num FROM (
+                SELECT address_1 as address, appno_doc_num FROM db_patent_application_bibliographic.applicant 
+                WHERE  address_1 <> '' AND assignor_and_assignee_id IN (${representativeQuery})  GROUP BY address_1
+            UNION 
+                SELECT address_2 as address, appno_doc_num FROM db_patent_application_bibliographic.applicant 
+                WHERE address_2 <> '' AND assignor_and_assignee_id  IN (${representativeQuery}) 
+                GROUP BY address_2
+            UNION
+                SELECT address_1 as address, appno_doc_num FROM db_patent_grant_bibliographic.applicant 
+                WHERE  address_1 <> '' AND assignor_and_assignee_id IN (${representativeQuery})  GROUP BY address_1
+            UNION 
+                SELECT address_2 as address, appno_doc_num FROM db_patent_grant_bibliographic.applicant 
+                WHERE address_2 <> '' AND assignor_and_assignee_id  IN (${representativeQuery}) 
+                GROUP BY address_2
+        ) as temp GROUP BY address  ORDER BY address ASC`;
+
+        addresses = await connection.resources.query(queryFindIDS,{
+            type: connection.Sequelize.QueryTypes.SELECT,
+            raw: true,
+            replacements: replacements,
+            logging: console.log,
+            }
+        );
+    }
+    return addresses
+}
+
 let getAddressListByCompanyID = async( ID, type ) => {
     let addresses = [];
     if(ID > 0) {
@@ -3156,6 +3216,9 @@ const findLayout = (layout) => {
         case 'restore_ownership':
             layoutID = 1
             break
+        case 'pay_maintainence_fee':
+            layoutID = 3
+            break;
         case 'clear_encumbrances':
             layoutID = 18
             break
@@ -3427,6 +3490,7 @@ helper.searchCompanyByCountry = searchCompanyByCountry;
 helper.searchCompanyIDByAddress = searchCompanyIDByAddress;
 helper.searchLawfirmIDByAddress = searchLawfirmIDByAddress;
 helper.getAddressListByCompanyID = getAddressListByCompanyID;
+helper.getAddressListByApplicantID = getAddressListByApplicantID;
 helper.getAddressWithTransactionsListByCompanyID = getAddressWithTransactionsListByCompanyID;
 helper.getAddressDataFromLastTransaction = getAddressDataFromLastTransaction;
 helper.getAddressListByLawfirmID = getAddressListByLawfirmID;
