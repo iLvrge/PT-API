@@ -957,7 +957,9 @@ route.get("/company/law_firms", [authJWT.verifyToken, authJWT.isAdmin], async (r
         });
         */
 
-        const query = `SELECT law_firm_id, name, (SELECT COUNT(assignment.rf_id) FROM db_uspto.assignment AS assignment WHERE assignment.law_firm_id = law_firms.law_firm_id) AS counter, (SELECT SUM(instances) FROM db_uspto.law_firm WHERE representative_id = representative_law_firm.representative_id AND representative_law_firm.representative_id IS NOT NULL) AS total_occurences, representative_law_firm.representative_id, representative_law_firm.representative_name FROM db_uspto.law_firm AS law_firms LEFT JOIN db_uspto.representative_law_firm AS representative_law_firm ON representative_law_firm.representative_id =  law_firms.representative_id WHERE MATCH(name) AGAINST(:search IN BOOLEAN MODE)`
+        /* const query = `SELECT law_firm_id, name, (SELECT COUNT(assignment.rf_id) FROM db_uspto.assignment AS assignment WHERE assignment.law_firm_id = law_firms.law_firm_id) AS counter, (SELECT SUM(instances) FROM db_uspto.law_firm WHERE representative_id = representative_law_firm.representative_id AND representative_law_firm.representative_id IS NOT NULL) AS total_occurences, representative_law_firm.representative_id, representative_law_firm.representative_name FROM db_uspto.law_firm AS law_firms LEFT JOIN db_uspto.representative_law_firm AS representative_law_firm ON representative_law_firm.representative_id =  law_firms.representative_id WHERE MATCH(name) AGAINST(:search IN BOOLEAN MODE)` */
+
+        const query = `SELECT law_firm_id, name, instances AS counter, (SELECT SUM(instances) FROM db_uspto.law_firm WHERE representative_id = representative_law_firm.representative_id AND representative_law_firm.representative_id IS NOT NULL) AS total_occurences, representative_law_firm.representative_id, representative_law_firm.representative_name FROM db_uspto.law_firm AS law_firms LEFT JOIN db_uspto.representative_law_firm AS representative_law_firm ON representative_law_firm.representative_id =  law_firms.representative_id WHERE MATCH(name) AGAINST(:search IN BOOLEAN MODE)`
 
         const findAllLawFirms = await connection.resources.query(query,{
             type: connection.Sequelize.QueryTypes.SELECT,
@@ -1244,6 +1246,26 @@ route.put("/company/law_firms", [authJWT.verifyToken, authJWT.isAdmin], async (r
                 // Associate the Rep with Rep
                 await LawFirms.update(item, {where: {name: normalize_name}}); 
 
+                /**
+                 * If laywer column has LawFirm name normalize those rows as well
+                 */
+                if(replaceNames.length > 0) {
+                    const findRows = await Assignments.findAll({
+                        attributes: ['law_firm_id'],
+                        where: {cname: replaceNames},
+                        group: ['law_firm_id']
+                    })
+    
+                    if(findRows.length > 0) {
+                        const otherLawFirmIDs = []
+                        findRows.forEach( row => {
+                            otherLawFirmIDs.push(row.law_firm_id)
+                        })
+                        await LawFirms.update(item, {where: {law_firm_id: otherLawFirmIDs}}); 
+                    }
+                }
+                
+
                 // Delete other rep
                 if(allRepresentatives > 0) {
                     console.log("allRepresentatives1", allRepresentatives)
@@ -1289,6 +1311,22 @@ route.put("/company/law_firms", [authJWT.verifyToken, authJWT.isAdmin], async (r
                         }
                     }
                     await LawFirms.update({representative_id: 0}, {where: {law_firm_id: IDs}});
+
+                    if(replaceNames.length > 0) {
+                        const findRows = await Assignments.findAll({
+                            attributes: ['law_firm_id'],
+                            where: {cname: replaceNames},
+                            group: ['law_firm_id']
+                        })
+        
+                        if(findRows.length > 0) {
+                            const otherLawFirmIDs = []
+                            findRows.forEach( row => {
+                                otherLawFirmIDs.push(row.law_firm_id)
+                            })
+                            await LawFirms.update(item, {where: {law_firm_id: otherLawFirmIDs}}); 
+                        }
+                    }
 
                     if(allRepresentatives > 0) {
                         await allRepresentativesFirmCheckAndDelete(allRepresentatives);
