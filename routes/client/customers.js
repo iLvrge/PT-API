@@ -817,17 +817,17 @@ route.get("/:layout/assets", [authJWT.verifyToken, clientDBConnection.connect], 
 
             if(replacements.layoutID == 3) { 
                 /**Maintainence */
-                const query = "SELECT asset, asset_type, channel, appno_doc_num, grant_doc_num, grant_date, date_format(payment_due, '%b %d, %Y') AS payment_due, date_format(payment_grace, '%b %d, %Y') AS payment_grace, type, fee_code, fee_amount, fee_code_surcharge, fee_surcharge, remaining_year, source, fwd_citation, technology, child_count FROM maintainence_assets WHERE company_id IN (:representativeIDs) AND organisation_id = :organisationID AND ((payment_due BETWEEN :dueDate AND :graceDate) OR payment_grace <= :dueDate )AND appno_doc_num NOT IN (SELECT appno_doc_num FROM db_application.assets_transfer WHERE appno_doc_num <> '' AND status = 0 AND layout_id = :layoutID AND organisation_id = :organisationID) AND grant_doc_num NOT IN (SELECT grant_doc_num FROM db_application.assets_transfer WHERE appno_doc_num = '' AND grant_doc_num <> '' AND status = 0 AND layout_id = :layoutID AND organisation_id = :organisationID) GROUP BY grant_doc_num, appno_doc_num, company_id";
+                const query = "SELECT asset, asset_type, channel, appno_doc_num, grant_doc_num, grant_date, date_format(payment_due, '%b %d, %Y') AS payment_due, date_format(payment_grace, '%b %d, %Y') AS payment_grace, type, fee_code, fee_amount, fee_code_surcharge, fee_surcharge, remaining_year, source, fwd_citation, technology, child_count FROM maintainence_assets WHERE company_id IN (:representativeIDs) AND organisation_id = :organisationID AND ((payment_due BETWEEN :dueDate AND :graceDate) OR (payment_grace BETWEEN :expireDate AND :dueDate) )AND appno_doc_num NOT IN (SELECT appno_doc_num FROM db_application.assets_transfer WHERE appno_doc_num <> '' AND status = 0 AND layout_id = :layoutID AND organisation_id = :organisationID) AND grant_doc_num NOT IN (SELECT grant_doc_num FROM db_application.assets_transfer WHERE appno_doc_num = '' AND grant_doc_num <> '' AND status = 0 AND layout_id = :layoutID AND organisation_id = :organisationID) GROUP BY grant_doc_num, appno_doc_num, company_id";
                 const FORMAT = 'YYYY-MM-DD'
                 let currentDate = new Date()
-                const graceDate = moment(currentDate).add(3, 'months').format(FORMAT)
+                const graceDate = moment(currentDate).add(6, 'months').format(FORMAT)
+                const expireDate = moment(currentDate).subtract(6, 'months').format(FORMAT)
                 assets.list = await connection.applicationNew.query(query,{
-                        type: connection.Sequelize.QueryTypes.SELECT,
-                        raw: true,
-                        logging: console.log,
-                        replacements: { representativeIDs: companies, organisationID: req.orgId, layoutID: 3, dueDate: moment(currentDate).format(FORMAT), graceDate},
-                    }
-                );
+                    type: connection.Sequelize.QueryTypes.SELECT,
+                    raw: true,
+                    logging: console.log,
+                    replacements: { representativeIDs: companies, organisationID: req.orgId, layoutID: 3, dueDate: moment(currentDate).format(FORMAT), graceDate, expireDate},
+                });
                 assets.total_records = assets.list.length;
                 res.status(200).json(assets);
             } else if(replacements.layoutID == 37) { 

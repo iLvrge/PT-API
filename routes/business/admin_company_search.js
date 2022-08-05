@@ -545,6 +545,25 @@ route.put("/company/search/all/", [authJWT.verifyToken, authJWT.isAdmin], async 
                             allRepresentatives = [...allRepresentatives, ...otherIDs]
                             console.log("allRepresentatives", allRepresentatives)
                         }
+
+                        const findApplicantOldRows = await ApplicantAssignorAndAssignee.findAll({
+                            attributes:['assignor_and_assignee_id'],
+                            where: {
+                                [connection.Op.or]: [
+                                {representative_id: otherIDs},
+                                {name: replaceNames}
+                            ]}
+                        })
+
+                        if(findApplicantOldRows.length > 0) {
+                            console.log("findApplicantOldRowsIDs", applicantAssignorAndAssigneeIDs)
+                            const promiseApplicantR = findApplicantOldRows.map(row => applicantAssignorAndAssigneeIDs.push(row.assignor_and_assignee_id))
+                            await Promise.all(promiseApplicantR)
+                            console.log("findOldRowsIDs1", applicantAssignorAndAssigneeIDs)
+                            
+                        }
+
+
                     } else {
                         //NO
                         if(representativeCompany == null) {
@@ -579,6 +598,7 @@ route.put("/company/search/all/", [authJWT.verifyToken, authJWT.isAdmin], async 
     
                     // Associate the Rep with Rep
                     await AssignorAndAssignee.update(item, {where: {name: normalize_name}}); 
+                    
 
 
                 } else if(applicantAssignorAndAssigneeIDs.length > 0) {
@@ -589,7 +609,8 @@ route.put("/company/search/all/", [authJWT.verifyToken, authJWT.isAdmin], async 
 
                 if(applicantAssignorAndAssigneeIDs.length > 0) {
                     await ApplicantAssignorAndAssignee.update(item, {where: {assignor_and_assignee_id: applicantAssignorAndAssigneeIDs}}); 
-                }
+                } 
+                await ApplicantAssignorAndAssignee.update(item, {where: {name: normalize_name}});
                 
                 // Delete other rep
                 if(allRepresentatives.length > 0) {
@@ -695,25 +716,28 @@ route.put("/company/search/all/", [authJWT.verifyToken, authJWT.isAdmin], async 
             
             
 
+            // Get all list including normalize company and other names
+            let queryApplicant = `SELECT a.assignor_and_assignee_id as id, a.assignor_and_assignee_id, a.name, a.instances as counter, c.representative_name as normalize_name, (SELECT rr.representative_name FROM representative as rr WHERE rr.representative_name = a.name GROUP BY rr.representative_name) as representative_company, (SELECT appno_doc_num FROM db_patent_application_bibliographic.applicant WHERE name = a.name LIMIT 1) as assigneeRFID, (SELECT appno_doc_num FROM db_patent_grant_bibliographic.applicant WHERE name = a.name LIMIT 1) as assignorRFID, '2' AS flag FROM db_patent_application_bibliographic.assignor_and_assignee as a LEFT JOIN db_uspto.representative as c ON c.representative_id = a.representative_id WHERE  a.name = :normalizeName `;
+
+            const replacement = {normalizeName:  normalize_name }
+
             if(applicantAssignorAndAssigneeIDs.length > 0) {
-                // Get all list including normalize company and other names
-                let queryApplicant = `SELECT a.assignor_and_assignee_id as id, a.assignor_and_assignee_id, a.name, a.instances as counter, c.representative_name as normalize_name, (SELECT rr.representative_name FROM representative as rr WHERE rr.representative_name = a.name GROUP BY rr.representative_name) as representative_company, (SELECT appno_doc_num FROM db_patent_application_bibliographic.applicant WHERE name = a.name LIMIT 1) as assigneeRFID, (SELECT appno_doc_num FROM db_patent_grant_bibliographic.applicant WHERE name = a.name LIMIT 1) as assignorRFID, '2' AS flag FROM db_patent_application_bibliographic.assignor_and_assignee as a LEFT JOIN db_uspto.representative as c ON c.representative_id = a.representative_id WHERE a.assignor_and_assignee_id IN (:applicantAssignorAndAssigneeIDs) OR a.name = :normalizeName `;
-
-                const replacement = {normalizeName:  normalize_name, applicantAssignorAndAssigneeIDs}
-
-                if(otherIDs.length > 0) {
-                    replacement.representative_id = otherIDs
-                    queryCompany += ` OR a.representative_id IN (:representative_id)`
-                }
-
-                applicantList = await connection.resources.query(queryApplicant,{
-                    type: connection.Sequelize.QueryTypes.SELECT,
-                    raw: true,
-                    replacements: replacement,
-                    logging: console.log,
-                    }
-                );
+                replacement.applicantAssignorAndAssigneeIDs = applicantAssignorAndAssigneeIDs
+                queryCompany += ` OR a.assignor_and_assignee_id IN (:applicantAssignorAndAssigneeIDs) `
             }
+
+            if(otherIDs.length > 0) {
+                replacement.representative_id = otherIDs
+                queryCompany += ` OR a.representative_id IN (:representative_id)`
+            }
+
+            applicantList = await connection.resources.query(queryApplicant,{
+                type: connection.Sequelize.QueryTypes.SELECT,
+                raw: true,
+                replacements: replacement,
+                logging: console.log,
+                }
+            );
             
 
             res.status(200).json([...list, ...applicantList]);
