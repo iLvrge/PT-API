@@ -821,7 +821,7 @@ route.get("/:layout/assets", [authJWT.verifyToken, clientDBConnection.connect], 
                 const FORMAT = 'YYYY-MM-DD'
                 let currentDate = new Date()
                 const graceDate = moment(currentDate).add(6, 'months').format(FORMAT)
-                const expireDate = moment(currentDate).substract(6, 'months').format(FORMAT)
+                const expireDate = moment(currentDate).subtract(6, 'months').format(FORMAT)
                 assets.list = await connection.applicationNew.query(query,{
                     type: connection.Sequelize.QueryTypes.SELECT,
                     raw: true,
