@@ -446,7 +446,7 @@ let allRepresentativesFirmCheckAndDelete = async (allRepresentatives) => {
 route.put("/company/search/all/", [authJWT.verifyToken, authJWT.isAdmin], async (req, res, next) => {
     try {
         let {normalize_name, IDs, selected_rows}  = req.body ;
-        const otherIDs = [];
+        const otherIDs = [], otherNames = [];
         if(IDs.length > 0 || selected_rows != undefined) {
             let applicantAssignorAndAssigneeIDs = [];
             if(selected_rows != undefined) {
@@ -457,6 +457,14 @@ route.put("/company/search/all/", [authJWT.verifyToken, authJWT.isAdmin], async 
                         selected_rows.forEach(row => {
                             if(row.flag == 2) {
                                 applicantAssignorAndAssigneeIDs.push(row.id)
+                                otherNames.push(row.name)
+                                if(row.normalize_name != '') {
+                                    otherNames.push(row.normalize_name)
+                                }
+
+                                if(row.representative_company != '') {
+                                    otherNames.push(row.representative_company)
+                                }
                             } else {
                                 IDs.push(row.id)
                             }
@@ -584,7 +592,16 @@ route.put("/company/search/all/", [authJWT.verifyToken, authJWT.isAdmin], async 
                 }
                 
                
-
+                if(IDs.length == 0 && otherNames.length > 0 ) {
+                    const findOldRows = await AssignorAndAssignee.findAll({
+                        attributes:['assignor_and_assignee_id'],
+                        where: {
+                            name: otherNames
+                        }
+                    })
+                    const promiseR = findOldRows.map(row => IDs.push(row.assignor_and_assignee_id))
+                    await Promise.all(promiseR)
+                }
                  
               
                 console.log("RepresentativeID->", representativeCompany.representative_id)
@@ -723,12 +740,12 @@ route.put("/company/search/all/", [authJWT.verifyToken, authJWT.isAdmin], async 
 
             if(applicantAssignorAndAssigneeIDs.length > 0) {
                 replacement.applicantAssignorAndAssigneeIDs = applicantAssignorAndAssigneeIDs
-                queryCompany += ` OR a.assignor_and_assignee_id IN (:applicantAssignorAndAssigneeIDs) `
+                queryApplicant += ` OR a.assignor_and_assignee_id IN (:applicantAssignorAndAssigneeIDs) `
             }
 
             if(otherIDs.length > 0) {
                 replacement.representative_id = otherIDs
-                queryCompany += ` OR a.representative_id IN (:representative_id)`
+                queryApplicant += ` OR a.representative_id IN (:representative_id)`
             }
 
             applicantList = await connection.resources.query(queryApplicant,{
