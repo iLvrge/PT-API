@@ -1316,15 +1316,15 @@ route.put("/company/law_firms", [authJWT.verifyToken, authJWT.isAdmin], async (r
                     }
                     let queryWithCnames = "SELECT ass.law_firm_id FROM assignment AS ass ";
                     if(client_id != '' && client_id > 0) {
-                        queryWithCnames += " INNER JOIN list2 ON list2.rf_id = ass.rf_id"
+                        queryWithCnames += " INNER JOIN list2 ON list2.rf_id = ass.rf_id "
                     }
 
                     queryWithCnames += " WHERE ass.cname IN (:cname) ";
                     if(client_id != '' && client_id > 0) {
-                        queryWithCnames += " AND list2.organisation_id = :organisation_id"
+                        queryWithCnames += " AND list2.organisation_id = :organisation_id "
                     }
 
-                    queryWithCnames += "GROUP BY ass.law_firm_id";
+                    queryWithCnames += " GROUP BY ass.law_firm_id";
 
                     const findRows = await connection.resources.query(queryWithCnames,{
                         type: connection.Sequelize.QueryTypes.SELECT,
@@ -1402,15 +1402,15 @@ route.put("/company/law_firms", [authJWT.verifyToken, authJWT.isAdmin], async (r
                         }
                         let queryWithCnames = "SELECT ass.law_firm_id FROM assignment AS ass ";
                         if(client_id != '' && client_id > 0) {
-                            queryWithCnames += " INNER JOIN list2 ON list2.rf_id = ass.rf_id"
+                            queryWithCnames += " INNER JOIN list2 ON list2.rf_id = ass.rf_id "
                         }
     
                         queryWithCnames += " WHERE ass.cname IN (:cname) ";
                         if(client_id != '' && client_id > 0) {
-                            queryWithCnames += " AND list2.organisation_id = :organisation_id"
+                            queryWithCnames += " AND list2.organisation_id = :organisation_id "
                         }
     
-                        queryWithCnames += "GROUP BY ass.law_firm_id";
+                        queryWithCnames += " GROUP BY ass.law_firm_id";
     
                         const findRows = await connection.resources.query(queryWithCnames,{
                             type: connection.Sequelize.QueryTypes.SELECT,
