@@ -1119,9 +1119,28 @@ route.get("/company/law_firms/:id", [authJWT.verifyToken, authJWT.isAdmin, authJ
             const whereAssignor = {};
             if(assignorAndAssigneeIDs.length > 0) {
                 whereAssignor.assignor_and_assignee_id = assignorAndAssigneeIDs;
+                where.assignor_and_assignee_id = assignorAndAssigneeIDs;
             }
 
-            const list = await Assignments.findAll({
+            let query = "SELECT `lawfirm`.`law_firm_id` AS `law_firm_id`, `lawfirm`.`name` AS `name`, COUNT('law_firm_id') AS `counter`, `lawfirm`.`instances` AS `total_occurences`, `lawfirm->representativelawfirm`.`representative_id` AS `representative_id`, `lawfirm->representativelawfirm`.`representative_name` AS `representative_name` FROM `assignment` AS `assignment` INNER JOIN `list2` AS `representativetransaction` ON `assignment`.`rf_id` = `representativetransaction`.`rf_id` AND `representativetransaction`.`organisation_id` = :organisation_id "
+
+            if(representativeIDs.length > 0) {
+                query += " AND `representativetransaction`.`company_id` IN (:company_id)";
+            }
+            
+            query += " INNER JOIN `assignee` AS `representativetransaction->assignee` ON `representativetransaction`.`rf_id` = `representativetransaction->assignee`.`rf_id` AND `representativetransaction->assignee`.`assignor_and_assignee_id` IN (:assignor_and_assignee_id) INNER JOIN `law_firm` AS `lawfirm` ON `assignment`.`cname` = `lawfirm`.`name` OR `assignment`.`caddress_1` = `lawfirm`.`name` LEFT OUTER JOIN `representative_law_firm` AS `lawfirm->representativelawfirm` ON `lawfirm`.`representative_id` = `lawfirm->representativelawfirm`.`representative_id` WHERE `assignment`.`law_firm_id` > 0 GROUP BY `lawfirm`.`law_firm_id`";
+
+
+            findAllLawFirms = await connection.resources.query(query,{
+                type: connection.Sequelize.QueryTypes.SELECT,
+                raw: true,
+                replacements: where,
+                logging: console.log,
+            });
+
+            
+
+            /*const list = await Assignments.findAll({
                 attributes: ['law_firm_id'], 
                 group: ['law_firm_id'], 
                 where: {law_firm_id:{[connection.Op.gt]: 0}},                
@@ -1174,7 +1193,7 @@ route.get("/company/law_firms/:id", [authJWT.verifyToken, authJWT.isAdmin, authJ
                 });
 
                 await Promise.all(promises);
-            }
+            }*/
         }
         res.status(200).json(findAllLawFirms);
     } catch(e) {
