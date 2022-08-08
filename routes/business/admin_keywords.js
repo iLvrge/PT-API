@@ -11,6 +11,7 @@ const Keywords = require("../../model/resources/Keywords");
 const SuperKeywords = require("../../model/resources/SuperKeywords");
 
 const State = require("../../model/resources/State");
+const CompanyKeywords = require("../../model/resources/CompanyKeywords");
 
 /**
  * Get list of keywords
@@ -321,5 +322,107 @@ route.delete("/state/:stateID", [authJWT.verifyToken, authJWT.isAdmin], async(re
     }
 });
 
+
+
+/**
+ * Get list of company keywords
+ */
+ route.get("/company_keywords", [authJWT.verifyToken, authJWT.isAdmin], async(req, res, next) => {
+    const getKeywordList = await CompanyKeywords.findAll({
+        attributes:[['keyword_id', 'id'], ['keyword_name', 'keyword']]
+    });
+    res.status(200).json(getKeywordList);
+});
+
+
+/**
+ * Add a new record in keyword
+ */
+ route.post("/company_keywords", [authJWT.verifyToken, authJWT.isAdmin], async(req, res, next) => {
+    try{
+        const name = req.body.keyword;
+
+        if(name != undefined && name != '') {
+            const addRecord = await CompanyKeywords.create({keyword_name: name});
+
+            if(addRecord != null && addRecord.keyword_id > 0) {
+                res.status(200).json(addRecord);
+            } else {
+                res.status(402).send("Error while adding new record.");
+            }
+        } else {
+            res.status(401).send("Keyword name cannot be empty.");
+        }
+    } catch(err){
+        console.log(err);
+        res.status(402).send("Internal server error.");
+    }
+});
+
+/**
+ * Update a keyword record
+ */
+route.put("/company_keywords/:keywordID", [authJWT.verifyToken, authJWT.isAdmin], async(req, res, next) => {
+    try{
+        const keywordID = req.params.keywordID;
+
+        if(keywordID > 0) {
+            const findRecord = await CompanyKeywords.findByPk(keywordID);
+
+            if(findRecord != null && findRecord.keyword_id > 0) {
+                const name = req.body.keyword;
+
+                if(name != undefined && name != '') {
+                    const update = await findRecord.update({keyword_name: name});
+
+                    if(update){
+                        //const updatedRecord = findRecord.toJSON();
+                        //findRecord.keyword_name = name;
+                        res.status(200).json(findRecord);
+                    } else {
+                        res.status(402).send("Error while update record.");
+                    }
+                } else {
+                    res.status(401).send("Keyword name cannot be empty.");
+                }
+            } else {
+                res.status(404).send("No record found.");
+            }
+        } else {
+            res.status(401).send("Invalid Inputs.");
+        }
+    } catch(err){
+        console.log(err);
+        res.status(402).send("Internal server error.");
+    }
+});
+
+/**
+ * Delete a keyword record
+ */
+route.delete("/company_keywords/:keywordID", [authJWT.verifyToken, authJWT.isAdmin], async(req, res, next) => {
+    try{
+        const keywordID = req.params.keywordID;
+
+        if(keywordID > 0) {
+            const findRecord = await CompanyKeywords.findByPk(keywordID);
+
+            if(findRecord != null && findRecord.keyword_id > 0) {
+                const deleteRecord = await findRecord.destroy();
+
+                if(deleteRecord)  {
+                    res.status(200).send("Record deleted successfully.");
+                }
+            } else {
+                res.status(404).send("No record found.");
+            }
+        } else {
+            res.status(401).send("Invalid Inputs.");
+        }
+    } catch(err){
+        console.log(err);
+        res.status(402).send("Internal server error.");
+    }
+});
 
 module.exports = route;
