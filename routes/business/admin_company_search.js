@@ -1310,11 +1310,33 @@ route.put("/company/law_firms", [authJWT.verifyToken, authJWT.isAdmin], async (r
                  * If laywer column has LawFirm name normalize those rows as well
                  */
                 if(replaceNames.length > 0) {
-                    const findRows = await Assignments.findAll({
+                    const whereCnameSearch = {cname: replaceNames}
+                    if(client_id != '' && client_id > 0) {
+                        whereCnameSearch.organisation_id = client_id
+                    }
+                    let queryWithCnames = "SELECT ass.law_firm_id FROM assignment AS ass ";
+                    if(client_id != '' && client_id > 0) {
+                        queryWithCnames += " INNER JOIN list2 ON list2.rf_id = ass.rf_id"
+                    }
+
+                    queryWithCnames += " WHERE ass.cname IN (:cname) ";
+                    if(client_id != '' && client_id > 0) {
+                        queryWithCnames += " AND list2.organisation_id = :organisation_id"
+                    }
+
+                    queryWithCnames += "GROUP BY ass.law_firm_id";
+
+                    const findRows = await connection.resources.query(queryWithCnames,{
+                        type: connection.Sequelize.QueryTypes.SELECT,
+                        raw: true,
+                        replacements: whereCnameSearch,
+                        logging: console.log,
+                    });
+                    /* const findRows = await Assignments.findAll({
                         attributes: ['law_firm_id'],
                         where: {cname: replaceNames},
                         group: ['law_firm_id']
-                    })
+                    }) */
     
                     if(findRows.length > 0) {
                         const otherLawFirmIDs = []
@@ -1373,11 +1395,36 @@ route.put("/company/law_firms", [authJWT.verifyToken, authJWT.isAdmin], async (r
                     await LawFirms.update({representative_id: 0}, {where: {law_firm_id: IDs}});
 
                     if(replaceNames.length > 0) {
+
+                        const whereCnameSearch = {cname: replaceNames}
+                        if(client_id != '' && client_id > 0) {
+                            whereCnameSearch.organisation_id = client_id
+                        }
+                        let queryWithCnames = "SELECT ass.law_firm_id FROM assignment AS ass ";
+                        if(client_id != '' && client_id > 0) {
+                            queryWithCnames += " INNER JOIN list2 ON list2.rf_id = ass.rf_id"
+                        }
+    
+                        queryWithCnames += " WHERE ass.cname IN (:cname) ";
+                        if(client_id != '' && client_id > 0) {
+                            queryWithCnames += " AND list2.organisation_id = :organisation_id"
+                        }
+    
+                        queryWithCnames += "GROUP BY ass.law_firm_id";
+    
+                        const findRows = await connection.resources.query(queryWithCnames,{
+                            type: connection.Sequelize.QueryTypes.SELECT,
+                            raw: true,
+                            replacements: whereCnameSearch,
+                            logging: console.log,
+                        });
+
+                        /*
                         const findRows = await Assignments.findAll({
                             attributes: ['law_firm_id'],
                             where: {cname: replaceNames},
                             group: ['law_firm_id']
-                        })
+                        })*/
         
                         if(findRows.length > 0) {
                             const otherLawFirmIDs = []
