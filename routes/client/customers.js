@@ -817,7 +817,21 @@ route.get("/:layout/assets", [authJWT.verifyToken, clientDBConnection.connect], 
 
             if(replacements.layoutID == 3) { 
                 /**Maintainence */
-                const query = "SELECT asset, asset_type, channel, appno_doc_num, grant_doc_num, grant_date, date_format(payment_due, '%b %d, %Y') AS payment_due, date_format(payment_grace, '%b %d, %Y') AS payment_grace, type, fee_code, fee_amount, fee_code_surcharge, fee_surcharge, remaining_year, source, fwd_citation, technology, child_count FROM maintainence_assets WHERE company_id IN (:representativeIDs) AND organisation_id = :organisationID AND ((payment_due BETWEEN :dueDate AND :graceDate) OR (payment_grace BETWEEN :expireDate AND :dueDate) )AND appno_doc_num NOT IN (SELECT appno_doc_num FROM db_application.assets_transfer WHERE appno_doc_num <> '' AND status = 0 AND layout_id = :layoutID AND organisation_id = :organisationID) AND grant_doc_num NOT IN (SELECT grant_doc_num FROM db_application.assets_transfer WHERE appno_doc_num = '' AND grant_doc_num <> '' AND status = 0 AND layout_id = :layoutID AND organisation_id = :organisationID) GROUP BY grant_doc_num, appno_doc_num, company_id";
+                let query = "SELECT asset, asset_type, channel, appno_doc_num, grant_doc_num, grant_date, date_format(payment_due, '%b %d, %Y') AS payment_due, date_format(payment_grace, '%b %d, %Y') AS payment_grace, type, fee_code, fee_amount, fee_code_surcharge, fee_surcharge, remaining_year, source, fwd_citation, technology, child_count FROM maintainence_assets WHERE company_id IN (:representativeIDs) AND organisation_id = :organisationID AND ((payment_due BETWEEN :dueDate AND :graceDate) OR (payment_grace BETWEEN :expireDate AND :dueDate) )AND appno_doc_num NOT IN (SELECT appno_doc_num FROM db_application.assets_transfer WHERE appno_doc_num <> '' AND status = 0 AND layout_id = :layoutID AND organisation_id = :organisationID) AND grant_doc_num NOT IN (SELECT grant_doc_num FROM db_application.assets_transfer WHERE appno_doc_num = '' AND grant_doc_num <> '' AND status = 0 AND layout_id = :layoutID AND organisation_id = :organisationID) GROUP BY grant_doc_num, appno_doc_num, company_id";
+
+                if(typeof column === 'undefined' || column === 'undefined') {
+                    column = 'asset'
+                }
+                if(typeof direction === 'undefined' || direction === 'undefined') {
+                    direction = 'DESC'
+                }
+    
+                if(column == 'asset') {
+                    query += `   ORDER BY asset_type ASC, ABS(${column}) ${direction} `
+                } else {
+                    query += `   ORDER BY asset_type ASC, ${column} ${direction} `;
+                }
+
                 const FORMAT = 'YYYY-MM-DD'
                 let currentDate = new Date()
                 const graceDate = moment(currentDate).add(6, 'months').format(FORMAT)

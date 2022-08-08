@@ -1073,7 +1073,7 @@ route.get("/company/law_firms/:id", [authJWT.verifyToken, authJWT.isAdmin, authJ
             const where = {organisation_id: customerID};
             let whereRepresentative = {};
             if(representativeIDs.length > 0) {
-                where.representative_id = representativeIDs;
+                where.company_id = representativeIDs;
                 whereRepresentative = {
                     [connection.Op.or]: [
                         {parent_id: representativeIDs},
