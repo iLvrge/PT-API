@@ -2045,7 +2045,7 @@ route.put("/company/assignments", [authJWT.verifyToken, authJWT.isAdmin], async 
                             whereConstraint.caddress_2 = cname;
                             break;
                         case 3:
-                            whereConstraint.caddress_2 = caddress_1;
+                            whereConstraint.caddress_1 = caddress_2;
                             break;
                     }
                     console.log(whereConstraint)
@@ -2059,7 +2059,7 @@ route.put("/company/assignments", [authJWT.verifyToken, authJWT.isAdmin], async 
                         })
                         console.log(findOtherRecords.length)
                         if(findOtherRecords.length > 0) {
-                            const promise = findOtherRecords.map(async assignment => {
+                            findOtherRecords.forEach(async assignment => {
                                 const updateData = {};
                                 let temp = ''
                                 if(parseInt(flag) === 1) {
@@ -2075,9 +2075,9 @@ route.put("/company/assignments", [authJWT.verifyToken, authJWT.isAdmin], async 
                                     updateData.caddress_2 = assignment.get('caddress_1')
                                     updateData.caddress_1 = temp
                                 }
+                                console.log(updateData, {where:{rf_id: assignment.rf_id}})
                                 await Correspondence.update(updateData, {where:{rf_id: assignment.rf_id}});
                             });
-                            Promise.all(promise)
                             res.status(200).send("Records Updated");
                         } else {
                             res.status(200).send("Records Updated");
