@@ -2016,7 +2016,7 @@ route.get("/company/assignments/:id", [authJWT.verifyToken, authJWT.isAdmin, aut
 
 route.put("/company/assignments", [authJWT.verifyToken, authJWT.isAdmin], async (req, res, next) => {
     try{
-        const {rf_id, type, cname, caddress_1, caddress_2, caddress_7, caddress_5, caddress_6, caddress_3, caddress_4} = req.body;
+        const {rf_id, type, flag, cname, caddress_1, caddress_2, caddress_7, caddress_5, caddress_6, caddress_3, caddress_4} = req.body;
         if(rf_id > 0) {
             const getData = await Correspondence.findOne({
                 where: {rf_id}
@@ -2034,10 +2034,10 @@ route.put("/company/assignments", [authJWT.verifyToken, authJWT.isAdmin], async 
                 getData.caddress_3 = caddress_3
                 getData.caddress_4 = caddress_4
                 await getData.save()
-                if(typeof type != 'undefined') {
+                if(typeof flag != 'undefined') {
                     const whereConstraint = {};
                     let temp = ''
-                    switch(type) {
+                    switch(parseInt(flag)) {
                         case 1:
                             whereConstraint.caddress_1 = cname;
                             break;
@@ -2048,6 +2048,7 @@ route.put("/company/assignments", [authJWT.verifyToken, authJWT.isAdmin], async 
                             whereConstraint.caddress_1 = caddress_2;
                             break;
                     }
+                    console.log(whereConstraint)
                     if(Object.entries(whereConstraint).length > 0) {
                          /**
                          * Other Records
@@ -2077,8 +2078,13 @@ route.put("/company/assignments", [authJWT.verifyToken, authJWT.isAdmin], async 
                                 await Correspondence.update(updateData, {where:{rf_id: assignment.rf_id}});
                             });
                             Promise.all(promise)
+                            res.status(200).send("Records Updated");
+                        } else {
+                            res.status(200).send("Records Updated");
                         }
                     }
+                } else {
+                    res.status(200).send("Records Updated");
                 }
                 /* let lawfirmID = 0;
                 if(getData.law_firm_id > 0) {
