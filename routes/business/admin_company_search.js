@@ -1124,7 +1124,7 @@ route.get("/company/law_firms/:id", [authJWT.verifyToken, authJWT.isAdmin, authJ
                 where.assignor_and_assignee_id = assignorAndAssigneeIDs;
             }
 
-            let query = "SELECT `lawfirm`.`law_firm_id` AS `law_firm_id`, `lawfirm`.`name` AS `name`, COUNT('law_firm_id') AS `counter`, `lawfirm`.`instances` AS `total_occurences`, `lawfirm->representativelawfirm`.`representative_id` AS `representative_id`, `lawfirm->representativelawfirm`.`representative_name` AS `representative_name` FROM `assignment` AS `assignment` INNER JOIN `list2` AS `representativetransaction` ON `assignment`.`rf_id` = `representativetransaction`.`rf_id` AND `representativetransaction`.`organisation_id` = :organisation_id "
+            let query = "SELECT `lawfirm`.`law_firm_id` AS `law_firm_id`, `lawfirm`.`name` AS `name`, COUNT('law_firm_id') AS `counter`, `lawfirm`.`instances` AS `total_occurences`, `lawfirm->representativelawfirm`.`representative_id` AS `representative_id`, `lawfirm->representativelawfirm`.`representative_name` AS `representative_name` FROM `correspondent` AS `assignment` INNER JOIN `list2` AS `representativetransaction` ON `assignment`.`rf_id` = `representativetransaction`.`rf_id` AND `representativetransaction`.`organisation_id` = :organisation_id "
 
             if(representativeIDs.length > 0) {
                 query += " AND `representativetransaction`.`company_id` IN (:company_id)";
@@ -2023,14 +2023,7 @@ route.put("/company/assignments", [authJWT.verifyToken, authJWT.isAdmin], async 
             });
     
             if(getData != null && getData.rf_id > 0) {
-                 /**
-                 * Other Records
-                 */
-                let findOtherRecords = [];
-                findOtherRecords = await Correspondence.findAll({
-                    attributes: ['rf_id','law_firm_id', 'caddress_1', 'caddress_2'],
-                    where: {cname: getData.cname , caddress_1: getData.caddress_1, caddress_2: getData.caddress_2/*, law_firm_id:{[connection.Op.gt]: 0}*/}
-                })
+                
                 const preCAddress1 = getData.caddress_1, preCName = getData.cname;
                 getData.cname = cname
                 getData.caddress_1 = caddress_1
@@ -2041,6 +2034,52 @@ route.put("/company/assignments", [authJWT.verifyToken, authJWT.isAdmin], async 
                 getData.caddress_3 = caddress_3
                 getData.caddress_4 = caddress_4
                 await getData.save()
+                if(typeof type != 'undefined') {
+                    const whereConstraint = {};
+                    let temp = ''
+                    switch(type) {
+                        case 1:
+                            whereConstraint.caddress_1 = cname;
+                            break;
+                        case 2:
+                            whereConstraint.caddress_2 = cname;
+                            break;
+                        case 3:
+                            whereConstraint.caddress_1 = caddress_2;
+                            break;
+                    }
+                    if(Object.entries(whereConstraint).length > 0) {
+                         /**
+                         * Other Records
+                         */
+                        let findOtherRecords = [];
+                        findOtherRecords = await Correspondence.findAll({
+                            where: whereConstraint
+                        })
+
+                        if(findOtherRecords.length > 0) {
+                            const promise = findOtherRecords.map(async assignment => {
+                                const updateData = {};
+                                let temp = ''
+                                if(type === 1) {
+                                    temp = assignment.get('cname')
+                                    updateData.cname = assignment.get('caddress_1')
+                                    updateData.caddress_1 = temp
+                                } else if(type == 2) {
+                                    temp = assignment.get('caddress_2')
+                                    updateData.caddress_2 = assignment.get('cname')
+                                    updateData.cname = temp
+                                } else if(type == 3) {
+                                    temp = assignment.get('caddress_2')
+                                    updateData.caddress_2 = assignment.get('caddress_1')
+                                    updateData.caddress_1 = temp
+                                }
+                                await Correspondence.update(updateData, {where:{rf_id: assignment.rf_id}});
+                            });
+                            Promise.all(promise)
+                        }
+                    }
+                }
                 /* let lawfirmID = 0;
                 if(getData.law_firm_id > 0) {
                     
