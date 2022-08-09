@@ -2045,7 +2045,7 @@ route.put("/company/assignments", [authJWT.verifyToken, authJWT.isAdmin], async 
                             whereConstraint.caddress_2 = cname;
                             break;
                         case 3:
-                            whereConstraint.caddress_1 = caddress_2;
+                            whereConstraint.caddress_2 = caddress_1;
                             break;
                     }
                     console.log(whereConstraint)
@@ -2057,20 +2057,20 @@ route.put("/company/assignments", [authJWT.verifyToken, authJWT.isAdmin], async 
                         findOtherRecords = await Correspondence.findAll({
                             where: whereConstraint
                         })
-
+                        console.log(findOtherRecords.length)
                         if(findOtherRecords.length > 0) {
                             const promise = findOtherRecords.map(async assignment => {
                                 const updateData = {};
                                 let temp = ''
-                                if(type === 1) {
+                                if(parseInt(flag) === 1) {
                                     temp = assignment.get('cname')
                                     updateData.cname = assignment.get('caddress_1')
                                     updateData.caddress_1 = temp
-                                } else if(type == 2) {
+                                } else if(parseInt(flag) == 2) {
                                     temp = assignment.get('caddress_2')
                                     updateData.caddress_2 = assignment.get('cname')
                                     updateData.cname = temp
-                                } else if(type == 3) {
+                                } else if(parseInt(flag) == 3) {
                                     temp = assignment.get('caddress_2')
                                     updateData.caddress_2 = assignment.get('caddress_1')
                                     updateData.caddress_1 = temp
