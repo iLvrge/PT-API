@@ -32,6 +32,8 @@ const AssignmentConveyance = require('../../model/application/AssignmentConveyan
 
 const Assignments = require('../../model/resources/Assignments');
 
+const Correspondence = require('../../model/resources/Correspondence');
+
 const Assignors = require('../../model/resources/Assignors');
 
 const Assignees = require('../../model/resources/Assignees');
@@ -1833,8 +1835,8 @@ route.get("/company/raw/assignments/:id", [authJWT.verifyToken, authJWT.isAdmin,
             whereAssignor.assignor_and_assignee_id = assignorAndAssigneeIDs;
         }
         Promise.all([
-            Assignments.findAll({
-                attributes: [['rf_id', 'id'], 'rf_id', 'cname', 'caddress_1', 'caddress_2','caddress_7','caddress_5','caddress_6','caddress_3','caddress_4', 'reel_no', 'frame_no'],  
+            Correspondence.findAll({
+                attributes: [['rf_id', 'id'], 'rf_id', 'cname', 'caddress_1', 'caddress_2','caddress_7','caddress_5','caddress_6','caddress_3','caddress_4'],  
                 /*where: {
                     [connection.Op.or]: [
                         {caddress_1: {[connection.Op.ne]: ''}},
@@ -1860,8 +1862,8 @@ route.get("/company/raw/assignments/:id", [authJWT.verifyToken, authJWT.isAdmin,
                     }
                 ]
             }),
-            Assignments.findAll({
-                attributes: [['rf_id', 'id'], 'rf_id', 'cname', 'caddress_1', 'caddress_2','caddress_7','caddress_5','caddress_6','caddress_3','caddress_4', 'reel_no', 'frame_no'],  
+            Correspondence.findAll({
+                attributes: [['rf_id', 'id'], 'rf_id', 'cname', 'caddress_1', 'caddress_2','caddress_7','caddress_5','caddress_6','caddress_3','caddress_4'],  
                 where: {
                     caddress_1: '',
                     caddress_2: '',
@@ -2016,7 +2018,7 @@ route.put("/company/assignments", [authJWT.verifyToken, authJWT.isAdmin], async 
     try{
         const {rf_id, type, cname, caddress_1, caddress_2, caddress_7, caddress_5, caddress_6, caddress_3, caddress_4} = req.body;
         if(rf_id > 0) {
-            const getData = await Assignments.findOne({
+            const getData = await Correspondence.findOne({
                 where: {rf_id}
             });
     
@@ -2025,7 +2027,7 @@ route.put("/company/assignments", [authJWT.verifyToken, authJWT.isAdmin], async 
                  * Other Records
                  */
                 let findOtherRecords = [];
-                findOtherRecords = await Assignments.findAll({
+                findOtherRecords = await Correspondence.findAll({
                     attributes: ['rf_id','law_firm_id', 'caddress_1', 'caddress_2'],
                     where: {cname: getData.cname , caddress_1: getData.caddress_1, caddress_2: getData.caddress_2/*, law_firm_id:{[connection.Op.gt]: 0}*/}
                 })
@@ -2039,7 +2041,7 @@ route.put("/company/assignments", [authJWT.verifyToken, authJWT.isAdmin], async 
                 getData.caddress_3 = caddress_3
                 getData.caddress_4 = caddress_4
                 await getData.save()
-                let lawfirmID = 0;
+                /* let lawfirmID = 0;
                 if(getData.law_firm_id > 0) {
                     
                     const findLawFirmData = await LawFirms.findOne({where: {law_firm_id: getData.law_firm_id}})
@@ -2075,8 +2077,8 @@ route.put("/company/assignments", [authJWT.verifyToken, authJWT.isAdmin], async 
                             await Assignments.update({law_firm_id: lawfirmID},{where: {rf_id: allFirmIDs}})
                         }
                     }
-                }
-                if(lawfirmID == 0) {
+                } */
+                /* if(lawfirmID == 0) {
                     if(caddress_1 != '') {
                         const checkLawFirm = await LawFirms.findOne({where:{name: caddress_1}})
                         if(checkLawFirm == null) {
@@ -2108,7 +2110,7 @@ route.put("/company/assignments", [authJWT.verifyToken, authJWT.isAdmin], async 
                             await Lawyers.destroy({where: {law_firm_id: findLawFirm.law_firm_id}});
                         }
                     } 
-                }
+                } */
 
                 /* if(lawfirmID > 0) {
                     let layerID = 0
@@ -2137,7 +2139,7 @@ route.put("/company/assignments", [authJWT.verifyToken, authJWT.isAdmin], async 
                 } */
 
 
-                if(findOtherRecords.length > 0) {
+                /* if(findOtherRecords.length > 0) {
                     const promise = findOtherRecords.map(async assignment => {
                         console.log(assignment);
                         const updateData = {cname, caddress_1, caddress_2};
@@ -2145,27 +2147,27 @@ route.put("/company/assignments", [authJWT.verifyToken, authJWT.isAdmin], async 
                         const updateRecord = await Assignments.update(updateData, {where:{rf_id: assignment.rf_id}});
                         if(updateRecord) {
                             
-                            /* if(updateData.cname  != '') {   
-                                console.log(1);
-                                const lawyerData = await Lawyers.findOne({
-                                    where: {law_firm_id: assignment.law_firm_id,  name: assignment.caddress_1}
-                                });
-                                if(lawyerData != null && lawyerData.lawyer_id > 0) {
-                                    console.log(2);
-                                    const findAnother  = await Lawyers.findOne({
-                                        where: {law_firm_id: assignment.law_firm_id,  name: assignment.caddress_2}
-                                    });
-                                    if(findAnother == null) {
-                                        console.log(3);
-                                        await Lawyers.update({name: assignment.caddress_2},{where: {lawyer_id: lawyerData.lawyer_id}});
-                                    } else {
-                                        conßsole.log(4);
-                                        await Lawyers.destroy({where: {lawyer_id: lawyerData.lawyer_id}});
-                                        await Lawyers.update({instance: findAnother.instance + 1},{where: {lawyer_id: findAnother.lawyer_id}});
-                                    }
-                                }
-                            }
-                             */
+                            // if(updateData.cname  != '') {   
+                            //     console.log(1);
+                            //     const lawyerData = await Lawyers.findOne({
+                            //         where: {law_firm_id: assignment.law_firm_id,  name: assignment.caddress_1}
+                            //     });
+                            //     if(lawyerData != null && lawyerData.lawyer_id > 0) {
+                            //         console.log(2);
+                            //         const findAnother  = await Lawyers.findOne({
+                            //             where: {law_firm_id: assignment.law_firm_id,  name: assignment.caddress_2}
+                            //         });
+                            //         if(findAnother == null) {
+                            //             console.log(3);
+                            //             await Lawyers.update({name: assignment.caddress_2},{where: {lawyer_id: lawyerData.lawyer_id}});
+                            //         } else {
+                            //             conßsole.log(4);
+                            //             await Lawyers.destroy({where: {lawyer_id: lawyerData.lawyer_id}});
+                            //             await Lawyers.update({instance: findAnother.instance + 1},{where: {lawyer_id: findAnother.lawyer_id}});
+                            //         }
+                            //     }
+                            // }
+                             
                         }
                         return assignment;
                     })
@@ -2175,7 +2177,7 @@ route.put("/company/assignments", [authJWT.verifyToken, authJWT.isAdmin], async 
                     res.status(200).send("Records Updated");
                 } else {
                     res.status(200).send("Records Updated");
-                }
+                } */
                 /**
                  * Other Records
                  */
