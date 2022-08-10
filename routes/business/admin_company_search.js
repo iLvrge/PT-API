@@ -2016,7 +2016,7 @@ route.get("/company/assignments/:id", [authJWT.verifyToken, authJWT.isAdmin, aut
 
 route.put("/company/assignments", [authJWT.verifyToken, authJWT.isAdmin], async (req, res, next) => {
     try{
-        const {rf_id, type, flag, cname, caddress_1, caddress_2, caddress_7, caddress_5, caddress_6, caddress_3, caddress_4} = req.body;
+        const {rf_id, type, client_id, flag, cname, caddress_1, caddress_2, caddress_7, caddress_5, caddress_6, caddress_3, caddress_4} = req.body;
         if(rf_id > 0) {
             const getData = await Correspondence.findOne({
                 where: {rf_id}
@@ -2035,17 +2035,20 @@ route.put("/company/assignments", [authJWT.verifyToken, authJWT.isAdmin], async 
                 getData.caddress_4 = caddress_4
                 await getData.save()
                 if(typeof flag != 'undefined') {
-                    const whereConstraint = {};
-                    let temp = ''
+                    const whereConstraint = {organisationID: client_id};
+                    let where = ''
                     switch(parseInt(flag)) {
                         case 1:
                             whereConstraint.caddress_1 = cname;
+                            where = ` AND caddress_1 = :caddress_1`
                             break;
                         case 2:
                             whereConstraint.caddress_2 = cname;
+                            where = ` AND caddress_2 = :caddress_2`
                             break;
                         case 3:
                             whereConstraint.caddress_1 = caddress_2;
+                            where = ` AND caddress_1 = :caddress_1`
                             break;
                     }
                     console.log(whereConstraint)
@@ -2053,26 +2056,37 @@ route.put("/company/assignments", [authJWT.verifyToken, authJWT.isAdmin], async 
                          /**
                          * Other Records
                          */
-                        let findOtherRecords = [];
+
+                        const query = `SELECT * FROM db_uspto.correspondent WHERE rf_id IN ( SELECT apt.rf_id FROM db_new_application.activity_parties_transactions AS apt WHERE organisation_id = :organisationID ) ${where}`
+
+                        const findOtherRecords = await connection.applicationNew.query(query, {
+                            type: connection.Sequelize.QueryTypes.SELECT,
+                            raw: true,
+                            logging: console.log,
+                            replacements: whereConstraint,
+                        })
+
+                        /* let findOtherRecords = [];
                         findOtherRecords = await Correspondence.findAll({
                             where: whereConstraint
-                        })
+                        }) */
+                        
                         console.log(findOtherRecords.length)
                         if(findOtherRecords.length > 0) {
                             findOtherRecords.forEach(async assignment => {
                                 const updateData = {};
                                 let temp = ''
                                 if(parseInt(flag) === 1) {
-                                    temp = assignment.get('cname')
-                                    updateData.cname = assignment.get('caddress_1')
+                                    temp = assignment.cname
+                                    updateData.cname = assignment.caddress_1
                                     updateData.caddress_1 = temp
                                 } else if(parseInt(flag) == 2) {
-                                    temp = assignment.get('caddress_2')
-                                    updateData.caddress_2 = assignment.get('cname')
+                                    temp = assignment.caddress_2
+                                    updateData.caddress_2 = assignment.cname
                                     updateData.cname = temp
                                 } else if(parseInt(flag) == 3) {
-                                    temp = assignment.get('caddress_2')
-                                    updateData.caddress_2 = assignment.get('caddress_1')
+                                    temp = assignment.caddress_2
+                                    updateData.caddress_2 = assignment.caddress_1
                                     updateData.caddress_1 = temp
                                 }
                                 console.log(updateData, {where:{rf_id: assignment.rf_id}})
