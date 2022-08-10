@@ -2073,25 +2073,38 @@ route.put("/company/assignments", [authJWT.verifyToken, authJWT.isAdmin], async 
                         
                         console.log(findOtherRecords.length)
                         if(findOtherRecords.length > 0) {
-                            findOtherRecords.forEach(async assignment => {
-                                const updateData = {};
-                                let temp = ''
+                            const allRfIDs = []
+                            const promise = findOtherRecords.map(async assignment => {
+                                allRfIDs.push(assignment.rf_id)
+                            });
+
+                            await Promise.all(promise)
+                            if(allRfIDs.length > 0) {
+                                let updateQuery1 = '', updateQuery2 = {}
                                 if(parseInt(flag) === 1) {
                                     temp = assignment.cname
-                                    updateData.cname = assignment.caddress_1
-                                    updateData.caddress_1 = temp
+                                    updateQuery1 = ` cname = caddress_1`
+                                    updateQuery2.caddress_1 = temp
                                 } else if(parseInt(flag) == 2) {
                                     temp = assignment.caddress_2
-                                    updateData.caddress_2 = assignment.cname
-                                    updateData.cname = temp
+                                    updateQuery1 = ` caddress_2 = cname`
+                                    updateQuery2.cname = temp
                                 } else if(parseInt(flag) == 3) {
                                     temp = assignment.caddress_2
-                                    updateData.caddress_2 = assignment.caddress_1
-                                    updateData.caddress_1 = temp
+                                    updateQuery1 = ` caddress_2 = caddress_1`
+                                    updateQuery2.caddress_1 = temp
                                 }
-                                console.log(updateData, {where:{rf_id: assignment.rf_id}})
-                                await Correspondence.update(updateData, {where:{rf_id: assignment.rf_id}});
-                            });
+                                updateQuery1 = `UPDATE db_uspto.correspondent SET ${updateQuery1} WHERE rf_id IN (:allRfIDs)`
+                                const update = await connection.applicationNew.query(updateQuery1, {
+                                    type: connection.Sequelize.QueryTypes.SELECT,
+                                    raw: true,
+                                    logging: console.log,
+                                    replacements: {allRfIDs},
+                                })
+                                if(update) {
+                                    await Correspondence.update(updateQuery2, {where:{rf_id: allRfIDs}});
+                                }
+                            }
                             res.status(200).send("Records Updated");
                         } else {
                             res.status(200).send("Records Updated");
