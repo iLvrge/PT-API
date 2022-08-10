@@ -1410,6 +1410,57 @@ route.post("/transactions/queues/name", [authJWT.verifyToken, clientDBConnection
     }    
 })
 
+route.get("/lawfirm", [authJWT.verifyToken, clientDBConnection.connect], async(req, res, next) => {
+    try {
+        let { companies  } = req.query;
+
+        const replacements =  { 
+            companies: '', 
+            year: 1997,
+            organisationID: req.orgId
+        }
+
+        if(companies && companies != '') {
+            companies = JSON.parse( companies )
+            replacements.companies = companies.join(',')
+        }
+
+        let tempQuery = `SELECT apt.rf_id FROM db_new_application.activity_parties_transactions AS apt 
+            INNER JOIN db_uspto.assignee AS ass ON ass.rf_id = apt.rf_id 
+            AND ass.assignor_and_assignee_id = apt.recorded_assignor_and_assignee_id
+            WHERE date_format(apt.exec_dt, '%Y') > :year 
+            AND apt.organisation_id = :organisationID `
+
+        if(companies.length > 0) {
+            tempQuery += ` AND apt.company_id IN ( :companies ) `;
+        }
+        BRUCCULERI, L.L.P.
+        tempQuery += ` GROUP BY apt.rf_id `;
+
+        const query = `SELECT lf.law_firm_id AS id, IF(rlf.representative_name <> '', rlf.representative_name, lf.name) AS lawfirm  FROM db_uspto.law_firm AS lf 
+        LEFT JOIN  db_uspto.representative_law_firm AS rlf ON rlf.representative_id = lf.representative_id 
+        INNER JOIN (
+            SELECT * FROM db_uspto.correspondent AS cor
+            WHERE cor.rf_id IN (
+                ${tempQuery}
+            )
+            GROUP BY cname, caddress_1
+        ) AS temp ON temp.cname = lf.name OR temp.caddress_1 = lf.name 
+        GROUP BY lawfirm`;
+
+        const getList = await connection.applicationNew.query(query, {
+            type: connection.Sequelize.QueryTypes.SELECT,
+            raw: true,
+            logging: console.log,
+            replacements: replacements,
+        })
+        res.status(200).json(getList);
+    } catch(err) {
+        console.log("/customers/lawfirm", err)
+        res.status(500).send("Internal server error.")
+    }
+})
+
 route.get("/:layout/parties", [authJWT.verifyToken, clientDBConnection.connect], async(req, res, next) => {
     try {
         let {companies, tabs, t, limit, offset } = req.query,
