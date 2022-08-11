@@ -1452,7 +1452,7 @@ route.get("/lawfirm", [authJWT.verifyToken, clientDBConnection.connect], async(r
                 ${tempQuery}
             )
             GROUP BY cname, caddress_1
-        ) AS temp ON temp.cname = lf.name OR temp.caddress_1 = lf.name 
+        ) AS temp ON temp.cname = lf.name
         GROUP BY lawfirm`;
 
         const getList = await connection.applicationNew.query(query, {
