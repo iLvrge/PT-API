@@ -777,33 +777,35 @@ let getAddressListByLawfirmID = async( ID ) => {
             representativeQuery = `:ID`
         }
         const queryFindIDS = `SELECT address, rf_id FROM (
-            SELECT caddress_7 as address, assignment.rf_id FROM assignment 
-            WHERE  date_format(assignment.record_dt, '%Y') >= :year AND law_firm_id IN (${representativeQuery})  AND caddress_7 <> '' 
-            GROUP BY caddress_7
+            SELECT cor.caddress_7 as address, ass.rf_id FROM correspondent AS cor
+            INNER JOIN assignment AS ass ON ass.rf_id = cor.rf_id
+            WHERE  date_format(ass.record_dt, '%Y') >= :year AND ass.law_firm_id IN (${representativeQuery})  AND cor.caddress_7 <> '' 
+            GROUP BY address
             UNION
-            SELECT caddress_5 as address, assignment.rf_id FROM assignment 
-            WHERE  date_format(assignment.record_dt, '%Y') >= :year AND law_firm_id IN (${representativeQuery})  AND caddress_5 <> '' 
-            GROUP BY caddress_5
+            SELECT cor.caddress_5 as address, ass.rf_id FROM correspondent  AS cor
+            INNER JOIN assignment AS ass ON ass.rf_id = cor.rf_id
+            WHERE  date_format(ass.record_dt, '%Y') >= :year AND ass.law_firm_id IN (${representativeQuery})  AND cor.caddress_5 <> '' 
+            GROUP BY address
             UNION
-            SELECT caddress_6 as address, assignment.rf_id FROM assignment 
-            WHERE  date_format(assignment.record_dt, '%Y') >= :year AND law_firm_id IN (${representativeQuery})  AND caddress_6 <> '' 
-            GROUP BY caddress_6
+            SELECT cor.caddress_6 as address, ass.rf_id FROM correspondent  AS cor
+            INNER JOIN assignment AS ass ON ass.rf_id = cor.rf_id
+            WHERE  date_format(ass.record_dt, '%Y') >= :year AND ass.law_firm_id IN (${representativeQuery})  AND cor.caddress_6 <> '' 
+            GROUP BY address
             UNION
-            SELECT caddress_3 as address, assignment.rf_id FROM assignment 
-            WHERE  date_format(assignment.record_dt, '%Y') >= :year AND law_firm_id IN (${representativeQuery})  AND caddress_3 <> '' 
-            GROUP BY caddress_3
+            SELECT cor.caddress_3 as address, ass.rf_id FROM correspondent  AS cor
+            INNER JOIN assignment AS ass ON ass.rf_id = cor.rf_id
+            WHERE  date_format(ass.record_dt, '%Y') >= :year AND ass.law_firm_id IN (${representativeQuery})  AND cor.caddress_3 <> '' 
+            GROUP BY address
             UNION
-            SELECT caddress_4 as address, assignment.rf_id FROM assignment 
-            WHERE  date_format(assignment.record_dt, '%Y') >= :year AND law_firm_id IN (${representativeQuery})  AND caddress_4 <> '' 
-            GROUP BY caddress_4
+            SELECT cor.caddress_4 as address, ass.rf_id FROM correspondent  AS cor
+            INNER JOIN assignment AS ass ON ass.rf_id = cor.rf_id
+            WHERE  date_format(ass.record_dt, '%Y') >= :year AND ass.law_firm_id IN (${representativeQuery})  AND cor.caddress_4 <> '' 
+            GROUP BY address
             UNION
-            SELECT caddress_1 as address, assignment.rf_id FROM assignment 
-            WHERE  date_format(assignment.record_dt, '%Y') >= :year AND law_firm_id IN (${representativeQuery})  AND caddress_1 <> '' 
-            GROUP BY caddress_1
-            UNION
-            SELECT caddress_2 as address, assignment.rf_id FROM assignment 
-            WHERE  date_format(assignment.record_dt, '%Y') >= :year AND law_firm_id IN (${representativeQuery})   AND caddress_2 <> '' 
-            GROUP BY caddress_2
+            SELECT cor.caddress_2 as address, ass.rf_id FROM correspondent  AS cor
+            INNER JOIN assignment AS ass ON ass.rf_id = cor.rf_id
+            WHERE  date_format(ass.record_dt, '%Y') >= :year AND ass.law_firm_id IN (${representativeQuery})   AND cor.caddress_2 <> '' 
+            GROUP BY address
         ) as temp GROUP BY address  ORDER BY address ASC`;
 
         addresses = await connection.resources.query(queryFindIDS,{
@@ -828,8 +830,9 @@ let searchLawfirmIDByAddress = async( addresses ) => {
             } else {
                 listAddress.push('"'+ addresses + '"')
             }
+            
 
-            const queryCompany = "SELECT law_firms.law_firm_id, name, temp.rf_id AS rf_id, temp.reel_no, temp.frame_no, COUNT(law_firms.law_firm_id) AS counter, instances AS total_occurences, representative_law_firm.representative_id, representative_law_firm.representative_name FROM db_uspto.law_firm AS law_firms LEFT JOIN db_uspto.representative_law_firm AS representative_law_firm ON representative_law_firm.representative_id =  law_firms.representative_id INNER JOIN (SELECT law_firm_id, rf_id, reel_no, frame_no FROM assignment WHERE date_format(assignment.record_dt, '%Y') >= :year AND MATCH(assignment.caddress_7, assignment.caddress_5, assignment.caddress_6, assignment.caddress_3, assignment.caddress_4, assignment.caddress_2, assignment.caddress_1) AGAINST (:address IN BOOLEAN MODE) GROUP BY law_firm_id ) as temp ON temp.law_firm_id = law_firms.law_firm_id GROUP BY law_firms.law_firm_id ORDER BY counter DESC ";
+            const queryCompany = "SELECT law_firms.law_firm_id, name, assignment.rf_id AS rf_id, assignment.reel_no, assignment.frame_no, COUNT(law_firms.law_firm_id) AS counter, instances AS total_occurences, representative_law_firm.representative_id, representative_law_firm.representative_name FROM db_uspto.law_firm AS law_firms LEFT JOIN db_uspto.representative_law_firm AS representative_law_firm ON representative_law_firm.representative_id =  law_firms.representative_id INNER JOIN (SELECT rf_id, cname, caddress_1 FROM correspondent AS cor WHERE MATCH(cor.caddress_7, cor.caddress_5, cor.caddress_6, cor.caddress_3, cor.caddress_4, cor.caddress_2, cor.caddress_1) AGAINST (:address IN BOOLEAN MODE) GROUP BY rf_id ) as temp ON temp.cname = law_firms.name OR temp.caddress_1 = law_firms.name INNER JOIN assignment ON assignment.rf_id = temp.rf_id AND date_format(assignment.record_dt, '%Y') >= :year GROUP BY law_firms.law_firm_id ORDER BY counter DESC ";
        
             searchResult = await connection.resources.query(queryCompany,{
                 type: connection.Sequelize.QueryTypes.SELECT,
