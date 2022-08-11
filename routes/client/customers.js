@@ -1432,14 +1432,16 @@ route.get("/lawfirm", [authJWT.verifyToken, clientDBConnection.connect], async(r
             replacements.companies = companies.join(',')
         }
 
-        let tempQuery = `SELECT apt.rf_id FROM db_new_application.activity_parties_transactions AS apt 
+        let tempQuery = `SELECT apt.rf_id FROM activity_parties_transactions AS apt 
             INNER JOIN db_uspto.assignee AS ass ON ass.rf_id = apt.rf_id 
             AND ass.assignor_and_assignee_id = apt.recorded_assignor_and_assignee_id
+            INNER JOIN db_uspto.documentid AS doc ON doc.rf_id = ass.rf_id
+            INNER JOIN owned_assets AS oa ON oa.appno_doc_num = doc.appno_doc_num
             WHERE date_format(apt.exec_dt, '%Y') > :year 
-            AND apt.organisation_id = :organisationID `
+            AND apt.organisation_id = :organisationID AND oa.organisation_id = :organisationID`
 
         if(companies.length > 0) {
-            tempQuery += ` AND apt.company_id IN ( :companies ) `;
+            tempQuery += ` AND apt.company_id IN ( :companies ) AND oa.company_id IN (:companies)`;
         }
 
         tempQuery += ` GROUP BY apt.rf_id `; 
