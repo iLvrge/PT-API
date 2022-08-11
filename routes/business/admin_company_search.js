@@ -1130,7 +1130,7 @@ route.get("/company/law_firms/:id", [authJWT.verifyToken, authJWT.isAdmin, authJ
                 query += " AND `representativetransaction`.`company_id` IN (:company_id)";
             }
             
-            query += " INNER JOIN `assignee` AS `representativetransaction->assignee` ON `representativetransaction`.`rf_id` = `representativetransaction->assignee`.`rf_id` AND `representativetransaction->assignee`.`assignor_and_assignee_id` IN (:assignor_and_assignee_id) INNER JOIN `law_firm` AS `lawfirm` ON `assignment`.`cname` = `lawfirm`.`name` OR `assignment`.`caddress_1` = `lawfirm`.`name` LEFT OUTER JOIN `representative_law_firm` AS `lawfirm->representativelawfirm` ON `lawfirm`.`representative_id` = `lawfirm->representativelawfirm`.`representative_id` WHERE `assignment`.`law_firm_id` > 0 GROUP BY `lawfirm`.`law_firm_id`";
+            query += " INNER JOIN `assignee` AS `representativetransaction->assignee` ON `representativetransaction`.`rf_id` = `representativetransaction->assignee`.`rf_id` AND `representativetransaction->assignee`.`assignor_and_assignee_id` IN (:assignor_and_assignee_id) INNER JOIN `law_firm` AS `lawfirm` ON `assignment`.`cname` = `lawfirm`.`name` OR `assignment`.`caddress_1` = `lawfirm`.`name` LEFT OUTER JOIN `representative_law_firm` AS `lawfirm->representativelawfirm` ON `lawfirm`.`representative_id` = `lawfirm->representativelawfirm`.`representative_id` GROUP BY name";
 
 
             findAllLawFirms = await connection.resources.query(query,{
