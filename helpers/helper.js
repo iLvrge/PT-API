@@ -1515,7 +1515,7 @@ let getCompaniesListSumWithReports = async (DBConnection, organisationID) => {
         })
         await Promise.all(promiseList)
 
-        const queryRepresentativeReports = `SELECT representative_name, SUM(no_of_assets) AS assets, SUM(no_of_transactions) AS no_of_transactions, SUM(no_of_parties) AS no_of_parties, (SUM(no_of_parties) - SUM(no_of_transactions)) AS product FROM representative_reports WHERE representative_name IN (:representativeNames)`
+        const queryRepresentativeReports = `SELECT representative_name, SUM(no_of_assets) AS assets, SUM(no_of_transactions) AS no_of_transactions, SUM(no_of_parties) AS no_of_parties, SUM(no_of_arrows) AS product FROM representative_reports WHERE representative_name IN (:representativeNames)`
 
         let reports = await connection.resources.query(queryRepresentativeReports,{
                 type: connection.Sequelize.QueryTypes.SELECT,
