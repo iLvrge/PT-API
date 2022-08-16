@@ -938,6 +938,26 @@ route.get("/:layout/assets", [authJWT.verifyToken, clientDBConnection.connect], 
                 } else {
                     res.status(200).json(assets);
                 }
+            }  else if(replacements.layoutID == 22) { 
+                /**
+                 * Assets not assigned
+                 */
+                query = `SELECT ${req.orgId} AS organisation_id, CASE WHEN ag.grant_doc_num = '' OR ag.grant_doc_num IS NULL THEN CONCAT(SUBSTRING(ap.appno_doc_num, 1, 2), '/', FORMAT(SUBSTRING(ap.appno_doc_num, 3), 0)) ELSE FORMAT(ag.grant_doc_num, 0) END AS format_asset, CASE WHEN ag.grant_doc_num = '' OR ag.grant_doc_num IS NULL THEN ap.appno_doc_num ELSE ag.grant_doc_num END AS asset, CASE WHEN ag.grant_doc_num = '' OR ag.grant_doc_num IS NULL THEN 1 ELSE 0 END AS asset_type, ap.appno_doc_num, ag.grant_doc_num, 0 AS child_count, '' AS channel FROM db_patent_grant_bibliographic.application_publication AS ap LEFT JOIN db_patent_application_bibliographic.application_grant AS ag ON ag.appno_doc_num = ap.appno_doc_num WHERE ap.appno_doc_num IN ( SELECT application FROM db_new_application.dashboard_items WHERE organisation_id = :organisationID AND type = :layoutID AND date_format(ap.appno_date, '%Y') > :date `;
+
+                if(Array.isArray(companies) && companies.length > 0) {
+                    query += ` AND representative_id IN (:companies) `
+                }
+                query += ` GROUP BY application ) `
+
+                assets.list = await connection.applicationNew.query(query,{
+                    type: connection.Sequelize.QueryTypes.SELECT,
+                    raw: true,
+                    logging: console.log,
+                    replacements
+                })
+                assets.total_records = assets.list.length 
+                res.status(200).json(assets);
+                
             } else {
                 if(replacements.layoutID != 15) {
                     query += ` WHERE date_format(assets.appno_date, '%Y') > :date AND assets.layout_id = 15 AND assets.organisation_id = :organisationID `
@@ -1151,7 +1171,7 @@ route.get("/:layout/transactions", [authJWT.verifyToken, clientDBConnection.conn
             companies = JSON.parse( companies )            
         }
         
-        if(replacements.layoutID == 17 || replacements.layoutID == 18 || replacements.layoutID == 19 || replacements.layoutID == 24 || replacements.layoutID == 25) {
+        if(replacements.layoutID == 17 || replacements.layoutID == 18 || replacements.layoutID == 19 ||replacements.layoutID == 24 || replacements.layoutID == 25 || replacements.layoutID == 26) {
             if(companies.length > 0) {
                 replacements.companies = companies
             }
