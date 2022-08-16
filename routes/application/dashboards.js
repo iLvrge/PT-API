@@ -466,24 +466,26 @@ route.post("/", [authJWT.verifyToken], async(req, res, next) => {
                     if(parseInt(data_format) === 1) {
                         let innerJOIN = ` INNER JOIN db_new_application.assets AS assets ON assets.appno_doc_num = dt.application `;
                         if(parseInt(qType) === 22) {
-                            innerJOIN = ` INNER JOIN db_new_application.assets AS assets ON assets.grant_doc_num = dt.patent `;
+                            innerJOIN = ` INNER JOIN db_patent_application_bibliographic.application_grant AS assets ON assets.grant_doc_num = dt.patent `;
                         }
                         query = `SELECT year, sum(number) over (order by year) as number, application, patent, rf_id FROM (
                             SELECT year, COUNT(year) AS number, application, patent, '' AS rf_id FROM( SELECT assets.appno_doc_num AS application, assets.grant_doc_num AS patent, date_format(assets.appno_date, '%Y') AS year FROM db_new_application.dashboard_items AS dt
                         ${innerJOIN}
-                        WHERE dt.organisation_id = :organisationID 
-                        AND assets.organisation_id = :organisationID 
-                        AND assets.layout_id = :layoutID AND assets.company_id IN (:company_id)  AND dt.type = :type
-                        AND dt.representative_id IN (:company_id)
-                        AND date_format(assets.appno_date, '%Y') > :year
+                        WHERE dt.organisation_id = :organisationID AND dt.type = :type
+                        AND dt.representative_id IN (:company_id)`
+                        if(parseInt(qType) != 22) {
+                            query += `AND assets.organisation_id = :organisationID 
+                            AND assets.layout_id = :layoutID AND assets.company_id IN (:company_id)  `
+                        }
+                        query += ` AND date_format(assets.appno_date, '%Y') > :year
                         GROUP BY assets.appno_doc_num) AS temp GROUP BY year) AS temp1`;
                     } else {
-                        let countQ = `COUNT(application) AS number`, groupBy = `GROUP BY application`
+                        let countQ = `COUNT(application) AS number`, groupBy = `GROUP BY application`, condition = ''
                         if(parseInt(qType) === 22) {
-                            countQ = `COUNT(patent) AS number`, groupBy = `GROUP BY patent`
+                            countQ = `COUNT(patent) AS number`, groupBy = `GROUP BY patent`, condition = ` AND patent <> ''`
                         }
                         query = `SELECT ${countQ}, application, patent, rf_id, total FROM (SELECT application, patent, rf_id, total FROM dashboard_items 
-                            WHERE type = :type AND organisation_id = :organisationID ${companies.length > 0 ? ' AND representative_id IN (:company_id) ' : ''} ${groupBy}) AS temp`
+                            WHERE type = :type AND organisation_id = :organisationID ${companies.length > 0 ? ' AND representative_id IN (:company_id) ' : ''} ${condition} ${groupBy}) AS temp`
                     }                    
                     break;                    
                 case 17:
