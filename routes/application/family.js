@@ -153,8 +153,11 @@ route.get("/family/:applicationNumber", [authJWT.verifyToken], async (req, res) 
                         {appno_doc_num: applicationNumber},
                         {grant_doc_num: applicationNumber}
                 ]},
-                group: ['grant_doc_num', 'appno_doc_num', 'pgpub_doc_num']
+                group: ['grant_doc_num', 'appno_doc_num', 'pgpub_doc_num'],
+                order:[['grant_date', 'desc']]
             })
+
+           
     
         /* if(findPatent != null && findPatent.rf_id > 0 && findPatent.grant_doc_num != null && findPatent.grant_doc_num != '') {
            

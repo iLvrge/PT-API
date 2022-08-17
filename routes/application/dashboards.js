@@ -550,10 +550,13 @@ route.post("/", [authJWT.verifyToken], async(req, res, next) => {
                     /**
                      * Lender or inventor
                      */
-                    query = `SELECT inventorName AS name, COUNT(rf_id) AS number, application, '' As patent, '' AS rf_id, 0 AS total FROM (SELECT aaa.assignor_and_assignee_id, IF(aaa.representative_id <> '', r.representative_name, aaa.name) AS inventorName, application, rf_id FROM dashboard_items AS di INNER JOIN db_uspto.assignor_and_assignee AS aaa ON aaa.assignor_and_assignee_id = di.assignor_id LEFT JOIN db_uspto.representative AS r ON r.representative_id = aaa.representative_id WHERE di.type = :type AND di.organisation_id = :organisationID ${companies.length > 0 ? ' AND di.representative_id IN (:company_id) ' : ''} ) AS temp GROUP BY inventorName ORDER BY number DESC, name ASC LIMIT 50`
+                    query = `SELECT inventorName AS name, COUNT(rf_id) AS number, application, '' As patent, '' AS rf_id, 0 AS total FROM (SELECT aaa.assignor_and_assignee_id, IF(aaa.representative_id <> '', r.representative_name, aaa.name) AS inventorName, application, rf_id FROM dashboard_items AS di INNER JOIN db_uspto.assignor_and_assignee AS aaa ON aaa.assignor_and_assignee_id = di.assignor_id LEFT JOIN db_uspto.representative AS r ON r.representative_id = aaa.representative_id WHERE di.type = :type AND di.organisation_id = :organisationID ${companies.length > 0 ? ' AND di.representative_id IN (:company_id) ' : ''} ) AS temp GROUP BY inventorName ORDER BY number DESC, name ASC `
+                    if(parseInt(qType) == 39) {
+                        query += ` LIMIT 50 `
+                    }
                     break;
                 case 40:
-                    query = `SELECT lawfirm AS name, COUNT(rf_id) AS number, application, '' As patent, '' AS rf_id, 0 AS total, type  FROM dashboard_items WHERE type = :type AND organisation_id = :organisationID ${companies.length > 0 ? ' AND representative_id IN (:company_id) ' : ''} GROUP BY lawfirm ORDER BY number DESC, name ASC LIMIT 50`
+                    query = `SELECT lawfirm AS name, COUNT(rf_id) AS number, application, '' As patent, '' AS rf_id, 0 AS total, type  FROM dashboard_items WHERE type = :type AND organisation_id = :organisationID ${companies.length > 0 ? ' AND representative_id IN (:company_id) ' : ''} GROUP BY lawfirm ORDER BY number DESC, name ASC`
                     break;
             }
         }
