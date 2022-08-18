@@ -2345,10 +2345,13 @@ route.put("/company/assignments", [authJWT.verifyToken, authJWT.isAdmin], async 
  route.put("/company/:id/company_selection/", [authJWT.verifyToken, authJWT.isAdmin, authJWT.addClientID, clientDBConnection.connect], async (req, res, next) => {
     try{
         const {id} = req.params
-        const {representative_id, status} = req.body
+        let {representative_id, status} = req.body
 
         if(id > 0) {
             const Representative = req.connection_db.define('Representatives', RepresentativeCustomer.mainStructure, RepresentativeCustomer.options);
+            if(representative_id != '') {
+                representative_id = JSON.parse(representative_id)
+            }
             const updateCompany = await Representative.update({
                 status
             }, {where: {representative_id}});
