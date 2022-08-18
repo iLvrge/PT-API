@@ -116,12 +116,15 @@ route.get("/timeline", [authJWT.verifyToken], async(req, res, next) => {
 
         if(replacements.layout != 15) {
             if(replacements.layout == 40) {
-
                 query = "SELECT cor.rf_id as id, (SELECT exec_dt FROM db_uspto.assignor WHERE rf_id = cor.rf_id LIMIT 1) AS exec_dt, release_rf_id, release_exec_dt, full_match AS partial_transaction, all_release_ids, total_assets AS releaseAssets, IF(rlf.representative_name <> '', rlf.representative_name, lf.name) AS lawfirm, lf.law_firm_id, lf.representative_id AS repID, IF(representative.representative_name <> '', representative.representative_name, assignor_and_assignee.name)  AS customerName, 0 AS tab_id, '' AS `group`, '' AS `company`, (SELECT count(asset) FROM ( SELECT IF(dd.grant_doc_num <> '', dd.grant_doc_num, dd.appno_doc_num) AS asset FROM db_uspto.documentid AS dd WHERE dd.rf_id = cor.rf_id GROUP BY asset ) AS temp) AS totalAssets FROM db_uspto.correspondent AS cor INNER JOIN activity_parties_transactions AS apt ON apt.rf_id = cor.rf_id INNER JOIN db_uspto.assignee AS ass ON ass.rf_id = cor.rf_id INNER JOIN db_uspto.assignor_and_assignee AS assignor_and_assignee ON assignor_and_assignee.assignor_and_assignee_id = ass.assignor_and_assignee_id LEFT JOIN db_uspto.representative AS representative ON representative.representative_id = assignor_and_assignee.representative_id INNER JOIN db_uspto.law_firm AS lf ON cor.cname = lf.name LEFT JOIN  db_uspto.representative_law_firm AS rlf ON rlf.representative_id = lf.representative_id  WHERE cor.rf_id IN (SELECT rf_id FROM dashboard_items WHERE organisation_id = :organisation_id  AND representative_id IN (:companies) AND type = :layout) "
                 query += " GROUP BY cor.rf_id ORDER BY exec_dt DESC "
 
+            } else if (replacements.layout == 39) {
+                query = "SELECT assignment.rf_id as id, MAX(aor.exec_dt) AS exec_dt, release_rf_id, release_exec_dt, full_match AS partial_transaction, all_release_ids, total_assets AS releaseAssets, IF(representative.representative_name <> '', representative.representative_name, assignor_and_assignee.name)  AS customerName, apt.activity_id AS tab_id, '' AS `group`, '' AS `company`, (SELECT count(asset) FROM ( SELECT IF(dd.grant_doc_num <> '', dd.grant_doc_num, dd.appno_doc_num) AS asset FROM db_uspto.documentid AS dd WHERE dd.rf_id = assignment.rf_id GROUP BY asset ) AS temp) AS totalAssets FROM db_uspto.assignment INNER JOIN activity_parties_transactions AS apt ON apt.rf_id = assignment.rf_id INNER JOIN db_uspto.assignor AS aor ON aor.rf_id = assignment.rf_id INNER JOIN db_uspto.assignor_and_assignee AS assignor_and_assignee ON assignor_and_assignee.assignor_and_assignee_id = aor.assignor_and_assignee_id LEFT JOIN db_uspto.representative AS representative ON representative.representative_id = assignor_and_assignee.representative_id WHERE assignment.rf_id IN (SELECT rf_id FROM dashboard_items WHERE organisation_id = :organisation_id  AND representative_id IN (:companies) AND type = :layout)  GROUP BY assignment.rf_id ORDER BY exec_dt DESC "
+            }  else if (replacements.layout == 41) {
+                query = "SELECT assignment.rf_id as id, (SELECT exec_dt FROM db_uspto.assignor WHERE rf_id = assignment.rf_id LIMIT 1) AS exec_dt, release_rf_id, release_exec_dt, full_match AS partial_transaction, all_release_ids, total_assets AS releaseAssets, IF(representative.representative_name <> '', representative.representative_name, assignor_and_assignee.name)  AS customerName, apt.activity_id AS tab_id, '' AS `group`, '' AS `company`, (SELECT count(asset) FROM ( SELECT IF(dd.grant_doc_num <> '', dd.grant_doc_num, dd.appno_doc_num) AS asset FROM db_uspto.documentid AS dd WHERE dd.rf_id = assignment.rf_id GROUP BY asset ) AS temp) AS totalAssets FROM db_uspto.assignment INNER JOIN activity_parties_transactions AS apt ON apt.rf_id = assignment.rf_id INNER JOIN db_uspto.assignee AS ass ON ass.rf_id = assignment.rf_id INNER JOIN db_uspto.assignor_and_assignee AS assignor_and_assignee ON assignor_and_assignee.assignor_and_assignee_id = ass.assignor_and_assignee_id LEFT JOIN db_uspto.representative AS representative ON representative.representative_id = assignor_and_assignee.representative_id WHERE apt.activity_id IN (5, 12) AND assignment.rf_id IN (SELECT rf_id FROM dashboard_items WHERE organisation_id = :organisation_id  AND representative_id IN (:companies) AND type = :layout)  GROUP BY assignment.rf_id ORDER BY exec_dt DESC "
             } else {
-                query = "SELECT assignment.rf_id as id, (SELECT exec_dt FROM db_uspto.assignor WHERE rf_id = assignment.rf_id LIMIT 1) AS exec_dt, release_rf_id, release_exec_dt, full_match AS partial_transaction, all_release_ids, total_assets AS releaseAssets, IF(representative.representative_name <> '', representative.representative_name, assignor_and_assignee.name)  AS customerName, 0 AS tab_id, '' AS `group`, '' AS `company`, (SELECT count(asset) FROM ( SELECT IF(dd.grant_doc_num <> '', dd.grant_doc_num, dd.appno_doc_num) AS asset FROM db_uspto.documentid AS dd WHERE dd.rf_id = assignment.rf_id GROUP BY asset ) AS temp) AS totalAssets FROM db_uspto.assignment INNER JOIN activity_parties_transactions AS apt ON apt.rf_id = assignment.rf_id INNER JOIN db_uspto.assignee AS ass ON ass.rf_id = assignment.rf_id INNER JOIN db_uspto.assignor_and_assignee AS assignor_and_assignee ON assignor_and_assignee.assignor_and_assignee_id = ass.assignor_and_assignee_id LEFT JOIN db_uspto.representative AS representative ON representative.representative_id = assignor_and_assignee.representative_id WHERE assignment.rf_id IN (SELECT rf_id FROM dashboard_items WHERE organisation_id = :organisation_id  AND representative_id IN (:companies) AND type = :layout) "
+                query = "SELECT assignment.rf_id as id, (SELECT exec_dt FROM db_uspto.assignor WHERE rf_id = assignment.rf_id LIMIT 1) AS exec_dt, release_rf_id, release_exec_dt, full_match AS partial_transaction, all_release_ids, total_assets AS releaseAssets, IF(representative.representative_name <> '', representative.representative_name, assignor_and_assignee.name)  AS customerName, apt.activity_id AS tab_id, '' AS `group`, '' AS `company`, (SELECT count(asset) FROM ( SELECT IF(dd.grant_doc_num <> '', dd.grant_doc_num, dd.appno_doc_num) AS asset FROM db_uspto.documentid AS dd WHERE dd.rf_id = assignment.rf_id GROUP BY asset ) AS temp) AS totalAssets FROM db_uspto.assignment INNER JOIN activity_parties_transactions AS apt ON apt.rf_id = assignment.rf_id INNER JOIN db_uspto.assignee AS ass ON ass.rf_id = assignment.rf_id INNER JOIN db_uspto.assignor_and_assignee AS assignor_and_assignee ON assignor_and_assignee.assignor_and_assignee_id = ass.assignor_and_assignee_id LEFT JOIN db_uspto.representative AS representative ON representative.representative_id = assignor_and_assignee.representative_id WHERE assignment.rf_id IN (SELECT rf_id FROM dashboard_items WHERE organisation_id = :organisation_id  AND representative_id IN (:companies) AND type = :layout) "
                 query += " GROUP BY assignment.rf_id ORDER BY exec_dt DESC "
             }
             
@@ -935,6 +938,26 @@ route.get("/:layout/assets", [authJWT.verifyToken, clientDBConnection.connect], 
                 } else {
                     res.status(200).json(assets);
                 }
+            }  else if(replacements.layoutID == 22 || replacements.layoutID == 31) { 
+                /**
+                 * Assets not assigned or Filled
+                 */
+                query = `SELECT ${req.orgId} AS organisation_id, CASE WHEN ag.grant_doc_num = '' OR ag.grant_doc_num IS NULL THEN CONCAT(SUBSTRING(ap.appno_doc_num, 1, 2), '/', FORMAT(SUBSTRING(ap.appno_doc_num, 3), 0)) ELSE FORMAT(ag.grant_doc_num, 0) END AS format_asset, CASE WHEN ag.grant_doc_num = '' OR ag.grant_doc_num IS NULL THEN ap.appno_doc_num ELSE ag.grant_doc_num END AS asset, CASE WHEN ag.grant_doc_num = '' OR ag.grant_doc_num IS NULL THEN 1 ELSE 0 END AS asset_type, ap.appno_doc_num, ag.grant_doc_num, 0 AS child_count, '' AS channel FROM db_patent_grant_bibliographic.application_publication AS ap LEFT JOIN db_patent_application_bibliographic.application_grant AS ag ON ag.appno_doc_num = ap.appno_doc_num WHERE ap.appno_doc_num IN ( SELECT application FROM db_new_application.dashboard_items WHERE organisation_id = :organisationID AND type = :layoutID AND date_format(ap.appno_date, '%Y') > :date `;
+
+                if(Array.isArray(companies) && companies.length > 0) {
+                    query += ` AND representative_id IN (:companies) `
+                }
+                query += ` GROUP BY application ) `
+
+                assets.list = await connection.applicationNew.query(query,{
+                    type: connection.Sequelize.QueryTypes.SELECT,
+                    raw: true,
+                    logging: console.log,
+                    replacements
+                })
+                assets.total_records = assets.list.length 
+                res.status(200).json(assets);
+                
             } else {
                 if(replacements.layoutID != 15) {
                     query += ` WHERE date_format(assets.appno_date, '%Y') > :date AND assets.layout_id = 15 AND assets.organisation_id = :organisationID `
@@ -1148,7 +1171,7 @@ route.get("/:layout/transactions", [authJWT.verifyToken, clientDBConnection.conn
             companies = JSON.parse( companies )            
         }
         
-        if(replacements.layoutID == 17 || replacements.layoutID == 18 || replacements.layoutID == 19 || replacements.layoutID == 24 || replacements.layoutID == 25) {
+        if(replacements.layoutID == 17 || replacements.layoutID == 18 || replacements.layoutID == 19 ||replacements.layoutID == 24 || replacements.layoutID == 25 || replacements.layoutID == 26 || replacements.layoutID == 39 || replacements.layoutID == 40 || replacements.layoutID == 41) {
             if(companies.length > 0) {
                 replacements.companies = companies
             }

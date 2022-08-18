@@ -780,23 +780,30 @@ route.get("/assets/:asset",[authJWT.verifyToken], async (req, res) =>{
         }
     }
 
-    Documentids.findAll({
+    let findDocument = await Documentids.findAll({
         where,
         attributes:['rf_id',['grant_doc_num','number'], ['appno_doc_num','application']],
     })
-    .then(p => {
-        console.log("CHECKING PATENT");
-        console.log('%j',p);     
-        if(p != null && p.length > 0){
-            console.log(p); 
-            helpers.generateJSON(req, res);
+    if(findDocument.length == 0 && typeof flag !== 'undefined' && flag >= 0) {
+        let queryDocument  = '';
+        if(flag == 1) {
+            queryDocument = "SELECT appno_doc_num, appno_date, grant_doc_num, grant_date, 0 AS rf_id  FROM db_patent_application_bibliographic.application_grant WHERE grant_doc_num = :asset " ;
         } else {
-            res.status(400).send("Invalid number");
-        }       
-    }).catch(err => {
-        console.log(err);
+            queryDocument = "SELECT appno_doc_num, appno_date, '' AS grant_doc_num, '' AS grant_date, 0 AS rf_id, '' FROM db_patent_grant_bibliographic.application_publication WHERE appno_doc_num = :asset" ;
+        }
+        findDocument =  await connection.resources.query(queryDocument,{
+            type: connection.Sequelize.QueryTypes.SELECT,
+            replacements: {asset},
+            raw: true,
+            logging: console.log,
+        });
+    }
+    if(findDocument != null && findDocument.length > 0){
+        console.log(findDocument); 
+        helpers.generateJSON(req, res);
+    } else {
         res.status(400).send("Invalid number");
-    })
+    } 
 });
 
 /**
@@ -1160,14 +1167,18 @@ route.post("/assets/assets_for_sale",[authJWT.verifyToken, clientDBConnection.co
             const {appno_doc_num, grant_doc_num, type} = req.body
 
             if((typeof grant_doc_num !== 'undefined' && grant_doc_num !== '') || (typeof appno_doc_num !== 'undefined' && appno_doc_num !== '')) {
-                const data = await AssetsForSale.create({
+                const insertData = [{
                     appno_doc_num,
                     grant_doc_num,
                     type,
                     organisation_id: req.orgId
-                })
+                }]
+                const data = await AssetsForSale.bulkCreate(insertData, {ignoreDuplicates: true})
 
                 if(data !== null ) {
+                    /**
+                     * Send Message to Slack 
+                     */
                     result.message = "Assets moved for sale successfully"
                 }
             } else {
