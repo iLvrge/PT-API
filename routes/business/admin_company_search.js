@@ -1433,7 +1433,7 @@ route.put("/company/law_firms", [authJWT.verifyToken, authJWT.isAdmin], async (r
                             findRows.forEach( row => {
                                 otherLawFirmIDs.push(row.law_firm_id)
                             })
-                            await LawFirms.update(item, {where: {law_firm_id: otherLawFirmIDs}}); 
+                            await LawFirms.update({representative_id: 0}, {where: {law_firm_id: otherLawFirmIDs}}); 
                         }
                     }
 
