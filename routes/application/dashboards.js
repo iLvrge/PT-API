@@ -407,6 +407,51 @@ route.post("/count", [authJWT.verifyToken], async(req, res, next) => {
         res.status(500).json({message: "Unable to retrieve data."})
     }
 })
+
+route.post("/example", [authJWT.verifyToken], async(req, res, next) => {
+    try{
+
+        let {selectedCompanies, customers, type, data_format, format_type, company} = req.body, getData = {}
+            const where = { year: 1997, organisationID: req.orgId};
+            let query = '';
+            const companies = JSON.parse(selectedCompanies) 
+
+            if(companies.length > 0) {
+                where.company_id = companies
+            }
+
+            if(type != '') {
+                where.type = JSON.parse(type)
+            }
+            let parties = [];
+            let qType = parseInt(type);
+            if(typeof format_type != 'undefined' && format_type.toLowerCase() == 'bank') {
+                parties = JSON.parse(customers)
+                if(parties.length > 0) {
+                    where.assignor_id = parties
+                }
+            }
+
+            
+            query = `SELECT  rf_id, patent, application FROM dashboard_items_count WHERE type IN (:type) AND organisation_id = :organisationID ${parties.length > 0 ? ' AND assignor_id IN (:assignor_id) ' : ''} ${companies.length > 0 ? ' AND representative_id IN (:company_id) ' : ''}`;
+
+            getData =  await connection.applicationNew.query(query,{
+                type: connection.Sequelize.QueryTypes.SELECT,
+                raw: true,
+                logging: console.log,
+                replacements: where,
+                plain: true
+            })
+
+            res.status(200).json(getData);
+
+
+    } catch (err){
+        console.log('ERROR in dashboard timeline', err)
+        res.status(500).json({message: "Unable to retrieve data."})
+    }
+})
+
 route.post("/", [authJWT.verifyToken], async(req, res, next) => {
     try{
         let {selectedCompanies, customers, type, data_format, format_type, company} = req.body, getData = {}
