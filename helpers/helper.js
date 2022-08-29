@@ -3277,6 +3277,7 @@ const findLayout = (layout) => {
             layoutID = 34
             break
         case 'maintenance_budget':
+        case 'pay_maintainence_fee':
             layoutID = 35
             break
         case 'abandoned':
@@ -3344,8 +3345,6 @@ const findFilterAssets = async(req) => {
                          * Get List
                          */
     
-                         
-    
                         if(typeof other_mode != 'undefined' && other_mode == 'true') {
                             query = `SELECT appno_doc_num FROM db_new_application.assets_for_sale AS assets WHERE assets.organisation_id = :organisationID `
                         } else {
@@ -3354,9 +3353,6 @@ const findFilterAssets = async(req) => {
                             } else {
                                 where.layoutID = 15
                             }
-        
-                            
-        
                             
                             if(tabs && tabs != '') {
                                 tabs = JSON.parse( tabs )
