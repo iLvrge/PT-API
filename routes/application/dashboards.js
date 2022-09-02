@@ -455,14 +455,15 @@ route.post("/example", [authJWT.verifyToken], async(req, res, next) => {
 route.post("/", [authJWT.verifyToken], async(req, res, next) => {
     try{
         let {selectedCompanies, customers, type, data_format, format_type, company} = req.body, getData = {}
-        const where = { year: 1997, organisationID: req.orgId, type: parseInt(type)}, typeList = [38, 39, 40, 41]
-        let query = '';
+        const where = { year: 1997, organisationID: req.orgId, type: parseInt(type)} 
+        let query = '',  typeList = [38, 39, 40, 41];
         const companies = JSON.parse(selectedCompanies)
         if(companies.length > 0) {
             where.company_id = companies
         }
         let qType = parseInt(type);
         if(typeof format_type != 'undefined' && format_type.toLowerCase() == 'bank') {
+            console.log("BANKKKKK");
             const parties = JSON.parse(customers)
             if(parties.length > 0) {
                 where.assignor_id = parties
@@ -471,60 +472,52 @@ route.post("/", [authJWT.verifyToken], async(req, res, next) => {
             switch(parseInt(type)) {
                 case 1: 
                 case 18:
+                case 19:
                 case 20:
-                case 21:
                 case 22:
                 case 23:
-                case 26:
-                    /**
-                     * Encumbrances
-                     * Broken Chain 
-                     * Maintainence
-                     */
-                    where.layoutID = qType == 1 ? 1 : 15;
-                    if(parseInt(data_format) === 1) {
-                        let innerJOIN = ` INNER JOIN db_new_application.assets AS assets ON assets.appno_doc_num = dt.application `;
-                        
-                        query = `SELECT year, sum(number) over (order by year) as number, application, patent, rf_id FROM (
-                            SELECT year, COUNT(year) AS number, application, patent, '' AS rf_id FROM( SELECT assets.appno_doc_num AS application, assets.grant_doc_num AS patent, date_format(assets.appno_date, '%Y') AS year FROM db_new_application.dashboard_items AS dt
-                        ${innerJOIN}
-                        WHERE dt.organisation_id = :organisationID 
-                        AND assets.organisation_id = :organisationID 
-                        AND assets.layout_id = :layoutID AND assets.company_id IN (:company_id)  AND dt.type = :type
-                        AND dt.representative_id IN (:company_id)
-                        AND date_format(assets.appno_date, '%Y') > :year
-                        GROUP BY assets.appno_doc_num) AS temp GROUP BY year) AS temp1`;
-                    } else {
-                        query = `SELECT COUNT(application) AS number, application, patent, rf_id, total FROM (SELECT application, patent, rf_id, total FROM dashboard_items 
-                            WHERE type = :type AND organisation_id = :organisationID  ${parties.length > 0 ? ' AND assignor_id IN (:assignor_id) ' : ''} ${companies.length > 0 ? ' AND representative_id IN (:company_id) ' : ''}  GROUP BY application) AS temp`
-                    }
-                    break;
-                case 17: 
                 case 24:
                 case 25:
+                        /**
+                         * Non Expired Collaterals
+                         * Non Client Collaterals
+                         * Invalid Collaterals
+                         * Broken Chain 
+                         * Expired Collateral
+                         * Conflicting Transactions
+                         * Encumbrances
+                         * Late Recording
+                         */
+                        where.layoutID = qType == 1 ? 1 : 15;
+                   
+                        query = `SELECT COUNT(application) AS number, application, patent, rf_id, total FROM (SELECT application, patent, rf_id, total FROM dashboard_items 
+                            WHERE type = :type AND organisation_id = :organisationID  ${parties.length > 0 ? ' AND assignor_id IN (:assignor_id) ' : ''} ${companies.length > 0 ? ' AND representative_id IN (:company_id) ' : ''}  GROUP BY application) AS temp`
+                    break;
+                case 21: 
+                case 27:
+                    console.log(27)
                     /**
-                     * Incorrect Names
-                     * Incorrect Recording
-                     * Late Recording
+                     * Client Transactions
+                     * Other Banks
                      */
-                     where.layoutID = 15;
-                     if(parseInt(data_format) === 1) {
-                        query = `SELECT year, sum(number) over (order by year) as number, application, patent, rf_id FROM (
-                            SELECT year, COUNT(year) AS number, '' AS application, '' AS patent, rf_id FROM( 
-                            SELECT dt.rf_id, date_format(apt.exec_dt, '%Y') AS year FROM db_new_application.dashboard_items AS dt
-                            INNER JOIN db_new_application.activity_parties_transactions AS apt ON apt.rf_id = dt.rf_id
-                            WHERE dt.organisation_id = :organisationID
-                            AND apt.organisation_id = :organisationID
-                            AND apt.company_id IN (:company_id)
-                            AND dt.representative_id IN (:company_id)
-                            AND dt.type = :type
-                            AND date_format(apt.exec_dt, '%Y') > :year
-                            GROUP BY dt.rf_id) AS temp GROUP BY year) AS temp1`;
-                    } else {
-                        query = `SELECT COUNT(rf_id) AS number, '' AS application, '' AS patent, rf_id, total FROM (SELECT rf_id, total FROM dashboard_items 
-                            WHERE type = :type AND organisation_id = :organisationID ${companies.length > 0 ? ' AND representative_id IN (:company_id) ' : ''} ${parties.length > 0 ? ' AND assignor_id IN (:assignor_id) ' : ''} GROUP BY rf_id) AS temp`
-                    
-                    }
+                    typeList = [21, 27]
+                    where.year = 1997
+                    where.activityIDs = [5, 12]
+                    const tableName = parseInt(type) == 27 ? 'borrowers_activity_parties_transactions' : 'activity_parties_transactions'
+                    query = `SELECT apt.rf_id as id, assign.reel_no, assign.frame_no, exec_dt, release_rf_id, release_exec_dt, apt.full_match AS partial_transaction, total_assets AS releaseAssets, all_release_ids, assign1.reel_no AS release_reel_no, assign1.frame_no AS release_frame_no, IF(r.representative_name <> '', r.representative_name,aaa.name)  AS customerName, activity_id AS tab_id, company_id AS company, (SELECT count(asset) FROM ( SELECT IF(dd.grant_doc_num <> '', dd.grant_doc_num, dd.appno_doc_num) AS asset FROM db_uspto.documentid AS dd WHERE dd.rf_id = apt.rf_id GROUP BY asset ) AS temp) AS totalAssets FROM ${tableName} AS apt
+                        INNER JOIN db_uspto.assignment AS assign ON assign.rf_id = apt.rf_id
+                        LEFT JOIN db_uspto.assignment AS assign1 ON assign1.rf_id = apt.release_rf_id
+                        INNER JOIN db_uspto.assignor_and_assignee AS aaa ON aaa.assignor_and_assignee_id = apt.assignor_and_assignee_id LEFT JOIN db_uspto.representative AS r ON r.representative_id = aaa.representative_id WHERE apt.organisation_id = :organisationID AND company_id IN (:company_id) AND apt.rf_id IN (
+                            SELECT di.rf_id FROM dashboard_items AS di WHERE organisation_id = :organisationID AND representative_id IN (:company_id) AND type = :type ${parties.length > 0 ? ' AND assignor_id IN (:assignor_id) ' : ''}  GROUP BY di.rf_id
+                        ) AND apt.activity_id IN (:activityIDs) ${parties.length > 0 ? ' AND apt.assignor_and_assignee_id IN (:assignor_id) ' : ''} AND date_format(apt.exec_dt, '%Y') > :year GROUP BY apt.rf_id ORDER BY exec_dt DESC `;
+                    break;
+                case 17:
+                case 26:
+                    /**
+                     * Collaterialized Assets
+                     * Client Current Assets
+                     */
+                    query = `SELECT COUNT(IF(patent <> '', patent, null)) AS number, COUNT(IF(patent = '', application, null)) AS other_number, COUNT(*) AS total, patent, application, '' AS rf_id, type FROM dashboard_items WHERE type = :type AND organisation_id = :organisationID  AND assignor_id IN (:assignor_id) ' : ''} ${companies.length > 0 ? ' AND representative_id IN (:company_id) ' : ''}`
                     break;
             }
         } else { 
@@ -657,9 +650,6 @@ route.post("/", [authJWT.verifyToken], async(req, res, next) => {
             })
             res.status(200).json(getData);
         } else if(parseInt(qType) === 37 && (typeof format_type == 'undefined' || format_type.toLowerCase() != 'bank')) {
-
-            
-            
             const url = `https://developer.uspto.gov/ptab-api/proceedings?patentOwnerName=%22${company.replace(/ /g,'%20')}%22`
 
             const firstRequest = url + `&recordTotalQuantity=1`
