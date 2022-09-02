@@ -495,7 +495,6 @@ route.post("/", [authJWT.verifyToken], async(req, res, next) => {
                     break;
                 case 21: 
                 case 27:
-                    console.log(27)
                     /**
                      * Client Transactions
                      * Other Banks
@@ -517,7 +516,7 @@ route.post("/", [authJWT.verifyToken], async(req, res, next) => {
                      * Collaterialized Assets
                      * Client Current Assets
                      */
-                    query = `SELECT COUNT(IF(patent <> '', patent, null)) AS number, COUNT(IF(patent = '', application, null)) AS other_number, COUNT(*) AS total, patent, application, '' AS rf_id, type FROM dashboard_items WHERE type = :type AND organisation_id = :organisationID  AND assignor_id IN (:assignor_id) ' : ''} ${companies.length > 0 ? ' AND representative_id IN (:company_id) ' : ''}`
+                    query = `SELECT COUNT(IF(patent <> '', patent, null)) AS number, COUNT(IF(patent = '', application, null)) AS other_number, COUNT(*) AS total, patent, application, '' AS rf_id, type FROM dashboard_items WHERE type = :type AND organisation_id = :organisationID  ${parties.length > 0 ? ' AND assignor_id IN (:assignor_id) ' : ''}  ${companies.length > 0 ? ' AND representative_id IN (:company_id) ' : ''}`
                     break;
             }
         } else { 
