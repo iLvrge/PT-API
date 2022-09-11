@@ -974,12 +974,34 @@ route.get("/:layout/assets", [authJWT.verifyToken, clientDBConnection.connect], 
                 /**
                  * Assets not assigned or Filled
                  */
-                query = `SELECT ${req.orgId} AS organisation_id, CASE WHEN ag.grant_doc_num = '' OR ag.grant_doc_num IS NULL THEN CONCAT(SUBSTRING(ap.appno_doc_num, 1, 2), '/', FORMAT(SUBSTRING(ap.appno_doc_num, 3), 0)) ELSE FORMAT(ag.grant_doc_num, 0) END AS format_asset, CASE WHEN ag.grant_doc_num = '' OR ag.grant_doc_num IS NULL THEN ap.appno_doc_num ELSE ag.grant_doc_num END AS asset, CASE WHEN ag.grant_doc_num = '' OR ag.grant_doc_num IS NULL THEN 1 ELSE 0 END AS asset_type, ap.appno_doc_num, ag.grant_doc_num, 0 AS child_count, '' AS channel FROM db_patent_grant_bibliographic.application_publication AS ap LEFT JOIN db_patent_application_bibliographic.application_grant AS ag ON ag.appno_doc_num = ap.appno_doc_num WHERE ap.appno_doc_num IN ( SELECT application FROM db_new_application.dashboard_items WHERE organisation_id = :organisationID AND type = :layoutID AND date_format(ap.appno_date, '%Y') > :date `;
+
+                let queryAssets = `SELECT application FROM db_new_application.dashboard_items WHERE organisation_id = :organisationID AND type = :layoutID `;
 
                 if(Array.isArray(companies) && companies.length > 0) {
-                    query += ` AND representative_id IN (:companies) `
+                    queryAssets += ` AND representative_id IN (:companies) `
                 }
-                query += ` GROUP BY application ) `
+
+                queryAssets += ` GROUP BY application `;
+
+                const getAssetsList = await connection.applicationNew.query(queryAssets,{
+                    type: connection.Sequelize.QueryTypes.SELECT,
+                    raw: true,
+                    logging: console.log,
+                    replacements
+                })
+
+                const appNos = []
+
+                if(getAssetsList != null && getAssetsList.length > 0) {
+                    getAssetsList.forEach( asset => {
+                        appNos.push(`${asset.application}`)
+                    })
+                }
+
+                if(appNos.length > 0) {
+                    replacements.assets = appNos
+                    query = `SELECT ${req.orgId} AS organisation_id, FORMAT(ag.grant_doc_num, 0) AS format_asset, ag.grant_doc_num AS asset,  0 AS asset_type, ag.appno_doc_num, ag.grant_doc_num, 0 AS child_count, '' AS channel FROM db_patent_application_bibliographic.application_grant AS ag WHERE ag.appno_doc_num IN (:assets)  AND date_format(ag.appno_date, '%Y') > :date   GROUP BY appno_doc_num  UNION ALL SELECT ${req.orgId} AS organisation_id, CONCAT(SUBSTRING(ap.appno_doc_num, 1, 2), '/', FORMAT(SUBSTRING(ap.appno_doc_num, 3), 0)) AS format_asset, ap.appno_doc_num AS asset, 1 AS asset_type, ap.appno_doc_num, '' AS grant_doc_num, 0 AS child_count, '' AS channel FROM db_patent_grant_bibliographic.application_publication AS ap WHERE ap.appno_doc_num IN (:assets) AND date_format(ap.appno_date, '%Y') > :date  AND ap.appno_doc_num NOT IN (SELECT appno_doc_num FROM db_patent_application_bibliographic.application_grant WHERE appno_doc_num IN (:assets)) GROUP BY ap.appno_doc_num`;
+                }
 
                 assets.list = await connection.applicationNew.query(query,{
                     type: connection.Sequelize.QueryTypes.SELECT,
