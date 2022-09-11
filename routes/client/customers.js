@@ -997,9 +997,9 @@ route.get("/:layout/assets", [authJWT.verifyToken, clientDBConnection.connect], 
                     if(Array.isArray(companies) && companies.length > 0) {
                         query += ` AND assets.company_id IN (:companies)`
                     }
-                    if(replacements.layoutID == 30) {
+                    /* if(replacements.layoutID == 30) {
                         query += ` AND appno_doc_num IN (SELECT appno_doc_num FROM db_new_application.owned_assets WHERE organisation_id = :organisationID AND company_id IN (:companies) GROUP BY appno_doc_num) AND grant_doc_num <> ''`
-                    } else if (replacements.layoutID == 38) {
+                    } else  */if (replacements.layoutID == 38) {
                         query += ` AND grant_doc_num IN (SELECT grant_doc_num FROM db_uspto.assets_family AS af WHERE grant_doc_num IN (
                             SELECT grant_doc_num FROM db_uspto.documentid AS di WHERE appno_doc_num IN (
                                 SELECT appno_doc_num FROM db_new_application.owned_assets WHERE organisation_id = :organisationID AND company_id IN (:companies) GROUP BY appno_doc_num
