@@ -4,6 +4,8 @@ const route = express.Router();
 
 const rp = require('request-promise');
 
+const querystring = require('querystring');
+
 const connection = require("../../config/db.config");
 
 const RepresentativeResources = require("../../model/resources/Representatives");
@@ -1215,4 +1217,31 @@ route.post("/share", [authJWT.verifyToken], async(req, res, next) => {
         res.status(500).json({message: "Unable to retrieve assets"})
     }
 })
+
+route.get('/check', async(req, res, next) => {
+    const url = `https://developer.uspto.gov/ptab-api/proceedings/json`
+
+    const firstRequest = url + `&recordTotalQuantity=1`
+    //require('https').globalAgent.options.ca = require('ssl-root-cas').create();
+    const option = {
+        method: 'POST',
+        uri: url,
+        strictSSL: false,
+        json: true,
+        body:  JSON.stringify({
+            facetMap: {
+                applicationNumberText: ["15132057", "15728248", "15690237"]
+            },
+            rows: 1000,
+            start: 0
+        })
+    }
+    console.log(option)
+    rp(option)
+    .then( body => {
+        let responseBody = JSON.parse(body);
+        console.log(responseBody)
+    })
+})
+
 module.exports = route;
