@@ -940,7 +940,7 @@ route.get("/:layout/assets", [authJWT.verifyToken, clientDBConnection.connect], 
                                     other_number.push(appellantApplicationNumberText)
                                 }
                             }
-                            console.log('SERVERRRRR')
+                            
                             query = `SELECT ${req.orgId} AS organisation_id, CASE WHEN assets.grant_doc_num = '' OR assets.grant_doc_num IS NULL THEN CONCAT(SUBSTRING(assets.appno_doc_num, 1, 2), '/', FORMAT(SUBSTRING(assets.appno_doc_num, 3), 0)) ELSE FORMAT(assets.grant_doc_num, 0) END AS format_asset,
                             CASE WHEN assets.grant_doc_num = '' OR assets.grant_doc_num IS NULL THEN assets.appno_doc_num ELSE assets.grant_doc_num END AS asset, 
                             CASE WHEN assets.grant_doc_num = '' OR assets.grant_doc_num IS NULL THEN 1 ELSE 0 END AS asset_type, assets.appno_doc_num, assets.grant_doc_num, 0 AS child_count, '' AS channel FROM db_uspto.documentid AS assets WHERE `;
@@ -954,7 +954,21 @@ route.get("/:layout/assets", [authJWT.verifyToken, clientDBConnection.connect], 
                                 }
                                 query +=` assets.appno_doc_num IN (:other_number)`
                             }
-                            query +=` GROUP BY assets.appno_doc_num`;
+                            query +=` GROUP BY assets.appno_doc_num `;
+
+                            if(typeof column === 'undefined' || column === 'undefined') {
+                                column = 'asset'
+                            }
+                            if(typeof direction === 'undefined' || direction === 'undefined') {
+                                direction = 'DESC'
+                            }
+                
+                            if(column == 'asset') {
+                                query += `   ORDER BY asset_type ASC, ABS(${column}) ${direction} `
+                            } else {
+                                query += `   ORDER BY asset_type ASC, ${column} ${direction} `;
+                            }
+
 
                             assets.list = await connection.applicationNew.query(query,{
                                 type: connection.Sequelize.QueryTypes.SELECT,

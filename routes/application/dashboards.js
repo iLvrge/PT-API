@@ -4,6 +4,8 @@ const route = express.Router();
 
 const rp = require('request-promise');
 
+const request = require('request');
+
 const querystring = require('querystring');
 
 const connection = require("../../config/db.config");
@@ -1219,29 +1221,28 @@ route.post("/share", [authJWT.verifyToken], async(req, res, next) => {
 })
 
 route.get('/check', async(req, res, next) => {
-    const url = `https://developer.uspto.gov/ptab-api/proceedings/json`
-
-    const firstRequest = url + `&recordTotalQuantity=1`
-    //require('https').globalAgent.options.ca = require('ssl-root-cas').create();
-    const option = {
-        method: 'POST',
-        uri: url,
+    
+    request.post({
         strictSSL: false,
-        json: true,
-        body:  JSON.stringify({
-            facetMap: {
-                applicationNumberText: ["15132057", "15728248", "15690237"]
-            },
-            rows: 1000,
-            start: 0
-        })
-    }
-    console.log(option)
-    rp(option)
-    .then( body => {
-        let responseBody = JSON.parse(body);
-        console.log(responseBody)
-    })
+        headers: {'content-type' : 'application/json'},
+        url: 'https://developer.uspto.gov/ptab-api/proceedings/json ',
+        json:  {
+    "dateRangeData": {},
+    "facetData": {},
+    "parameterData": {
+        "patentNumber": "\"8480554\", \"9446259\", \"4816397\""
+    },
+    "recordTotalQuantity": 25,
+    "searchText": "",
+    "sortDataBag": [],
+    "recordStartNumber": 0
+}
+    }, function(error, response, body){
+        console.log(response);
+        console.log(error);
+        console.log(body);
+    });
+    
 })
 
 module.exports = route;

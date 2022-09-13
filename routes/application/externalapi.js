@@ -59,7 +59,7 @@ route.get("/ptab/:asset", [authJWT.verifyToken], async (req, res) => {
                             })
                         })
                     }
-                }),
+                })/* ,
                 rp(optionDocuments)
                 .then( body => {
                     let responseBody = JSON.parse(body);
@@ -78,7 +78,7 @@ route.get("/ptab/:asset", [authJWT.verifyToken], async (req, res) => {
                             })
                         })
                     }
-                })
+                }) */
             ]).then( requestComplete => {
                 console.log(requestComplete)
                 if(typeof counter !== 'undefined') {
