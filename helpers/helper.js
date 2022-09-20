@@ -3,6 +3,8 @@ const connection = require("../config/db.config");
 
 const request = require("request");
 
+const rp = require('request-promise');
+
 const FtsQuery = require("full-text-search-query");
 
 const { v4: uuidv4  } = require('uuid');
@@ -275,6 +277,95 @@ let searchCompany = async(query, t) => {
             }); 
 
 
+            let ptabParties = [], filterParties = [];
+
+            const url = `https://developer.uspto.gov/ptab-api/proceedings?patentOwnerName=%22${search.replace(/ /g,'%20')}%22`
+
+            const firstRequest = url + `&recordTotalQuantity=1`
+            //require('https').globalAgent.options.ca = require('ssl-root-cas').create();
+            const option = {
+                method: 'GET',
+                uri: firstRequest,
+                strictSSL: false
+            }
+
+            const getRequest = await rp(option)
+
+            console.log(getRequest)
+            if(getRequest != '' && getRequest != null) {
+               let responseBody = JSON.parse(getRequest);
+               let {results, recordTotalQuantity} = responseBody
+                if(recordTotalQuantity != undefined && parseInt(recordTotalQuantity) > 0) {
+                    if( parseInt(recordTotalQuantity) > 1 ) {
+                        const secondRequest = url + `&recordTotalQuantity=${responseBody.recordTotalQuantity}`
+                        option.uri = secondRequest
+
+                        const newRequest =  await rp(option)
+                        if(newRequest != '' && newRequest != null) {
+                            responseBody = JSON.parse(newRequest);
+                            if(typeof responseBody.results != 'undefined') {
+                                const getNameList = responseBody.results
+                                getNameList.forEach(item => {
+                                    const {respondentPartyName, appellantPartyName} = item
+                                    ptabParties.push(respondentPartyName)
+                                })
+                            }
+                        }
+                    }
+                }
+            }
+            ptabParties = [...new Set(ptabParties)]
+
+            const findQueryNormalizeParty = "SELECT pp.id, 0 AS assignor_and_assignee_id, pp.name, rr.representative_name AS normalize_name, (select r.representative_name FROM representative as r WHERE r.representative_name = pp.name GROUP BY r.representative_name limit 1) as representative_company, 1 AS counter, '3' AS flag FROM db_uspto.ptab_parties AS pp INNER JOIN db_uspto.representative AS rr ON rr.representative_id = pp.representative_id WHERE name IN (:ptabParties) GROUP BY name";
+
+            const normalizePtabParty = await connection.resources.query(findQueryNormalizeParty,{
+                type: connection.Sequelize.QueryTypes.SELECT,
+                raw: true,
+                replacements: { ptabParties },
+                logging: console.log,
+            }); 
+
+            const parties = [];
+
+            if(ptabParties != null && ptabParties.length > 0) {
+                normalizePtabParty.forEach( row => {
+                    parties.push(row.name)
+                    filterParties.push(row)
+                })
+
+                ptabParties.forEach( party => {
+                    if(!parties.includes(party)) {
+                        filterParties.push({id: 0, assignor_and_assignee_id: 0, name: party, normalize_name: '', representative_company: '', counter: 0, flag: 3})
+                    }
+                })
+            }
+            console.log(filterParties)
+            /*
+            rp(option)
+            .then( body => {
+                let responseBody = JSON.parse(body);
+                const {results, recordTotalQuantity} = responseBody
+                if(recordTotalQuantity != undefined && parseInt(recordTotalQuantity) > 0) {
+                    if( parseInt(recordTotalQuantity) > 1 ) {
+                        const secondRequest = url + `&recordTotalQuantity=${responseBody.recordTotalQuantity}`
+                        option.uri = secondRequest
+                        rp(option)
+                        .then( body => {
+                            responseBody = JSON.parse(body);
+                            const {results} = responseBody
+                            results.forEach(item => {
+                                const {respondentPartyName, appellantPartyName} = item
+                                ptabParties.push(respondentPartyName)
+                            })
+                            N@mish25121815
+                        })
+                    } else {
+                        const {respondentPartyName, appellantPartyName} = responseBody.results[0]
+                        ptabParties.push(respondentPartyName)
+                    }
+                }
+            })
+            */
 
 
             //let querySearchResult = [];
@@ -301,10 +392,10 @@ let searchCompany = async(query, t) => {
                 }
             } */
             if(querySearchResult.length > 0) {
-                queryResult = [...queryResult, ...querySearchResult, ...applicantQueryResult];
+                queryResult = [...queryResult, ...querySearchResult, ...applicantQueryResult, ...filterParties];
                 /*console.log(queryResult);*/
             }
-            return [...querySearchResult, ...applicantQueryResult];
+            return [...querySearchResult, ...applicantQueryResult, ...filterParties];
         });
         await Promise.all(promises);
         /*console.log(finalResultOfAllPromises);*/
@@ -1932,28 +2023,61 @@ let findCompanyEntitiesByAccountIDByRepresentativeIDs = async(orgID, representat
 
 
 let findAssignorAndAssigneeListFromRFIDs = async(rfIDs, type) => {
-    let customer_list = [], assignees = [], assignors = [];
+    let customer_list = [], assignees = [], assignors = [], inventors = [];
     
     if(typeof type != 'undefined' &&  parseInt(type) < 3) {
         /* let queryAssignor = "SELECT a.assignor_and_assignee_id, a.or_name as name, count(a.or_name) as counter, r.representative_name as normalize_name, (select rr.representative_name FROM representative as rr WHERE rr.representative_name = aaa.name GROUP BY rr.representative_name) as representativeCompany, (SELECT aa.instances FROM assignor_and_assignee as aa WHERE aa.assignor_and_assignee_id = a.assignor_and_assignee_id GROUP BY aa.assignor_and_assignee_id) as total_occurences, a.rf_id FROM db_uspto.assignor as a LEFT JOIN assignor_and_assignee as aaa ON aaa.assignor_and_assignee_id = a.assignor_and_assignee_id LEFT JOIN db_uspto.representative_assignment_conveyance as rac ON rac.rf_id = a.rf_id LEFT JOIN representative as r ON r.representative_id = aaa.representative_id WHERE a.rf_id IN (:IDs) "; */
 
-        let queryAssignor = "SELECT a.assignor_and_assignee_id, a.or_name as name, count(a.or_name) as counter, r.representative_name as normalize_name, (select rr.representative_name FROM representative as rr WHERE rr.representative_name = aaa.name GROUP BY rr.representative_name) as representativeCompany, (SELECT aa.instances FROM assignor_and_assignee as aa WHERE aa.assignor_and_assignee_id = a.assignor_and_assignee_id GROUP BY aa.assignor_and_assignee_id) as total_occurences, a.rf_id FROM db_uspto.assignor as a LEFT JOIN assignor_and_assignee as aaa ON aaa.assignor_and_assignee_id = a.assignor_and_assignee_id LEFT JOIN db_uspto.representative_assignment_conveyance as rac ON rac.rf_id = a.rf_id LEFT JOIN representative as r ON r.representative_id = aaa.representative_id WHERE a.rf_id IN (SELECT rf_id FROM documentid WHERE appno_doc_num IN (SELECT appno_doc_num FROM documentid WHERE rf_id IN (:IDs)) GROUP BY rf_id) ";
-        console.log("TYPE: "+ parseInt(type));
-        if(parseInt(type) > 0) {
-            console.log("TYPE: "+ type);
+        let queryAssignor = "SELECT a.assignor_and_assignee_id, a.or_name as name, count(a.or_name) as counter, r.representative_name as normalize_name, (select rr.representative_name FROM representative as rr WHERE rr.representative_name = aaa.name GROUP BY rr.representative_name) as representativeCompany, (SELECT aa.instances FROM assignor_and_assignee as aa WHERE aa.assignor_and_assignee_id = a.assignor_and_assignee_id GROUP BY aa.assignor_and_assignee_id) as total_occurences, a.rf_id FROM db_uspto.assignor as a LEFT JOIN assignor_and_assignee as aaa ON aaa.assignor_and_assignee_id = a.assignor_and_assignee_id LEFT JOIN db_uspto.representative_assignment_conveyance as rac ON rac.rf_id = a.rf_id LEFT JOIN representative as r ON r.representative_id = aaa.representative_id WHERE a.rf_id IN (SELECT rf_id FROM documentid WHERE appno_doc_num IN (SELECT appno_doc_num FROM documentid WHERE rf_id IN (:IDs)) GROUP BY rf_id) "; 
+        if(parseInt(type) > 0) { 
             if(parseInt(type) == 1) {
-                queryAssignor += " AND (rac.employer_assign = 1)";
+                queryAssignor += " AND (rac.employer_assign = 1) ";
             } else {
-                queryAssignor += " AND (rac.employer_assign = 0)";
+                queryAssignor += " AND (rac.employer_assign = 0) ";
             }
         }
 
-        queryAssignor += " GROUP BY a.or_name";
+        queryAssignor += " GROUP BY a.or_name ";
+
+        if(parseInt(type) > 0) { 
+            if(parseInt(type) == 1) {
+
+                const queryAssets = "SELECT appno_doc_num FROM documentid WHERE rf_id IN (SELECT rf_id FROM documentid WHERE appno_doc_num IN (SELECT appno_doc_num FROM documentid WHERE rf_id IN (:IDs)) GROUP BY rf_id) GROUP BY appno_doc_num"
+
+                const assetsList = await connection.resources.query(queryAssets,{
+                    type: connection.Sequelize.QueryTypes.SELECT,
+                    replacements: { IDs: rfIDs },
+                    raw: true,
+                    logging: console.log,
+                    }
+                );
+
+                const allAssets = []
+
+                assetsList.forEach( row => {
+                    assetsList.push(row.appno_doc_num)
+                })
+
+                if(allAssets.length > 0) {
+                    const grantInventorsQuery = "SELECT * FROM (SELECT appInv.assignor_and_assignee_id, aaa.name, count(aaa.name) as counter, r.representative_name as normalize_name, (select rr.representative_name FROM representative as rr WHERE rr.representative_name = aaa.name GROUP BY rr.representative_name) as representativeCompany, aaa.instances as total_occurences, 0 AS rf_id FROM db_patent_application_bibliographic.inventor AS appInv INNER JOIN  db_patent_application_bibliographic.assingor_and_assignee AS aaa ON aaa.assignor_and_assignee_id = appInv.assignor_and_assignee LEFT JOIN representative as r ON r.representative_id = aaa.representative_id WHERE appInv.appno_doc_num IN (:assetsList) GROUP BY appno_doc_num) GROUP BY aaa.name UNION SELECT appInv.assignor_and_assignee_id, aaa.name, count(aaa.name) as counter, r.representative_name as normalize_name, (select rr.representative_name FROM representative as rr WHERE rr.representative_name = aaa.name GROUP BY rr.representative_name) as representativeCompany, aaa.instances as total_occurences, 0 AS rf_id FROM db_patent_application_bibliographic.inventor AS appInv INNER JOIN  db_patent_grant_bibliographic.assingor_and_assignee AS aaa ON aaa.assignor_and_assignee_id = appInv.assignor_and_assignee LEFT JOIN representative as r ON r.representative_id = aaa.representative_id WHERE appInv.appno_doc_num IN (:assetsList) GROUP BY appno_doc_num) GROUP BY aaa.name) AS temp";
+
+                    inventors = await connection.resources.query(grantInventorsQuery,{
+                        type: connection.Sequelize.QueryTypes.SELECT,
+                        replacements: { assetsList },
+                        raw: true,
+                        logging: console.log,
+                        }
+                    );
+                }
+
+
+                queryAssignor += " UNION SELECT appInv.assignor_and_assignee_id, aaa.name, count(aaa.name) as counter, r.representative_name as normalize_name, (select rr.representative_name FROM representative as rr WHERE rr.representative_name = aaa.name GROUP BY rr.representative_name) as representativeCompany, aaa.instances as total_occurences, 0 AS rf_id FROM db_patent_application_bibliographic.inventor AS appInv INNER JOIN  db_patent_application_bibliographic.assingor_and_assignee AS aaa ON aaa.assignor_and_assignee_id = appInv.assignor_and_assignee LEFT JOIN representative as r ON r.representative_id = aaa.representative_id WHERE appInv.appno_doc_num IN ( SELECT appno_doc_num FROM documentid WHERE rf_id IN (SELECT rf_id FROM documentid WHERE appno_doc_num IN (SELECT appno_doc_num FROM documentid WHERE rf_id IN (:IDs)) GROUP BY rf_id) GROUP BY appno_doc_num) GROUP BY aaa.name UNION SELECT appInv.assignor_and_assignee_id, aaa.name, count(aaa.name) as counter, r.representative_name as normalize_name, (select rr.representative_name FROM representative as rr WHERE rr.representative_name = aaa.name GROUP BY rr.representative_name) as representativeCompany, aaa.instances as total_occurences, 0 AS rf_id FROM db_patent_grant_bibliographic.inventor AS appInv INNER JOIN  db_patent_application_bibliographic.assingor_and_assignee AS aaa ON aaa.assignor_and_assignee_id = appInv.assignor_and_assignee LEFT JOIN representative as r ON r.representative_id = aaa.representative_id WHERE appInv.appno_doc_num IN ( SELECT appno_doc_num FROM documentid WHERE rf_id IN (SELECT rf_id FROM documentid WHERE appno_doc_num IN (SELECT appno_doc_num FROM documentid WHERE rf_id IN (:IDs)) GROUP BY rf_id) GROUP BY appno_doc_num) GROUP BY aaa.name";
+                
+            }
+        }
         
         if(parseInt(type) == 2) { 
-            queryAssignor += " UNION "
-
-            queryAssignor += " SELECT a.assignor_and_assignee_id, a.ee_name as name, count(a.ee_name) as counter, r.representative_name as normalize_name, (select rr.representative_name FROM representative as rr WHERE rr.representative_name = aaa.name GROUP BY rr.representative_name) as representativeCompany, (SELECT aa.instances FROM assignor_and_assignee as aa WHERE aa.assignor_and_assignee_id = a.assignor_and_assignee_id  GROUP BY aa.assignor_and_assignee_id) as total_occurences, a.rf_id FROM db_uspto.assignee as a INNER JOIN representative_assignment_conveyance as ac ON ac.rf_id = a.rf_id LEFT JOIN assignor_and_assignee as aaa ON aaa.assignor_and_assignee_id = a.assignor_and_assignee_id LEFT JOIN representative as r ON r.representative_id = aaa.representative_id WHERE a.rf_id IN (:IDs)  GROUP BY a.ee_name";
+            queryAssignor += " UNION  SELECT a.assignor_and_assignee_id, a.ee_name as name, count(a.ee_name) as counter, r.representative_name as normalize_name, (select rr.representative_name FROM representative as rr WHERE rr.representative_name = aaa.name GROUP BY rr.representative_name) as representativeCompany, (SELECT aa.instances FROM assignor_and_assignee as aa WHERE aa.assignor_and_assignee_id = a.assignor_and_assignee_id  GROUP BY aa.assignor_and_assignee_id) as total_occurences, a.rf_id FROM db_uspto.assignee as a INNER JOIN representative_assignment_conveyance as ac ON ac.rf_id = a.rf_id LEFT JOIN assignor_and_assignee as aaa ON aaa.assignor_and_assignee_id = a.assignor_and_assignee_id LEFT JOIN representative as r ON r.representative_id = aaa.representative_id WHERE a.rf_id IN (:IDs)  GROUP BY a.ee_name";
         }
         
         
@@ -2020,7 +2144,7 @@ let findAssignorAndAssigneeListFromRFIDs = async(rfIDs, type) => {
         );
     }             
     
-    customer_list = [...assignees, ...assignors];  
+    customer_list = [...assignees, ...assignors, ...inventors];  
 
     let list = [];
     
@@ -2542,7 +2666,7 @@ let shareURL = async (params) => {
             if(assets.length > 0) {
                 assets.forEach(item => bulkData.push({asset: item.asset, type: item.flag, share_id: insertRecord.share_id}))
             } else if(transactions.length > 0) {
-                const query = "SELECT CASE WHEN grant_doc_num = '' THEN appno_doc_num ELSE grant_doc_num END AS asset, CASE WHEN grant_doc_num = '' THEN 4 ELSE 5 END AS flag FROM assets WHERE rf_id IN (:rfIDs) AND organisation_id = :organisation_id GROUP BY rf_id, appno_doc_num"
+                const query = "SELECT CASE WHEN patent = '' THEN application ELSE patent END AS asset, CASE WHEN patent = '' THEN 4 ELSE 5 END AS flag FROM (SELECT documentid.appno_doc_num AS application, MAX(documentid.grant_doc_num) AS patent  FROM assets INNER JOIN db_uspto.documentid AS doc ON assets.appno_doc_num = doc.appno_doc_num WHERE doc.rf_id IN (:rfIDs) AND organisation_id = :organisation_id GROUP BY doc.rf_id, assets.appno_doc_num) AS temp"
                 const getList = await connection.applicationNew.query(query,{
                     type: connection.Sequelize.QueryTypes.SELECT,
                     raw: true,
@@ -2593,6 +2717,15 @@ let getShareList = async (code, type) => {
         return shareData;
     } else {
         const assetsList = []
+        const shareData = await Share.findOne({
+            attributes: ['share_id', 'transactions'],
+            where: {code, type}
+        })
+        if(shareData != null) {
+            if(shareData.get('transactions') !== null) {
+                
+            }
+        }
         let query = "SELECT  `share_lists`.`asset` AS asset, `share_lists`.`type` FROM `share` AS `share` INNER JOIN `share_list` AS `share_lists` ON `share`.`share_id` = `share_lists`.`share_id` WHERE `share`.`code` = :code  AND share.type = :type"
         
         /* if(type !== 'undefined' && type !== undefined && parseInt(type) === 2) {
@@ -3268,6 +3401,7 @@ const findLayout = (layout) => {
             layoutID = 34
             break
         case 'maintenance_budget':
+        case 'pay_maintainence_fee':
             layoutID = 35
             break
         case 'abandoned':
@@ -3335,8 +3469,6 @@ const findFilterAssets = async(req) => {
                          * Get List
                          */
     
-                         
-    
                         if(typeof other_mode != 'undefined' && other_mode == 'true') {
                             query = `SELECT appno_doc_num FROM db_new_application.assets_for_sale AS assets WHERE assets.organisation_id = :organisationID `
                         } else {
@@ -3345,9 +3477,6 @@ const findFilterAssets = async(req) => {
                             } else {
                                 where.layoutID = 15
                             }
-        
-                            
-        
                             
                             if(tabs && tabs != '') {
                                 tabs = JSON.parse( tabs )

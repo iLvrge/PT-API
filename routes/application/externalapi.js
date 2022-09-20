@@ -59,7 +59,7 @@ route.get("/ptab/:asset", [authJWT.verifyToken], async (req, res) => {
                             })
                         })
                     }
-                }),
+                })/* ,
                 rp(optionDocuments)
                 .then( body => {
                     let responseBody = JSON.parse(body);
@@ -78,7 +78,7 @@ route.get("/ptab/:asset", [authJWT.verifyToken], async (req, res) => {
                             })
                         })
                     }
-                })
+                }) */
             ]).then( requestComplete => {
                 console.log(requestComplete)
                 if(typeof counter !== 'undefined') {
@@ -150,7 +150,7 @@ route.get("/citation/:asset", [authJWT.verifyToken], async (req, res) => {
                     const responseBody = JSON.parse(body)
                     const citationEvents = []
                     if(responseBody !== null && responseBody.total_patent_count > 0) {
-                        const allAssignee = []
+                        const allAssignee = [], assigneeNameMissing = '';
                         responseBody.patents.forEach(item => {
                             let assignee = "";
                             if(item.assignees.length > 0) {
@@ -158,6 +158,8 @@ route.get("/citation/:asset", [authJWT.verifyToken], async (req, res) => {
                             }
                             if(assignee !== '') {
                                 allAssignee.push(assignee)
+                            } else {
+                                assigneeNameMissing.push(item.patent_number)
                             }
                             citationEvents.push({
                                 id: uuidv4(),
@@ -171,6 +173,37 @@ route.get("/citation/:asset", [authJWT.verifyToken], async (req, res) => {
                                 all_assignee: item.assignees
                             })                            
                         })
+                        if(assigneeNameMissing.length > 0) {
+                            const queryAssginee = `SELECT ag.grant_doc_num, ee.name from db_patent_application_bibliographic.assignee AS ee INNER JOIN db_patent_application_bibliographic.application_grant AS ag ON ag.appno_doc_num = ee.appno_doc_num
+                            where ag.grant_doc_num IN (:patentNumbers) `;
+
+                            const findAssignees =  await connection.applicationNew.query(queryAssginee,{
+                                type: connection.Sequelize.QueryTypes.SELECT,
+                                raw: true,
+                                logging: console.log,
+                                replacements: {patentNumbers: assigneeNameMissing},
+                            })
+                
+                            if(findAssignees !== null && findAssignees.length > 0) {
+                                findAssignees.forEach( row => {
+                                    const findIndex = citationEvents.findIndex( c => c.number == row.grant_doc_num)
+                                    if(findIndex !== -1) {
+                                        let oldAssignee = citationEvents[findIndex].assignee, oldAllAssignee = citationEvents[findIndex].all_assignee
+                                        if(oldAllAssignee.length == 0) {
+                                            oldAllAssignee = [row.name];
+                                            oldAssignee = row.name
+                                        } else {
+                                            oldAllAssignee = [...oldAllAssignee, row.name]
+                                            oldAssignee = row.name
+                                        }
+                                        citationEvents[findIndex].assignee = oldAssignee
+                                        citationEvents[findIndex].all_assignee = oldAllAssignee
+
+                                        allAssignee.push(row.name)
+                                    }
+                                })
+                            }
+                        }
                         if(allAssignee.length > 0) {
                             const getCompanyLogos = await OrganisationApplication.findAll({
                                 where: {organisation_name: allAssignee},
@@ -211,7 +244,7 @@ route.get("/citation/:asset", [authJWT.verifyToken], async (req, res) => {
     } 
 });
 
-route.post("/citation", [authJWT.verifyToken], async (req, res) => { 
+route.post("/citation", [authJWT.verifyToken], async (req, res) => {  
     try{
         let { list, total, type, selectedCompanies, tabs, customers, assignments, other_mode } = req.body, assetsLifeSpan = []
         let citedCompanies = []

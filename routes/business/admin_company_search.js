@@ -61,6 +61,7 @@ const List2 = require('../../model/resources/List2');
 const SheetsHelper = require('../../helpers/sheets');
 const ClientAddCompany = require("../../model/application/ClientAddCompany");
 const e = require("express");
+const PtabNames = require("../../model/resources/PtabNames");
 
 
 const oauth2Client = new google.auth.OAuth2(
@@ -448,7 +449,7 @@ let allRepresentativesFirmCheckAndDelete = async (allRepresentatives) => {
 route.put("/company/search/all/", [authJWT.verifyToken, authJWT.isAdmin], async (req, res, next) => {
     try {
         let {normalize_name, IDs, selected_rows}  = req.body ;
-        const otherIDs = [], otherNames = [];
+        const otherIDs = [], otherNames = [], ptabNames = [];
         if(IDs.length > 0 || selected_rows != undefined) {
             let applicantAssignorAndAssigneeIDs = [];
             if(selected_rows != undefined) {
@@ -463,10 +464,11 @@ route.put("/company/search/all/", [authJWT.verifyToken, authJWT.isAdmin], async 
                                 if(row.normalize_name != '') {
                                     otherNames.push(row.normalize_name)
                                 }
-
                                 if(row.representative_company != '') {
                                     otherNames.push(row.representative_company)
                                 }
+                            } else if (row.flag == 3) {
+                                ptabNames.push(row.name)
                             } else {
                                 IDs.push(row.id)
                             }
@@ -630,6 +632,10 @@ route.put("/company/search/all/", [authJWT.verifyToken, authJWT.isAdmin], async 
                     await ApplicantAssignorAndAssignee.update(item, {where: {assignor_and_assignee_id: applicantAssignorAndAssigneeIDs}}); 
                 } 
                 await ApplicantAssignorAndAssignee.update(item, {where: {name: normalize_name}});
+
+                if(ptabNames.length > 0) {
+                    await PtabNames.update(item, {where: {name: ptabNames}});
+                }
                 
                 // Delete other rep
                 if(allRepresentatives.length > 0) {
@@ -696,6 +702,10 @@ route.put("/company/search/all/", [authJWT.verifyToken, authJWT.isAdmin], async 
                 if(allRepresentatives > 0) {
                     await allRepresentativesCheckAndDelete(allRepresentatives);
                 }
+
+                if(ptabNames.length > 0) {
+                    await PtabNames.destroy({where: {name: ptabNames}});
+                }
             }
             // Get all list including normalize company and other names
             let list = [], applicantList = []
@@ -757,9 +767,20 @@ route.put("/company/search/all/", [authJWT.verifyToken, authJWT.isAdmin], async 
                 logging: console.log,
                 }
             );
-            
 
-            res.status(200).json([...list, ...applicantList]);
+            const ptabList = [];
+            
+            if(ptabNames.length > 0) {
+                const findQueryNormalizeParty = "SELECT pp.id, 0 AS assignor_and_assignee_id, pp.name, rr.representative_name AS normalize_name, (select r.representative_name FROM representative as r WHERE r.representative_name = pp.name GROUP BY r.representative_name limit 1) as representative_company, 1 AS counter, '3' AS flag FROM db_uspto.ptab_parties AS pp INNER JOIN db_uspto.representative AS rr ON rr.representative_id = pp.representative_id WHERE rr.representative_name IN (:normalizeName) GROUP BY name";
+
+                ptabList = await connection.resources.query(findQueryNormalizeParty,{
+                    type: connection.Sequelize.QueryTypes.SELECT,
+                    raw: true,
+                    replacements: replacement,
+                    logging: console.log,
+                }); 
+            }
+            res.status(200).json([...list, ...applicantList, ...ptabList]);
         }     
     } catch(e) {
         console.log(e);
