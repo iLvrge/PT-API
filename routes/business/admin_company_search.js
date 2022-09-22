@@ -2748,7 +2748,7 @@ route.post("/company/cited/:id/export", [authJWT.verifyToken, authJWT.isAdmin, a
 
 route.get("/company/cited/:id", [authJWT.verifyToken, authJWT.isAdmin, authJWT.addClientID, clientDBConnection.connect], async (req, res, next) => {
     const customerID = req.params.id;
-    const { portfolios, sort_by, sort_direction, rows_per_page, current_page } = req.query
+    const { portfolios, sort_by, sort_direction, rows_per_page, current_page, assignee_id } = req.query
     const representativeIDs = JSON.parse(portfolios != undefined ? portfolios : "[]");
     let citedAssignees = [], organizations = [], total_records = 0;
     if(customerID > 0) {
@@ -2762,6 +2762,10 @@ route.get("/company/cited/:id", [authJWT.verifyToken, authJWT.isAdmin, authJWT.a
                     {representative_id: representativeIDs}
                 ]
             }
+        }
+
+        if(assignee_id != undefined) {
+            where.assignee_id = assignee_id
         }
 
         if(req.connection_db != null) {
@@ -2782,8 +2786,13 @@ route.get("/company/cited/:id", [authJWT.verifyToken, authJWT.isAdmin, authJWT.a
                 let queryCitedPatentsAssignee = `SELECT ao.assignee_id, COUNT(ao.assignee_id) AS occurences, ao.assignee_organization, ao.assignee_query, ao.domain, ao.domain2, ao.domain3, IF(ao.api_logo <> "null", ao.api_logo, "") AS api_logo, IF(ao.api_logo1 <> "null", ao.api_logo1, "") AS api_logo1, IF(ao.api_logo2 <> "null", ao.api_logo2, "") AS api_logo2, IF(ao.api_logo3 <> "null", ao.api_logo3, "") AS api_logo3, IF(ao.api_logo4 <> "null", ao.api_logo4, "") AS api_logo4, IF(ao.api_logo5 <> "null", ao.api_logo5, "") AS api_logo5, IF(ao.api_logo6 <> "null", ao.api_logo6, "") AS api_logo6, IF(ao.api_logo7 <> "null", ao.api_logo7, "") AS api_logo7, IF(ao.api_logo8 <> "null", ao.api_logo8, "") AS api_logo8, IF(ao.api_logo9 <> "null", ao.api_logo9, "") AS api_logo9, without_square, image_url, '' AS img FROM assignee_organizations AS ao 
                                         INNER JOIN cited_patents AS cp ON cp.assignee_id = ao.assignee_id
                                         INNER JOIN assets AS a ON a.grant_doc_num = cp.patent_number
-                                        WHERE a.layout_id = :layout_id AND a.organisation_id = :organisationID AND a.company_id IN (:companiesIDs) AND ao.organisation_id = 0
-                                        GROUP BY ao.assignee_id`
+                                        WHERE a.layout_id = :layout_id AND a.organisation_id = :organisationID AND a.company_id IN (:companiesIDs) AND ao.organisation_id = 0`
+
+                if(assignee_id != undefined) {
+                    queryCitedPatentsAssignee += ` AND ao.assignee_id = :assignee_id `
+                }                       
+
+                queryCitedPatentsAssignee += ` GROUP BY ao.assignee_id`
 
 
                 const recordsResult = await connection.applicationNew.query(`SELECT COUNT(*) as total_records FROM (${queryCitedPatentsAssignee}) as temp`,{
