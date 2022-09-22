@@ -2752,7 +2752,7 @@ route.get("/company/cited/:id", [authJWT.verifyToken, authJWT.isAdmin, authJWT.a
     const representativeIDs = JSON.parse(portfolios != undefined ? portfolios : "[]");
     let citedAssignees = [], organizations = [], total_records = 0;
     if(customerID > 0) {
-        const where = {organisation_id: customerID};
+        const where = {organisationID: customerID, layout_id: 15};
         let whereRepresentative = {};
         if(representativeIDs.length > 0) {
             where.representative_id = representativeIDs;
@@ -2763,73 +2763,81 @@ route.get("/company/cited/:id", [authJWT.verifyToken, authJWT.isAdmin, authJWT.a
                 ]
             }
         }
-
+        
         if(assignee_id != undefined) {
             where.assignee_id = assignee_id
         }
+        console.log('assignee_id', assignee_id, where)
 
         if(req.connection_db != null) {
-            const RepresentativeClient = req.connection_db.define('Representatives', RepresentativeCustomer.mainStructure, RepresentativeCustomer.options);
-            const findRepresentativeCompanies = await RepresentativeClient.findAll({
-                attributes:['representative_id'],
-                where:whereRepresentative
-            });
-
-            if(findRepresentativeCompanies != null && findRepresentativeCompanies.length > 0) {
-                const companies = [];
-                const promises = findRepresentativeCompanies.map( company => {
-                    companies.push(company.representative_id);
-                    return company;
+            if(assignee_id == undefined) {
+                const RepresentativeClient = req.connection_db.define('Representatives', RepresentativeCustomer.mainStructure, RepresentativeCustomer.options);
+                const findRepresentativeCompanies = await RepresentativeClient.findAll({
+                    attributes:['representative_id'],
+                    where:whereRepresentative
                 });
-                await Promise.all(promises);
 
-                let queryCitedPatentsAssignee = `SELECT ao.assignee_id, COUNT(ao.assignee_id) AS occurences, ao.assignee_organization, ao.assignee_query, ao.domain, ao.domain2, ao.domain3, IF(ao.api_logo <> "null", ao.api_logo, "") AS api_logo, IF(ao.api_logo1 <> "null", ao.api_logo1, "") AS api_logo1, IF(ao.api_logo2 <> "null", ao.api_logo2, "") AS api_logo2, IF(ao.api_logo3 <> "null", ao.api_logo3, "") AS api_logo3, IF(ao.api_logo4 <> "null", ao.api_logo4, "") AS api_logo4, IF(ao.api_logo5 <> "null", ao.api_logo5, "") AS api_logo5, IF(ao.api_logo6 <> "null", ao.api_logo6, "") AS api_logo6, IF(ao.api_logo7 <> "null", ao.api_logo7, "") AS api_logo7, IF(ao.api_logo8 <> "null", ao.api_logo8, "") AS api_logo8, IF(ao.api_logo9 <> "null", ao.api_logo9, "") AS api_logo9, without_square, image_url, '' AS img FROM assignee_organizations AS ao 
+                if(findRepresentativeCompanies != null && findRepresentativeCompanies.length > 0) {
+                    const companies = [];
+                    const promises = findRepresentativeCompanies.map( company => {
+                        companies.push(company.representative_id);
+                        return company;
+                    });
+                    await Promise.all(promises);
+                    where.companiesIDs = companies
+                }
+            }    
+
+            let queryCitedPatentsAssignee = `SELECT ao.assignee_id, COUNT(ao.assignee_id) AS occurences, ao.assignee_organization, ao.assignee_query, ao.domain, ao.domain2, ao.domain3, IF(ao.api_logo <> "null", ao.api_logo, "") AS api_logo, IF(ao.api_logo1 <> "null", ao.api_logo1, "") AS api_logo1, IF(ao.api_logo2 <> "null", ao.api_logo2, "") AS api_logo2, IF(ao.api_logo3 <> "null", ao.api_logo3, "") AS api_logo3, IF(ao.api_logo4 <> "null", ao.api_logo4, "") AS api_logo4, IF(ao.api_logo5 <> "null", ao.api_logo5, "") AS api_logo5, IF(ao.api_logo6 <> "null", ao.api_logo6, "") AS api_logo6, IF(ao.api_logo7 <> "null", ao.api_logo7, "") AS api_logo7, IF(ao.api_logo8 <> "null", ao.api_logo8, "") AS api_logo8, IF(ao.api_logo9 <> "null", ao.api_logo9, "") AS api_logo9, without_square, image_url, '' AS img FROM assignee_organizations AS ao 
                                         INNER JOIN cited_patents AS cp ON cp.assignee_id = ao.assignee_id
                                         INNER JOIN assets AS a ON a.grant_doc_num = cp.patent_number
-                                        WHERE a.layout_id = :layout_id AND a.organisation_id = :organisationID AND a.company_id IN (:companiesIDs) AND ao.organisation_id = 0`
+                                        WHERE a.layout_id = :layout_id AND a.organisation_id = :organisationID ` 
+                                        
+            if(typeof where.companiesIDs !== 'undefined') {
+                queryCitedPatentsAssignee +=   `AND a.company_id IN (:companiesIDs) AND ao.organisation_id = 0`
+            }                       
 
-                if(assignee_id != undefined) {
-                    queryCitedPatentsAssignee += ` AND ao.assignee_id = :assignee_id `
-                }                       
+            if(assignee_id != undefined) {
+                queryCitedPatentsAssignee += ` AND ao.assignee_id = :assignee_id `
+            }                       
 
-                queryCitedPatentsAssignee += ` GROUP BY ao.assignee_id`
+            queryCitedPatentsAssignee += ` GROUP BY ao.assignee_id`
 
 
-                const recordsResult = await connection.applicationNew.query(`SELECT COUNT(*) as total_records FROM (${queryCitedPatentsAssignee}) as temp`,{
-                        type: connection.Sequelize.QueryTypes.SELECT,
-                        raw: true,
-                        replacements: {organisationID: customerID, companiesIDs: companies, layout_id: 15 },
-                        logging: console.log,
-                        plain: true
-                    }
-                );
-
-                if(recordsResult !== null) {
-                    total_records = recordsResult.total_records
+            const recordsResult = await connection.applicationNew.query(`SELECT COUNT(*) as total_records FROM (${queryCitedPatentsAssignee}) as temp`,{
+                    type: connection.Sequelize.QueryTypes.SELECT,
+                    raw: true,
+                    replacements: where,
+                    logging: console.log,
+                    plain: true
                 }
+            );
 
-                queryCitedPatentsAssignee += ` ORDER BY   ${typeof sort_by !== "undefined" ? sort_by : "occurences "} ${typeof sort_direction !== "undefined" ? sort_direction : "desc "} `
-
-
-                queryCitedPatentsAssignee += ` LIMIT  ${typeof current_page !== "undefined" ? current_page * rows_per_page + ", " : " 0, "} ${typeof rows_per_page !== "undefined" ? rows_per_page : " 50 "} `
-                
-                citedAssignees = await connection.applicationNew.query(queryCitedPatentsAssignee,{
-                        type: connection.Sequelize.QueryTypes.SELECT,
-                        raw: true,
-                        replacements: {organisationID: customerID, companiesIDs: companies, layout_id: 15 },
-                        logging: console.log,
-                    }
-                );
-
-                /* const queryOrganisations = `SELECT organisation_id, organisation_name FROM organisations`
-                organizations = await connection.applicationNew.query(queryOrganisations,{
-                        type: connection.Sequelize.QueryTypes.SELECT,
-                        raw: true,
-                        replacements: { },
-                        logging: console.log,
-                    }
-                ); */
+            if(recordsResult !== null) {
+                total_records = recordsResult.total_records
             }
+
+            queryCitedPatentsAssignee += ` ORDER BY   ${typeof sort_by !== "undefined" ? sort_by : "occurences "} ${typeof sort_direction !== "undefined" ? sort_direction : "desc "} `
+
+
+            queryCitedPatentsAssignee += ` LIMIT  ${typeof current_page !== "undefined" ? current_page * rows_per_page + ", " : " 0, "} ${typeof rows_per_page !== "undefined" ? rows_per_page : " 50 "} `
+            
+            citedAssignees = await connection.applicationNew.query(queryCitedPatentsAssignee,{
+                    type: connection.Sequelize.QueryTypes.SELECT,
+                    raw: true,
+                    replacements: where,
+                    logging: console.log,
+                }
+            );
+
+            /* const queryOrganisations = `SELECT organisation_id, organisation_name FROM organisations`
+            organizations = await connection.applicationNew.query(queryOrganisations,{
+                    type: connection.Sequelize.QueryTypes.SELECT,
+                    raw: true,
+                    replacements: { },
+                    logging: console.log,
+                }
+            ); */
         }
     }
     res.status(200).json({citedAssignees, organizations, total_records});
