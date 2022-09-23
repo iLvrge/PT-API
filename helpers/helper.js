@@ -2055,7 +2055,7 @@ let findAssignorAndAssigneeListFromRFIDs = async(rfIDs, type) => {
                 const allAssets = []
 
                 assetsList.forEach( row => {
-                    allAssets.push(row.appno_doc_num)
+                    allAssets.push(`${row.appno_doc_num}`)
                 })
                 console.log('assetsList', allAssets.length)
                 if(allAssets.length > 0) {
