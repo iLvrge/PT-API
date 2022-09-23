@@ -2042,14 +2042,14 @@ let findAssignorAndAssigneeListFromRFIDs = async(rfIDs, type) => {
         if(parseInt(type) > 0) { 
             if(parseInt(type) == 1) {
 
-                const queryAssets = "SELECT appno_doc_num FROM documentid WHERE rf_id IN (SELECT rf_id FROM documentid WHERE appno_doc_num IN (SELECT appno_doc_num FROM documentid WHERE rf_id IN (:IDs)) GROUP BY rf_id) GROUP BY appno_doc_num"
+                const queryAssets = "SELECT appno_doc_num FROM documentid WHERE rf_id IN (SELECT rf_id FROM documentid WHERE appno_doc_num IN (SELECT appno_doc_num FROM documentid WHERE rf_id IN (:IDs)) GROUP BY rf_id) AND date_format(appno_date, '%Y') > :year GROUP BY appno_doc_num"
 
                 const assetsList = await connection.resources.query(queryAssets,{
                     type: connection.Sequelize.QueryTypes.SELECT,
-                    replacements: { IDs: rfIDs },
+                    replacements: { IDs: rfIDs, year: 1997 },
                     raw: true,
                     logging: console.log,
-                    }
+                    }   
                 );
 
                 const allAssets = []
@@ -2059,7 +2059,7 @@ let findAssignorAndAssigneeListFromRFIDs = async(rfIDs, type) => {
                 })
                 console.log('assetsList', allAssets.length)
                 if(allAssets.length > 0) {
-                    const grantInventorsQuery = "SELECT * FROM (SELECT appInv.assignor_and_assignee_id, aaa.name, count(aaa.name) as counter, r.representative_name as normalize_name, (select rr.representative_name FROM representative as rr WHERE rr.representative_name = aaa.name GROUP BY rr.representative_name) as representativeCompany, aaa.instances as total_occurences, 0 AS rf_id, 3 AS flag FROM db_patent_application_bibliographic.inventor AS appInv INNER JOIN  db_patent_application_bibliographic.assignor_and_assignee AS aaa ON aaa.assignor_and_assignee_id = appInv.assignor_and_assignee_id LEFT JOIN representative as r ON r.representative_id = aaa.representative_id WHERE appInv.appno_doc_num IN (:allAssets)  GROUP BY aaa.name UNION SELECT appInv.assignor_and_assignee_id, aaa.name, count(aaa.name) as counter, r.representative_name as normalize_name, (select rr.representative_name FROM representative as rr WHERE rr.representative_name = aaa.name GROUP BY rr.representative_name) as representativeCompany, aaa.instances as total_occurences, 0 AS rf_id, 3 AS flag FROM db_patent_grant_bibliographic.inventor_new AS appInv INNER JOIN  db_patent_application_bibliographic.assignor_and_assignee AS aaa ON aaa.assignor_and_assignee_id = appInv.assignor_and_assignee_id LEFT JOIN representative as r ON r.representative_id = aaa.representative_id WHERE appInv.appno_doc_num IN (:allAssets) GROUP BY aaa.name) AS temp";
+                    const grantInventorsQuery = "SELECT * FROM (SELECT appInv.assignor_and_assignee_id, aaa.name, count(aaa.name) as counter, r.representative_name as normalize_name, (select rr.representative_name FROM representative as rr WHERE rr.representative_name = aaa.name GROUP BY rr.representative_name) as representativeCompany, aaa.instances as total_occurences, 0 AS rf_id, 4 AS flag FROM db_patent_application_bibliographic.inventor AS appInv INNER JOIN  db_patent_application_bibliographic.assignor_and_assignee AS aaa ON aaa.assignor_and_assignee_id = appInv.assignor_and_assignee_id LEFT JOIN representative as r ON r.representative_id = aaa.representative_id WHERE appInv.appno_doc_num IN (:allAssets)  GROUP BY aaa.name UNION SELECT appInv.assignor_and_assignee_id, aaa.name, count(aaa.name) as counter, r.representative_name as normalize_name, (select rr.representative_name FROM representative as rr WHERE rr.representative_name = aaa.name GROUP BY rr.representative_name) as representativeCompany, aaa.instances as total_occurences, 0 AS rf_id, 4 AS flag FROM db_patent_grant_bibliographic.inventor_new AS appInv INNER JOIN  db_patent_application_bibliographic.assignor_and_assignee AS aaa ON aaa.assignor_and_assignee_id = appInv.assignor_and_assignee_id LEFT JOIN representative as r ON r.representative_id = aaa.representative_id WHERE appInv.appno_doc_num IN (:allAssets) GROUP BY aaa.name) AS temp";
 
                     inventors = await connection.resources.query(grantInventorsQuery,{
                         type: connection.Sequelize.QueryTypes.SELECT,

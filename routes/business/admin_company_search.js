@@ -458,7 +458,7 @@ route.put("/company/search/all/", [authJWT.verifyToken, authJWT.isAdmin], async 
                     if(selected_rows[0].flag != undefined) {
                         IDs = []
                         selected_rows.forEach(row => {
-                            if(row.flag == 2) {
+                            if(row.flag == 2 || row.flag == 4) {
                                 applicantAssignorAndAssigneeIDs.push(row.id)
                                 otherNames.push(row.name)
                                 if(row.normalize_name != '') {
@@ -575,7 +575,6 @@ route.put("/company/search/all/", [authJWT.verifyToken, authJWT.isAdmin], async 
                             
                         }
 
-
                     } else {
                         //NO
                         if(representativeCompany == null) {
@@ -631,6 +630,7 @@ route.put("/company/search/all/", [authJWT.verifyToken, authJWT.isAdmin], async 
                 if(applicantAssignorAndAssigneeIDs.length > 0) {
                     await ApplicantAssignorAndAssignee.update(item, {where: {assignor_and_assignee_id: applicantAssignorAndAssigneeIDs}}); 
                 } 
+
                 await ApplicantAssignorAndAssignee.update(item, {where: {name: normalize_name}});
 
                 if(ptabNames.length > 0) {
@@ -743,24 +743,58 @@ route.put("/company/search/all/", [authJWT.verifyToken, authJWT.isAdmin], async 
                 );
             }
             
-            
+            let flag = 2;
 
-            // Get all list including normalize company and other names
-            let queryApplicant = `SELECT a.assignor_and_assignee_id as id, a.assignor_and_assignee_id, a.name, a.instances as counter, c.representative_name as normalize_name, (SELECT rr.representative_name FROM representative as rr WHERE rr.representative_name = a.name GROUP BY rr.representative_name) as representative_company, (SELECT appno_doc_num FROM db_patent_application_bibliographic.applicant WHERE name = a.name LIMIT 1) as assigneeRFID, (SELECT appno_doc_num FROM db_patent_grant_bibliographic.applicant WHERE name = a.name LIMIT 1) as assignorRFID, '2' AS flag FROM db_patent_application_bibliographic.assignor_and_assignee as a LEFT JOIN db_uspto.representative as c ON c.representative_id = a.representative_id WHERE  a.name = :normalizeName `;
-
+            if(selected_rows[0].flag === 4) {
+                flag = 4;
+            }
+            let queryApplicantInventor = ''
             const replacement = {normalizeName:  normalize_name }
+            if(flag === 4) {
+                queryApplicantInventor = `SELECT * FROM (SELECT appInv.assignor_and_assignee_id, aaa.name, count(aaa.name) as counter, r.representative_name as normalize_name, (select rr.representative_name FROM representative as rr WHERE rr.representative_name = aaa.name GROUP BY rr.representative_name) as representativeCompany, aaa.instances as total_occurences, 0 AS rf_id, 4 AS flag FROM db_patent_application_bibliographic.inventor AS appInv INNER JOIN  db_patent_application_bibliographic.assignor_and_assignee AS aaa ON aaa.assignor_and_assignee_id = appInv.assignor_and_assignee_id LEFT JOIN representative as r ON r.representative_id = aaa.representative_id WHERE aaa.name = :normalizeName `
+                
+                if(applicantAssignorAndAssigneeIDs.length > 0) {
+                    replacement.applicantAssignorAndAssigneeIDs = applicantAssignorAndAssigneeIDs
+                    queryApplicantInventor += ` OR aaa.assignor_and_assignee_id IN (:applicantAssignorAndAssigneeIDs) `
+                }
+    
+                if(otherIDs.length > 0) {
+                    replacement.representative_id = otherIDs
+                    queryApplicantInventor += ` OR aaa.representative_id IN (:representative_id)`
+                }
+                
+                queryApplicantInventor += `  GROUP BY aaa.name UNION SELECT appInv.assignor_and_assignee_id, aaa.name, count(aaa.name) as counter, r.representative_name as normalize_name, (select rr.representative_name FROM representative as rr WHERE rr.representative_name = aaa.name GROUP BY rr.representative_name) as representativeCompany, aaa.instances as total_occurences, 0 AS rf_id, 4 AS flag FROM db_patent_grant_bibliographic.inventor_new AS appInv INNER JOIN  db_patent_application_bibliographic.assignor_and_assignee AS aaa ON aaa.assignor_and_assignee_id = appInv.assignor_and_assignee_id LEFT JOIN representative as r ON r.representative_id = aaa.representative_id WHERE aaa.name = :normalizeName `
+                
+                if(applicantAssignorAndAssigneeIDs.length > 0) {
+                    replacement.applicantAssignorAndAssigneeIDs = applicantAssignorAndAssigneeIDs
+                    queryApplicantInventor += ` OR aaa.assignor_and_assignee_id IN (:applicantAssignorAndAssigneeIDs) `
+                }
+    
+                if(otherIDs.length > 0) {
+                    replacement.representative_id = otherIDs
+                    queryApplicantInventor += ` OR aaa.representative_id IN (:representative_id)`
+                }
+
+                queryApplicantInventor += `  GROUP BY aaa.name) AS temp`
+            } else {
+
+                // Get all list including normalize company and other names
+                queryApplicantInventor = `SELECT a.assignor_and_assignee_id as id, a.assignor_and_assignee_id, a.name, a.instances as counter, c.representative_name as normalize_name, (SELECT rr.representative_name FROM representative as rr WHERE rr.representative_name = a.name GROUP BY rr.representative_name) as representative_company, (SELECT appno_doc_num FROM db_patent_application_bibliographic.applicant WHERE name = a.name LIMIT 1) as assigneeRFID, (SELECT appno_doc_num FROM db_patent_grant_bibliographic.applicant WHERE name = a.name LIMIT 1) as assignorRFID, '${flag}' AS flag FROM db_patent_application_bibliographic.assignor_and_assignee as a LEFT JOIN db_uspto.representative as c ON c.representative_id = a.representative_id WHERE  a.name = :normalizeName `;
+            }
+
+            
 
             if(applicantAssignorAndAssigneeIDs.length > 0) {
                 replacement.applicantAssignorAndAssigneeIDs = applicantAssignorAndAssigneeIDs
-                queryApplicant += ` OR a.assignor_and_assignee_id IN (:applicantAssignorAndAssigneeIDs) `
+                queryApplicantInventor += ` OR a.assignor_and_assignee_id IN (:applicantAssignorAndAssigneeIDs) `
             }
 
             if(otherIDs.length > 0) {
                 replacement.representative_id = otherIDs
-                queryApplicant += ` OR a.representative_id IN (:representative_id)`
+                queryApplicantInventor += ` OR a.representative_id IN (:representative_id)`
             }
 
-            applicantList = await connection.resources.query(queryApplicant,{
+            applicantList = await connection.resources.query(queryApplicantInventor,{
                 type: connection.Sequelize.QueryTypes.SELECT,
                 raw: true,
                 replacements: replacement,
@@ -768,7 +802,7 @@ route.put("/company/search/all/", [authJWT.verifyToken, authJWT.isAdmin], async 
                 }
             );
 
-            const ptabList = [];
+            let ptabList = [];
             
             if(ptabNames.length > 0) {
                 const findQueryNormalizeParty = "SELECT pp.id, 0 AS assignor_and_assignee_id, pp.name, rr.representative_name AS normalize_name, (select r.representative_name FROM representative as r WHERE r.representative_name = pp.name GROUP BY r.representative_name limit 1) as representative_company, 1 AS counter, '3' AS flag FROM db_uspto.ptab_parties AS pp INNER JOIN db_uspto.representative AS rr ON rr.representative_id = pp.representative_id WHERE rr.representative_name IN (:normalizeName) GROUP BY name";
