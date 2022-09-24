@@ -753,6 +753,32 @@ route.post("/asset_types/assets/family", [authJWT.verifyToken, clientDBConnectio
 })
 
 
+const getOWNEDAssets = async(replacements) => {
+    let queryAssets = `SELECT application FROM db_new_application.dashboard_items WHERE organisation_id = :organisationID AND type = :layoutID `;
+
+    if(typeof replacements.companies != 'undefined' && Array.isArray(replacements.companies) && replacements.companies.length > 0) {
+        queryAssets += ` AND representative_id IN (:companies) `
+    }
+
+    queryAssets += ` GROUP BY application `;
+
+    const getAssetsList = await connection.applicationNew.query(queryAssets,{
+        type: connection.Sequelize.QueryTypes.SELECT,
+        raw: true,
+        logging: console.log,
+        replacements
+    })
+
+    const appNos = []
+
+    if(getAssetsList != null && getAssetsList.length > 0) {
+        getAssetsList.forEach( asset => {
+            appNos.push(`${asset.application}`)
+        })
+    }
+    return appNos
+}
+
 /**
  * Restore Ownership
  * Broken chain of title
@@ -856,6 +882,7 @@ route.get("/:layout/assets", [authJWT.verifyToken, clientDBConnection.connect], 
                 customers = JSON.parse( customers )
                 replacements.customers = customers
             }
+            console.log(replacements.layoutID);
 
             if(replacements.layoutID == 3) { 
                 /**Maintainence */
@@ -989,28 +1016,7 @@ route.get("/:layout/assets", [authJWT.verifyToken, clientDBConnection.connect], 
                  * Assets not assigned or Filled
                  */
 
-                let queryAssets = `SELECT application FROM db_new_application.dashboard_items WHERE organisation_id = :organisationID AND type = :layoutID `;
-
-                if(Array.isArray(companies) && companies.length > 0) {
-                    queryAssets += ` AND representative_id IN (:companies) `
-                }
-
-                queryAssets += ` GROUP BY application `;
-
-                const getAssetsList = await connection.applicationNew.query(queryAssets,{
-                    type: connection.Sequelize.QueryTypes.SELECT,
-                    raw: true,
-                    logging: console.log,
-                    replacements
-                })
-
-                const appNos = []
-
-                if(getAssetsList != null && getAssetsList.length > 0) {
-                    getAssetsList.forEach( asset => {
-                        appNos.push(`${asset.application}`)
-                    })
-                }
+                 const appNos = await getOWNEDAssets(replacements)
 
                 if(appNos.length > 0) {
                     replacements.assets = appNos
@@ -1028,23 +1034,38 @@ route.get("/:layout/assets", [authJWT.verifyToken, clientDBConnection.connect], 
                 
             } else {
                 if(replacements.layoutID != 15) {
-                    query += ` WHERE date_format(assets.appno_date, '%Y') > :date AND assets.layout_id = 15 AND assets.organisation_id = :organisationID `
-
-                    if(Array.isArray(companies) && companies.length > 0) {
-                        query += ` AND assets.company_id IN (:companies)`
-                    }
-                    /* if(replacements.layoutID == 30) {
-                        query += ` AND appno_doc_num IN (SELECT appno_doc_num FROM db_new_application.owned_assets WHERE organisation_id = :organisationID AND company_id IN (:companies) GROUP BY appno_doc_num) AND grant_doc_num <> ''`
-                    } else  */if (replacements.layoutID == 38) {
-                        query += ` AND grant_doc_num IN (SELECT grant_doc_num FROM db_uspto.assets_family AS af WHERE grant_doc_num IN (
-                            SELECT grant_doc_num FROM db_uspto.documentid AS di WHERE appno_doc_num IN (
-                                SELECT appno_doc_num FROM db_new_application.owned_assets WHERE organisation_id = :organisationID AND company_id IN (:companies) GROUP BY appno_doc_num
-                            )
-                            GROUP BY grant_doc_num
-                        ) AND application_country NOT IN ('WO', 'US') GROUP BY grant_doc_num)`
+                    if(replacements.layoutID == 30) { 
+                        /**
+                         * Owner Assets (Filled + Acquired)
+                         */
+                        
+                        const appNos = await getOWNEDAssets(replacements)
+                        if(appNos.length > 0) { 
+                            replacements.assets = appNos
+        
+                            query = `SELECT * FROM ( SELECT ${req.orgId} AS organisation_id, CASE WHEN MAX(grant_doc_num) = '' OR MAX(grant_doc_num) IS NULL THEN CONCAT(SUBSTRING(appno_doc_num, 1, 2), '/', FORMAT(SUBSTRING(appno_doc_num, 3), 0)) ELSE FORMAT(MAX(grant_doc_num), 0) END AS format_asset,
+                            CASE WHEN MAX(grant_doc_num) = '' OR MAX(grant_doc_num) IS NULL THEN appno_doc_num ELSE MAX(grant_doc_num) END AS asset, 
+                            CASE WHEN MAX(grant_doc_num) = '' OR MAX(grant_doc_num) IS NULL THEN 1 ELSE 0 END AS asset_type, appno_doc_num, MAX(grant_doc_num) AS grant_doc_num, 0 AS child_count, '' AS channel FROM db_uspto.documentid WHERE appno_doc_num IN (:assets)  AND date_format(appno_date, '%Y') > :date GROUP BY appno_doc_num UNION ALL SELECT ${req.orgId} AS organisation_id, FORMAT(ag.grant_doc_num, 0) AS format_asset, ag.grant_doc_num AS asset,  0 AS asset_type, ag.appno_doc_num, ag.grant_doc_num, 0 AS child_count, '' AS channel FROM db_patent_application_bibliographic.application_grant AS ag WHERE ag.appno_doc_num IN (:assets) AND ag.appno_doc_num NOT IN (SELECT appno_doc_num FROM db_uspto.documentid WHERE appno_doc_num IN (:assets)) AND date_format(ag.appno_date, '%Y') > :date GROUP BY appno_doc_num  UNION ALL SELECT ${req.orgId} AS organisation_id, CONCAT(SUBSTRING(ap.appno_doc_num, 1, 2), '/', FORMAT(SUBSTRING(ap.appno_doc_num, 3), 0)) AS format_asset, ap.appno_doc_num AS asset, 1 AS asset_type, ap.appno_doc_num, '' AS grant_doc_num, 0 AS child_count, '' AS channel FROM db_patent_grant_bibliographic.application_publication AS ap WHERE ap.appno_doc_num IN (:assets) AND date_format(ap.appno_date, '%Y') > :date AND ap.appno_doc_num NOT IN (SELECT appno_doc_num FROM db_uspto.documentid WHERE appno_doc_num IN (:assets))  AND ap.appno_doc_num NOT IN (SELECT appno_doc_num FROM db_patent_application_bibliographic.application_grant WHERE appno_doc_num IN (:assets)) GROUP BY ap.appno_doc_num) AS queryTemp `;
+                        } 
                     } else {
-                        query += ` AND appno_doc_num IN (SELECT application FROM db_new_application.dashboard_items WHERE organisation_id = :organisationID AND representative_id IN (:companies) ${customers != '' && customers.length > 0 ? ' AND assignor_id IN (:customers) ' : '' } AND type = :layoutID GROUP BY application)`
-                    }                
+                        query += ` WHERE date_format(assets.appno_date, '%Y') > :date AND assets.layout_id = 15 AND assets.organisation_id = :organisationID `
+
+                        if(Array.isArray(companies) && companies.length > 0) {
+                            query += ` AND assets.company_id IN (:companies)`
+                        }
+                        /* if(replacements.layoutID == 30) {
+                            query += ` AND appno_doc_num IN (SELECT appno_doc_num FROM db_new_application.owned_assets WHERE organisation_id = :organisationID AND company_id IN (:companies) GROUP BY appno_doc_num) AND grant_doc_num <> ''`
+                        } else  */if (replacements.layoutID == 38) {
+                            query += ` AND grant_doc_num IN (SELECT grant_doc_num FROM db_uspto.assets_family AS af WHERE grant_doc_num IN (
+                                SELECT grant_doc_num FROM db_uspto.documentid AS di WHERE appno_doc_num IN (
+                                    SELECT appno_doc_num FROM db_new_application.owned_assets WHERE organisation_id = :organisationID AND company_id IN (:companies) GROUP BY appno_doc_num
+                                )
+                                GROUP BY grant_doc_num
+                            ) AND application_country NOT IN ('WO', 'US') GROUP BY grant_doc_num)`
+                        } else {
+                            query += ` AND appno_doc_num IN (SELECT application FROM db_new_application.dashboard_items WHERE organisation_id = :organisationID AND representative_id IN (:companies) ${customers != '' && customers.length > 0 ? ' AND assignor_id IN (:customers) ' : '' } AND type = :layoutID GROUP BY application)`
+                        }  
+                    }           
                 } else {                
             
                     if(tabs && tabs != '') {
