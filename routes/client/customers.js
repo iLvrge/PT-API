@@ -1011,12 +1011,13 @@ route.get("/:layout/assets", [authJWT.verifyToken, clientDBConnection.connect], 
                 } else {
                     res.status(200).json(assets);
                 }
-            }  else if(replacements.layoutID == 22 || replacements.layoutID == 31) { 
-                /**
-                 * Assets not assigned or Filled
-                 */
-
+            }  /* else if(replacements.layoutID == 22 || replacements.layoutID == 31 ) { 
+                
                  const appNos = await getOWNEDAssets(replacements)
+
+
+                
+
 
                 if(appNos.length > 0) {
                     replacements.assets = appNos
@@ -1032,21 +1033,22 @@ route.get("/:layout/assets", [authJWT.verifyToken, clientDBConnection.connect], 
                 assets.total_records = assets.list.length 
                 res.status(200).json(assets);
                 
-            } else {
+            } */ else {
                 if(replacements.layoutID != 15) {
-                    if(replacements.layoutID == 30) { 
+                    if(replacements.layoutID == 30 || replacements.layoutID == 22 || replacements.layoutID == 31 ) { 
                         /**
                          * Owner Assets (Filled + Acquired)
                          */
                         
-                        const appNos = await getOWNEDAssets(replacements)
-                        if(appNos.length > 0) { 
-                            replacements.assets = appNos
-        
-                            query = `SELECT * FROM ( SELECT ${req.orgId} AS organisation_id, CASE WHEN MAX(grant_doc_num) = '' OR MAX(grant_doc_num) IS NULL THEN CONCAT(SUBSTRING(appno_doc_num, 1, 2), '/', FORMAT(SUBSTRING(appno_doc_num, 3), 0)) ELSE FORMAT(MAX(grant_doc_num), 0) END AS format_asset,
-                            CASE WHEN MAX(grant_doc_num) = '' OR MAX(grant_doc_num) IS NULL THEN appno_doc_num ELSE MAX(grant_doc_num) END AS asset, 
-                            CASE WHEN MAX(grant_doc_num) = '' OR MAX(grant_doc_num) IS NULL THEN 1 ELSE 0 END AS asset_type, appno_doc_num, MAX(grant_doc_num) AS grant_doc_num, 0 AS child_count, '' AS channel FROM db_uspto.documentid WHERE appno_doc_num IN (:assets)  AND date_format(appno_date, '%Y') > :date GROUP BY appno_doc_num UNION ALL SELECT ${req.orgId} AS organisation_id, FORMAT(ag.grant_doc_num, 0) AS format_asset, ag.grant_doc_num AS asset,  0 AS asset_type, ag.appno_doc_num, ag.grant_doc_num, 0 AS child_count, '' AS channel FROM db_patent_application_bibliographic.application_grant AS ag WHERE ag.appno_doc_num IN (:assets) AND ag.appno_doc_num NOT IN (SELECT appno_doc_num FROM db_uspto.documentid WHERE appno_doc_num IN (:assets)) AND date_format(ag.appno_date, '%Y') > :date GROUP BY appno_doc_num  UNION ALL SELECT ${req.orgId} AS organisation_id, CONCAT(SUBSTRING(ap.appno_doc_num, 1, 2), '/', FORMAT(SUBSTRING(ap.appno_doc_num, 3), 0)) AS format_asset, ap.appno_doc_num AS asset, 1 AS asset_type, ap.appno_doc_num, '' AS grant_doc_num, 0 AS child_count, '' AS channel FROM db_patent_grant_bibliographic.application_publication AS ap WHERE ap.appno_doc_num IN (:assets) AND date_format(ap.appno_date, '%Y') > :date AND ap.appno_doc_num NOT IN (SELECT appno_doc_num FROM db_uspto.documentid WHERE appno_doc_num IN (:assets))  AND ap.appno_doc_num NOT IN (SELECT appno_doc_num FROM db_patent_application_bibliographic.application_grant WHERE appno_doc_num IN (:assets)) GROUP BY ap.appno_doc_num) AS queryTemp `;
-                        } 
+                        query = `SELECT * FROM (SELECT  CASE WHEN patent = '' OR patent IS NULL THEN CONCAT(SUBSTRING(application, 1, 2), '/', FORMAT(SUBSTRING(application, 3), 0)) ELSE FORMAT(patent, 0) END AS format_asset,
+                        CASE WHEN patent = '' OR patent IS NULL THEN application ELSE patent END AS asset, 
+                        CASE WHEN patent = '' OR patent IS NULL THEN 1 ELSE 0 END AS asset_type, application AS appno_doc_num, patent AS grant_doc_num, 0 AS child_count, '' AS channel  FROM db_new_application.dashboard_items WHERE organisation_id = :organisationID AND type = :layoutID `;
+
+                        if(typeof replacements.companies != 'undefined' && Array.isArray(replacements.companies) && replacements.companies.length > 0) {
+                            query += ` AND representative_id IN (:companies) `
+                        }
+
+                        query += ` GROUP BY application) AS queryTemp `;
                     } else {
                         query += ` WHERE date_format(assets.appno_date, '%Y') > :date AND assets.layout_id = 15 AND assets.organisation_id = :organisationID `
 
