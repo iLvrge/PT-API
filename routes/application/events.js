@@ -2020,11 +2020,11 @@ const findEventList = async(req, res) => {
                     /**Yellow */
                     const eventDate = moment( currentDate.setMonth( currentDate.getMonth() + item ) )
                     
-                    if( enter === true ) {
+                    /* if( enter === true ) {
                         if( expired === true && eventExpiredDate != '' && new Date(eventExpiredDate + ' 00:00:00').getTime() <= new Date( eventDate ).getTime() ) {
                             enter = false
                         }
-                    }
+                    } */
 
                     if( enter === true ) {
                         const nextDate = new Date( eventDate )
