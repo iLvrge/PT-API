@@ -2020,11 +2020,11 @@ const findEventList = async(req, res) => {
                     /**Yellow */
                     const eventDate = moment( currentDate.setMonth( currentDate.getMonth() + item ) )
                     
-                    if( enter === true ) {
+                    /* if( enter === true ) {
                         if( expired === true && eventExpiredDate != '' && new Date(eventExpiredDate + ' 00:00:00').getTime() <= new Date( eventDate ).getTime() ) {
                             enter = false
                         }
-                    }
+                    } */
 
                     if( enter === true ) {
                         const nextDate = new Date( eventDate )
@@ -2083,7 +2083,31 @@ route.get("/events/:applicationNumber/:patentNumber", [authJWT.verifyToken], asy
     await findEventList(req, res)
 });
 
-
+route.get("/events/assets/status/:applicationNumber", [authJWT.verifyToken], async(req, res) => {
+    try{
+        let { applicationNumber } = req.params;
+        const {counter} = req.query; 
+        let getList = []
+        if(applicationNumber != undefined && applicationNumber != null){
+            const query = `SELECT id, status, status_date AS eventdate FROM db_uspto.application_status WHERE appno_doc_num = :applicationNumber`
+            getList = await connection.application.query(query,{
+                    type: connection.Sequelize.QueryTypes.SELECT,
+                    raw: true,
+                    logging: console.log,
+                    replacements: { applicationNumber },
+                }
+            );
+        }
+        if(typeof counter !== 'undefined') {
+            res.status(200).send(`${getList.length}`);
+        } else {
+            res.status(200).json({main: getList});
+        }
+    } catch(err) {
+        console.log(err);
+        res.status(500).send("Internal server error.");
+    }
+})
 route.get("/events/assets/transactions/:rfID", [authJWT.verifyToken], async (req, res) =>{    
     try {
         const {rfID} = req.params;

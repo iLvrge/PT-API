@@ -3209,4 +3209,22 @@ route.get("/company/auth_token", [authJWT.verifyToken, authJWT.isAdmin], async(r
 })
 
 
+route.get("/company/get_counter_cited_organisations_and_logo", [authJWT.verifyToken, authJWT.isAdmin, authJWT.addClientID], async (req, res, next) => {
+    try {
+        const query = `SELECT * FROM (Select count(*) as cited from db_new_application.assignee_organizations where organisation_id = 0) AS citedCount CROSS JOIN (Select count(*) AS logo from db_new_application.assignee_organizations 
+        where organisation_id = 0 and (api_logo = '' OR api_logo IS NULL) and (api_logo1 IS NULL OR api_logo = '') and (api_logo2 = '' OR api_logo2 IS NULL) and (api_logo3 = '' OR api_logo3 IS NULL) and (api_logo4 = '' OR api_logo4 IS NULL) and (api_logo5 = '' OR api_logo5 IS NULL) and (api_logo6 = '' OR api_logo6 IS NULL) and (api_logo7 = '' OR api_logo7 IS NULL) and (api_logo8 = '' OR api_logo8 IS NULL) and (api_logo9 = '' OR api_logo9 IS NULL)) AS logoCounter`
+        const citedAssigneesCounters = await connection.applicationNew.query(query,{
+                type: connection.Sequelize.QueryTypes.SELECT,
+                raw: true,
+                plain: true,
+                replacements: {},
+                logging: console.log,
+            }
+        );
+        res.status(200).json(citedAssigneesCounters);
+    } catch (err) {
+
+    }
+})
+
 module.exports = route;

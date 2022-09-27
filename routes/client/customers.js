@@ -753,6 +753,32 @@ route.post("/asset_types/assets/family", [authJWT.verifyToken, clientDBConnectio
 })
 
 
+const getOWNEDAssets = async(replacements) => {
+    let queryAssets = `SELECT application FROM db_new_application.dashboard_items WHERE organisation_id = :organisationID AND type = :layoutID `;
+
+    if(typeof replacements.companies != 'undefined' && Array.isArray(replacements.companies) && replacements.companies.length > 0) {
+        queryAssets += ` AND representative_id IN (:companies) `
+    }
+
+    queryAssets += ` GROUP BY application `;
+
+    const getAssetsList = await connection.applicationNew.query(queryAssets,{
+        type: connection.Sequelize.QueryTypes.SELECT,
+        raw: true,
+        logging: console.log,
+        replacements
+    })
+
+    const appNos = []
+
+    if(getAssetsList != null && getAssetsList.length > 0) {
+        getAssetsList.forEach( asset => {
+            appNos.push(`${asset.application}`)
+        })
+    }
+    return appNos
+}
+
 /**
  * Restore Ownership
  * Broken chain of title
@@ -856,6 +882,7 @@ route.get("/:layout/assets", [authJWT.verifyToken, clientDBConnection.connect], 
                 customers = JSON.parse( customers )
                 replacements.customers = customers
             }
+            console.log(replacements.layoutID);
 
             if(replacements.layoutID == 3) { 
                 /**Maintainence */
@@ -984,33 +1011,13 @@ route.get("/:layout/assets", [authJWT.verifyToken, clientDBConnection.connect], 
                 } else {
                     res.status(200).json(assets);
                 }
-            }  else if(replacements.layoutID == 22 || replacements.layoutID == 31) { 
-                /**
-                 * Assets not assigned or Filled
-                 */
+            }  /* else if(replacements.layoutID == 22 || replacements.layoutID == 31 ) { 
+                
+                 const appNos = await getOWNEDAssets(replacements)
 
-                let queryAssets = `SELECT application FROM db_new_application.dashboard_items WHERE organisation_id = :organisationID AND type = :layoutID `;
 
-                if(Array.isArray(companies) && companies.length > 0) {
-                    queryAssets += ` AND representative_id IN (:companies) `
-                }
+                
 
-                queryAssets += ` GROUP BY application `;
-
-                const getAssetsList = await connection.applicationNew.query(queryAssets,{
-                    type: connection.Sequelize.QueryTypes.SELECT,
-                    raw: true,
-                    logging: console.log,
-                    replacements
-                })
-
-                const appNos = []
-
-                if(getAssetsList != null && getAssetsList.length > 0) {
-                    getAssetsList.forEach( asset => {
-                        appNos.push(`${asset.application}`)
-                    })
-                }
 
                 if(appNos.length > 0) {
                     replacements.assets = appNos
@@ -1026,25 +1033,41 @@ route.get("/:layout/assets", [authJWT.verifyToken, clientDBConnection.connect], 
                 assets.total_records = assets.list.length 
                 res.status(200).json(assets);
                 
-            } else {
+            } */ else {
                 if(replacements.layoutID != 15) {
-                    query += ` WHERE date_format(assets.appno_date, '%Y') > :date AND assets.layout_id = 15 AND assets.organisation_id = :organisationID `
+                    if(replacements.layoutID == 30 || replacements.layoutID == 22 || replacements.layoutID == 31 ) { 
+                        /**
+                         * Owner Assets (Filled + Acquired)
+                         */
+                        
+                        query = `SELECT * FROM (SELECT  CASE WHEN patent = '' OR patent IS NULL THEN CONCAT(SUBSTRING(application, 1, 2), '/', FORMAT(SUBSTRING(application, 3), 0)) ELSE FORMAT(patent, 0) END AS format_asset,
+                        CASE WHEN patent = '' OR patent IS NULL THEN application ELSE patent END AS asset, 
+                        CASE WHEN patent = '' OR patent IS NULL THEN 1 ELSE 0 END AS asset_type, application AS appno_doc_num, patent AS grant_doc_num, 0 AS child_count, '' AS channel  FROM db_new_application.dashboard_items WHERE organisation_id = :organisationID AND type = :layoutID `;
 
-                    if(Array.isArray(companies) && companies.length > 0) {
-                        query += ` AND assets.company_id IN (:companies)`
-                    }
-                    /* if(replacements.layoutID == 30) {
-                        query += ` AND appno_doc_num IN (SELECT appno_doc_num FROM db_new_application.owned_assets WHERE organisation_id = :organisationID AND company_id IN (:companies) GROUP BY appno_doc_num) AND grant_doc_num <> ''`
-                    } else  */if (replacements.layoutID == 38) {
-                        query += ` AND grant_doc_num IN (SELECT grant_doc_num FROM db_uspto.assets_family AS af WHERE grant_doc_num IN (
-                            SELECT grant_doc_num FROM db_uspto.documentid AS di WHERE appno_doc_num IN (
-                                SELECT appno_doc_num FROM db_new_application.owned_assets WHERE organisation_id = :organisationID AND company_id IN (:companies) GROUP BY appno_doc_num
-                            )
-                            GROUP BY grant_doc_num
-                        ) AND application_country NOT IN ('WO', 'US') GROUP BY grant_doc_num)`
+                        if(typeof replacements.companies != 'undefined' && Array.isArray(replacements.companies) && replacements.companies.length > 0) {
+                            query += ` AND representative_id IN (:companies) `
+                        }
+
+                        query += ` GROUP BY application) AS queryTemp `;
                     } else {
-                        query += ` AND appno_doc_num IN (SELECT application FROM db_new_application.dashboard_items WHERE organisation_id = :organisationID AND representative_id IN (:companies) ${customers != '' && customers.length > 0 ? ' AND assignor_id IN (:customers) ' : '' } AND type = :layoutID GROUP BY application)`
-                    }                
+                        query += ` WHERE date_format(assets.appno_date, '%Y') > :date AND assets.layout_id = 15 AND assets.organisation_id = :organisationID `
+
+                        if(Array.isArray(companies) && companies.length > 0) {
+                            query += ` AND assets.company_id IN (:companies)`
+                        }
+                        /* if(replacements.layoutID == 30) {
+                            query += ` AND appno_doc_num IN (SELECT appno_doc_num FROM db_new_application.owned_assets WHERE organisation_id = :organisationID AND company_id IN (:companies) GROUP BY appno_doc_num) AND grant_doc_num <> ''`
+                        } else  */if (replacements.layoutID == 38) {
+                            query += ` AND grant_doc_num IN (SELECT grant_doc_num FROM db_uspto.assets_family AS af WHERE grant_doc_num IN (
+                                SELECT grant_doc_num FROM db_uspto.documentid AS di WHERE appno_doc_num IN (
+                                    SELECT appno_doc_num FROM db_new_application.owned_assets WHERE organisation_id = :organisationID AND company_id IN (:companies) GROUP BY appno_doc_num
+                                )
+                                GROUP BY grant_doc_num
+                            ) AND application_country NOT IN ('WO', 'US') GROUP BY grant_doc_num)`
+                        } else {
+                            query += ` AND appno_doc_num IN (SELECT application FROM db_new_application.dashboard_items WHERE organisation_id = :organisationID AND representative_id IN (:companies) ${customers != '' && customers.length > 0 ? ' AND assignor_id IN (:customers) ' : '' } AND type = :layoutID GROUP BY application)`
+                        }  
+                    }           
                 } else {                
             
                     if(tabs && tabs != '') {
