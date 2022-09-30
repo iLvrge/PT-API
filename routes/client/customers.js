@@ -1463,7 +1463,7 @@ route.get("/incorrectnames", [authJWT.verifyToken, clientDBConnection.connect], 
                             customers: [],
                             assignments: [],
                         };
-        let list = [], representativeName = '';
+        let getNamesData = [], representativeName = '';
 
         if(typeof id != undefined && id > 0) {
             replacements.id = id;
@@ -1512,27 +1512,35 @@ route.get("/incorrectnames", [authJWT.verifyToken, clientDBConnection.connect], 
                     representativeName = findName.original_name
                 }
 
-                const query = `SELECT name, assignor_and_assignee_id AS id, COUNT(application) AS count_assets, 0 AS distance FROM ( SELECT IF(assignee.original_name != '', assignee.original_name, assignee.ee_name) AS name, aaa.assignor_and_assignee_id, doc.appno_doc_num as application FROM db_uspto.assignee AS assignee INNER JOIN db_uspto.assignor_and_assignee AS aaa ON aaa.assignor_and_assignee_id = assignee.assignor_and_assignee_id INNER JOIN db_uspto.documentid AS doc ON doc.rf_id = assignee.rf_id INNER JOIN db_uspto.list1 ON list1.assignor_and_assignee_id = aaa.assignor_and_assignee_id AND list1.organisation_id = :organisationID ${replacements.companies.length > 0 ? ' AND list1.company_id IN (:companies)' : ''} WHERE assignee.rf_id IN (SELECT rf_id FROM db_new_application.dashboard_items WHERE type = 17 AND organisation_id = :organisationID  ${replacements.companies.length > 0 ? ' AND representative_id IN (:companies)' : ''} )  ${id != undefined && id > 0 ? ' AND aaa.assignor_and_assignee_id = :id' : ''} ) as temp GROUP BY name`;
+                const query = `SELECT name, assignor_and_assignee_id AS id, COUNT(application) AS count_assets, 0 AS distance FROM ( SELECT IF(assignee.original_name != '', assignee.original_name, assignee.ee_name) AS name, aaa.assignor_and_assignee_id, doc.appno_doc_num as application FROM db_uspto.assignee AS assignee INNER JOIN db_uspto.assignor_and_assignee AS aaa ON aaa.assignor_and_assignee_id = assignee.assignor_and_assignee_id INNER JOIN db_uspto.documentid AS doc ON doc.rf_id = assignee.rf_id INNER JOIN db_uspto.list1 ON list1.assignor_and_assignee_id = aaa.assignor_and_assignee_id AND list1.organisation_id = :organisationID ${replacements.companies.length > 0 ? ' AND list1.company_id IN (:companies)' : ''} WHERE assignee.rf_id IN (SELECT rf_id FROM db_new_application.dashboard_items WHERE type = 17 AND organisation_id = :organisationID  ${replacements.companies.length > 0 ? ' AND representative_id IN (:companies)' : ''} )  ${id != undefined && id > 0 ? ' AND aaa.assignor_and_assignee_id = :id' : ''} ) as temp GROUP BY name ORDER BY LENGTH(name) ASC`;
         
-                list = await connection.applicationNew.query(query,{
+                const list = await connection.applicationNew.query(query,{
                         type: connection.Sequelize.QueryTypes.SELECT,
                         raw: true,
                         logging: console.log,
                         replacements: replacements,
                     }
                 )
-        
+                const allNames = [];
+                console.log(list)
                 if(list != null && list.length > 0) {
                     const promise = list.map( (item, index) => {
                         let name = item.name
                         name = name.replace(/,/g, ' ').replace(/\./g, ' ');
-                        list[index].distance = distance(representativeName, name.trim())
+                        if(!allNames.includes(name)) {
+                            allNames.push(name)
+                            list[index].distance = distance(representativeName, name.trim());
+                            if(list[index].distance > 0) {
+                                getNamesData.push(list[index])
+                            }
+                        }
                     })
                     await Promise.all(promise)
                 }
             }
         }
-        res.status(200).json(list);
+        console.log('getNamesData', getNamesData)
+        res.status(200).json(getNamesData);
     } catch ( err ) {
         console.log(err);
         res.status(500).send("Internal server error.");
