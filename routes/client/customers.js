@@ -1508,8 +1508,6 @@ route.get("/incorrectnames", [authJWT.verifyToken, clientDBConnection.connect], 
                     representativeName = findName.original_name
                 }
 
-                console.log(representativeName)
-
                 const query = `SELECT name, 0 AS distance FROM ( SELECT IF(assignee.original_name != '', assignee.original_name, assignee.ee_name) AS name FROM db_uspto.assignee AS assignee INNER JOIN db_uspto.assignor_and_assignee AS aaa ON aaa.assignor_and_assignee_id = assignee.assignor_and_assignee_id
                 INNER JOIN db_uspto.list1 ON list1.assignor_and_assignee_id = aaa.assignor_and_assignee_id AND list1.organisation_id = :organisationID ${replacements.companies.length > 0 ? ' AND list1.company_id IN (:companies)' : ''} WHERE assignee.rf_id IN (SELECT rf_id FROM db_new_application.dashboard_items WHERE type = 17 AND organisation_id = :organisationID  ${replacements.companies.length > 0 ? ' AND representative_id IN (:companies)' : ''} )) as temp GROUP BY name`;
         
@@ -1523,7 +1521,9 @@ route.get("/incorrectnames", [authJWT.verifyToken, clientDBConnection.connect], 
         
                 if(list != null && list.length > 0) {
                     const promise = list.map( (item, index) => {
-                        list[index].distance = distance(representativeName, item.name)
+                        let name = item.name
+                        name = name.replace(/,/g, ' ').replace(/\./g, ' ');
+                        list[index].distance = distance(representativeName, name.trim())
                     })
                     await Promise.all(promise)
                 }
