@@ -410,6 +410,7 @@ route.get('/connection/asset/:applicationNumber',  [authJWT.verifyToken, clientD
             const reelFrame = getData.rf_id;
             if( reelFrame != '' && reelFrame != null && reelFrame != undefined ) {
                 const itemDetails = await helpers.getAssignmentDataByrfID(reelFrame);
+                console.log('details', itemDetails)
                 await createJSON(itemDetails)
                 const illustrationData = await createJSON(itemDetails, reelFrame)        
                 res.status(200).json( illustrationData );   
