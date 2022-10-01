@@ -1522,7 +1522,6 @@ route.get("/incorrectnames", [authJWT.verifyToken, clientDBConnection.connect], 
                     }
                 )
                 const allNames = [];
-                console.log(list)
                 if(list != null && list.length > 0) {
                     const promise = list.map( (item, index) => {
                         let name = item.name
@@ -1539,7 +1538,6 @@ route.get("/incorrectnames", [authJWT.verifyToken, clientDBConnection.connect], 
                 }
             }
         }
-        console.log('getNamesData', getNamesData)
         res.status(200).json(getNamesData);
     } catch ( err ) {
         console.log(err);

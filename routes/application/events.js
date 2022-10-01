@@ -1972,7 +1972,7 @@ const findEventList = async(req, res) => {
                 }
                 
             }
-            let other = [], icons = {}, expiredEvents = ['EXP.', 'EXPX'], expired = false, eventExpiredDate = ''
+            let other = [], icons = {}, expiredEvents = ['EXP.'], expired = false, eventExpiredDate = ''
             if(findData.length > 0) {
                 const promise = findData.map( event => {
                     if(expired === false) {
