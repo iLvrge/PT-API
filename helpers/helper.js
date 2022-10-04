@@ -315,19 +315,19 @@ let searchCompany = async(query, t) => {
                 }
             }
             ptabParties = [...new Set(ptabParties)]
-
-            const findQueryNormalizeParty = "SELECT pp.id, 0 AS assignor_and_assignee_id, pp.name, rr.representative_name AS normalize_name, (select r.representative_name FROM representative as r WHERE r.representative_name = pp.name GROUP BY r.representative_name limit 1) as representative_company, 1 AS counter, '3' AS flag FROM db_uspto.ptab_parties AS pp INNER JOIN db_uspto.representative AS rr ON rr.representative_id = pp.representative_id WHERE name IN (:ptabParties) GROUP BY name";
-
-            const normalizePtabParty = await connection.resources.query(findQueryNormalizeParty,{
-                type: connection.Sequelize.QueryTypes.SELECT,
-                raw: true,
-                replacements: { ptabParties },
-                logging: console.log,
-            }); 
+            
 
             const parties = [];
 
             if(ptabParties != null && ptabParties.length > 0) {
+                const findQueryNormalizeParty = "SELECT pp.id, 0 AS assignor_and_assignee_id, pp.name, rr.representative_name AS normalize_name, (select r.representative_name FROM representative as r WHERE r.representative_name = pp.name GROUP BY r.representative_name limit 1) as representative_company, 1 AS counter, '3' AS flag FROM db_uspto.ptab_parties AS pp INNER JOIN db_uspto.representative AS rr ON rr.representative_id = pp.representative_id WHERE name IN (:ptabParties) GROUP BY name";
+
+                const normalizePtabParty = await connection.resources.query(findQueryNormalizeParty,{
+                    type: connection.Sequelize.QueryTypes.SELECT,
+                    raw: true,
+                    replacements: { ptabParties },
+                    logging: console.log,
+                });
                 normalizePtabParty.forEach( row => {
                     parties.push(row.name)
                     filterParties.push(row)

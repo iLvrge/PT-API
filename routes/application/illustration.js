@@ -10,7 +10,11 @@ const express = require("express"),
 
     helpers = require("../../helpers/helper"),
 
-    Assignments = require("../../model/resources/Assignments");
+    Assignments = require("../../model/resources/Assignments"),
+
+    clientDBConnection = require("../../helpers/clientDBConnection");
+
+    const  connection = require("../../config/db.config");
 
 
 let createJSON = async(itemDetails, rfID) => {
@@ -375,6 +379,47 @@ route.get('/connection/:reelFrame',  /* [authJWT.verifyToken], */ async (req, re
         } else {
             res.status(200).json( {} );
         }      
+    } else {
+        res.status(200).json( {} );
+    } 
+})
+
+route.get('/connection/asset/:applicationNumber',  [authJWT.verifyToken, clientDBConnection.connect], async (req, res) => {  
+    let { applicationNumber }  = req.params
+    let { companies } = req.query
+
+    const  replacements = { applicationNumber, organisationID: req.orgId}
+
+    if(companies != undefined && companies != null && companies != '') {
+        companies = JSON.parse( companies )
+        replacements.companies = companies
+    }
+
+    if(companies.length > 0 && applicationNumber != undefined && applicationNumber != '' && applicationNumber != null) {
+        const query = `SELECT rf_id FROM db_new_application.dashboard_items WHERE type = 17 AND application = :applicationNumber AND organisation_id = :organisationID ${replacements.companies.length > 0 ? ' AND representative_id IN (:companies)' : ''} LIMIT 1`
+
+        const getData = await connection.applicationNew.query(query,{
+            type: connection.Sequelize.QueryTypes.SELECT,
+            raw: true,
+            plain: true,
+            logging: console.log,
+            replacements: replacements,
+        });
+
+        if( getData  != null ) {
+            const reelFrame = getData.rf_id;
+            if( reelFrame != '' && reelFrame != null && reelFrame != undefined ) {
+                const itemDetails = await helpers.getAssignmentDataByrfID(reelFrame);
+                console.log('details', itemDetails)
+                await createJSON(itemDetails)
+                const illustrationData = await createJSON(itemDetails, reelFrame)        
+                res.status(200).json( illustrationData );   
+            } else {
+                res.status(200).json( {} );
+            } 
+        } else {
+            res.status(200).json( {} );
+        } 
     } else {
         res.status(200).json( {} );
     } 

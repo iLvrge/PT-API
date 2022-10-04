@@ -16,6 +16,8 @@ const express = require("express"),
 
     clientDBConnection = require("../../helpers/clientDBConnection");
 
+const {distance, closest} = require('fastest-levenshtein')
+
 //require the Model
 const TreeParties = require("../../model/application/TreeParties");
 const TreePartiesCollections = require("../../model/application/TreePartiesCollections");
@@ -1450,6 +1452,111 @@ route.get("/transactions/name", [authJWT.verifyToken], async(req, res, next) => 
     }
 })
 
+route.get("/incorrectnames", [authJWT.verifyToken, clientDBConnection.connect], async(req, res, next) => {
+    try {
+        let {companies, id,  tabs, customers, limit, offset } = req.query           
+            
+        const replacements =  { 
+                            companies: [], 
+                            organisationID: req.orgId, 
+                            tabs: [],
+                            customers: [],
+                            assignments: [],
+                        };
+        let getNamesData = [], representativeName = '';
+
+        if(typeof id != undefined && id > 0) {
+            replacements.id = id;
+        }
+
+        if(companies && companies != '') {
+            companies = JSON.parse( companies )
+            replacements.companies = companies
+
+            const Representative = req.connection_db.define('Representatives', Representatives.mainStructure, Representatives.options);
+
+            const findName = await Representative.findOne({
+                attributes: ['representative_name'],
+                where:{ representative_id: companies}                        
+            });
+
+            if(findName != null) {
+                representativeName = findName.get('representative_name')
+            }
+
+            if(tabs && tabs != '') {
+                tabs = JSON.parse( tabs )
+                tabs = helpers.checkTabs(tabs)
+                replacements.tabs = tabs
+            }
+    
+            if(customers && customers != '') {
+                customers = JSON.parse( customers )
+                replacements.customers = customers
+            } 
+            
+            if(representativeName != '') {
+                console.log(representativeName)
+
+                const findOriginalRepresentativeName = `SELECT ee.original_name FROM db_uspto.assignee AS ee INNER JOIN db_uspto.assignor_and_assignee AS aaa ON aaa.assignor_and_assignee_id = ee.assignor_and_assignee_id WHERE name = :representativeName LIMIT 1`;
+
+                const findName = await connection.applicationNew.query(findOriginalRepresentativeName,{
+                    type: connection.Sequelize.QueryTypes.SELECT,
+                    raw: true,
+                    plain: true,
+                    logging: console.log,
+                    replacements: {representativeName},
+                })
+
+                if( findName != null ) {
+                    representativeName = findName.original_name
+                }
+
+                const query = `SELECT name, assignor_and_assignee_id AS id, COUNT(application) AS count_assets, 0 AS distance FROM ( SELECT IF(assignee.original_name != '', assignee.original_name, assignee.ee_name) AS name, aaa.assignor_and_assignee_id, doc.appno_doc_num as application FROM db_uspto.assignee AS assignee INNER JOIN db_uspto.assignor_and_assignee AS aaa ON aaa.assignor_and_assignee_id = assignee.assignor_and_assignee_id INNER JOIN db_uspto.documentid AS doc ON doc.rf_id = assignee.rf_id INNER JOIN db_uspto.list1 ON list1.assignor_and_assignee_id = aaa.assignor_and_assignee_id AND list1.organisation_id = :organisationID ${replacements.companies.length > 0 ? ' AND list1.company_id IN (:companies)' : ''} WHERE assignee.rf_id IN (SELECT rf_id FROM db_new_application.dashboard_items WHERE type = 17 AND organisation_id = :organisationID  ${replacements.companies.length > 0 ? ' AND representative_id IN (:companies)' : ''} )  ${id != undefined && id > 0 ? ' AND aaa.assignor_and_assignee_id = :id' : ''} ) as temp GROUP BY name ORDER BY LENGTH(name) ASC`;
+        
+                const list = await connection.applicationNew.query(query,{
+                        type: connection.Sequelize.QueryTypes.SELECT,
+                        raw: true,
+                        logging: console.log,
+                        replacements: replacements,
+                    }
+                )
+                const allNames = [];
+                if(list != null && list.length > 0) {
+                    const promise = list.map( (item, index) => {
+                        let name = item.name
+                        name = name.replace(/,/g, ' ').replace(/\./g, ' ');
+                        console.log('name', name, allNames)
+                        const checkName = name.replace(/\s/g,'');
+                        if(!allNames.includes(checkName.trim())) {
+                            allNames.push(checkName.trim())
+                            list[index].distance = distance(representativeName, name.trim());
+                            if(list[index].distance > 0) {
+                                getNamesData.push(list[index])
+                            }
+                        } else {
+                            const findIndex = getNamesData.findIndex(item => {
+                                let name = item.name
+                                name = name.replace(/,/g, ' ').replace(/\./g, ' ').replace(/\s/g,'');
+                                return name == checkName
+                            })
+
+                            if(findIndex !== -1) {
+                                getNamesData[findIndex].count_assets += list[index].count_assets
+                            }
+                        }
+                    })
+                    await Promise.all(promise)
+                }
+            }
+        }
+        res.status(200).json(getNamesData);
+    } catch ( err ) {
+        console.log(err);
+        res.status(500).send("Internal server error.");
+    }
+})
+
 route.post("/transactions/queues/address", [authJWT.verifyToken, clientDBConnection.connect], async(req, res, next) => {
     try {
         let { group_ids, new_address, company_ids } = req.body, getList = []
@@ -1673,6 +1780,9 @@ route.get("/:layout/activites", [authJWT.verifyToken, clientDBConnection.connect
         res.status(500).send("Internal server error.");
     }
 })
+
+
+
 
 /**
  * List of all portfolio from new table
