@@ -1526,11 +1526,23 @@ route.get("/incorrectnames", [authJWT.verifyToken, clientDBConnection.connect], 
                     const promise = list.map( (item, index) => {
                         let name = item.name
                         name = name.replace(/,/g, ' ').replace(/\./g, ' ');
-                        if(!allNames.includes(name)) {
-                            allNames.push(name)
+                        console.log('name', name, allNames)
+                        const checkName = name.replace(/\s/g,'');
+                        if(!allNames.includes(checkName.trim())) {
+                            allNames.push(checkName.trim())
                             list[index].distance = distance(representativeName, name.trim());
                             if(list[index].distance > 0) {
                                 getNamesData.push(list[index])
+                            }
+                        } else {
+                            const findIndex = getNamesData.findIndex(item => {
+                                let name = item.name
+                                name = name.replace(/,/g, ' ').replace(/\./g, ' ').replace(/\s/g,'');
+                                return name == checkName
+                            })
+
+                            if(findIndex !== -1) {
+                                getNamesData[findIndex].count_assets += list[index].count_assets
                             }
                         }
                     })
