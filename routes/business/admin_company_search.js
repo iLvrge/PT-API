@@ -745,7 +745,7 @@ route.put("/company/search/all/", [authJWT.verifyToken, authJWT.isAdmin], async 
             
             let flag = 2;
 
-            if(selected_rows[0].flag === 4) {
+            if(selected_rows != undefined && selected_rows.length > 0 && selected_rows[0].flag === 4) {
                 flag = 4;
             }
             let queryApplicantInventor = ''
