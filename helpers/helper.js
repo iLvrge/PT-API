@@ -3424,6 +3424,9 @@ const findLayout = (layout) => {
         case 'top_lenders':
             layoutID = 41
             break
+        case 'uncollateralized':
+            layoutID = 45
+            break
         /*case 'correct_details':
             layoutID = 4
             break */
