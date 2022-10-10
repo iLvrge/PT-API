@@ -129,21 +129,23 @@ route.get("/summary", [authJWT.verifyToken, clientDBConnection.connect], async(r
      * Total Assets
      */
     const { access_token, user_account } = req.query
-    const companies = await helpers.getCompaniesAllList(req.connection_db);
+    /* const companies = await helpers.getCompaniesAllList(req.connection_db);
 
-
+    console.log(companies);
 
     const allCompanies = []
 
     const promises = companies.map( row => allCompanies.push(row.representative_name))
 
-    await Promise.all(promises)
+    await Promise.all(promises) */
 
-    const query = `SELECT ${allCompanies.length} as companies, sum(no_of_activities) as activites, sum(no_of_parties) as parties,  sum(no_of_inventor) as employees, sum(no_of_transactions) as transactions, sum(no_of_assets) as assets, (SELECT SUM(arrows) FROM assignment_arrows WHERE rf_id IN (SELECT rf_id FROM report_representative_assets_transactions WHERE representative_name IN (:representativeName))) as rights, 0 as documents  FROM representative_reports WHERE representative_name IN (:representativeName)`
+    /* const query = `SELECT ${allCompanies.length} as companies, count(DISTINCT no_of_activities) as activites, sum(no_of_parties) as parties,  sum(no_of_inventor) as employees, sum(no_of_transactions) as transactions, sum(no_of_assets) as assets, (SELECT SUM(arrows) FROM assignment_arrows WHERE rf_id IN (SELECT rf_id FROM report_representative_assets_transactions WHERE representative_name IN (:representativeName))) as rights, 0 as documents  FROM representative_reports WHERE representative_name IN (:representativeName)` */
+
+    const query = `SELECT companies, activities AS activites, parties, employees, transactions, assets, arrows AS rights, 0 AS documents FROM db_uspto.summary WHERE organisation_id = :organisationID AND company_id = 0`;
 
     report = await connection.resources.query(query,{
         type: connection.Sequelize.QueryTypes.SELECT,
-        replacements: { representativeName: allCompanies },
+        replacements: { organisationID: req.orgId },
         raw: true,
         plain: true,
         logging: console.log,
