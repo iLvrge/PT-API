@@ -2544,9 +2544,11 @@ route.post("/company/:id/add_bulk_companies", [authJWT.verifyToken, authJWT.isAd
                         } else if(originalNames.length > 0) {
                             whereC = {original_name: originalNames};
                         }
+                        whereC.parent_id = 0;
                         const findParentCompanies = await Representative.findAll({
                             where: whereC
                         });
+                        console.log('ParentLength', findParentCompanies.length, companies)
                         if(findParentCompanies.length == 0) {
                             let addRecord = 0,  mainCompanies = [], parentCompaniesID = [];  
 
@@ -2614,7 +2616,7 @@ route.post("/company/:id/add_bulk_companies", [authJWT.verifyToken, authJWT.isAd
                                 }
                                 res.status(200).send("Companies added");
                             } else {
-                                res.status(500).json("Internal server error");
+                                res.status(500).json("Company is already exist");
                             }
                         } else { 
                             const addedCompanies = [],  mainCompanies = [], parentCompaniesID = [];           
@@ -2672,7 +2674,7 @@ route.post("/company/:id/add_bulk_companies", [authJWT.verifyToken, authJWT.isAd
                                 }
                                 res.status(200).send("Companies added");
                             } else {
-                                res.status(500).json("Internal server error");
+                                res.status(500).json("Company is already exist");
                             }
                         }
                     } else {
