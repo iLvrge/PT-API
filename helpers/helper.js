@@ -1650,10 +1650,72 @@ let getCompaniesList = async (DBConnection) => {
 
 let getCompaniesAllList = async (DBConnection) => {
     const Representative = DBConnection.define('ClientRepesentative', ClientRepesentative.mainStructure, ClientRepesentative.options);
-
-    return await Representative.findAll({
-        where: {type: 0}
+     
+    const mainCompanies  = await Representative.findAll({
+        attributes: ['representative_id', 'representative_name'],
+        where: {type: 0, parent_id: 0},
+        group: ['representative_name']
     });
+
+    console.log(mainCompanies)
+
+    let groupCompanies = []
+
+    const groups  = await Representative.findAll({
+        where: {type: 1, parent_id: 0}
+    });
+
+    if(groups !== null && groups.length > 0) {
+        let getAllIDs = [];
+        const mapGroups = await groups.map( c => getAllIDs.push(c.representative_id));
+        await Promise.all(mapGroups)
+
+        groupCompanies  = await Representative.findAll({
+            attributes: ['representative_id', 'representative_name'],
+            where: {parent_id: getAllIDs},
+            group: ['representative_name']
+        });
+    }
+
+    const allCompanies = [];
+    if(mainCompanies.length > 0) {
+        const cPromises = await mainCompanies.map( c => {
+            const {representative_id, representative_name} = c
+            allCompanies.push({representative_id, representative_name})
+        });
+        await Promise.all(cPromises)
+    }
+    if(groupCompanies.length > 0) {
+        const cPromises = await groupCompanies.map( c => {
+            const {representative_id, representative_name} = c
+            allCompanies.push({representative_id, representative_name})
+        });
+        await Promise.all(cPromises)
+    }
+    console.log(allCompanies.length)
+    return allCompanies;
+
+    /* const findParentCompanies  = await Representative.findAll({
+        attributes: ['parent_id'],
+        where: {parent_id: {[connection.Op.gt] : 0}},
+        group: ['parent_id']
+    });
+
+    console.log(findParentCompanies.length)
+    if(findParentCompanies !== null && findParentCompanies.length > 0) {
+        let getAllIDs = [];
+        const mapGroups = await findParentCompanies.map( c => getAllIDs.push(c.parent_id));
+        await Promise.all(mapGroups)
+
+        representativeCompanies  = await Representative.findAll({
+            attributes: ['representative_id', 'representative_name'],
+            where: {representative_id: getAllIDs, type: 0, parent_id: 0},
+            group: ['representative_name']
+        });
+    }
+
+    return representativeCompanies; */
+
 }
 
 let findRepresentativeByID = async (DBConnection, representativeID) => {
@@ -3423,6 +3485,9 @@ const findLayout = (layout) => {
             break
         case 'top_lenders':
             layoutID = 41
+            break
+        case 'uncollateralized':
+            layoutID = 45
             break
         /*case 'correct_details':
             layoutID = 4

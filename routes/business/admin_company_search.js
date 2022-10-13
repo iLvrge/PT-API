@@ -634,7 +634,18 @@ route.put("/company/search/all/", [authJWT.verifyToken, authJWT.isAdmin], async 
                 await ApplicantAssignorAndAssignee.update(item, {where: {name: normalize_name}});
 
                 if(ptabNames.length > 0) {
-                    await PtabNames.update(item, {where: {name: ptabNames}});
+                    const findPTabName = await PtabNames.count({
+                        where: {name: ptabNames}
+                    })
+                    if(findPTabName > 0) {
+                        await PtabNames.update(item, {where: {name: ptabNames}});
+                    } else {
+                        const insertPTABNames = []
+                        ptabNames.forEach( name =>{
+                            insertPTABNames.push({name, representative_id: representativeCompany.representative_id})
+                        })
+                        await PtabNames.bulkCreate(insertPTABNames, {ignoreDuplicates: true})
+                    }
                 }
                 
                 // Delete other rep
@@ -803,7 +814,7 @@ route.put("/company/search/all/", [authJWT.verifyToken, authJWT.isAdmin], async 
             );
 
             let ptabList = [];
-            
+            console.log('PTNAMES', ptabNames)
             if(ptabNames.length > 0) {
                 const findQueryNormalizeParty = "SELECT pp.id, 0 AS assignor_and_assignee_id, pp.name, rr.representative_name AS normalize_name, (select r.representative_name FROM representative as r WHERE r.representative_name = pp.name GROUP BY r.representative_name limit 1) as representative_company, 1 AS counter, '3' AS flag FROM db_uspto.ptab_parties AS pp INNER JOIN db_uspto.representative AS rr ON rr.representative_id = pp.representative_id WHERE rr.representative_name IN (:normalizeName) GROUP BY name";
 
@@ -2533,9 +2544,11 @@ route.post("/company/:id/add_bulk_companies", [authJWT.verifyToken, authJWT.isAd
                         } else if(originalNames.length > 0) {
                             whereC = {original_name: originalNames};
                         }
+                        whereC.parent_id = 0;
                         const findParentCompanies = await Representative.findAll({
                             where: whereC
                         });
+                        console.log('ParentLength', findParentCompanies.length, companies)
                         if(findParentCompanies.length == 0) {
                             let addRecord = 0,  mainCompanies = [], parentCompaniesID = [];  
 
@@ -2603,7 +2616,7 @@ route.post("/company/:id/add_bulk_companies", [authJWT.verifyToken, authJWT.isAd
                                 }
                                 res.status(200).send("Companies added");
                             } else {
-                                res.status(500).json("Internal server error");
+                                res.status(500).json("Company is already exist");
                             }
                         } else { 
                             const addedCompanies = [],  mainCompanies = [], parentCompaniesID = [];           
@@ -2661,7 +2674,7 @@ route.post("/company/:id/add_bulk_companies", [authJWT.verifyToken, authJWT.isAd
                                 }
                                 res.status(200).send("Companies added");
                             } else {
-                                res.status(500).json("Internal server error");
+                                res.status(500).json("Company is already exist");
                             }
                         }
                     } else {
