@@ -837,7 +837,7 @@ route.put("/company/search/all/", [authJWT.verifyToken, authJWT.isAdmin], async 
                     queryApplicantInventor += ` OR aaa.representative_id IN (:representative_id)`
                 }
 
-                queryApplicantInventor += `  GROUP BY aaa.name) AS temp GROUP BY name`
+                queryApplicantInventor += `  GROUP BY aaa.name) AS temp `
             } else {
 
                 // Get all list including normalize company and other names
