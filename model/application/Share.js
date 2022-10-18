@@ -24,6 +24,10 @@ const Share = connection.applicationNew.define('share',{
     type: {
         type: Sequelize.INTEGER
     },
+    share_button:{
+        type: Sequelize.INTEGER,
+        allowNull: true,
+    },
     transactions:{
         type: Sequelize.STRING,
         allowNull: true,

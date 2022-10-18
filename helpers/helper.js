@@ -2787,7 +2787,7 @@ let shareURL = async (params) => {
 let getShareList = async (code, type) => {
     console.log('type', code, type)
     if(type == 9) {
-        let query = "SELECT share.transactions FROM share  WHERE code = :code  AND type = :type"
+        let query = "SELECT share.transactions, share.share_button FROM share  WHERE code = :code  AND type = :type"
         const shareData = await connection.applicationNew.query(query,{
                 type: connection.Sequelize.QueryTypes.SELECT,
                 raw: true,
