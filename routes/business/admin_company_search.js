@@ -86,11 +86,17 @@ let authenticateGoogleToken = async( code ) => {
 
 route.get("/company/request", [authJWT.verifyToken, authJWT.isAdmin], async(req, res, next) => {
     try {
-        const list = await ClientAddCompany.findAll({
-            where: { status: 0 }
-        })
+        
+        const query = `SELECT cac.company_id, cac.name, cac.status, r.representative_name, org.name AS organisation_name, cac.request_date AS date FROM db_new_application.client_add_company AS cac INNER JOIN db_business.organisation AS org ON org.organisation_id = cac.organisation_id LEFT JOIN db_uspto.representative AS r ON r.representative_id = cac.representative_id ORDER BY cac.company_id DESC`
 
-        res.status(200).json(list)
+        const list  = await connection.resources.query(query, {
+                type: connection.Sequelize.QueryTypes.SELECT,
+                raw: true,
+                replacements: {  },
+                logging: console.log,
+            }
+        );
+        res.status(200).json(list);	
         
     } catch (err) {
         console.log(err);

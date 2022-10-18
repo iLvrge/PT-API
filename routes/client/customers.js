@@ -1779,20 +1779,44 @@ route.get("/:layout/parties", [authJWT.verifyToken, clientDBConnection.connect],
             tabs = helpers.checkTabs(tabs) /**If it bank then check all the tabs should include */
             replacements.tabs = tabs.join(',')
         }
-        
-        connection.applicationNew.query("CALL `routine_parties`(:companies, :organisationID, :tabs, :layoutID, :customerType);",{
-            type: connection.Sequelize.QueryTypes.SELECT,
-            raw: true,
-            logging: console.log,
-            replacements: replacements,
-            }
-        ).spread(result => {
+        console.log('layoutID', replacements.layoutID)
+        if(parseInt(replacements.layoutID) != 15) {
+            const query = `SELECT id, entityName, totalTransactions, totalAssets, sum(totalTransactions) OVER (ORDER BY id) AS grand_total, sum(totalAssets) OVER (ORDER BY id) AS grand_total_assets FROM ( SELECT id, entityName, SUM(assets) AS totalAssets, COUNT(DISTINCT rfID) AS totalTransactions  FROM (SELECT apt.assignor_id AS id, 
+            IF(representative.representative_name <> '', representative.representative_name, assignor_and_assignee.name) AS entityName, 
+            apt.rf_id AS rfID, 
+            (SELECT COUNT(appno_doc_num) FROM db_uspto.documentid WHERE rf_id =  apt.rf_id) AS assets 
+            FROM db_new_application.dashboard_items AS apt
+            INNER JOIN db_uspto.assignor_and_assignee AS assignor_and_assignee ON assignor_and_assignee.assignor_and_assignee_id = apt.assignor_id
+            LEFT JOIN db_uspto.representative AS representative ON representative.representative_id = assignor_and_assignee.representative_id WHERE apt.organisation_id = :organisationID AND apt.representative_id IN (:companies) AND apt.type = :layoutID GROUP BY entityName, rfID) AS temp GROUP BY entityName) AS temp1`;
+
+            const result = await connection.applicationNew.query(query, {
+                type: connection.Sequelize.QueryTypes.SELECT,
+                raw: true,
+                logging: console.log,
+                replacements: replacements,
+            })
             if (result) {
-                parties.list = Object.values(result)
+                parties.list = result
                 parties.total_records = parties.list.length
             }
             res.status(200).json(parties);
-        })
+        } else {
+            connection.applicationNew.query("CALL `routine_parties`(:companies, :organisationID, :tabs, :layoutID, :customerType);",{
+                type: connection.Sequelize.QueryTypes.SELECT,
+                raw: true,
+                logging: console.log,
+                replacements: replacements,
+                }
+            ).spread(result => {
+                if (result) {
+                    parties.list = Object.values(result)
+                    parties.total_records = parties.list.length
+                }
+                res.status(200).json(parties);
+            })
+        }
+        
+        
     } catch ( err ) {
         console.log(err);
         res.status(500).send("Internal server error.");

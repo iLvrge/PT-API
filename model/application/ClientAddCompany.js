@@ -1,6 +1,9 @@
 const Sequelize = require("sequelize");
 
 const connection = require("../../config/db.config");
+const Organisations = require("../business/Organisations");
+const Representatives = require("../resources/Representatives");
+
 
 
 const ClientAddCompany = connection.applicationNew.define('client_add_company',{
@@ -25,6 +28,10 @@ const ClientAddCompany = connection.applicationNew.define('client_add_company',{
         type: Sequelize.INTEGER,
         allowNull: false,
     },
+    request_date: {
+        type: Sequelize.DATE,
+        allowNull: false,
+    }
 },
 {
     underscored: true,
@@ -32,5 +39,8 @@ const ClientAddCompany = connection.applicationNew.define('client_add_company',{
     freezeTableName: true,
     tableName: 'client_add_company',
 });
+
+ClientAddCompany.belongsTo(Representatives, { foreignKey: 'representative_id', as: 'representative' });
+ClientAddCompany.belongsTo(Organisations, { foreignKey: 'organisation_id', as: 'organisation' });
 
 module.exports = ClientAddCompany;
