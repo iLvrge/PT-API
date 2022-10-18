@@ -7,6 +7,8 @@ const express = require("express"),
     route = express.Router(),
 
     crypto = require("crypto");
+
+
 //require the Model
 
 const Representatives = require("../../model/client/Representatives");
@@ -73,7 +75,8 @@ route.post("/request", [authJWT.verifyToken], async(req, res, next) => {
                 if(company) {
                     res.status(200).json(company); 
                 } else {
-                    const addCompany = await ClientAddCompany.create({name, status: 0, organisation_id: req.orgId});
+                    const currentDate = moment(new Date()).format('YYYY-MM-DD')
+                    const addCompany = await ClientAddCompany.create({name, status: 0, organisation_id: req.orgId, request_date: currentDate});
                     res.status(200).json(addCompany); 
                 }
             })
@@ -89,6 +92,7 @@ route.post("/request", [authJWT.verifyToken], async(req, res, next) => {
 route.get("/request", [authJWT.verifyToken], async(req, res, next) => {
     try {
         const list = await ClientAddCompany.findAll({
+            attributes:['name', 'company_id', [connection.Sequelize.literal(`(CASE status WHEN 1 THEN 'Data prepared' ELSE 'Data is being prepared'  END)`), 'status']],
             where: { organisation_id: req.orgId }
         })
 

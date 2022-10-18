@@ -200,7 +200,9 @@ route.get("/share/dashboard/list/:code", async (req, res) =>{
         if( code != "") {
             const data = await helpers.getShareList(code, 9);
             if(data != null) {
-                res.status(200).json(JSON.parse(data.transactions));
+                const item = JSON.parse(data.transactions)
+                item.share_button =  data.share_button
+                res.status(200).json(item);
             } else {
                 res.status(402).send("Invalid code.");
             }

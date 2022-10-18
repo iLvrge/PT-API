@@ -1201,7 +1201,7 @@ route.post("/temp", [authJWT.verifyToken], async(req, res, next) => {
 
 route.post("/share", [authJWT.verifyToken], async(req, res, next) => {
     try {
-        let { selectedCompanies, tabs, customers } = req.body
+        let { selectedCompanies, tabs, customers, share_button } = req.body
         if(selectedCompanies.length > 0) {
             let code = await helpers.getNewCode();
             if(code != undefined) {
@@ -1209,12 +1209,17 @@ route.post("/share", [authJWT.verifyToken], async(req, res, next) => {
                     organisation_id: req.orgId,
                     user_id: req.userId,
                     type: 9,
+                    share_button,
                     transactions: JSON.stringify({selectedCompanies, tabs, customers}),
                     code
                 }
+                let domain = 'kpi'
+                if(share_button == 2) {
+                    domain = 'dashboard'
+                }
                 const insertRecord = await Share.create(params);
                 if(insertRecord != null && insertRecord.share_id > 0) {  
-                    res.status(200).send(`https://dashboard.patentrack.com/${params.code}`); 
+                    res.status(200).send(`https://${subdomain}.patentrack.com/${params.code}`); 
                 }
             } else {
                 res.status(500).send("Unable to create share url.");

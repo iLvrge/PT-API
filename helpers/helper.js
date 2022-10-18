@@ -255,7 +255,7 @@ let searchCompany = async(query, t) => {
              * Query from Applicant 
              */
 
-            queryApplicant = `SELECT a.assignor_and_assignee_id as id, a.assignor_and_assignee_id, a.name, a.instances as counter, c.representative_name as normalize_name, (select rr.representative_name FROM db_uspto.representative as rr WHERE rr.representative_name = a.name GROUP BY rr.representative_name) as representative_company, (SELECT appno_doc_num FROM db_patent_application_bibliographic.applicant WHERE name = a.name LIMIT 1) as assigneeRFID, (SELECT appno_doc_num FROM db_patent_grant_bibliographic.applicant WHERE name = a.name LIMIT 1) as assignorRFID, '2' AS flag  FROM db_patent_application_bibliographic.assignor_and_assignee as a 
+            queryApplicant = `SELECT a.assignor_and_assignee_id as id, a.assignor_and_assignee_id, a.name, a.instances as counter, c.representative_name as normalize_name, (select rr.representative_name FROM db_uspto.representative as rr WHERE rr.representative_name = a.name GROUP BY rr.representative_name) as representative_company, (SELECT appno_doc_num FROM db_patent_application_bibliographic.applicant WHERE name = a.name LIMIT 1) as assigneeRFID, (SELECT appno_doc_num FROM db_patent_grant_bibliographic.applicant WHERE name = a.name LIMIT 1) as assignorRFID, (SELECT appno_doc_num FROM db_patent_application_bibliographic.assignee WHERE name = a.name LIMIT 1) as assigneeBibRFID, (SELECT appno_doc_num FROM db_patent_grant_bibliographic.assignee WHERE name = a.name LIMIT 1) as assignorBibRFID, '2' AS flag  FROM db_patent_application_bibliographic.assignor_and_assignee as a 
             LEFT JOIN db_uspto.representative as c ON c.representative_id = a.representative_id  ` ;
                  
             if(search.length == 1) {
@@ -275,6 +275,9 @@ let searchCompany = async(query, t) => {
                 replacements: { search: search, year: 1997 },
                 logging: console.log,
             }); 
+
+
+
 
 
             let ptabParties = [], filterParties = [];
@@ -712,7 +715,7 @@ let getAddressListByApplicantID = async( ID ) => {
         });
         const replacements = { ID: ID};
         if(representative !== null && representative.representative_id > 0) {
-            const representativeNameQuery =  `SELECT representative_id FROM db_patent_application_bibliographic.representative WHERE representative_name = :name`;
+            const representativeNameQuery =  `SELECT representative_id FROM db_uspto.representative WHERE representative_name = :name`;
             const representativeName = await connection.resources.query(representativeNameQuery,{
                 type: connection.Sequelize.QueryTypes.SELECT,
                 raw: true,
@@ -745,6 +748,21 @@ let getAddressListByApplicantID = async( ID ) => {
                 SELECT address_2 as address, appno_doc_num FROM db_patent_grant_bibliographic.applicant 
                 WHERE address_2 <> '' AND assignor_and_assignee_id  IN (${representativeQuery}) 
                 GROUP BY address_2
+            UNION 
+                SELECT address_1 as address, appno_doc_num FROM db_patent_application_bibliographic.assignee 
+                WHERE  address_1 <> '' AND assignor_and_assignee_id IN (${representativeQuery})  GROUP BY address_1
+            UNION 
+                SELECT address_2 as address, appno_doc_num FROM db_patent_application_bibliographic.assignee 
+                WHERE address_2 <> '' AND assignor_and_assignee_id  IN (${representativeQuery}) 
+                GROUP BY address_2
+            UNION
+                SELECT address_1 as address, appno_doc_num FROM db_patent_grant_bibliographic.assignee 
+                WHERE  address_1 <> '' AND assignor_and_assignee_id IN (${representativeQuery})  GROUP BY address_1
+            UNION 
+                SELECT address_2 as address, appno_doc_num FROM db_patent_grant_bibliographic.assignee 
+                WHERE address_2 <> '' AND assignor_and_assignee_id  IN (${representativeQuery}) 
+                GROUP BY address_2
+            
         ) as temp GROUP BY address  ORDER BY address ASC`;
 
         addresses = await connection.resources.query(queryFindIDS,{
@@ -2769,7 +2787,7 @@ let shareURL = async (params) => {
 let getShareList = async (code, type) => {
     console.log('type', code, type)
     if(type == 9) {
-        let query = "SELECT share.transactions FROM share  WHERE code = :code  AND type = :type"
+        let query = "SELECT share.transactions, share.share_button FROM share  WHERE code = :code  AND type = :type"
         const shareData = await connection.applicationNew.query(query,{
                 type: connection.Sequelize.QueryTypes.SELECT,
                 raw: true,
