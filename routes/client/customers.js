@@ -828,14 +828,15 @@ route.get("/:layout/assets", [authJWT.verifyToken, clientDBConnection.connect], 
             replacements.limit = parseInt(limit)
         } 
         
-        if(typeof other_mode != 'undefined' && other_mode == 'true') {
+        if(typeof other_mode != 'undefined' && parseInt(other_mode) > 0) {
             let query = `SELECT STRING_COLUMNS FROM db_new_application.assets_for_sale AS assets  `
     
             const countReplace = ` CASE WHEN assets.grant_doc_num = '' OR assets.grant_doc_num IS NULL THEN assets.appno_doc_num ELSE assets.grant_doc_num END AS asset `
     
     
-            const countquery = `SELECT COUNT(*) as total_records FROM (${query.replace('STRING_COLUMNS', countReplace)} WHERE organisation_id = :organisationID GROUP BY asset ) AS temp `
-    
+            const countquery = `SELECT COUNT(*) as total_records FROM (${query.replace('STRING_COLUMNS', countReplace)} WHERE organisation_id = :organisationID AND type = :type GROUP BY asset ) AS temp `
+            
+            replacements.type = parseInt(other_mode) == 1 ? 2 : parseInt(other_mode) == 3 ? 4 : 0
            
             const countResult = await connection.applicationNew.query(countquery,{
                 type: connection.Sequelize.QueryTypes.SELECT,
@@ -858,7 +859,7 @@ route.get("/:layout/assets", [authJWT.verifyToken, clientDBConnection.connect], 
                     direction = 'DESC'
                 }
     
-                query += `  WHERE organisation.organisation_id = :organisationID  ORDER BY asset_type ASC, ${column} ${direction} `;
+                query += `  WHERE organisation.organisation_id = :organisationID AND type = :type  ORDER BY asset_type ASC, ${column} ${direction} `;
                 if(parseInt(limit) !== 0) {
                     query += `  LIMIT :offset, :limit`;
                 }
