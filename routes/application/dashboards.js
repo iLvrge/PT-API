@@ -1213,9 +1213,9 @@ route.post("/share", [authJWT.verifyToken], async(req, res, next) => {
                     transactions: JSON.stringify({selectedCompanies, tabs, customers}),
                     code
                 }
-                let domain = 'kpi'
-                if(share_button == 2) {
-                    domain = 'dashboard'
+                let subdomain = 'kpi'
+                if(share_button == '2') {
+                    subdomain = 'dashboard'
                 }
                 const insertRecord = await Share.create(params);
                 if(insertRecord != null && insertRecord.share_id > 0) {  
