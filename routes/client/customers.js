@@ -1087,7 +1087,22 @@ route.get("/:layout/assets", [authJWT.verifyToken, clientDBConnection.connect], 
                                 GROUP BY grant_doc_num
                             ) AND application_country NOT IN ('WO', 'US') GROUP BY grant_doc_num)`
                         } else {
-                            query += ` AND appno_doc_num IN (SELECT application FROM db_new_application.dashboard_items WHERE organisation_id = :organisationID AND representative_id IN (:companies) ${customers != '' && customers.length > 0 ? ' AND assignor_id IN (:customers) ' : '' } AND type = :layoutID GROUP BY application)`
+                            if(Array.isArray(customers) && customers.length > 0  && (replacements.layoutID == 32 || replacements.layoutID == 33)) {
+                                query += `  AND appno_doc_num IN (SELECT application FROM db_new_application.dashboard_items WHERE organisation_id = :organisationID AND representative_id IN (:companies)  AND type = :layoutID AND application IN (
+                                        SELECT documentid.appno_doc_num FROM db_uspto.documentid 
+                                        WHERE rf_id  IN ( 
+                                        SELECT activity_parties_transactions.rf_id  FROM db_new_application.activity_parties_transactions 
+                                        WHERE activity_parties_transactions.organisation_id = :organisationID 
+                                        AND activity_parties_transactions.company_id IN (:companies)  
+                                        AND activity_parties_transactions.activity_id <> 10   
+                                        AND activity_parties_transactions.assignor_and_assignee_id IN (:customers) 
+                                        GROUP BY activity_parties_transactions.rf_id
+                                        ) 
+                                        GROUP BY documentid.appno_doc_num
+                                    ) GROUP BY application) `
+                            } else {
+                                query += ` AND appno_doc_num IN (SELECT application FROM db_new_application.dashboard_items WHERE organisation_id = :organisationID AND representative_id IN (:companies) ${customers != '' && customers.length > 0 ? ' AND assignor_id IN (:customers) ' : '' } AND type = :layoutID GROUP BY application)`
+                            }
                         }  
                     }           
                 } else {                
