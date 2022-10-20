@@ -286,7 +286,7 @@ let searchCompany = async(query, t) => {
 
             const firstRequest = url + `&recordTotalQuantity=1`
             //require('https').globalAgent.options.ca = require('ssl-root-cas').create();
-            const option = {
+            /* const option = {
                 method: 'GET',
                 uri: firstRequest,
                 strictSSL: false
@@ -317,7 +317,7 @@ let searchCompany = async(query, t) => {
                     }
                 }
             }
-            ptabParties = [...new Set(ptabParties)]
+            ptabParties = [...new Set(ptabParties)] 
             
 
             const parties = [];
@@ -341,7 +341,7 @@ let searchCompany = async(query, t) => {
                         filterParties.push({id: 0, assignor_and_assignee_id: 0, name: party, normalize_name: '', representative_company: '', counter: 0, flag: 3})
                     }
                 })
-            }
+            }*/
             console.log(filterParties)
             /*
             rp(option)
