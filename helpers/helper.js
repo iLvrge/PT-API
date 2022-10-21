@@ -255,7 +255,7 @@ let searchCompany = async(query, t) => {
              * Query from Applicant 
              */
 
-            queryApplicant = `SELECT a.assignor_and_assignee_id as id, a.assignor_and_assignee_id, a.name, a.instances as counter, c.representative_name as normalize_name, (select rr.representative_name FROM db_uspto.representative as rr WHERE rr.representative_name = a.name GROUP BY rr.representative_name) as representative_company, (SELECT appno_doc_num FROM db_patent_application_bibliographic.applicant WHERE name = a.name LIMIT 1) as assigneeRFID, (SELECT appno_doc_num FROM db_patent_grant_bibliographic.applicant WHERE name = a.name LIMIT 1) as assignorRFID, (SELECT appno_doc_num FROM db_patent_application_bibliographic.assignee WHERE name = a.name LIMIT 1) as assigneeBibRFID, (SELECT appno_doc_num FROM db_patent_grant_bibliographic.assignee WHERE name = a.name LIMIT 1) as assignorBibRFID, '2' AS flag  FROM db_patent_application_bibliographic.assignor_and_assignee as a 
+            queryApplicant = `SELECT a.assignor_and_assignee_id as id, a.assignor_and_assignee_id, a.name, a.instances as counter, c.representative_name as normalize_name, (select rr.representative_name FROM db_uspto.representative as rr WHERE rr.representative_name = a.name GROUP BY rr.representative_name) as representative_company, (SELECT appno_doc_num FROM db_patent_application_bibliographic.applicant WHERE assignor_and_assignee_id > 0 AND assignor_and_assignee_id = a.assignor_and_assignee_id  LIMIT 1) as assigneeRFID, (SELECT appno_doc_num FROM db_patent_grant_bibliographic.applicant WHERE assignor_and_assignee_id > 0 AND assignor_and_assignee_id = a.assignor_and_assignee_id  LIMIT 1) as assignorRFID, (SELECT appno_doc_num FROM db_patent_application_bibliographic.assignee WHERE assignor_and_assignee_id > 0 AND assignor_and_assignee_id = a.assignor_and_assignee_id LIMIT 1) as assigneeBibRFID, (SELECT appno_doc_num FROM db_patent_grant_bibliographic.assignee WHERE assignor_and_assignee_id > 0 AND assignor_and_assignee_id = a.assignor_and_assignee_id LIMIT 1) as assignorBibRFID, '2' AS flag  FROM db_patent_application_bibliographic.assignor_and_assignee as a 
             LEFT JOIN db_uspto.representative as c ON c.representative_id = a.representative_id  ` ;
                  
             if(search.length == 1) {
@@ -342,7 +342,7 @@ let searchCompany = async(query, t) => {
                     }
                 })
             }*/
-            console.log(filterParties)
+            //console.log(filterParties)
             /*
             rp(option)
             .then( body => {
@@ -441,7 +441,7 @@ let searchCompany = async(query, t) => {
     
 
 
-
+    console.log('TTTTT', t)
 
     if(t == 0) {
         if(queryResult.length > 0) {
