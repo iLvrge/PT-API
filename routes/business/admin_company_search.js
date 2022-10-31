@@ -1143,6 +1143,27 @@ route.get("/company/law_firms", [authJWT.verifyToken, authJWT.isAdmin], async (r
     }
 });
 
+route.get("/company/law_firms/:id/normalize_lawfirms", [authJWT.verifyToken, authJWT.isAdmin], async (req, res, next) => {
+    try {
+        const {id} = req.params
+
+        const query = `SELECT law_firm_id, name, instances AS counter, (SELECT SUM(instances) FROM db_uspto.law_firm AS l WHERE l.representative_id = law_firm.representative_id) AS total_occurences, representative_law_firm.representative_id, representative_law_firm.representative_name FROM db_uspto.law_firm AS law_firm LEFT JOIN db_uspto.representative_law_firm AS representative_law_firm ON representative_law_firm.representative_id = law_firm.representative_id WHERE law_firm.representative_id IN (SELECT representative_law_firm.representative_id FROM db_uspto.representative_law_firm AS representative_law_firm INNER JOIN db_uspto.law_firm AS law_firm ON representative_law_firm.representative_id = law_firm.representative_id WHERE law_firm.law_firm_id = :id AND law_firm.representative_id > 0)`
+
+        const findAllLawFirms = await connection.resources.query(query,{
+                type: connection.Sequelize.QueryTypes.SELECT,
+                raw: true,
+                replacements: { id },
+                logging: console.log,
+            }
+        );
+
+        res.status(200).json(findAllLawFirms);
+    } catch (e) {
+        console.log(e);
+        res.status(402).send("Unable to retrieve data.");
+    }
+});
+
 route.get("/company/law_firms/:id/companies", [authJWT.verifyToken, authJWT.isAdmin], async (req, res, next) => {
     try{
         const {id} = req.params
@@ -1452,25 +1473,25 @@ route.put("/company/law_firms", [authJWT.verifyToken, authJWT.isAdmin], async (r
 
                     queryWithCnames += " GROUP BY ass.law_firm_id";
 
-                    const findRows = await connection.resources.query(queryWithCnames,{
+                    /* const findRows = await connection.resources.query(queryWithCnames,{
                         type: connection.Sequelize.QueryTypes.SELECT,
                         raw: true,
                         replacements: whereCnameSearch,
                         logging: console.log,
-                    });
+                    }); */
                     /* const findRows = await Assignments.findAll({
                         attributes: ['law_firm_id'],
                         where: {cname: replaceNames},
                         group: ['law_firm_id']
                     }) */
     
-                    if(findRows.length > 0) {
+                    /* if(findRows.length > 0) {
                         const otherLawFirmIDs = []
                         findRows.forEach( row => {
                             otherLawFirmIDs.push(row.law_firm_id)
                         })
                         await LawFirms.update(item, {where: {law_firm_id: otherLawFirmIDs}}); 
-                    }
+                    } */
                 }
                 
 
@@ -1538,12 +1559,12 @@ route.put("/company/law_firms", [authJWT.verifyToken, authJWT.isAdmin], async (r
     
                         queryWithCnames += " GROUP BY ass.law_firm_id";
     
-                        const findRows = await connection.resources.query(queryWithCnames,{
+                        /* const findRows = await connection.resources.query(queryWithCnames,{
                             type: connection.Sequelize.QueryTypes.SELECT,
                             raw: true,
                             replacements: whereCnameSearch,
                             logging: console.log,
-                        });
+                        }); */
 
                         /*
                         const findRows = await Assignments.findAll({
@@ -1552,13 +1573,13 @@ route.put("/company/law_firms", [authJWT.verifyToken, authJWT.isAdmin], async (r
                             group: ['law_firm_id']
                         })*/
         
-                        if(findRows.length > 0) {
+                        /* if(findRows.length > 0) {
                             const otherLawFirmIDs = []
                             findRows.forEach( row => {
                                 otherLawFirmIDs.push(row.law_firm_id)
                             })
                             await LawFirms.update({representative_id: 0}, {where: {law_firm_id: otherLawFirmIDs}}); 
-                        }
+                        } */
                     }
 
                     if(allRepresentatives > 0) {
@@ -2597,9 +2618,12 @@ route.post("/company/:id/add_bulk_companies", [authJWT.verifyToken, authJWT.isAd
                     //console.log('COMPANIES_LIST', companies)
                     if(companies.length > 0) {      
                         let whereC = "";
-                        if(originalNames.length > 0 && representativeNames.length > 0) {
+                        /* if(originalNames.length > 0 && representativeNames.length > 0) {
                             whereC = {[connection.Op.or]:[{original_name: originalNames}, {representative_name: representativeNames}]};
                         } else if(originalNames.length > 0) {
+                            whereC = {original_name: originalNames};
+                        } */
+                        if(originalNames.length > 0 ){
                             whereC = {original_name: originalNames};
                         }
                         whereC.parent_id = 0;
