@@ -1169,7 +1169,7 @@ route.get("/company/law_firms/:id/companies", [authJWT.verifyToken, authJWT.isAd
         const {id} = req.params
         let querySearchResult = []
 
-        const query = `SELECT law_firm_id FROM db_uspto.law_firm AS law_firm WHERE law_firm.representative_id IN (SELECT representative_law_firm.representative_id FROM db_uspto.representative_law_firm AS representative_law_firm INNER JOIN db_uspto.law_firm AS law_firm ON representative_law_firm.representative_id = law_firm.representative_id WHERE law_firm.law_firm_id = :lawfirmID) AND law_firm.representative_id > 0`
+        const query = `SELECT name FROM db_uspto.law_firm AS law_firm WHERE law_firm.representative_id IN (SELECT representative_law_firm.representative_id FROM db_uspto.representative_law_firm AS representative_law_firm INNER JOIN db_uspto.law_firm AS law_firm ON representative_law_firm.representative_id = law_firm.representative_id WHERE law_firm.law_firm_id = :lawfirmID) AND law_firm.representative_id > 0 GROUP BY name`
 
         const findAllLawFirms = await connection.resources.query(query,{
                 type: connection.Sequelize.QueryTypes.SELECT,
@@ -1180,25 +1180,25 @@ route.get("/company/law_firms/:id/companies", [authJWT.verifyToken, authJWT.isAd
         );
 
         if( findAllLawFirms.length > 0 ) {
-            const firmIDs = []
-            const promise = findAllLawFirms.map( lawfirm => firmIDs.push(lawfirm.law_firm_id))
+            const names = []
+            const promise = findAllLawFirms.map( lawfirm => names.push(lawfirm.name))
 
             await Promise.all(promise)
 
-            if( firmIDs.length > 0 ) {
-                const  queryCompany = `SELECT a.assignor_and_assignee_id as id, a.assignor_and_assignee_id, a.name,  (SELECT COUNT(*) FROM ( SELECT assignment1.rf_id FROM db_uspto.assignment AS assignment1 INNER JOIN (SELECT rf_id FROM db_uspto.assignor where assignor_and_assignee_id = a.assignor_and_assignee_id UNION SELECT rf_id FROM db_uspto.assignee where assignor_and_assignee_id = a.assignor_and_assignee_id) as aTemp ON aTemp.rf_id = assignment1.rf_id  WHERE law_firm_id IN (:lawFirmIDs) GROUP BY rf_id ) as temp) as counter, a.instances as total_occurences, c.representative_name as normalize_name, (select rr.representative_name FROM representative as rr WHERE rr.representative_name = a.name GROUP BY rr.representative_name) as representative_company, (SELECT concat(ass.reel_no,'-', ass.frame_no) FROM assignee as ee INNER JOIN assignment as ass ON ass.rf_id = ee.rf_id  WHERE ee.assignor_and_assignee_id = a.assignor_and_assignee_id  LIMIT 1) as assigneeRFID, '' as assignorRFID  FROM assignor_and_assignee as a 
+            if( names.length > 0 ) {
+                const  queryCompany = `SELECT a.assignor_and_assignee_id as id, a.assignor_and_assignee_id, a.name,  (SELECT COUNT(*) FROM ( SELECT assignment1.rf_id FROM db_uspto.assignment AS assignment1 INNER JOIN (SELECT rf_id FROM db_uspto.assignor where assignor_and_assignee_id = a.assignor_and_assignee_id UNION SELECT rf_id FROM db_uspto.assignee where assignor_and_assignee_id = a.assignor_and_assignee_id) as aTemp ON aTemp.rf_id = assignment1.rf_id  WHERE (assignment1.cname IN (:lawFirmNames) OR assignment1.caddress_1 IN (:lawFirmNames)) GROUP BY assignment1.rf_id ) as temp) as counter, a.instances as total_occurences, c.representative_name as normalize_name, (select rr.representative_name FROM representative as rr WHERE rr.representative_name = a.name GROUP BY rr.representative_name) as representative_company, (SELECT concat(ass.reel_no,'-', ass.frame_no) FROM assignee as ee INNER JOIN assignment as ass ON ass.rf_id = ee.rf_id  WHERE ee.assignor_and_assignee_id = a.assignor_and_assignee_id  LIMIT 1) as assigneeRFID, '' as assignorRFID  FROM assignor_and_assignee as a 
                 LEFT JOIN representative as c ON c.representative_id = a.representative_id 
                 INNER JOIN LATERAL (Select assignee.assignor_and_assignee_id from assignment
                     INNER JOIN assignee ON assignee.rf_id = assignment.rf_id
                     WHERE date_format(assignment.record_dt, '%Y') >= :year AND assignee.assignor_and_assignee_id = a.assignor_and_assignee_id
                     GROUP BY assignee.ee_name                
                 ) as tempAssignorAndAssignee 
-                WHERE a.assignor_and_assignee_id IN (SELECT assignor_and_assignee_id FROM assignee INNER JOIN assignment ON assignment.rf_id = assignee.rf_id WHERE assignment.law_firm_id IN (:lawFirmIDs) GROUP BY assignor_and_assignee_id) GROUP BY a.name ORDER BY counter DESC`;
+                WHERE a.assignor_and_assignee_id IN (SELECT assignor_and_assignee_id FROM assignee INNER JOIN assignment ON assignment.rf_id = assignee.rf_id WHERE (assignment.cname IN (:lawFirmNames) OR assignment.caddress_1 IN (:lawFirmNames)) GROUP BY assignor_and_assignee_id) GROUP BY a.name ORDER BY counter DESC`;
 
                 querySearchResult = await connection.resources.query(queryCompany,{
                     type: connection.Sequelize.QueryTypes.SELECT,
                     raw: true,
-                    replacements: { lawFirmIDs: firmIDs, year: 2000 },
+                    replacements: { lawFirmNames: names, year: 1998 },
                     logging: console.log,
                 });
             }
