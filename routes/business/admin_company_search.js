@@ -762,11 +762,15 @@ route.put("/company/search/all/", [authJWT.verifyToken, authJWT.isAdmin], async 
 
 
                 // Check Applicant Assignees
-
-                if(applicantAssignorAndAssigneeIDs.length > 0) {
+                if(applicantAssignorAndAssigneeIDs.length > 0 || applicantAssignorAndAssigneeIDs.length == 0 && allRepresentatives.length > 0) {
                     let getList = await ApplicantAssignorAndAssignee.findAll({
                         attributes:['assignor_and_assignee_id', 'representative_id', 'name'],
-                        where:{assignor_and_assignee_id: applicantAssignorAndAssigneeIDs}
+                        where:{
+                            [connection.Op.or]: [
+                                {assignor_and_assignee_id: applicantAssignorAndAssigneeIDs},
+                                {representative_id: allRepresentatives},
+                            ]
+                        }
                     }); 
 
                     if(getList.length > 0) {
