@@ -395,8 +395,9 @@ let allRepresentativesCheckAndDelete = async (allRepresentatives) => {
         where: {representative_id: allRepresentatives},
         group:['representative_id']
     });
-    if(findRepresentativeCount.length > 0) {
-        const destroyRepresentatives = [];
+    console.log('findRepresentativeCount', findRepresentativeCount.length)
+    const destroyRepresentatives = [];
+    if(findRepresentativeCount.length > 0) { 
         const promise = findRepresentativeCount.map(r => {
             if(r.representative_id > 0 && r.get('counter') == 0) {
                 destroyRepresentatives.push(r.representative_id);
@@ -404,35 +405,34 @@ let allRepresentativesCheckAndDelete = async (allRepresentatives) => {
             return r;
         })
         await Promise.all(promise);
+    }
+    
+    if(destroyRepresentatives.length > 0) {
+        const findBiblioData = await ApplicantAssignorAndAssignee.findAll({
+            where: {representative_id: destroyRepresentatives}
+        })
 
-        if(destroyRepresentatives.length > 0) {
-            const findBiblioData = await ApplicantAssignorAndAssignee.findAll({
+        if(findBiblioData.length == 0 || findBiblioData == null) {
+            await Representatives.destroy({
                 where: {representative_id: destroyRepresentatives}
             })
+        } else {
+            const promise = findBiblioData.map(r => {
+                if(r.representative_id > 0) {
+                    const findIndex = destroyRepresentatives.findIndex( item => item == r.representative_id)
+                    if(findIndex != -1) {
+                        destroyRepresentatives.splice(findIndex, 1);
+                    }
+                }
+                return r;
+            })
+            await Promise.all(promise);
 
-            if(findBiblioData.length == 0 || findBiblioData == null) {
+            if(destroyRepresentatives.length > 0) {
                 await Representatives.destroy({
                     where: {representative_id: destroyRepresentatives}
                 })
-            } else {
-                const promise = findBiblioData.map(r => {
-                    if(r.representative_id > 0) {
-                        const findIndex = destroyRepresentatives.findIndex( item => item == r.representative_id)
-                        if(findIndex != -1) {
-                            destroyRepresentatives.splice(findIndex, 1);
-                        }
-                    }
-                    return r;
-                })
-                await Promise.all(promise);
-
-                if(destroyRepresentatives.length > 0) {
-                    await Representatives.destroy({
-                        where: {representative_id: destroyRepresentatives}
-                    })
-                }
             }
-            
         }
     } else {
         const findBiblioData = await ApplicantAssignorAndAssignee.findAll({
@@ -534,7 +534,7 @@ route.put("/company/search/all/", [authJWT.verifyToken, authJWT.isAdmin], async 
             }
             
             
-            
+            console.log("normalize_name", normalize_name)
             if(normalize_name != "") {
                 console.log("POST->ID11", IDs, applicantAssignorAndAssigneeIDs);
                 
@@ -766,9 +766,10 @@ route.put("/company/search/all/", [authJWT.verifyToken, authJWT.isAdmin], async 
                 if(applicantAssignorAndAssigneeIDs.length > 0) {
                     await ApplicantAssignorAndAssignee.update({representative_id: 0}, {where: {assignor_and_assignee_id: applicantAssignorAndAssigneeIDs}}); 
                 }
-
-                if(allRepresentatives > 0) {
-                    await allRepresentativesCheckAndDelete(allRepresentatives);
+                console.log("DELETE ALL Standalone Representatives", allRepresentatives)
+                if(allRepresentatives.length > 0) {
+                    console.log("Process start for deleting standalone representatives")
+                    await allRepresentativesCheckAndDelete([...allRepresentatives]);
                 }
 
                 if(ptabNames.length > 0) {
