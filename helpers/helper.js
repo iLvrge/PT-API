@@ -237,6 +237,14 @@ let searchCompany = async(query, t) => {
                 queryCompany += ` WHERE MATCH(a.name) AGAINST (:search IN BOOLEAN MODE) `
             }
             
+            queryCompany += ` AND  a.assignor_and_assignee_id NOT IN ( SELECT a.assignor_and_assignee_id FROM db_uspto.assignor AS aor INNER JOIN db_uspto.assignor_and_assignee AS aaa ON aaa.assignor_and_assignee_id = a.assignor_and_assignee_id  INNER JOIN db_uspto.inventors AS inv ON aaa.assignor_and_assignee_id = inv.assignor_and_assignee_id `
+            if(search.length == 1) {
+                queryCompany += ` WHERE trim(aaa.name) = :search `
+            } else {
+                queryCompany += ` WHERE MATCH(aaa.name) AGAINST (:search IN BOOLEAN MODE) `
+            }
+            
+            queryCompany += ` GROUP BY a.assignor_and_assignee_id ) `
             
 
             /* if( t == 0 ) {
@@ -256,17 +264,18 @@ let searchCompany = async(query, t) => {
              */
 
             queryApplicant = `SELECT a.assignor_and_assignee_id as id, a.assignor_and_assignee_id, a.name, a.instances as counter, c.representative_name as normalize_name, (select rr.representative_name FROM db_uspto.representative as rr WHERE rr.representative_name = a.name GROUP BY rr.representative_name) as representative_company, (SELECT appno_doc_num FROM db_patent_application_bibliographic.applicant WHERE assignor_and_assignee_id > 0 AND assignor_and_assignee_id = a.assignor_and_assignee_id  LIMIT 1) as assigneeRFID, (SELECT appno_doc_num FROM db_patent_grant_bibliographic.applicant WHERE assignor_and_assignee_id > 0 AND assignor_and_assignee_id = a.assignor_and_assignee_id  LIMIT 1) as assignorRFID, (SELECT appno_doc_num FROM db_patent_application_bibliographic.assignee WHERE assignor_and_assignee_id > 0 AND assignor_and_assignee_id = a.assignor_and_assignee_id LIMIT 1) as assigneeBibRFID, (SELECT appno_doc_num FROM db_patent_grant_bibliographic.assignee WHERE assignor_and_assignee_id > 0 AND assignor_and_assignee_id = a.assignor_and_assignee_id LIMIT 1) as assignorBibRFID, '2' AS flag  FROM db_patent_application_bibliographic.assignor_and_assignee as a 
-            LEFT JOIN db_uspto.representative as c ON c.representative_id = a.representative_id  ` ;
+            LEFT JOIN db_uspto.representative as c ON c.representative_id = a.representative_id ` ;
                  
             if(search.length == 1) {
-                queryApplicant += ` WHERE trim(a.name) = :search `
+                queryApplicant += `WHERE trim(a.name) = :search `
             } else {
-                queryApplicant += ` WHERE MATCH(a.name) AGAINST (:search IN BOOLEAN MODE) `
+                queryApplicant += `WHERE MATCH(a.name) AGAINST (:search IN BOOLEAN MODE) `
             }
-             
 
+            if(t == 1) {
+                queryApplicant += ` AND a.type = 0 `
+            }
 
- 
             queryApplicant += ` GROUP BY a.name ORDER BY counter DESC`;
  
             let applicantQueryResult = await connection.resources.query(queryApplicant,{
