@@ -219,7 +219,7 @@ let searchCompany = async(query, t) => {
                 }
             } */
 
-            queryCompany = `SELECT a.assignor_and_assignee_id as id, a.assignor_and_assignee_id, a.name, a.instances as counter, c.representative_name as normalize_name, (select rr.representative_name FROM representative as rr WHERE rr.representative_name = a.name GROUP BY rr.representative_name) as representative_company, (SELECT concat(ass.reel_no,'-', ass.frame_no) FROM assignee as ee INNER JOIN assignment as ass ON ass.rf_id = ee.rf_id  WHERE ee.assignor_and_assignee_id = a.assignor_and_assignee_id  LIMIT 1) as assigneeRFID, (SELECT concat(asss.reel_no,'-', asss.frame_no) FROM assignor as assi INNER JOIN assignment as asss ON asss.rf_id = assi.rf_id WHERE assi.assignor_and_assignee_id = a.assignor_and_assignee_id LIMIT 1) as assignorRFID, '1' AS flag  FROM assignor_and_assignee as a 
+            queryCompany = `SELECT a.assignor_and_assignee_id as id, a.assignor_and_assignee_id, a.name, a.instances as counter, c.representative_name as normalize_name, (select rr.representative_name FROM representative as rr WHERE rr.representative_name = a.name GROUP BY rr.representative_name) as representative_company, (SELECT concat(ass.reel_no,'-', ass.frame_no) FROM assignee as ee INNER JOIN assignment as ass ON ass.rf_id = ee.rf_id  WHERE ee.assignor_and_assignee_id = a.assignor_and_assignee_id  LIMIT 1) as assigneeRFID, (SELECT concat(asss.reel_no,'-', asss.frame_no) FROM assignor as assi INNER JOIN assignment as asss ON asss.rf_id = assi.rf_id WHERE assi.assignor_and_assignee_id = a.assignor_and_assignee_id LIMIT 1) as assignorRFID, 0 AS assigneeBibRFID, 0 AS assignorBibRFID, '1' AS flag  FROM assignor_and_assignee as a 
             LEFT JOIN representative as c ON c.representative_id = a.representative_id 
             INNER JOIN LATERAL (Select assignee.assignor_and_assignee_id from assignment
                 INNER JOIN assignee ON assignee.rf_id = assignment.rf_id
@@ -237,28 +237,28 @@ let searchCompany = async(query, t) => {
                 queryCompany += ` WHERE MATCH(a.name) AGAINST (:search IN BOOLEAN MODE) `
             }
             
-            queryCompany += ` AND  a.assignor_and_assignee_id NOT IN ( SELECT a.assignor_and_assignee_id FROM db_uspto.assignor AS aor INNER JOIN db_uspto.assignor_and_assignee AS aaa ON aaa.assignor_and_assignee_id = a.assignor_and_assignee_id  INNER JOIN db_uspto.inventors AS inv ON aaa.assignor_and_assignee_id = inv.assignor_and_assignee_id `
+            /* queryCompany += ` AND  a.assignor_and_assignee_id NOT IN ( SELECT a.assignor_and_assignee_id FROM db_uspto.assignor AS aor INNER JOIN db_uspto.assignor_and_assignee AS aaa ON aaa.assignor_and_assignee_id = a.assignor_and_assignee_id  INNER JOIN db_uspto.inventors AS inv ON aaa.assignor_and_assignee_id = inv.assignor_and_assignee_id `
             if(search.length == 1) {
                 queryCompany += ` WHERE trim(aaa.name) = :search `
             } else {
                 queryCompany += ` WHERE MATCH(aaa.name) AGAINST (:search IN BOOLEAN MODE) `
             }
             
-            queryCompany += ` GROUP BY a.assignor_and_assignee_id ) `
+            queryCompany += ` GROUP BY a.assignor_and_assignee_id ) ` */
             
 
             /* if( t == 0 ) {
                 queryCompany += `  AND a.assignor_and_assignee_id NOT IN (SELECT assignor_and_assignee_id FROM db_uspto.inventors)`;
             } */
 
-            queryCompany += ` GROUP BY a.name ORDER BY counter DESC`;
+            queryCompany += ` GROUP BY a.name  `;
 
-            let querySearchResult = await connection.resources.query(queryCompany,{
+            /* let querySearchResult = await connection.resources.query(queryCompany,{
                 type: connection.Sequelize.QueryTypes.SELECT,
                 raw: true,
                 replacements: { search: search, year: 1997 },
                 logging: console.log,
-            }); 
+            });  */
             /**
              * Query from Applicant 
              */
@@ -277,8 +277,11 @@ let searchCompany = async(query, t) => {
             }
 
             queryApplicant += ` GROUP BY a.name ORDER BY counter DESC`;
+
+            let applicantQueryResult = []
+
  
-            let applicantQueryResult = await connection.resources.query(queryApplicant,{
+            let querySearchResult = await connection.resources.query(`SELECT * FROM (${queryCompany} UNION ${queryApplicant}) AS temp ORDER BY counter DESC`,{
                 type: connection.Sequelize.QueryTypes.SELECT,
                 raw: true,
                 replacements: { search: search, year: 1997 },
