@@ -547,6 +547,19 @@ route.put("/company/search/all/", [authJWT.verifyToken, authJWT.isAdmin], async 
                 console.log("find representativeCompany", representativeCompany)
 
                 let allRepresentatives = []; 
+
+                if(IDs.length == 0 && otherNames.length > 0 ) {
+                    const findOldRows = await AssignorAndAssignee.findAll({
+                        attributes:['assignor_and_assignee_id'],
+                        where: {
+                            name: otherNames
+                        }
+                    })
+                    const promiseR = findOldRows.map(row => IDs.push(row.assignor_and_assignee_id))
+                    await Promise.all(promiseR)
+                }
+
+                
                 if(IDs.length > 0) {
                     let getList = await AssignorAndAssignee.findAll({
                         where:{assignor_and_assignee_id: IDs}
@@ -647,16 +660,7 @@ route.put("/company/search/all/", [authJWT.verifyToken, authJWT.isAdmin], async 
                 }
                 
                
-                if(IDs.length == 0 && otherNames.length > 0 ) {
-                    const findOldRows = await AssignorAndAssignee.findAll({
-                        attributes:['assignor_and_assignee_id'],
-                        where: {
-                            name: otherNames
-                        }
-                    })
-                    const promiseR = findOldRows.map(row => IDs.push(row.assignor_and_assignee_id))
-                    await Promise.all(promiseR)
-                }
+                
                  
               
                 console.log("RepresentativeID->", representativeCompany.representative_id)
@@ -758,8 +762,6 @@ route.put("/company/search/all/", [authJWT.verifyToken, authJWT.isAdmin], async 
                         
                     }
                 }
-                
-
 
                 // Check Applicant Assignees
                 if(applicantAssignorAndAssigneeIDs.length > 0 || applicantAssignorAndAssigneeIDs.length == 0 && allRepresentatives.length > 0) {
