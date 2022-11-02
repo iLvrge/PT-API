@@ -511,6 +511,7 @@ route.put("/company/search/all/", [authJWT.verifyToken, authJWT.isAdmin], async 
                         IDs = []
                         selected_rows.forEach(row => {
                             if(row.flag == 2 || row.flag == 4) {
+                                /** Bibliographic */
                                 applicantAssignorAndAssigneeIDs.push(row.id)
                                 otherNames.push(row.name)
                                 if(row.normalize_name != '') {
@@ -522,6 +523,7 @@ route.put("/company/search/all/", [authJWT.verifyToken, authJWT.isAdmin], async 
                             } else if (row.flag == 3) {
                                 ptabNames.push(row.name)
                             } else {
+                                /**Assignment DB */
                                 IDs.push(row.id)
                             }
                         })
@@ -537,8 +539,6 @@ route.put("/company/search/all/", [authJWT.verifyToken, authJWT.isAdmin], async 
             console.log("normalize_name", normalize_name)
             if(normalize_name != "") {
                 console.log("POST->ID11", IDs, applicantAssignorAndAssigneeIDs);
-                
-                
                 /**
                  * Is Rep is already a Rep
                 */
@@ -549,6 +549,9 @@ route.put("/company/search/all/", [authJWT.verifyToken, authJWT.isAdmin], async 
                 let allRepresentatives = []; 
 
                 if(IDs.length == 0 && otherNames.length > 0 ) {
+                    /** 
+                     * If selected rows only from Biblio
+                     */
                     const findOldRows = await AssignorAndAssignee.findAll({
                         attributes:['assignor_and_assignee_id'],
                         where: {
@@ -559,7 +562,7 @@ route.put("/company/search/all/", [authJWT.verifyToken, authJWT.isAdmin], async 
                     await Promise.all(promiseR)
                 }
 
-                
+
                 if(IDs.length > 0) {
                     let getList = await AssignorAndAssignee.findAll({
                         where:{assignor_and_assignee_id: IDs}
@@ -755,8 +758,6 @@ route.put("/company/search/all/", [authJWT.verifyToken, authJWT.isAdmin], async 
                                 console.log("findOldRowsIDs1", IDs)                            
                             }
                         }
-    
-    
                         await AssignorAndAssignee.update({representative_id: 0}, {where: {assignor_and_assignee_id: IDs}});
 
                         
@@ -764,7 +765,7 @@ route.put("/company/search/all/", [authJWT.verifyToken, authJWT.isAdmin], async 
                 }
 
                 // Check Applicant Assignees
-                if(applicantAssignorAndAssigneeIDs.length > 0 || applicantAssignorAndAssigneeIDs.length == 0 && allRepresentatives.length > 0) {
+                if(applicantAssignorAndAssigneeIDs.length > 0 || (applicantAssignorAndAssigneeIDs.length == 0 && allRepresentatives.length > 0)) {
                     let getList = await ApplicantAssignorAndAssignee.findAll({
                         attributes:['assignor_and_assignee_id', 'representative_id', 'name'],
                         where:{
