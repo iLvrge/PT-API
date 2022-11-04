@@ -11,6 +11,8 @@ const express = require("express"),
 
 //require the Model
 
+const Organisation = require("../../model/business/Organisations");
+
 const Representatives = require("../../model/client/Representatives");
 
 const ActivityLogs = require("../../model/resources/ActivityLog");
@@ -92,7 +94,7 @@ route.post("/request", [authJWT.verifyToken], async(req, res, next) => {
 route.get("/request", [authJWT.verifyToken], async(req, res, next) => {
     try {
         const list = await ClientAddCompany.findAll({
-            attributes:['name', 'company_id', [connection.Sequelize.literal(`(CASE status WHEN 1 THEN 'Data prepared' ELSE 'Data is being prepared'  END)`), 'status']],
+            attributes:['name', 'company_id', [connection.Sequelize.literal(`(CASE status WHEN 1 THEN 'Ready to import' ELSE 'Data is being prepared'  END)`), 'status']],
             where: { organisation_id: req.orgId }
         })
 
@@ -776,13 +778,70 @@ const createSlackWorkSpace = async (name, organisation) => {
  */
 
 route.post("/", [authJWT.verifyToken, clientDBConnection.connect], async(req, res, next) => {
-    try{
+    try {
         
-        const subsidaryName = req.body.name, parentCompany = req.body.parent_company;
-        if(subsidaryName.length > 0) {
-            let companyList = JSON.parse(subsidaryName);
+        const subsidaryName = req.body.name, parentCompany = req.body.parent_company; 
 
+        if(subsidaryName.length > 0) {
+            let requestedIDs = JSON.parse(subsidaryName);
+            let accounts = [], representativeIDs = [], companyList = []
+
+            if(requestedIDs.length > 0) {
+
+                const checkCompanyRequest = await ClientAddCompany.findAll({
+                    where: { company_id : requestedIDs}
+                })  
+
+                if(checkCompanyRequest != null && checkCompanyRequest.length > 0) { 
+
+                    const promises = checkCompanyRequest.map( row => {
+                        if(row.account_id > 0) {
+                            accounts.push(row.account_id)
+                        }
+                        if(row.representative_id > 0) {
+                            representativeIDs.push(row.representative_id)
+                        }
+                    })
+
+                    await Promise.all(promises)
+                }
+
+                if(accounts.length > 0) {
+                    /**
+                     * exec all account
+                     */
+
+                    exec(`php -f /var/www/html/trash/transferred_data_from_one_account_to_another_accounts.php "${req.orgId}" ${accounts.join(',')}`, (error, stdd, stderr)=> {
+                        console.log("fill transferred_data_from_one_account_to_another_accounts.php ....")
+                        console.log(error); 
+                        console.log(stderr);
+                        console.log(stdd);
+                        console.log("DONE");
+                    }); 
+                }
+
+                if(representativeIDs.length > 0) { 
+                    const assignorAndAssigneeQuery = `SELECT assignor_and_assignee_id FROM db_uspto.assignor_and_assignee WHERE name IN (SELECT representative_name FROM db_uspto.representative WHERE representative_id IN (:representativeIDs) GROUP BY representative_name) GROUP BY assignor_and_assignee_id`
+
+                    const asigneeList = await connection.resources.query(assignorAndAssigneeQuery,{
+                            type: connection.Sequelize.QueryTypes.SELECT,
+                            replacements: { representativeIDs },
+                            raw: true,
+                            logging: console.log,
+                        }
+                    ); 
+
+                    if(asigneeList.length > 0) {
+                        const promise = asigneeList.map( row => {
+                            companyList.push(row.assignor_and_assignee_id)
+                        })
+
+                        await Promise.all(promises)
+                    } 
+                }
+            }
             if(companyList.length > 0) {
+
                 const querySubsidaryCompany = "SELECT aaa.assignor_and_assignee_id, aaa.name, r.representative_name, aaa.instances, r.representative_id, (SELECT sum(a.instances) as counter FROM assignor_and_assignee as a WHERE a.representative_id IN( SELECT representative_id FROM representative WHERE representative_name = r.representative_name) GROUP BY a.representative_id) as representative_instances FROM assignor_and_assignee as aaa LEFT JOIN representative as r ON r.representative_id = aaa.representative_id WHERE aaa.assignor_and_assignee_id IN (:IDs)";
                     
                 const getList = await connection.resources.query(querySubsidaryCompany,{
@@ -1183,7 +1242,7 @@ route.post("/", [authJWT.verifyToken, clientDBConnection.connect], async(req, re
             }            
         } else {
             res.status(401).send("Name cannot be blank");
-        }
+        } 
     } catch( err ) {
         console.log(err);
         res.status(500).json({message: "Error while adding company"})

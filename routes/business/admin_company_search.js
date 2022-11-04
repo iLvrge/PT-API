@@ -87,7 +87,7 @@ let authenticateGoogleToken = async( code ) => {
 route.get("/company/request", [authJWT.verifyToken, authJWT.isAdmin], async(req, res, next) => {
     try {
         
-        const query = `SELECT cac.company_id, cac.name, cac.status, r.representative_name, org.name AS organisation_name, cac.request_date AS date FROM db_new_application.client_add_company AS cac INNER JOIN db_business.organisation AS org ON org.organisation_id = cac.organisation_id LEFT JOIN db_uspto.representative AS r ON r.representative_id = cac.representative_id ORDER BY cac.company_id DESC`
+        const query = `SELECT * FROM (SELECT cac.company_id, cac.name, cac.status, r.representative_name, org.name AS organisation_name, cac.request_date AS date FROM db_new_application.client_add_company AS cac INNER JOIN db_business.organisation AS org ON org.organisation_id = cac.organisation_id INNER JOIN db_uspto.representative AS r ON r.representative_id = cac.representative_id UNION SELECT cac.company_id, cac.name, cac.status, org1.name AS representative_name, org.name AS organisation_name, cac.request_date AS date FROM db_new_application.client_add_company AS cac INNER JOIN db_business.organisation AS org ON org.organisation_id = cac.organisation_id INNER JOIN db_business.organisation AS org1 ON org1.organisation_id = cac.account_id UNION SELECT cac.company_id, cac.name, cac.status, '' AS representative_name, org.name AS organisation_name, cac.request_date AS date FROM db_new_application.client_add_company AS cac INNER JOIN db_business.organisation AS org ON org.organisation_id = cac.organisation_id WHERE cac.representative_id = 0 AND cac.account_id = 0 ) AS temp ORDER BY company_id DESC`
 
         const list  = await connection.resources.query(query, {
                 type: connection.Sequelize.QueryTypes.SELECT,
@@ -106,15 +106,22 @@ route.get("/company/request", [authJWT.verifyToken, authJWT.isAdmin], async(req,
 
 route.put("/company/request", [authJWT.verifyToken, authJWT.isAdmin], async(req, res, next) => {
     try {
-        let { company_ids, representative_id } = req.body
+        let { company_ids, representative_id, type } = req.body
 
         if( company_ids != '' ) {
             const company_id = JSON.parse(company_ids)
             if(company_id.length > 0 && representative_id > 0) {
-                const update = await ClientAddCompany.update({
-                    status: 1,
-                    representative_id
-                }, {
+                const fields = {
+                    status: 1
+                }
+                if(type == 0) {
+                    fields.representative_id = representative_id
+                    fields.account_id = 0
+                } else {
+                    fields.account_id = representative_id
+                    fields.representative_id = 0
+                }
+                const update = await ClientAddCompany.update(fields, {
                     where: {company_id}
                 })
                 res.status(200).json(update)
@@ -135,7 +142,7 @@ route.put("/company/request", [authJWT.verifyToken, authJWT.isAdmin], async(req,
  * Search entity by name
  */
 
- route.get("/company/representative/search/:name", [authJWT.verifyToken, authJWT.isAdmin], async (req, res, next) => {
+route.get("/company/representative/search/:name", [authJWT.verifyToken, authJWT.isAdmin], async (req, res, next) => {
     try{
         const {name} = req.params;	
 
@@ -154,7 +161,32 @@ route.put("/company/request", [authJWT.verifyToken, authJWT.isAdmin], async(req,
         console.log(err);
         res.status(500).json({message: "Unable to retrieve companies"})
     }
- })
+})
+
+/**
+ * Search account by name
+ */
+
+route.get("/company/account/search/:name", [authJWT.verifyToken, authJWT.isAdmin], async (req, res, next) => {
+    try{
+        const {name} = req.params;	
+
+        const query = `SELECT organisation_id, name FROM db_business.organisation WHERE name LIKE :name `
+
+        const list  = await connection.resources.query(query,{
+                type: connection.Sequelize.QueryTypes.SELECT,
+                raw: true,
+                replacements: { name: `%${name}%` },
+                logging: console.log,
+            }
+        );
+        res.status(200).json(list);	
+
+    } catch( err ) {
+        console.log(err);
+        res.status(500).json({message: "Unable to retrieve accounts"})
+    }
+})
 
 /**
  * Search entity by name
@@ -2625,7 +2657,8 @@ route.post("/company/:id/add_bulk_companies", [authJWT.verifyToken, authJWT.isAd
                     original_name: group,
                     representative_name: group,
                     instances: 0,
-                    type: 1
+                    type: 1,
+                    status: 1
                 });
             }
 
@@ -2689,7 +2722,7 @@ route.post("/company/:id/add_bulk_companies", [authJWT.verifyToken, authJWT.isAd
                             let representativeName = companies[i].representative_name != null ? companies[i].representative_name : companies[i].original_name;
 
                             const addParent = await Representative.create({
-                                original_name: companies[i].original_name, representative_name: representativeName, instances: companies[i].instances, parent_id: findGroup.representative_id
+                                original_name: companies[i].original_name, representative_name: representativeName, instances: companies[i].instances, parent_id: findGroup.representative_id, child: 1
                             });
 
                             if(addParent != null && addParent.representative_id > 0){
@@ -2759,7 +2792,7 @@ route.post("/company/:id/add_bulk_companies", [authJWT.verifyToken, authJWT.isAd
                         for(let i = 0; i < companies.length; i++) {
                             if(!addedCompanies.includes(companies[i].original_name) && !addedCompanies.includes(companies[i].representative_name)){
                                 const addParent = await Representative.create({
-                                    original_name: companies[i].original_name, representative_name: companies[i].representative_name, instances: companies[i].instances
+                                    original_name: companies[i].original_name, representative_name: companies[i].representative_name, instances: companies[i].instances, parent_id: findGroup.representative_id, child: 1
                                 });
                                 if(addParent != null && addParent.representative_id > 0){
                                     parentCompaniesID.push(addParent.representative_id);
