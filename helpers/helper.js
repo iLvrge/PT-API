@@ -276,7 +276,7 @@ let searchCompany = async(query, t) => {
                 queryApplicant += ` AND a.type = 0 `
             }
 
-            queryApplicant += ` GROUP BY a.name ORDER BY counter DESC`;
+            queryApplicant += ` GROUP BY a.name `;
 
             let applicantQueryResult = []
 
@@ -669,13 +669,19 @@ let getAddressWithTransactionsListByCompanyID = async( ID, type ) => {
             representativeQuery = `:ID`
         }
 
-        let queryFindIDS = `SELECT address, COUNT(rf_id) AS counter FROM (SELECT ee_address_1 as address, assignee.rf_id FROM assignee 
+       /*  let queryFindIDS = `SELECT address, COUNT(rf_id) AS counter FROM (SELECT ee_address_1 as address, assignee.rf_id FROM assignee 
             INNER JOIN assignment ON assignment.rf_id = assignee.rf_id
             WHERE  date_format(assignment.record_dt, '%Y') >= :year AND ee_address_1 <> '' AND assignor_and_assignee_id IN (${representativeQuery})  
             UNION 
         SELECT ee_address_2 as address, assignee.rf_id FROM assignee 
             INNER JOIN assignment ON assignment.rf_id = assignee.rf_id
             WHERE  date_format(assignment.record_dt, '%Y') >= :year AND ee_address_2 <> '' AND assignor_and_assignee_id  IN (${representativeQuery}) 
+            ) as temp GROUP BY address  ORDER BY address ASC`; */
+
+        let queryFindIDS = `SELECT address, COUNT(rf_id) AS counter, ee_address_1, ee_address_2, ee_city, ee_state, ee_postcode, ee_country FROM (
+        SELECT ee_address_1, ee_address_2, ee_city, ee_state, ee_postcode, ee_country, TRIM(CONCAT(ee_address_1, ee_address_2, ' ',ee_city, ' ',ee_state, ' ', ee_postcode, ' ', ee_country)) as address, assignee.rf_id FROM assignee 
+            INNER JOIN assignment ON assignment.rf_id = assignee.rf_id
+            WHERE  date_format(assignment.record_dt, '%Y') >= :year AND (ee_address_1 <> '' OR ee_address_2 <> '') AND assignor_and_assignee_id  IN (${representativeQuery}) 
             ) as temp GROUP BY address  ORDER BY address ASC`;
 
         if(isNaN(type) === false && type == 1) { 

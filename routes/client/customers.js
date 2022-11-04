@@ -148,11 +148,13 @@ route.get("/timeline", [authJWT.verifyToken], async(req, res, next) => {
                 query = "SELECT assignment.rf_id as id, apt.exec_dt, release_rf_id, release_exec_dt, full_match AS partial_transaction, all_release_ids, total_assets AS releaseAssets, IF(representative.representative_name <> '', representative.representative_name, assignor_and_assignee.name)  AS customerName, assignor_and_assignee.assignor_and_assignee_id AS name_id,representative.representative_id as repID, apt.activity_id AS tab_id, '' AS `group`, '' AS `company`, COUNT(DISTINCT doc.appno_doc_num) AS totalAssets FROM db_uspto.assignment INNER JOIN db_new_application.activity_parties_transactions AS apt ON apt.rf_id = assignment.rf_id INNER JOIN db_uspto.documentid AS doc ON doc.rf_id = apt.rf_id INNER JOIN db_uspto.assignor_and_assignee AS assignor_and_assignee ON assignor_and_assignee.assignor_and_assignee_id = apt.assignor_and_assignee_id LEFT JOIN db_uspto.representative AS representative ON representative.representative_id = assignor_and_assignee.representative_id WHERE apt.activity_id IN (:activity_id) AND apt.organisation_id = :organisation_id AND apt.company_id IN (:companies) AND (release_exec_dt IS NULL OR full_match = 0) AND doc.appno_doc_num IN(:assets) GROUP BY assignment.rf_id ORDER BY exec_dt DESC " 
 
             } else if(replacements.layout == 40) {
-                
+                /**LawFirm */
                 query = "SELECT cor.rf_id as id, apt.exec_dt, release_rf_id, release_exec_dt, full_match AS partial_transaction, all_release_ids, total_assets AS releaseAssets, IF(rlf.representative_name <> '', rlf.representative_name, lf.name) AS lawfirm, lf.law_firm_id, lf.law_firm_id AS name_id, lf.representative_id AS repID, IF(representative.representative_name <> '', representative.representative_name, assignor_and_assignee.name)  AS customerName, 0 AS tab_id, '' AS `group`, '' AS `company`, (SELECT count(asset) FROM ( SELECT IF(dd.grant_doc_num <> '', dd.grant_doc_num, dd.appno_doc_num) AS asset FROM db_uspto.documentid AS dd WHERE dd.rf_id = cor.rf_id GROUP BY asset ) AS temp) AS totalAssets FROM db_uspto.correspondent AS cor INNER JOIN activity_parties_transactions AS apt ON apt.rf_id = cor.rf_id INNER JOIN db_uspto.assignee AS ass ON ass.rf_id = cor.rf_id INNER JOIN db_uspto.assignor_and_assignee AS assignor_and_assignee ON assignor_and_assignee.assignor_and_assignee_id = ass.assignor_and_assignee_id LEFT JOIN db_uspto.representative AS representative ON representative.representative_id = assignor_and_assignee.representative_id INNER JOIN db_uspto.law_firm AS lf ON cor.cname = lf.name LEFT JOIN  db_uspto.representative_law_firm AS rlf ON rlf.representative_id = lf.representative_id  WHERE "
                 if(rf_ids.length > 0) {
                     replacements.rf_ids = rf_ids
-                    query += " cor.rf_id IN (SELECT apt.rf_id FROM activity_parties_transactions AS apt INNER JOIN db_uspto.correspondent  AS c ON c.rf_id = apt.rf_id WHERE c.cname IN (SELECT cname FROM db_uspto.correspondent WHERE rf_id IN (:rf_ids)) AND apt.organisation_id = :organisation_id  AND apt.company_id IN (:companies)) "
+                    /* query += " cor.rf_id IN (SELECT apt.rf_id FROM activity_parties_transactions AS apt INNER JOIN db_uspto.correspondent  AS c ON c.rf_id = apt.rf_id WHERE c.cname IN (SELECT cname FROM db_uspto.correspondent WHERE rf_id IN (:rf_ids)) AND apt.organisation_id = :organisation_id  AND apt.company_id IN (:companies)) " */
+
+                    query += " cor.rf_id IN (SELECT apt.rf_id FROM activity_parties_transactions AS apt INNER JOIN db_uspto.correspondent  AS c ON c.rf_id = apt.rf_id WHERE c.rf_id IN (:rf_ids) AND c.cname <> '' AND apt.organisation_id = :organisation_id  AND apt.company_id IN (:companies)) "
                 } else {
                     query += " cor.rf_id IN (SELECT rf_id FROM dashboard_items WHERE organisation_id = :organisation_id  AND representative_id IN (:companies) AND type = :layout) "
                 }
@@ -167,8 +169,6 @@ route.get("/timeline", [authJWT.verifyToken], async(req, res, next) => {
                 query = "SELECT assignment.rf_id as id, (SELECT exec_dt FROM db_uspto.assignor WHERE rf_id = assignment.rf_id LIMIT 1) AS exec_dt, release_rf_id, release_exec_dt, full_match AS partial_transaction, all_release_ids, total_assets AS releaseAssets, IF(representative.representative_name <> '', representative.representative_name, assignor_and_assignee.name)  AS customerName, assignor_and_assignee.assignor_and_assignee_id AS name_id,representative.representative_id as repID, apt.activity_id AS tab_id, '' AS `group`, '' AS `company`, (SELECT count(asset) FROM ( SELECT IF(dd.grant_doc_num <> '', dd.grant_doc_num, dd.appno_doc_num) AS asset FROM db_uspto.documentid AS dd WHERE dd.rf_id = assignment.rf_id GROUP BY asset ) AS temp) AS totalAssets FROM db_uspto.assignment INNER JOIN activity_parties_transactions AS apt ON apt.rf_id = assignment.rf_id INNER JOIN db_uspto.assignee AS ass ON ass.rf_id = assignment.rf_id INNER JOIN db_uspto.assignor_and_assignee AS assignor_and_assignee ON assignor_and_assignee.assignor_and_assignee_id = ass.assignor_and_assignee_id LEFT JOIN db_uspto.representative AS representative ON representative.representative_id = assignor_and_assignee.representative_id WHERE assignment.rf_id IN (SELECT rf_id FROM dashboard_items WHERE organisation_id = :organisation_id  AND representative_id IN (:companies) AND type = :layout) "
                 query += " GROUP BY assignment.rf_id ORDER BY exec_dt DESC "
             }
-            
-            
         } else {
             let groupQuery = "SELECT activity_id AS `group` FROM activity_parties_transactions WHERE activity_parties_transactions.organisation_id = :organisation_id "               
 
@@ -235,6 +235,8 @@ route.get("/timeline", [authJWT.verifyToken], async(req, res, next) => {
             }
         ); 
 
+        
+
         /* groupQuery += " GROUP BY activity_id"
         groups =  await connection.applicationNew.query(groupQuery, {
                 type: connection.Sequelize.QueryTypes.SELECT,
@@ -249,6 +251,105 @@ route.get("/timeline", [authJWT.verifyToken], async(req, res, next) => {
         console.log("Timeline:"+err);
         res.status(500).send("Internal server error.");
     }
+})
+
+route.get("/timeline/filling_assets", [authJWT.verifyToken, clientDBConnection.connect], async(req, res, next) => {
+    try {
+        let {companies, lawfirm } = req.query, list = [], groups = []
+        const replacements = { organisation_id: req.orgId, year: 1997 }
+
+        if(typeof companies != 'undefined' && companies != '') {            
+            companies = JSON.parse(companies)
+        }
+   
+        const Representative = req.connection_db.define('Representatives', Representatives.mainStructure, Representatives.options);
+
+        const getAllCompaniesName = await Representative.findAll({
+            attributes: ['representative_name'],
+            where:{ representative_id: companies}                        
+        }); 
+ 
+
+        if(getAllCompaniesName.length > 0) {
+
+            const allCompanyNames = [], allRepresentativeNames = []
+
+            const promises = getAllCompaniesName.map(company => { 
+                allRepresentativeNames.push(company.get('representative_name'))
+                allCompanyNames.push(company.get('representative_name'))
+            })
+
+            await Promise.all(promises)
+ 
+
+            /* const allAssigneeNames = `SELECT name FROM db_uspto.assignor_and_assignee WHERE represenative_id IN () OR name IN (:names) GROUP BY name`; */
+
+            const representativeQuery = ` SELECT representative_id FROM db_uspto.representative WHERE representative_name IN (:representativeNames) GROUP BY representative_id`;
+
+            const allRepresentatives =  await connection.applicationNew.query(representativeQuery, {
+                type: connection.Sequelize.QueryTypes.SELECT,
+                raw: true,
+                logging: console.log,
+                replacements: {representativeNames: allRepresentativeNames},
+            }); 
+           
+            const representativeIDs = [];
+
+            const promisesRepresenative = allRepresentatives.map(company => { 
+                representativeIDs.push(company.representative_id)
+            })
+
+            await Promise.all(promisesRepresenative)
+
+            let findAllAssigneeAssets = `SELECT appno_doc_num FROM db_patent_application_bibliographic.assignee AS a INNER JOIN db_patent_application_bibliographic.assignor_and_assignee AS aaa ON aaa.assignor_and_assignee_id = a.assignor_and_assignee_id WHERE (aaa.name IN (:companyNames) `
+
+            if(representativeIDs.length > 0) {
+                findAllAssigneeAssets += `  OR aaa.representative_id IN (:representativeIDs) `
+            } 
+            
+            findAllAssigneeAssets += ` ) AND appno_doc_num IN (SELECT application FROM dashboard_items WHERE organisation_id = :organisation_id  AND representative_id IN (:companies) AND type = :type GROUP BY application) GROUP BY appno_doc_num`
+
+            replacements.companyNames = allCompanyNames
+            replacements.companies = companies
+            replacements.type = 30
+            replacements.representativeIDs = representativeIDs
+             
+            const assigneeAssets =  await connection.applicationNew.query(findAllAssigneeAssets, {
+                type: connection.Sequelize.QueryTypes.SELECT,
+                raw: true,
+                logging: console.log,
+                replacements: replacements,
+            }); 
+
+            const allAssets = []
+            if(assigneeAssets != null && assigneeAssets.length > 0) { 
+                const promiseAssets = assigneeAssets.map(row => {
+                    allAssets.push(`${row.appno_doc_num}`)
+                })
+    
+                await Promise.all(promiseAssets)
+            }
+
+            if(allAssets.length > 0) {
+                replacements.type = 40
+                replacements.applications = allAssets
+
+                const queryFillingLawFirm = `SELECT l.appno_doc_num, l.name, (SELECT appno_date FROM db_patent_grant_bibliographic.application_publication AS ap WHERE ap.appno_doc_num = l.appno_doc_num) AS eventDate FROM db_patent_application_bibliographic.lawfirm AS l  WHERE l.appno_doc_num IN (:applications) AND l.name IN (SELECT lawfirm FROM dashboard_items WHERE organisation_id = :organisation_id  AND representative_id IN (:companies) AND type = :type GROUP BY lawfirm) GROUP BY l.appno_doc_num `
+
+                list =  await connection.applicationNew.query(queryFillingLawFirm, {
+                    type: connection.Sequelize.QueryTypes.SELECT,
+                    raw: true,
+                    logging: console.log,
+                    replacements: replacements,
+                }); 
+            }
+        } 
+
+        res.status(200).json(list);
+    } catch (err) {
+        console.log("Timeline Filling Assets:" +err);
+        res.status(500).send("Internal server error.");
+    } 
 })
 
 route.get("/timeline/security", [authJWT.verifyToken], async(req, res, next) => {
