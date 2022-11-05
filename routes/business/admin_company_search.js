@@ -2635,6 +2635,8 @@ route.post("/company/:id/add_bulk_companies", [authJWT.verifyToken, authJWT.isAd
     try{
         let {representative_ids, type, group, representatives} = req.body
         const client_id = req.params.id
+
+        
         
         if( typeof type != 'undefined' && type == 2) {
             /**
@@ -2847,14 +2849,24 @@ route.post("/company/:id/add_bulk_companies", [authJWT.verifyToken, authJWT.isAd
             } 
         } else {
             if(client_id > 0) {
+                
+                let query = `SELECT aaa.assignor_and_assignee_id, aaa.name AS name, r.representative_name, r.representative_id FROM assignor_and_assignee as aaa LEFT JOIN representative as r ON r.representative_id = aaa.representative_id WHERE `
+
+
                 if(representative_ids != undefined && representative_ids != '') {
                     representative_ids = JSON.parse(representative_ids)
+
+                    query += ` aaa.assignor_and_assignee_id IN (:IDs) `
                 } else {
                     if(representatives != undefined && representatives != '') {
                         representative_ids = JSON.parse(representatives)
+
+                        query += ` aaa.name IN (:IDs) `
                     }
                 }
-                const query = "SELECT aaa.assignor_and_assignee_id, aaa.name AS name, r.representative_name, r.representative_id FROM assignor_and_assignee as aaa LEFT JOIN representative as r ON r.representative_id = aaa.representative_id WHERE aaa.assignor_and_assignee_id IN (:IDs) GROUP BY name";
+
+                
+                query += ` GROUP BY name`;
                         
                 const getNamesList = await connection.resources.query(query,{
                     type: connection.Sequelize.QueryTypes.SELECT,
