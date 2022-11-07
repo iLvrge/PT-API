@@ -92,11 +92,7 @@ route.get("/assets", [authJWT.verifyToken], async(req, res, next) => {
 
 
 
-
-
-
-
-route.post("/assets/cpc", [authJWT.verifyToken], async(req, res, next) => {
+route.post("/assets/cpc", [authJWT.verifyToken, clientDBConnection.connect], async(req, res, next) => {
     try{
         let { list, total, type, selectedCompanies, tabs, customers, assignments, range, scope, year, other_mode, data_type } = req.body, getList = [], group = [], sales = []
         
@@ -104,10 +100,42 @@ route.post("/assets/cpc", [authJWT.verifyToken], async(req, res, next) => {
         if(typeof data_type !== 'undefined' && data_type == 1) {
             list = await helpers.findFilterAssets(req)
             total = list.length
+        } else  if(typeof type !== 'undefined' && type == 'filling_assets') {
+            const getFiilingAssets =   await helpers.findFillingAssets(req) 
+
+            if(getFiilingAssets.length > 0) {
+                const replacements = { organisation_id: req.orgId, year: 1997 }
+                if(typeof selectedCompanies != 'undefined' && selectedCompanies != '') {            
+                    companies = JSON.parse(selectedCompanies)
+                }
+                replacements.type = 40
+                replacements.applications = getFiilingAssets
+                replacements.companies = companies
+    
+                const queryFillingLawFirm = `SELECT l.appno_doc_num FROM db_patent_application_bibliographic.lawfirm AS l  WHERE l.appno_doc_num IN (:applications) AND l.name IN (SELECT lawfirm FROM dashboard_items WHERE organisation_id = :organisation_id  AND representative_id IN (:companies) AND type = :type GROUP BY lawfirm) GROUP BY l.appno_doc_num `
+    
+                const assetsWithLawFirm =  await connection.applicationNew.query(queryFillingLawFirm, {
+                    type: connection.Sequelize.QueryTypes.SELECT,
+                    raw: true,
+                    logging: console.log,
+                    replacements: replacements,
+                }); 
+
+                if(assetsWithLawFirm != null && assetsWithLawFirm.length > 0) {
+                    list = [] 
+                    const promiseAssets = assetsWithLawFirm.map(row => {
+                        list.push(`${row.appno_doc_num}`)
+                    }) 
+                    await Promise.all(promiseAssets)
+                    list = JSON.stringify(list)
+                    total = list.length
+                }
+            } 
         }
+  
 
         if( list != '' ) {
-            if(typeof data_type == 'undefined' || (typeof data_type !== 'undefined' && data_type == 0)) {
+            if((typeof data_type == 'undefined') || (typeof data_type !== 'undefined' && data_type == 0)) {
                 list = JSON.parse(list)
             }            
 
@@ -1154,6 +1182,43 @@ route.post("/assets/validate",[authJWT.verifyToken], async (req, res) => {
         console.log('Error => "/assets/validate"', e)
         res.status(500).send('Error')
     }    
+})
+
+/**
+ * Get Assets for Sale
+ */
+
+route.post("/assets/assets_for_sale",[authJWT.verifyToken, clientDBConnection.connect], async (req, res) => { 
+    try{
+        const result = { message: ''}
+        if(typeof req.connection_db != "undefined" && req.connection_db != null ) {
+            const {appno_doc_num, grant_doc_num, type} = req.body
+
+            if((typeof grant_doc_num !== 'undefined' && grant_doc_num !== '') || (typeof appno_doc_num !== 'undefined' && appno_doc_num !== '')) {
+                const insertData = [{
+                    appno_doc_num,
+                    grant_doc_num,
+                    type,
+                    organisation_id: req.orgId
+                }]
+                const data = await AssetsForSale.bulkCreate(insertData, {ignoreDuplicates: true})
+
+                if(data !== null ) {
+                    /**
+                     * Send Message to Slack 
+                     */
+                    result.message = "Assets moved for sale successfully"
+                }
+            } else {
+                result.message = "Invalid inputs"
+            }
+        } else {
+            result.message = "Invalid inputs"
+        }
+        res.status(200).json(result)
+    } catch (error) {
+        res.status(500).send('Error while retreiving data')
+    }
 })
 
 /**
