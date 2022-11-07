@@ -270,7 +270,7 @@ route.get("/timeline/filling_assets", [authJWT.verifyToken, clientDBConnection.c
             replacements.type = 40
             replacements.applications = allAssets 
 
-            const queryFillingLawFirm = `SELECT l.id, l.id AS name_id, l.id AS law_firm_id, l.name AS lawfirm, 0 AS repID, l.appno_doc_num,  (SELECT appno_date FROM db_patent_grant_bibliographic.application_publication AS ap WHERE ap.appno_doc_num = l.appno_doc_num) AS exec_dt, '' AS release_rf_id, '' AS release_exec_dt, '' AS partial_transaction, '' AS all_release_ids, 0 AS releaseAssets, '' AS customerName, 0 AS tab_id, '' AS 'group', '' AS 'company', 0 AS asset, 1 AS type FROM db_patent_application_bibliographic.lawfirm AS l  WHERE l.appno_doc_num IN (:applications) AND l.name IN (SELECT lawfirm FROM dashboard_items WHERE organisation_id = :organisation_id  AND representative_id IN (:companies) AND type = :type GROUP BY lawfirm) GROUP BY l.appno_doc_num `
+            const queryFillingLawFirm = `SELECT l.id, l.id AS name_id, l.id AS law_firm_id, l.name AS lawfirm, 0 AS repID, l.appno_doc_num,  (SELECT appno_date FROM db_patent_grant_bibliographic.application_publication AS ap WHERE ap.appno_doc_num = l.appno_doc_num) AS exec_dt, '' AS release_rf_id, '' AS release_exec_dt, '' AS partial_transaction, '' AS all_release_ids, 0 AS releaseAssets, '' AS customerName, 0 AS tab_id, '' AS 'group', '' AS 'company', 0 AS asset, 1 AS type, '' AS patent, '' AS title FROM db_patent_application_bibliographic.lawfirm AS l  WHERE l.appno_doc_num IN (:applications) AND l.name IN (SELECT lawfirm FROM dashboard_items WHERE organisation_id = :organisation_id  AND representative_id IN (:companies) AND type = :type GROUP BY lawfirm) GROUP BY l.appno_doc_num `
 
             list =  await connection.applicationNew.query(queryFillingLawFirm, {
                 type: connection.Sequelize.QueryTypes.SELECT,
@@ -278,6 +278,28 @@ route.get("/timeline/filling_assets", [authJWT.verifyToken, clientDBConnection.c
                 logging: console.log,
                 replacements: replacements,
             }); 
+
+            const queryPatentWithTitle = `SELECT MAX(appno_doc_num) AS application, MAX(grant_doc_num) AS patent, title FROM db_uspto.documentid WHERE appno_doc_num IN (:applications) GROUP BY appno_doc_num`
+
+            const patentWithTitle =  await connection.applicationNew.query(queryPatentWithTitle, {
+                type: connection.Sequelize.QueryTypes.SELECT,
+                raw: true,
+                logging: console.log,
+                replacements: replacements,
+            }); 
+
+            if(patentWithTitle.length > 0) {
+                const promise = list.map( (item, index) => {
+                    const findIndex = patentWithTitle.findIndex( row => row.application == item.appno_doc_num)
+
+                    if(findIndex !== -1) {
+                        const {title, patent} = patentWithTitle[findIndex]
+                        list[index].title = title
+                        list[index].patent = patent
+                    }
+                })
+                await Promise.all(promise)
+            }
         } 
         res.status(200).json(list);
     } catch (err) {
