@@ -568,9 +568,9 @@ route.put("/company/search/all/", [authJWT.verifyToken, authJWT.isAdmin], async 
             }
             
             
-            console.log("normalize_name", normalize_name)
+            console.log("Normalize_name", normalize_name)
             if(normalize_name != "") {
-                console.log("POST->ID11", IDs, applicantAssignorAndAssigneeIDs);
+                console.log("Check Assignment And Biblio", IDs, applicantAssignorAndAssigneeIDs);
                 /**
                  * Is Rep is already a Rep
                 */
@@ -581,17 +581,18 @@ route.put("/company/search/all/", [authJWT.verifyToken, authJWT.isAdmin], async 
                 let allRepresentatives = []; 
 
                 if(IDs.length == 0 && otherNames.length > 0 ) {
+                    console.log('ID=>0 checking OtherNames', otherNames)
                     /** 
                      * If selected rows only from Biblio
                      */
-                    const findOldRows = await AssignorAndAssignee.findAll({
+                    /* const findOldRows = await AssignorAndAssignee.findAll({
                         attributes:['assignor_and_assignee_id'],
                         where: {
                             name: otherNames
                         }
                     })
                     const promiseR = findOldRows.map(row => IDs.push(row.assignor_and_assignee_id))
-                    await Promise.all(promiseR)
+                    await Promise.all(promiseR) */
                 }
 
 
@@ -647,7 +648,7 @@ route.put("/company/search/all/", [authJWT.verifyToken, authJWT.isAdmin], async 
                             ]}
                         })
     
-                        console.log("findOldRows", findOldRows)
+                        console.log("findOldRows", findOldRows.length)
     
                         if(findOldRows.length > 0) {
                             console.log("findOldRowsIDs", IDs)
