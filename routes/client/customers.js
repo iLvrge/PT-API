@@ -253,6 +253,7 @@ route.get("/timeline", [authJWT.verifyToken], async(req, res, next) => {
     }
 })
 
+
 route.get("/timeline/filling_assets", [authJWT.verifyToken, clientDBConnection.connect], async(req, res, next) => {
     try {
         let {companies, lawfirm } = req.query, list = [], groups = []
@@ -260,91 +261,24 @@ route.get("/timeline/filling_assets", [authJWT.verifyToken, clientDBConnection.c
 
         if(typeof companies != 'undefined' && companies != '') {            
             companies = JSON.parse(companies)
-        }
-   
-        const Representative = req.connection_db.define('Representatives', Representatives.mainStructure, Representatives.options);
-
-        const getAllCompaniesName = await Representative.findAll({
-            attributes: ['representative_name'],
-            where:{ representative_id: companies}                        
-        }); 
- 
-
-        if(getAllCompaniesName.length > 0) {
-
-            const allCompanyNames = [], allRepresentativeNames = []
-
-            const promises = getAllCompaniesName.map(company => { 
-                allRepresentativeNames.push(company.get('representative_name'))
-                allCompanyNames.push(company.get('representative_name'))
-            })
-
-            await Promise.all(promises)
- 
-
-            /* const allAssigneeNames = `SELECT name FROM db_uspto.assignor_and_assignee WHERE represenative_id IN () OR name IN (:names) GROUP BY name`; */
-
-            const representativeQuery = ` SELECT representative_id FROM db_uspto.representative WHERE representative_name IN (:representativeNames) GROUP BY representative_id`;
-
-            const allRepresentatives =  await connection.applicationNew.query(representativeQuery, {
-                type: connection.Sequelize.QueryTypes.SELECT,
-                raw: true,
-                logging: console.log,
-                replacements: {representativeNames: allRepresentativeNames},
-            }); 
-           
-            const representativeIDs = [];
-
-            const promisesRepresenative = allRepresentatives.map(company => { 
-                representativeIDs.push(company.representative_id)
-            })
-
-            await Promise.all(promisesRepresenative)
-
-            let findAllAssigneeAssets = `SELECT appno_doc_num FROM db_patent_application_bibliographic.assignee AS a INNER JOIN db_patent_application_bibliographic.assignor_and_assignee AS aaa ON aaa.assignor_and_assignee_id = a.assignor_and_assignee_id WHERE (aaa.name IN (:companyNames) `
-
-            if(representativeIDs.length > 0) {
-                findAllAssigneeAssets += `  OR aaa.representative_id IN (:representativeIDs) `
-            } 
-            
-            findAllAssigneeAssets += ` ) AND appno_doc_num IN (SELECT application FROM dashboard_items WHERE organisation_id = :organisation_id  AND representative_id IN (:companies) AND type = :type GROUP BY application) GROUP BY appno_doc_num`
-
-            replacements.companyNames = allCompanyNames
             replacements.companies = companies
-            replacements.type = 30
-            replacements.representativeIDs = representativeIDs
-             
-            const assigneeAssets =  await connection.applicationNew.query(findAllAssigneeAssets, {
+        }
+
+        const allAssets =  await helpers.findFillingAssets(req)
+  
+        if(allAssets.length > 0) {
+            replacements.type = 40
+            replacements.applications = allAssets 
+
+            const queryFillingLawFirm = `SELECT l.id, l.id AS name_id, l.name AS lawfirm, 0 AS repID, l.appno_doc_num,  (SELECT appno_date FROM db_patent_grant_bibliographic.application_publication AS ap WHERE ap.appno_doc_num = l.appno_doc_num) AS exec_dt, '' AS release_rf_id, '' AS release_exec_dt, '' AS partial_transaction, '' AS all_release_ids, 0 AS releaseAssets, '' AS customerName, 0 AS tab_id, '' AS 'group', '' AS 'company', 0 AS asset, 1 AS type FROM db_patent_application_bibliographic.lawfirm AS l  WHERE l.appno_doc_num IN (:applications) AND l.name IN (SELECT lawfirm FROM dashboard_items WHERE organisation_id = :organisation_id  AND representative_id IN (:companies) AND type = :type GROUP BY lawfirm) GROUP BY l.appno_doc_num `
+
+            list =  await connection.applicationNew.query(queryFillingLawFirm, {
                 type: connection.Sequelize.QueryTypes.SELECT,
                 raw: true,
                 logging: console.log,
                 replacements: replacements,
             }); 
-
-            const allAssets = []
-            if(assigneeAssets != null && assigneeAssets.length > 0) { 
-                const promiseAssets = assigneeAssets.map(row => {
-                    allAssets.push(`${row.appno_doc_num}`)
-                })
-    
-                await Promise.all(promiseAssets)
-            }
-
-            if(allAssets.length > 0) {
-                replacements.type = 40
-                replacements.applications = allAssets
-
-                const queryFillingLawFirm = `SELECT l.appno_doc_num, l.name, (SELECT appno_date FROM db_patent_grant_bibliographic.application_publication AS ap WHERE ap.appno_doc_num = l.appno_doc_num) AS eventDate FROM db_patent_application_bibliographic.lawfirm AS l  WHERE l.appno_doc_num IN (:applications) AND l.name IN (SELECT lawfirm FROM dashboard_items WHERE organisation_id = :organisation_id  AND representative_id IN (:companies) AND type = :type GROUP BY lawfirm) GROUP BY l.appno_doc_num `
-
-                list =  await connection.applicationNew.query(queryFillingLawFirm, {
-                    type: connection.Sequelize.QueryTypes.SELECT,
-                    raw: true,
-                    logging: console.log,
-                    replacements: replacements,
-                }); 
-            }
         } 
-
         res.status(200).json(list);
     } catch (err) {
         console.log("Timeline Filling Assets:" +err);

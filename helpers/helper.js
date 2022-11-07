@@ -3699,7 +3699,87 @@ const findCompanyName = async(DBConnection, selectedCompanies) => {
     return getRepresentativeName;
 }
 
+
+const findFillingAssets = async (req) => {
+    let {companies } = req.query;
+    let {selectedCompanies} = req.body
+    const replacements = { organisation_id: req.orgId, year: 1997 }
+
+
+    const allAssets = []
+    if(typeof companies != 'undefined' && companies != '') {            
+        companies = JSON.parse(companies)
+    } else if(typeof selectedCompanies != 'undefined' && selectedCompanies != '') {            
+        companies = JSON.parse(selectedCompanies)
+    }
+
+    const Representative = req.connection_db.define('Representatives', Representatives.mainStructure, Representatives.options);
+
+    const getAllCompaniesName = await Representative.findAll({
+        attributes: ['representative_name'],
+        where:{ representative_id: companies}                        
+    }); 
+
+    if(getAllCompaniesName.length > 0) {
+        const allCompanyNames = [], allRepresentativeNames = []
+
+        const promises = getAllCompaniesName.map(company => { 
+            allRepresentativeNames.push(company.get('representative_name'))
+            allCompanyNames.push(company.get('representative_name'))
+        })
+
+        await Promise.all(promises)
+
+        const representativeQuery = ` SELECT representative_id FROM db_uspto.representative WHERE representative_name IN (:representativeNames) GROUP BY representative_id`;
+
+        const allRepresentatives =  await connection.applicationNew.query(representativeQuery, {
+            type: connection.Sequelize.QueryTypes.SELECT,
+            raw: true,
+            logging: console.log,
+            replacements: {representativeNames: allRepresentativeNames},
+        }); 
+        
+        const representativeIDs = [];
+
+        const promisesRepresenative = allRepresentatives.map(company => { 
+            representativeIDs.push(company.representative_id)
+        })
+
+        await Promise.all(promisesRepresenative)
+
+        let findAllAssigneeAssets = `SELECT appno_doc_num FROM db_patent_application_bibliographic.assignee AS a INNER JOIN db_patent_application_bibliographic.assignor_and_assignee AS aaa ON aaa.assignor_and_assignee_id = a.assignor_and_assignee_id WHERE (aaa.name IN (:companyNames) `
+
+        if(representativeIDs.length > 0) {
+            findAllAssigneeAssets += `  OR aaa.representative_id IN (:representativeIDs) `
+        } 
+        
+        findAllAssigneeAssets += ` ) AND appno_doc_num IN (SELECT application FROM dashboard_items WHERE organisation_id = :organisation_id  AND representative_id IN (:companies) AND type = :type GROUP BY application) GROUP BY appno_doc_num`
+
+        replacements.companyNames = allCompanyNames
+        replacements.companies = companies
+        replacements.type = 30
+        replacements.representativeIDs = representativeIDs
+            
+        const assigneeAssets =  await connection.applicationNew.query(findAllAssigneeAssets, {
+            type: connection.Sequelize.QueryTypes.SELECT,
+            raw: true,
+            logging: console.log,
+            replacements: replacements,
+        });  
+        
+        if(assigneeAssets != null && assigneeAssets.length > 0) { 
+            const promiseAssets = assigneeAssets.map(row => {
+                allAssets.push(`${row.appno_doc_num}`)
+            })
+
+            await Promise.all(promiseAssets)
+        }
+    }
+    return allAssets;
+}
+
 const helper = {};
+helper.findFillingAssets = findFillingAssets
 helper.findCompanyName = findCompanyName
 helper.checkTabs = checkTabs;
 helper.findFilterAssets = findFilterAssets;
