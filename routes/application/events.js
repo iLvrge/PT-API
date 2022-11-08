@@ -2112,8 +2112,7 @@ route.get("/events/all/assets/surcharge", [authJWT.verifyToken], async (req, res
 
                 findData = await MaintainenceFees.findAll({
                     attributes: attributes,
-                    where: where,
-                    group: group,
+                    where: where, 
                     include: include
                 });
 
