@@ -2100,7 +2100,7 @@ route.get("/events/all/assets/to_record", [authJWT.verifyToken], async (req, res
                 })
                 await Promise.all(promise)
 
-                const query = `SELECT grant_doc_num, appno_doc_num, eventdate, '' AS event_code, '13' AS event_icon,
+                const query = `SELECT grant_doc_num, appno_doc_num, eventdate, '13' AS event_code, '' AS event_icon,
                 IF(grant_doc_num <> '' ,  CONCAT('US',FORMAT(grant_doc_num, 0)), CONCAT('US',SUBSTRING(appno_doc_num, 1, 2), '/', FORMAT(SUBSTRING(appno_doc_num, 3), 0))) AS template_string 
                 FROM (
                     SELECT MAX(grant_doc_num) AS grant_doc_num, MAX(appno_doc_num) AS appno_doc_num, 
