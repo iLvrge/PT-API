@@ -657,7 +657,7 @@ route.delete("/customers/:id/companies", [authJWT.verifyToken, authJWT.isAdmin, 
                     } else {
                         if(!updateKPICompanies.includes(c.parent_id)){
                             updateKPICompanies.push(c.parent_id); 
-                            reUpdateCompanies(c.parent_id);
+                            reUpdateCompanies.push(c.parent_id);
                         }
                     }
                     deleteCompanies.push(c.representative_id);                   
@@ -757,21 +757,7 @@ route.delete("/customers/:id/companies", [authJWT.verifyToken, authJWT.isAdmin, 
                                                 console.log(stdd);
                                                 console.log("DONE");
 
-                                            });
-                                            exec(`php -f /var/www/html/trash/admin_report_represetative_assets_transactions_by_account.php "${req.orgId}" "${company.original_name}"`, (error, stdd, stderr)=> {
-                                                console.log("fill admin_report_represetative_assets_transactions_by_account.php ....")
-                                                console.log(error); 
-                                                console.log(stderr);
-                                                console.log(stdd);
-                                                console.log("DONE");
-                                                exec(`php -f /var/www/html/trash/report_represetative_assets_transactions_by_account.php "${req.orgId}" "${company.original_name}"`, (error, stdd, stderr)=> {
-                                                    console.log("fill report_represetative_assets_transactions_by_account.php ....")
-                                                    console.log(error); 
-                                                    console.log(stderr);
-                                                    console.log(stdd);
-                                                    console.log("DONE");
-                                                });
-                                            });
+                                            }); 
                                         });
                                         return company;
                                     });
@@ -799,21 +785,7 @@ route.delete("/customers/:id/companies", [authJWT.verifyToken, authJWT.isAdmin, 
                                 console.log(stderr);
                                 console.log(stdd);
                                 console.log("DONE");
-                            });
-                            exec(`php -f /var/www/html/trash/admin_report_represetative_assets_transactions_by_account.php "${req.orgId}" ""`, (error, stdd, stderr)=> {
-                                console.log("fill admin_report_represetative_assets_transactions_by_account.php ....")
-                                console.log(error); 
-                                console.log(stderr);
-                                console.log(stdd);
-                                console.log("DONE");
-                                exec(`php -f /var/www/html/trash/report_represetative_assets_transactions_by_account.php "${req.orgId}" ""`, (error, stdd, stderr)=> {
-                                    console.log("fill report_represetative_assets_transactions_by_account.php ....")
-                                    console.log(error); 
-                                    console.log(stderr);
-                                    console.log(stdd);
-                                    console.log("DONE");
-                                });
-                            });
+                            }); 
 
                             res.status(200).send("Companies deleted.");
                         }
