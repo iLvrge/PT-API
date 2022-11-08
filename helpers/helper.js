@@ -1634,22 +1634,16 @@ let getCompaniesListSumWithReports = async (DBConnection, organisationID) => {
         where: {type: 0}
     });
 
-    if(getList.length > 0) {
+    if(getList.length > 0) { 
 
-        const representativeIDs = []
-        const promiseList = getList.map( representative => {
-            representativeIDs.push(representative.representative_id)
-        })
-        await Promise.all(promiseList)
-
-        const query = `SELECT company_id, companies, activities, entities, parties AS no_of_parties, employees, transactions AS no_of_transactions, assets, arrows AS product, 0 AS documents FROM db_uspto.summary WHERE organisation_id = :organisationID AND company_id IN (:company_id)`;
+        const query = `SELECT organisation_id, companies, activities, SUM(entities) AS no_of_entities , SUM(parties) AS no_of_parties, employees, SUM(transactions) AS no_of_transactions, SUM(assets) AS assets, SUM(arrows) AS product, 0 AS documents FROM db_uspto.summary WHERE organisation_id = :organisationID `;
 
         let reports = await connection.resources.query(query,{
             type: connection.Sequelize.QueryTypes.SELECT,
-            replacements: { organisationID: req.orgId,  company_id: representativeIDs},
-            raw: true,
-            plain: true,
+            replacements: { organisationID: organisationID },
+            raw: true, 
             logging: console.log,
+            plain: true
         }) 
         /* 
         const representativeNames = []
