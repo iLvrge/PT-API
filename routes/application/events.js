@@ -2076,6 +2076,70 @@ const findEventList = async(req, res) => {
     }
 }
 
+route.get("/events/all/assets/to_record", [authJWT.verifyToken], async (req, res) =>{   
+    try {
+        let { companies } = req.query, findData = [], other = [], icons = {};
+        if(companies != '') {
+            companies = JSON.parse(companies)
+        }
+
+        if(companies.length > 0) {
+            const queryToRecord = `SELECT application FROM dashboard_items WHERE organisation_id = :organisationID AND representative_id IN (:companies) AND type = :type GROUP BY application`;
+            const list = await connection.applicationNew.query(queryToRecord,{
+                    type: connection.Sequelize.QueryTypes.SELECT,
+                    raw: true,
+                    logging: console.log,
+                    replacements: { organisationID: req.orgId, companies, type: 22 },
+                }
+            );
+
+            if(list != null && list.length > 0) {
+                const assets = []
+                const promise = list.map( item => {
+                    assets.push(`${item.application}`)
+                })
+                await Promise.all(promise)
+
+                const query = `SELECT grant_doc_num, appno_doc_num, eventdate, '' AS event_code, '' AS event_icon,
+                IF(grant_doc_num <> '' ,  FORMAT(grant_doc_num, 0), CONCAT(SUBSTRING(appno_doc_num, 1, 2), '/', FORMAT(SUBSTRING(appno_doc_num, 3), 0))) AS event_description 
+                FROM (
+                    SELECT MAX(grant_doc_num) AS grant_doc_num, MAX(appno_doc_num) AS appno_doc_num, 
+                    date_format(appno_date, '%Y-%m-%d') AS eventdate FROM db_patent_application_bibliographic.application_grant
+                    WHERE appno_doc_num IN (:applications)
+                    GROUP BY appno_doc_num 
+                    UNION  
+                    SELECT '' AS grant_doc_num, MAX(appno_doc_num) AS appno_doc_num, 
+                    date_format(appno_date, '%Y-%m-%d') AS eventdate FROM db_patent_grant_bibliographic.application_publication
+                    WHERE appno_doc_num IN (:applications)
+                    GROUP BY appno_doc_num
+                    
+                ) AS temp`  
+                
+                findData = await connection.applicationNew.query(query,{
+                        type: connection.Sequelize.QueryTypes.SELECT,
+                        raw: true,
+                        logging: console.log,
+                        replacements: { applications: assets },
+                    }
+                ); 
+                 
+                if(findData.length > 0) {
+                    let eventCodeIcons = {
+                        icon1: SvgIconsContent['13'],
+                        icon2: SvgIconsContent['13'],
+                        icon3: SvgIconsContent['13'] 
+                    }
+                    icons['13'] = eventCodeIcons
+                }
+            }
+        }
+        res.status(200).json({main: findData, other, icons});
+    } catch (err) {
+        console.log(err);
+        res.status(500).send("Internal server error.");
+    }
+})
+
 route.get("/events/all/assets/surcharge", [authJWT.verifyToken], async (req, res) =>{   
     try {
         let { companies } = req.query, findData = [], other = [], icons = {};
