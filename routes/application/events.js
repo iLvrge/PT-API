@@ -2101,7 +2101,7 @@ route.get("/events/all/assets/to_record", [authJWT.verifyToken], async (req, res
                 await Promise.all(promise)
 
                 const query = `SELECT grant_doc_num, appno_doc_num, eventdate, '' AS event_code, '' AS event_icon,
-                IF(grant_doc_num <> '' ,  FORMAT(grant_doc_num, 0), CONCAT(SUBSTRING(appno_doc_num, 1, 2), '/', FORMAT(SUBSTRING(appno_doc_num, 3), 0))) AS event_description 
+                IF(grant_doc_num <> '' ,  CONCAT('US',FORMAT(grant_doc_num, 0)), CONCAT('US',SUBSTRING(appno_doc_num, 1, 2), '/', FORMAT(SUBSTRING(appno_doc_num, 3), 0))) AS template_string 
                 FROM (
                     SELECT MAX(grant_doc_num) AS grant_doc_num, MAX(appno_doc_num) AS appno_doc_num, 
                     date_format(appno_date, '%Y-%m-%d') AS eventdate FROM db_patent_application_bibliographic.application_grant
