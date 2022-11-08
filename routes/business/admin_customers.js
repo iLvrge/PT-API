@@ -1607,12 +1607,12 @@ route.get("/customers/:id/patents", [authJWT.verifyToken, authJWT.isAdmin], asyn
                 }
                 let queryAllPatentList = '';
                 if(Array.isArray(representativeID) && representativeID.length > 0) {
-                    queryAllPatentList = 'SELECT CASE WHEN grant_doc_num = "" OR grant_doc_num IS NULL THEN appno_doc_num ELSE grant_doc_num END AS number, appno_doc_num as application, CASE WHEN grant_doc_num = "" OR grant_doc_num IS NULL THEN 1 ELSE 0 END AS asset_type FROM assets WHERE organisation_id = :organisationID AND representative_id IN (:representativeID) AND date_format(grant_date, "%Y") >= :year GROUP BY number, application';
+                    queryAllPatentList = 'SELECT CASE WHEN grant_doc_num = "" OR grant_doc_num IS NULL THEN appno_doc_num ELSE grant_doc_num END AS number, appno_doc_num as application, CASE WHEN grant_doc_num = "" OR grant_doc_num IS NULL THEN 1 ELSE 0 END AS asset_type FROM assets WHERE organisation_id = :organisationID AND company_id IN (:representativeID) AND date_format(grant_date, "%Y") >= :year GROUP BY number, application';
                 } else {
                     queryAllPatentList = 'SELECT CASE WHEN grant_doc_num = "" OR grant_doc_num IS NULL THEN appno_doc_num ELSE grant_doc_num END AS number, appno_doc_num as application, CASE WHEN grant_doc_num = "" OR grant_doc_num IS NULL THEN 1 ELSE 0 END AS asset_type FROM assets WHERE organisation_id = :organisationID AND date_format(grant_date, "%Y") >= :year GROUP BY number, application ';
                 }
 
-                queryAllPatentList += ` ORDER BY asset_type ASC, number * 1 ${typeof direction === 'undefined' ? "ASC" : direction}`
+                queryAllPatentList += ` ORDER BY asset_type ASC, ABS(number) ${typeof direction === 'undefined' ? "ASC" : direction}`
 
                 if(queryAllPatentList !== '')  {
                     patentList = await connection.applicationNew.query(queryAllPatentList,{

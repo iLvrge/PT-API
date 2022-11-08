@@ -697,7 +697,7 @@ let getAddressWithTransactionsListByCompanyID = async( ID, type ) => {
                 ) as temp GROUP BY address  ORDER BY address ASC`;
         }
 
-        const getLastTransaction = `SELECT ee_address_1, ee_address_2 FROM assignee INNER JOIN assignor ON assignor.rf_id = assignee.rf_id WHERE assignee.assignor_and_assignee_id IN (${representativeQuery}) AND (ee_address_1 <> '' OR ee_address_2 <> '') ORDER BY exec_dt DESC LIMIT 1`;
+        const getLastTransaction = `SELECT TRIM(CONCAT(ee_address_1, ee_address_2, ' ', ee_city, ' ', ee_state, ' ', ee_postcode, ' ', ee_country)) as address, ee_address_1, ee_address_2, ee_city, ee_state, ee_postcode, ee_country FROM assignee INNER JOIN assignor ON assignor.rf_id = assignee.rf_id WHERE assignee.assignor_and_assignee_id IN (${representativeQuery}) AND (ee_address_1 <> '' OR ee_address_2 <> '') ORDER BY exec_dt DESC LIMIT 1`;
 
         latestTransaction = await connection.resources.query(getLastTransaction,{
             type: connection.Sequelize.QueryTypes.SELECT,
