@@ -1548,7 +1548,7 @@ let getCompaniesCount = async (DBConnection) => {
  * @param {} DBConnection 
  */
 
-let getCompaniesListWithReports = async (DBConnection) => {
+let getCompaniesListWithReports = async (DBConnection, organisationID) => {
     const Representative = DBConnection.define('ClientRepesentative', ClientRepesentative.mainStructure, ClientRepesentative.options);
     /*
     const getList =  await Representative.findAll({
@@ -1571,6 +1571,18 @@ let getCompaniesListWithReports = async (DBConnection) => {
     ); 
 
     if(getList.length > 0) {
+
+        const query = `SELECT organisation_id, company_id, companies, activities, entities AS no_of_entities, parties AS no_of_parties, employees, transactions AS no_of_transactions, assets AS assets, arrows AS product, 0 AS documents FROM db_uspto.summary WHERE organisation_id = :organisationID `;
+
+        let reports = await connection.resources.query(query, {
+            type: connection.Sequelize.QueryTypes.SELECT,
+            replacements: { organisationID: organisationID },
+            raw: true, 
+            logging: console.log, 
+        }) 
+        const representativeList = [];
+/* 
+
         const representativeList = [], representativeNames = []
 
         const promiseList = getList.map( representative => {
@@ -1586,13 +1598,13 @@ let getCompaniesListWithReports = async (DBConnection) => {
                 raw: true,
                 logging: console.log,
             }
-        ); 
+        );  */
 
         if(reports.length > 0) {
             const updatePromise = getList.map( representative => {
                /*  const company = representative.toJSON() */
                const company = {...representative}
-                const filter = reports.filter( row => row.representative_name == representative.representative_name)
+                const filter = reports.filter( row => row.company_id == representative.representative_id)
                 if(filter.length > 0) {
                     company.assets = filter[0].assets
                     company.no_of_transactions = filter[0].no_of_transactions
