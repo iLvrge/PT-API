@@ -2084,8 +2084,8 @@ route.get("/events/all/assets/to_record", [authJWT.verifyToken], async (req, res
         }
 
         if(companies.length > 0) {
-            const queryToRecord = `SELECT application FROM dashboard_items WHERE organisation_id = :organisationID AND representative_id IN (:companies) AND type = :type GROUP BY application`;
-            const list = await connection.applicationNew.query(queryToRecord,{
+            const queryToRecord = `SELECT application, patent, '' AS eventdate, '13' AS event_code, '' AS event_icon, IF(patent <> '' ,  CONCAT('US',FORMAT(patent, 0)), CONCAT('US',SUBSTRING(application, 1, 2), '/', FORMAT(SUBSTRING(application, 3), 0))) AS template_string FROM dashboard_items WHERE organisation_id = :organisationID AND representative_id IN (:companies) AND type = :type GROUP BY application`;
+            findData = await connection.applicationNew.query(queryToRecord,{
                     type: connection.Sequelize.QueryTypes.SELECT,
                     raw: true,
                     logging: console.log,
@@ -2093,29 +2093,21 @@ route.get("/events/all/assets/to_record", [authJWT.verifyToken], async (req, res
                 }
             );
 
-            if(list != null && list.length > 0) {
+            if(findData != null && findData.length > 0) {
                 const assets = []
-                const promise = list.map( item => {
+                const promise = findData.map( item => {
                     assets.push(`${item.application}`)
                 })
                 await Promise.all(promise)
 
-                const query = `SELECT grant_doc_num, appno_doc_num, eventdate, '13' AS event_code, '' AS event_icon,
-                IF(grant_doc_num <> '' ,  CONCAT('US',FORMAT(grant_doc_num, 0)), CONCAT('US',SUBSTRING(appno_doc_num, 1, 2), '/', FORMAT(SUBSTRING(appno_doc_num, 3), 0))) AS template_string 
-                FROM (
-                    SELECT MAX(grant_doc_num) AS grant_doc_num, MAX(appno_doc_num) AS appno_doc_num, 
-                    date_format(appno_date, '%Y-%m-%d') AS eventdate FROM db_patent_application_bibliographic.application_grant
+
+                const query = `SELECT  appno_doc_num,  date_format(appno_date, '%Y-%m-%d') AS eventdate FROM db_patent_grant_bibliographic.application_publication
                     WHERE appno_doc_num IN (:applications)
-                    GROUP BY appno_doc_num 
-                    UNION  
-                    SELECT '' AS grant_doc_num, MAX(appno_doc_num) AS appno_doc_num, 
-                    date_format(appno_date, '%Y-%m-%d') AS eventdate FROM db_patent_grant_bibliographic.application_publication
-                    WHERE appno_doc_num IN (:applications)
-                    GROUP BY appno_doc_num
-                    
-                ) AS temp`  
+                    GROUP BY appno_doc_num`
+
                 
-                findData = await connection.applicationNew.query(query,{
+                
+                const list = await connection.applicationNew.query(query,{
                         type: connection.Sequelize.QueryTypes.SELECT,
                         raw: true,
                         logging: console.log,
@@ -2123,7 +2115,17 @@ route.get("/events/all/assets/to_record", [authJWT.verifyToken], async (req, res
                     }
                 ); 
                  
-                if(findData.length > 0) {
+                if(findData.length > 0 && list.length) {
+
+                    const promise = findData.map( (item, index) => {
+                        const findIndex = list.findIndex( row => row.appno_doc_num == item.application)
+                        if(findIndex !== -1) {
+                            findData[index].eventdate = list[findIndex].eventdate
+                        }
+                    })
+
+                    await Promise.all(promise)
+
                     let eventCodeIcons = {
                         icon1: SvgIconsContent['13'],
                         icon2: SvgIconsContent['13'],

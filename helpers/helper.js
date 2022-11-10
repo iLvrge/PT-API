@@ -697,7 +697,7 @@ let getAddressWithTransactionsListByCompanyID = async( ID, type ) => {
                 ) as temp GROUP BY address  ORDER BY address ASC`;
         }
 
-        const getLastTransaction = `SELECT ee_address_1, ee_address_2 FROM assignee INNER JOIN assignor ON assignor.rf_id = assignee.rf_id WHERE assignee.assignor_and_assignee_id IN (${representativeQuery}) AND (ee_address_1 <> '' OR ee_address_2 <> '') ORDER BY exec_dt DESC LIMIT 1`;
+        const getLastTransaction = `SELECT TRIM(CONCAT(ee_address_1, ee_address_2, ' ', ee_city, ' ', ee_state, ' ', ee_postcode, ' ', ee_country)) as address, ee_address_1, ee_address_2, ee_city, ee_state, ee_postcode, ee_country FROM assignee INNER JOIN assignor ON assignor.rf_id = assignee.rf_id WHERE assignee.assignor_and_assignee_id IN (${representativeQuery}) AND (ee_address_1 <> '' OR ee_address_2 <> '') ORDER BY exec_dt DESC LIMIT 1`;
 
         latestTransaction = await connection.resources.query(getLastTransaction,{
             type: connection.Sequelize.QueryTypes.SELECT,
@@ -1548,7 +1548,7 @@ let getCompaniesCount = async (DBConnection) => {
  * @param {} DBConnection 
  */
 
-let getCompaniesListWithReports = async (DBConnection) => {
+let getCompaniesListWithReports = async (DBConnection, organisationID) => {
     const Representative = DBConnection.define('ClientRepesentative', ClientRepesentative.mainStructure, ClientRepesentative.options);
     /*
     const getList =  await Representative.findAll({
@@ -1571,6 +1571,18 @@ let getCompaniesListWithReports = async (DBConnection) => {
     ); 
 
     if(getList.length > 0) {
+
+        const query = `SELECT organisation_id, company_id, companies, activities, entities AS no_of_entities, parties AS no_of_parties, employees, transactions AS no_of_transactions, assets AS assets, arrows AS product, 0 AS documents FROM db_uspto.summary WHERE organisation_id = :organisationID `;
+
+        let reports = await connection.resources.query(query, {
+            type: connection.Sequelize.QueryTypes.SELECT,
+            replacements: { organisationID: organisationID },
+            raw: true, 
+            logging: console.log, 
+        }) 
+        const representativeList = [];
+/* 
+
         const representativeList = [], representativeNames = []
 
         const promiseList = getList.map( representative => {
@@ -1586,13 +1598,13 @@ let getCompaniesListWithReports = async (DBConnection) => {
                 raw: true,
                 logging: console.log,
             }
-        ); 
+        );  */
 
         if(reports.length > 0) {
             const updatePromise = getList.map( representative => {
                /*  const company = representative.toJSON() */
                const company = {...representative}
-                const filter = reports.filter( row => row.representative_name == representative.representative_name)
+                const filter = reports.filter( row => row.company_id == representative.representative_id)
                 if(filter.length > 0) {
                     company.assets = filter[0].assets
                     company.no_of_transactions = filter[0].no_of_transactions
@@ -1634,7 +1646,18 @@ let getCompaniesListSumWithReports = async (DBConnection, organisationID) => {
         where: {type: 0}
     });
 
-    if(getList.length > 0) {
+    if(getList.length > 0) { 
+
+        const query = `SELECT organisation_id, companies, activities, SUM(entities) AS no_of_entities , SUM(parties) AS no_of_parties, employees, SUM(transactions) AS no_of_transactions, SUM(assets) AS assets, SUM(arrows) AS product, 0 AS documents FROM db_uspto.summary WHERE organisation_id = :organisationID `;
+
+        let reports = await connection.resources.query(query, {
+            type: connection.Sequelize.QueryTypes.SELECT,
+            replacements: { organisationID: organisationID },
+            raw: true, 
+            logging: console.log,
+            plain: true
+        }) 
+        /* 
         const representativeNames = []
 
         const promiseList = getList.map( representative => {
@@ -1651,7 +1674,7 @@ let getCompaniesListSumWithReports = async (DBConnection, organisationID) => {
                 logging: console.log,
                 plain: true
             }
-        ); 
+        );  */
 
         const queryShareURL = await Share.findOne({
             where: {organisation_id: organisationID}

@@ -617,7 +617,7 @@ route.get("/customers/:id/companies", [authJWT.verifyToken, authJWT.isAdmin, aut
             if(organisation != null && organisation.organisation_id > 0){
                 if(typeof req.connection_db != "undefined" && req.connection_db != null ) {
                     /*const getCompaniesList = await helpers.getCompaniesWithChildren(req.connection_db);*/
-                    const getCompaniesList = await helpers.getCompaniesListWithReports(req.connection_db);
+                    const getCompaniesList = await helpers.getCompaniesListWithReports(req.connection_db, organisationID);
                     res.status(200).json(getCompaniesList);
                 } else {
                     res.status(200).json([]);
@@ -657,7 +657,7 @@ route.delete("/customers/:id/companies", [authJWT.verifyToken, authJWT.isAdmin, 
                     } else {
                         if(!updateKPICompanies.includes(c.parent_id)){
                             updateKPICompanies.push(c.parent_id); 
-                            reUpdateCompanies(c.parent_id);
+                            reUpdateCompanies.push(c.parent_id);
                         }
                     }
                     deleteCompanies.push(c.representative_id);                   
@@ -757,21 +757,7 @@ route.delete("/customers/:id/companies", [authJWT.verifyToken, authJWT.isAdmin, 
                                                 console.log(stdd);
                                                 console.log("DONE");
 
-                                            });
-                                            exec(`php -f /var/www/html/trash/admin_report_represetative_assets_transactions_by_account.php "${req.orgId}" "${company.original_name}"`, (error, stdd, stderr)=> {
-                                                console.log("fill admin_report_represetative_assets_transactions_by_account.php ....")
-                                                console.log(error); 
-                                                console.log(stderr);
-                                                console.log(stdd);
-                                                console.log("DONE");
-                                                exec(`php -f /var/www/html/trash/report_represetative_assets_transactions_by_account.php "${req.orgId}" "${company.original_name}"`, (error, stdd, stderr)=> {
-                                                    console.log("fill report_represetative_assets_transactions_by_account.php ....")
-                                                    console.log(error); 
-                                                    console.log(stderr);
-                                                    console.log(stdd);
-                                                    console.log("DONE");
-                                                });
-                                            });
+                                            }); 
                                         });
                                         return company;
                                     });
@@ -799,21 +785,7 @@ route.delete("/customers/:id/companies", [authJWT.verifyToken, authJWT.isAdmin, 
                                 console.log(stderr);
                                 console.log(stdd);
                                 console.log("DONE");
-                            });
-                            exec(`php -f /var/www/html/trash/admin_report_represetative_assets_transactions_by_account.php "${req.orgId}" ""`, (error, stdd, stderr)=> {
-                                console.log("fill admin_report_represetative_assets_transactions_by_account.php ....")
-                                console.log(error); 
-                                console.log(stderr);
-                                console.log(stdd);
-                                console.log("DONE");
-                                exec(`php -f /var/www/html/trash/report_represetative_assets_transactions_by_account.php "${req.orgId}" ""`, (error, stdd, stderr)=> {
-                                    console.log("fill report_represetative_assets_transactions_by_account.php ....")
-                                    console.log(error); 
-                                    console.log(stderr);
-                                    console.log(stdd);
-                                    console.log("DONE");
-                                });
-                            });
+                            }); 
 
                             res.status(200).send("Companies deleted.");
                         }
@@ -1607,12 +1579,12 @@ route.get("/customers/:id/patents", [authJWT.verifyToken, authJWT.isAdmin], asyn
                 }
                 let queryAllPatentList = '';
                 if(Array.isArray(representativeID) && representativeID.length > 0) {
-                    queryAllPatentList = 'SELECT CASE WHEN grant_doc_num = "" OR grant_doc_num IS NULL THEN appno_doc_num ELSE grant_doc_num END AS number, appno_doc_num as application, CASE WHEN grant_doc_num = "" OR grant_doc_num IS NULL THEN 1 ELSE 0 END AS asset_type FROM assets WHERE organisation_id = :organisationID AND representative_id IN (:representativeID) AND date_format(grant_date, "%Y") >= :year GROUP BY number, application';
+                    queryAllPatentList = 'SELECT CASE WHEN grant_doc_num = "" OR grant_doc_num IS NULL THEN appno_doc_num ELSE grant_doc_num END AS number, appno_doc_num as application, CASE WHEN grant_doc_num = "" OR grant_doc_num IS NULL THEN 1 ELSE 0 END AS asset_type FROM assets WHERE organisation_id = :organisationID AND company_id IN (:representativeID) AND date_format(grant_date, "%Y") >= :year GROUP BY number, application';
                 } else {
                     queryAllPatentList = 'SELECT CASE WHEN grant_doc_num = "" OR grant_doc_num IS NULL THEN appno_doc_num ELSE grant_doc_num END AS number, appno_doc_num as application, CASE WHEN grant_doc_num = "" OR grant_doc_num IS NULL THEN 1 ELSE 0 END AS asset_type FROM assets WHERE organisation_id = :organisationID AND date_format(grant_date, "%Y") >= :year GROUP BY number, application ';
                 }
 
-                queryAllPatentList += ` ORDER BY asset_type ASC, number * 1 ${typeof direction === 'undefined' ? "ASC" : direction}`
+                queryAllPatentList += ` ORDER BY asset_type ASC, ABS(number) ${typeof direction === 'undefined' ? "ASC" : direction}`
 
                 if(queryAllPatentList !== '')  {
                     patentList = await connection.applicationNew.query(queryAllPatentList,{
