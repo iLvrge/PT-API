@@ -2084,7 +2084,7 @@ route.get("/events/all/assets/to_record", [authJWT.verifyToken], async (req, res
         }
 
         if(companies.length > 0) {
-            const queryToRecord = `SELECT application, patent, '' AS eventdate, '13' AS event_code, '' AS event_icon, IF(patent <> '' ,  CONCAT('US',FORMAT(patent, 0)), CONCAT('US',SUBSTRING(application, 1, 2), '/', FORMAT(SUBSTRING(application, 3), 0))) AS template_string FROM dashboard_items WHERE organisation_id = :organisationID AND representative_id IN (:companies) AND type = :type GROUP BY application`;
+            const queryToRecord = `SELECT application, patent, '' AS eventdate, '13' AS event_code, '' AS event_icon, IF(patent <> '' , FORMAT(patent, 0), CONCAT(SUBSTRING(application, 1, 2), '/', FORMAT(SUBSTRING(application, 3), 0))) AS template_string FROM dashboard_items WHERE organisation_id = :organisationID AND representative_id IN (:companies) AND type = :type GROUP BY application`;
             findData = await connection.applicationNew.query(queryToRecord,{
                     type: connection.Sequelize.QueryTypes.SELECT,
                     raw: true,
@@ -2137,6 +2137,58 @@ route.get("/events/all/assets/to_record", [authJWT.verifyToken], async (req, res
         }
         res.status(200).json({main: findData, other, icons});
     } catch (err) {
+        console.log(err);
+        res.status(500).send("Internal server error.");
+    }
+})
+
+route.get("/events/all/assets/to_record/detail/:application", [authJWT.verifyToken], async (req, res) =>{   
+    let {application} = req.params;
+
+    try {
+
+        const agentQuery = `SELECT name FROM db_patent_application_bibliographic.lawfirm WHERE appno_doc_num = :application`;
+
+        const agent = await connection.applicationNew.query(agentQuery,{
+                type: connection.Sequelize.QueryTypes.SELECT,
+                raw: true, 
+                logging: console.log,
+                replacements: { application },
+            }
+        );
+
+        const applicantQuery = `SELECT original_name FROM db_patent_application_bibliographic.applicant WHERE appno_doc_num = :application UNION SELECT original_name FROM db_patent_grant_bibliographic.applicant WHERE appno_doc_num = :application `;
+
+        const applicant = await connection.applicationNew.query(applicantQuery,{
+                type: connection.Sequelize.QueryTypes.SELECT,
+                raw: true,
+                logging: console.log,
+                replacements: { application },
+            }
+        );
+
+        const assigneeQuery = `SELECT original_name FROM db_patent_application_bibliographic.assignee WHERE appno_doc_num = :application UNION SELECT original_name FROM db_patent_grant_bibliographic.assignee WHERE appno_doc_num = :application `;
+
+        const assignee = await connection.applicationNew.query(assigneeQuery,{
+                type: connection.Sequelize.QueryTypes.SELECT,
+                raw: true,
+                logging: console.log,
+                replacements: { application },
+            }
+        );
+
+        const inventorQuery = `SELECT name FROM db_patent_application_bibliographic.inventor WHERE appno_doc_num = :application UNION SELECT name FROM db_patent_grant_bibliographic.inventor WHERE appno_doc_num = :application `;
+
+        const inventor = await connection.applicationNew.query(inventorQuery,{
+                type: connection.Sequelize.QueryTypes.SELECT,
+                raw: true,
+                logging: console.log,
+                replacements: { application },
+            }
+        );
+
+        res.status(200).json({agent, applicant, assignee, inventor});  
+    } catch (e) {
         console.log(err);
         res.status(500).send("Internal server error.");
     }
