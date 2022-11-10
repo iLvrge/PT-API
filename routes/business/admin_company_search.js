@@ -2851,18 +2851,14 @@ route.post("/company/:id/add_bulk_companies", [authJWT.verifyToken, authJWT.isAd
         } else {
             if(client_id > 0) {
                 
-                let query = `SELECT aaa.assignor_and_assignee_id, aaa.name AS name, r.representative_name, r.representative_id FROM assignor_and_assignee as aaa LEFT JOIN representative as r ON r.representative_id = aaa.representative_id WHERE `
+                let query = `SELECT aaa.assignor_and_assignee_id, aaa.name AS name, r.representative_name, r.representative_id FROM assignor_and_assignee as aaa LEFT JOIN representative as r ON r.representative_id = aaa.representative_id WHERE  aaa.assignor_and_assignee_id IN (:IDs) OR  aaa.name IN (:IDs) `
 
 
                 if(representative_ids != undefined && representative_ids != '') {
-                    representative_ids = JSON.parse(representative_ids)
-
-                    query += ` aaa.assignor_and_assignee_id IN (:IDs) `
+                    representative_ids = JSON.parse(representative_ids) 
                 } else {
                     if(representatives != undefined && representatives != '') {
-                        representative_ids = JSON.parse(representatives)
-
-                        query += ` aaa.name IN (:IDs) `
+                        representative_ids = JSON.parse(representatives) 
                     }
                 }
 
