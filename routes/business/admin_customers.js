@@ -1552,7 +1552,7 @@ route.put("/customers" , [authJWT.verifyToken, authJWT.isAdmin], async (req, res
                     organisation_type: req.body.organisation_type,
                     subscribtion: typeof req.body.subscribtion  !== 'undefined' ? req.body.subscribtion : 1
                 });
-                res.status(200).json({name: org.name, logo: org.logo, organisation_type: org.organisation_type, subscribtion: org.subscribtion});   
+                res.status(200).json({name: org.name, logo: org.logo, organisation_type: org.organisation_type, subscribtion: org.subscribtion, organisation_id: org.organisation_id});   
             } else {
                 res.status(403).send("Client not found");
             }
