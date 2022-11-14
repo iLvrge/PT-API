@@ -732,6 +732,74 @@ route.get("/asset_types/assets", [authJWT.verifyToken, clientDBConnection.connec
     }
 })
 
+route.post("/asset_types/assets/agents", [authJWT.verifyToken, clientDBConnection.connect], async(req, res, next) => {
+    try {
+        let result = [['Year', 'Agent', 'filling']], getList = []
+
+        let { list, total, type, selectedCompanies, tabs, customers, assignments, data_type, format_type } = req.body
+        
+        const where = { year: 1997, organisationID: req.orgId, ownedType: 30}  
+
+        const companies = JSON.parse(selectedCompanies)
+        if(companies.length > 0) {
+            where.company_id = companies
+        }
+        let query = '';
+        if(typeof data_type != 'undefined') { 
+
+            const ownedAssets = `SELECT application FROM db_new_application.dashboard_items WHERE organisation_id = :organisationID AND representative_id = :company_id AND type = :ownedType GROUP BY application `;
+
+            const getAssetsData = await connection.application.query(ownedAssets,{
+                    type: connection.Sequelize.QueryTypes.SELECT,
+                    raw: true,
+                    logging: console.log,
+                    replacements: where,
+                }
+            ); 
+
+            if(getAssetsData != null && getAssetsData.length > 0) {
+                const assets = [];
+                const promise = getAssetsData.map( row => {
+                    assets.push(`${row.application}`)
+                })
+
+                await Promise.all(promise)
+
+                if(data_type == 1) {
+                    /** 
+                    * Filling 
+                    */
+                    query += `SELECT name, year, COUNT(appno_doc_num) AS counter FROM (  SELECT l.name, l.appno_doc_num, date_format(ag.appno_date, '%Y') AS year  FROM db_patent_application_bibliographic.lawfirm AS l INNER JOIN  db_patent_application_bibliographic.application_grant AS ag ON ag.appno_doc_num = l.appno_doc_num WHERE l.name IN (SELECT lawfirm FROM db_new_application.dashboard_items WHERE organisation_id = :organisationID AND representative_id = :company_id AND type = :lawfirmType GROUP BY lawfirm) AND l.appno_doc_num IN (:assets)) AS temp GROUP BY name, year`
+                } else {
+                    /**
+                     * Assignments
+                     */ 
+                    query = `SELECT name, year, COUNT(appno_doc_num) AS counter FROM (
+                        Select IF(rlf.representative_name <> '' , rlf.representative_name, l.name) AS name, doc.appno_doc_num, date_format(doc.appno_date, '%Y') AS year from db_new_application.activity_parties_transactions AS apt
+                        INNER JOIN db_uspto.correspondent as cor ON cor.rf_id = apt.rf_id
+                        INNER JOIN db_uspto.documentid AS doc ON doc.rf_id = apt.rf_id
+                        INNER JOIN db_uspto.law_firm AS l ON l.name = cor.cname
+                        LEFT JOIN db_uspto.representative_law_firm AS rlf ON rlf.representative_id = l.representative_id
+                        Where apt.organisation_id = :organisationID and apt.company_id = :company_id and doc.appno_doc_num IN (:assets)
+                    ) AS temp
+                    GROUP BY name, year`
+                } 
+
+                getList = await connection.application.query(query,{
+                        type: connection.Sequelize.QueryTypes.SELECT,
+                        raw: true,
+                        logging: console.log,
+                        replacements: {...where, lawfirmType: 40, assets},
+                    }
+                ); 
+            }
+        }
+        res.status(200).json(getList);
+    } catch (err) {
+        console.log(err);
+        res.status(500).send("Internal server error.");
+    }
+})
 
 route.post("/asset_types/assets/family", [authJWT.verifyToken, clientDBConnection.connect], async(req, res, next) => {
     try {
