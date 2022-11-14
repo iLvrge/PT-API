@@ -738,12 +738,14 @@ route.post("/asset_types/assets/agents", [authJWT.verifyToken, clientDBConnectio
 
         let { list, total, type, selectedCompanies, tabs, customers, assignments, data_type, format_type } = req.body
         
-        const where = { year: 1997, organisationID: req.orgId, ownedType: 30}  
+        const where = { year: 1997, organisationID: req.orgId,}  
 
         const companies = JSON.parse(selectedCompanies)
         if(companies.length > 0) {
             where.company_id = companies
         }
+        where.ownedType = helpers.findLayout(type);
+
         let query = '';
         if(typeof data_type != 'undefined') { 
 
