@@ -1993,14 +1993,14 @@ route.get("/patents/:patentNumber/assignments",[authJWT.verifyToken, authJWT.isA
 route.get("/customers/retrieve_cited_patents/:customerID",[authJWT.verifyToken, authJWT.isAdmin], async (req, res) =>{ 
     const {customerID} = req.params
     const {companies} = req.query
-    spawn('node', ['/var/www/html/script/retrieve_cited_patents_assignees.js', customerID, `${companies}`]);
+    spawn('node', ['/var/www/html/script/retrieve_cited_patents_assignees.js', customerID, `${companies}`, '> name_to_domain.log 2>&1']);
     res.status(200).send("Run retireved assignee script");
 })
 
 route.get("/customers/retrieve_cited_patents_domain/:customerID/:apiName",[authJWT.verifyToken, authJWT.isAdmin], async (req, res) =>{ 
     const {customerID, apiName} = req.params
     const {assignees} = req.query
-    const assigneeLogos = spawn('node', ['/var/www/html/script/name_to_domain_api.js', customerID, apiName, assignees, 0]);
+    const assigneeLogos = spawn('node', ['/var/www/html/script/name_to_domain_api.js', customerID, apiName, assignees, 0, '> name_to_domain.log 2>&1']);
 
     assigneeLogos.stdout.on('data', (data) => {
         console.log(`assigneeLogos downloadFileSpawn.stdout: ${data}`)

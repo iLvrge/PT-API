@@ -221,7 +221,7 @@ route.post('/parties/assignor', [authJWT.verifyToken, clientDBConnection.connect
 
 route.post('/parties', [authJWT.verifyToken, clientDBConnection.connect], async(req, res, next) => {
     try{
-        let {selectedCompanies, search} = req.body, getList = [];
+        let {selectedCompanies, search, layout, type} = req.body, getList = [];
         /**
          * Activity acquisition, mergerIn, employees
          */
@@ -231,21 +231,40 @@ route.post('/parties', [authJWT.verifyToken, clientDBConnection.connect], async(
         /**
          * Find company name
          */
+        let layoutID = 32;
+
+        if(typeof layout != 'undefined') {
+            layoutID = helpers.findLayout(layout)
+        }
+
+        if(typeof search != 'undefined' && search == 'all') {
+            layoutID = 15;
+        }
        
         const getRepresentativeName = await helpers.findCompanyName(req.connection_db, selectedCompanies)
 
         if( getRepresentativeName != null) {
-            let subQuery = `SELECT application FROM dashboard_items WHERE organisation_id = :organisationID AND representative_id IN (:selectedCompanies) AND type = 32`;
+
+            let subQuery = `SELECT application FROM dashboard_items WHERE organisation_id = :organisationID AND representative_id IN (:selectedCompanies) AND type = :layoutID` 
+             
             if(typeof search != 'undefined' && search == 'all') {
-                subQuery = `SELECT appno_doc_num FROM assets WHERE organisation_id = :organisationID AND company_id IN (:selectedCompanies) AND layout_id = 15`;
+                subQuery = `SELECT appno_doc_num FROM assets WHERE organisation_id = :organisationID AND company_id IN (:selectedCompanies) AND layout_id = :layoutID`;
             }
-            const query = `SELECT assignor_and_assignee_id AS id, name, assignee, SUM(app_count) as number FROM (SELECT aaa.assignor_and_assignee_id, aaa.representative_id, (CASE  WHEN apt.activity_id = 10 THEN "Employees" WHEN r.representative_name <> "" THEN r.representative_name ELSE aaa.name END) AS name, COUNT(DISTINCT appno_doc_num) AS app_count, "${getRepresentativeName.representative_name}" as assignee  FROM db_new_application.activity_parties_transactions AS apt
-            INNER JOIN db_uspto.documentid AS doc ON doc.rf_id = apt.rf_id
-            INNER JOIN db_uspto.assignor_and_assignee AS aaa ON aaa.assignor_and_assignee_id = apt.assignor_and_assignee_id
-            LEFT JOIN db_uspto.representative As r ON r.representative_id = aaa.representative_id
-            WHERE apt.organisation_id = :organisationID and apt.company_id IN (:selectedCompanies)
-            AND activity_id IN (:acitivityID) AND date_format(doc.appno_date, '%Y') > :year AND appno_doc_num IN (${subQuery})
-            GROUP BY aaa.assignor_and_assignee_id) AS temp GROUP BY name HAVING assignee <> name ORDER BY number DESC, name ASC ` 
+
+            let query = ''
+
+            if(typeof type != 'undefined' && type == 'filled') {
+                query += `SELECT assignor_and_assignee_id AS id, name, assignee, SUM(app_count) as number FROM ( SELECT aaa.assignor_and_assignee_id, aaa.representative_id, IF(r.representative_name <> "" , r.representative_name, aaa.name) AS name,  COUNT(DISTINCT appno_doc_num) AS app_count, "${getRepresentativeName.representative_name}" as assignee  FROM db_patent_grant_bibliographic.inventor_new  AS apt INNER JOIN db_uspto.assignor_and_assignee AS aaa ON aaa.assignor_and_assignee_id = apt.assignor_and_assignee_id
+                LEFT JOIN db_uspto.representative As r ON r.representative_id = aaa.representative_id WHERE appno_doc_num IN (${subQuery}) GROUP BY aaa.assignor_and_assignee_id ) AS temp GROUP BY name HAVING assignee <> name ORDER BY number DESC, name ASC `
+            } else {
+                query += `SELECT assignor_and_assignee_id AS id, name, assignee, SUM(app_count) as number FROM (SELECT aaa.assignor_and_assignee_id, aaa.representative_id, (CASE  WHEN apt.activity_id = 10 THEN "Employees" WHEN r.representative_name <> "" THEN r.representative_name ELSE aaa.name END) AS name, COUNT(DISTINCT appno_doc_num) AS app_count, "${getRepresentativeName.representative_name}" as assignee  FROM db_new_application.activity_parties_transactions AS apt
+                INNER JOIN db_uspto.documentid AS doc ON doc.rf_id = apt.rf_id
+                INNER JOIN db_uspto.assignor_and_assignee AS aaa ON aaa.assignor_and_assignee_id = apt.assignor_and_assignee_id
+                LEFT JOIN db_uspto.representative As r ON r.representative_id = aaa.representative_id
+                WHERE apt.organisation_id = :organisationID and apt.company_id IN (:selectedCompanies)
+                AND activity_id IN (:acitivityID) AND date_format(doc.appno_date, '%Y') > :year AND appno_doc_num IN (${subQuery})
+                GROUP BY aaa.assignor_and_assignee_id) AS temp GROUP BY name HAVING assignee <> name ORDER BY number DESC, name ASC ` 
+            } 
 
             getList =  await connection.applicationNew.query(query,{
                 type: connection.Sequelize.QueryTypes.SELECT,
@@ -254,7 +273,7 @@ route.post('/parties', [authJWT.verifyToken, clientDBConnection.connect], async(
                 replacements: {
                     organisationID: req.orgId,
                     selectedCompanies,
-                    layoutID: 15,
+                    layoutID,
                     acitivityID: [1, 6, 10],
                     year: 1997
                 }
