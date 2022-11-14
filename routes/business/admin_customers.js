@@ -2000,7 +2000,7 @@ route.get("/customers/retrieve_cited_patents/:customerID",[authJWT.verifyToken, 
 route.get("/customers/retrieve_cited_patents_domain/:customerID/:apiName",[authJWT.verifyToken, authJWT.isAdmin], async (req, res) =>{ 
     const {customerID, apiName} = req.params
     const {assignees} = req.query
-    const assigneeLogos = spawn('node', ['/var/www/html/script/name_to_domain_api.js', customerID, apiName, assignees, 0, '>', 'name_to_domain.log', '2>&1']);
+    const assigneeLogos = spawn('node', ['/var/www/html/script/name_to_domain_api.js', customerID, apiName, assignees, 0]);
 
     assigneeLogos.stdout.on('data', (data) => {
         console.log(`assigneeLogos downloadFileSpawn.stdout: ${data}`)
@@ -2020,7 +2020,7 @@ route.get("/customers/retrieve_cited_patents_domain/:customerID/:apiName",[authJ
 
 route.post("/customers/retrieve_cited_patents_logo",[authJWT.verifyToken, authJWT.isAdmin], async (req, res) =>{ 
     const {client_id, api_name, assignees} = req.body
-    const assigneeLogos = spawn('node', ['/var/www/html/script/name_to_domain_api.js', client_id, api_name, assignees, 1, '>', 'name_to_domain.log', '2>&1']);
+    const assigneeLogos = spawn('node', ['/var/www/html/script/name_to_domain_api.js', client_id, api_name, assignees, 1]);
 
     assigneeLogos.stdout.on('data', (data) => {
         console.log(`assigneeLogos downloadFileSpawn.stdout: ${data}`)
