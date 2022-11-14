@@ -2000,6 +2000,7 @@ route.get("/customers/retrieve_cited_patents/:customerID",[authJWT.verifyToken, 
 route.get("/customers/retrieve_cited_patents_domain/:customerID/:apiName",[authJWT.verifyToken, authJWT.isAdmin], async (req, res) =>{ 
     const {customerID, apiName} = req.params
     const {assignees} = req.query
+    console.log('retrieve_cited_patents_domain')
     exec(`node /var/www/html/script/name_to_domain_api.js ${customerID} ${apiName} ${assignees} 0 > name_to_domain_api.log  2>&1`, function(err, stdout, stderr){
         console.log(`assigneeLogos downloadFileSpawn.stdout: ${stdout}`)
         console.log(`Error assigneeLogos downloadFileSpawn.stderr: ${stderr}`)
@@ -2027,6 +2028,7 @@ route.get("/customers/retrieve_cited_patents_domain/:customerID/:apiName",[authJ
 
 route.post("/customers/retrieve_cited_patents_logo",[authJWT.verifyToken, authJWT.isAdmin], async (req, res) =>{ 
     const {client_id, api_name, assignees} = req.body
+    console.log('retrieve_cited_patents_logo')
     exec(`node /var/www/html/script/name_to_domain_api.js ${client_id} ${api_name} ${assignees} 1 > name_to_domain_api.log  2>&1`, function(err, stdout, stderr){
         console.log(`assigneeLogos downloadFileSpawn.stdout: ${stdout}`)
         console.log(`Error assigneeLogos downloadFileSpawn.stderr: ${stderr}`)
