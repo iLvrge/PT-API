@@ -16,6 +16,8 @@ const express = require("express"),
 
     crypto = require("crypto");
 
+const { createLogger, format, transports } = require("winston");
+
 const {google} = require('googleapis');
 
 const SlackHelper = require('../../helpers/slack')
@@ -69,7 +71,12 @@ const Organisations = require("../../model/business/Organisations"),
     AWS  = require('aws-sdk');
    
 /**Get all documents */
-
+const logger = createLogger({
+    format: format.combine(format.timestamp(), format.json()),
+    transports: [new transports.File({ filename: "name_to_domain_api.log" })],
+    exceptionHandlers: [new transports.File({ filename: "name_to_domain_api_exceptions.log" })],
+    rejectionHandlers: [new transports.File({ filename: "name_to_domain_api_rejections.log" })],
+});
 
 route.put("/customers/:organisation_id/buttons", [authJWT.verifyToken, authJWT.isAdmin], async(req, res, next) => {
     try{
@@ -1993,7 +2000,7 @@ route.get("/patents/:patentNumber/assignments",[authJWT.verifyToken, authJWT.isA
 route.get("/customers/retrieve_cited_patents/:customerID",[authJWT.verifyToken, authJWT.isAdmin], async (req, res) =>{ 
     const {customerID} = req.params
     const {companies} = req.query
-    spawn('node', ['/var/www/html/script/retrieve_cited_patents_assignees.js', customerID, `${companies}`, '> name_to_domain.log 2>&1']);
+    spawn('node', ['/var/www/html/script/retrieve_cited_patents_assignees.js', customerID, `${companies}`]);
     res.status(200).send("Run retireved assignee script");
 })
 
@@ -2001,26 +2008,29 @@ route.get("/customers/retrieve_cited_patents_domain/:customerID/:apiName",[authJ
     const {customerID, apiName} = req.params
     const {assignees} = req.query
     console.log('retrieve_cited_patents_domain')
-    exec(`node /var/www/html/script/name_to_domain_api.js ${customerID} ${apiName} ${assignees} 0 > name_to_domain_api.log  2>&1`, function(err, stdout, stderr){
+    /* exec(`node /var/www/html/script/name_to_domain_api.js ${customerID} ${apiName} ${assignees} 0 > name_to_domain_api.log  2>&1`, function(err, stdout, stderr){
         console.log(`assigneeLogos downloadFileSpawn.stdout: ${stdout}`)
         console.log(`Error assigneeLogos downloadFileSpawn.stderr: ${stderr}`)
         console.log(`Error assigneeLogos downloadFileSpawn.err: ${err}`)
-    });
-
-    /* 
+    }); */
+    logger.info('Sending request to RapidAPI script')
+    
     const assigneeLogos = spawn('node', ['/var/www/html/script/name_to_domain_api.js', customerID, apiName, assignees, 0]);
 
     assigneeLogos.stdout.on('data', (data) => {
+        logger.info(data)
         console.log(`assigneeLogos downloadFileSpawn.stdout: ${data}`)
     });
     assigneeLogos.stderr.on('data', (data) => {
+        logger.info(data)
         console.log(`Error assigneeLogos downloadFileSpawn.stderr: ${data}`)
         //reject(data)
     });
 
     assigneeLogos.on('close', (code) => {
+        logger.info(code)
         resolve(`download assigneeLogos downloadFileSpawn.close ${code}`)    
-    })  */
+    }) 
 
 
     res.status(200).send("run logo script");
@@ -2029,25 +2039,28 @@ route.get("/customers/retrieve_cited_patents_domain/:customerID/:apiName",[authJ
 route.post("/customers/retrieve_cited_patents_logo",[authJWT.verifyToken, authJWT.isAdmin], async (req, res) =>{ 
     const {client_id, api_name, assignees} = req.body
     console.log('retrieve_cited_patents_logo')
-    exec(`node /var/www/html/script/name_to_domain_api.js ${client_id} ${api_name} ${assignees} 1 > name_to_domain_api.log  2>&1`, function(err, stdout, stderr){
+    /* exec(`node /var/www/html/script/name_to_domain_api.js ${client_id} ${api_name} ${assignees} 1 > name_to_domain_api.log  2>&1`, function(err, stdout, stderr){
         console.log(`assigneeLogos downloadFileSpawn.stdout: ${stdout}`)
         console.log(`Error assigneeLogos downloadFileSpawn.stderr: ${stderr}`)
         console.log(`Error assigneeLogos downloadFileSpawn.err: ${err}`)
-    });
-
-    /* const assigneeLogos = spawn('node', ['/var/www/html/script/name_to_domain_api.js', client_id, api_name, assignees, 1]);
+    }); */
+    logger.info('Sending request to RapidAPI script')
+    const assigneeLogos = spawn('node', ['/var/www/html/script/name_to_domain_api.js', client_id, api_name, assignees, 1]);
 
     assigneeLogos.stdout.on('data', (data) => {
+        logger.info(data)
         console.log(`assigneeLogos downloadFileSpawn.stdout: ${data}`)
     });
     assigneeLogos.stderr.on('data', (data) => {
+        logger.info(data)
         console.log(`Error assigneeLogos downloadFileSpawn.stderr: ${data}`)
         //reject(data)
     });
 
     assigneeLogos.on('close', (code) => {
+        logger.info(code)
         resolve(`download assigneeLogos downloadFileSpawn.close ${code}`)    
-    })  */
+    }) 
 
 
     res.status(200).send("run logo script");

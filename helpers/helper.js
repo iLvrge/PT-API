@@ -3572,7 +3572,7 @@ const ArrayInterString = (data) => {
 
 const findFilterAssets = async(req) => {
     try {
-        let { list, total, type, selectedCompanies, tabs, customers, assignments, data_type, format_type } = req.body
+        let { list, total, type, selectedCompanies, tabs, customers, assignments, data_type, format_type, other_mode, sale, license } = req.body
         
         const where = { year: 1997, organisationID: req.orgId}  
 
@@ -3583,20 +3583,24 @@ const findFilterAssets = async(req) => {
         let query = '';
         if(typeof data_type != 'undefined' && data_type == 1) {
             query = "SELECT appno_doc_num FROM owned_assets WHERE organisation_id = :organisationID AND company_id IN (:company_id)"
-        } else {
-            if(list != '') {
+        } else { 
+            if(list != '') { 
                 list = JSON.parse(list);
     
-                if(list.length > 0) {
-                    
-                    
+                if(list.length > 0) { 
                     if(parseInt(total) != list.length) {
                         /**
                          * Get List
                          */
     
-                        if(typeof other_mode != 'undefined' && other_mode == 'true') {
+                        if((typeof other_mode != 'undefined' && other_mode == 'true') || typeof sale != 'undefined' || typeof license != 'undefined') {
                             query = `SELECT appno_doc_num FROM db_new_application.assets_for_sale AS assets WHERE assets.organisation_id = :organisationID `
+
+                            if(typeof sale != 'undefined'  || typeof license != 'undefined') {
+                                query += ` AND type = :saleLicenceType `
+
+                                where.saleLicenceType = typeof sale != 'undefined' && sale == 1 ? 2 : 4
+                            }  
                         } else {
                             if(typeof type !== 'undefined') {
                                 where.layoutID = findLayout(type)        
@@ -3666,7 +3670,25 @@ const findFilterAssets = async(req) => {
                         
                         query += ` GROUP BY appno_doc_num`;
                     }
+                } else if(typeof sale != 'undefined' || typeof license != 'undefined') { 
+                    query = `SELECT appno_doc_num FROM db_new_application.assets_for_sale AS assets WHERE assets.organisation_id = :organisationID `
+    
+                    if(typeof sale != 'undefined'  || typeof license != 'undefined') {
+                        query += ` AND type = :saleLicenceType `
+    
+                        where.saleLicenceType = typeof sale != 'undefined' && sale == 1 ? 2 : 4 
+                    }  
+                    query += ` GROUP BY appno_doc_num`;
                 }
+            } else if(typeof sale != 'undefined' || typeof license != 'undefined') { 
+                query = `SELECT appno_doc_num FROM db_new_application.assets_for_sale AS assets WHERE assets.organisation_id = :organisationID `
+
+                if(typeof sale != 'undefined'  || typeof license != 'undefined') {
+                    query += ` AND type = :saleLicenceType `
+
+                    where.saleLicenceType = typeof sale != 'undefined' && sale == 1 ? 2 : 4 
+                }  
+                query += ` GROUP BY appno_doc_num`;
             }
         }
         if(query != '') {
