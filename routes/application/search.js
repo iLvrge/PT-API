@@ -2,9 +2,7 @@ const express = require("express");
 
 const route = express.Router();
 
-const connection = require("../../config/db.config");
-
-//require the Model
+const connection = require("../../config/db.config");  
 
 const authJWT = require("../../helpers/verifyJwtToken");
 
