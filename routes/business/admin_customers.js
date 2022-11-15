@@ -69,6 +69,7 @@ const Organisations = require("../../model/business/Organisations"),
     RepresentativeTransactions = require("../../model/resources/RepresentativeTransactions"),
 
     AWS  = require('aws-sdk');
+const LogMessages = require("../../model/application/LogMessages");
    
 /**Get all documents */
 const logger = createLogger({
@@ -851,6 +852,26 @@ route.get("/customers/:id/reports", [authJWT.verifyToken, authJWT.isAdmin, authJ
         res.status(400).send("Invalid inputs");
     } 
 });
+
+route.get("/customers/:id/reclassify", [authJWT.verifyToken, authJWT.isAdmin], async (req, res, next) => {
+    try{
+        let organisationID = req.params.id;
+        if(organisationID > 0){
+            const getClassifyData = await LogMessages.findAll({
+                where: {organisation_id: organisationID},
+                order: [['id','DESC']]
+            })
+
+            res.status(200).json(getClassifyData);
+        } else {
+            res.status(400).send("Invalid inputs");
+        }       
+    } catch( err ) {
+        console.log(err);
+        res.status(400).send("Invalid inputs");
+    } 
+});
+
 
 route.get("/customers/:id/users", [authJWT.verifyToken, authJWT.isAdmin, authJWT.addClientID, clientDBConnection.connect], (req, res, next) => {
     (async () => {
