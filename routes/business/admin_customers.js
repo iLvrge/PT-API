@@ -74,9 +74,9 @@ const LogMessages = require("../../model/application/LogMessages");
 /**Get all documents */
 const logger = createLogger({
     format: format.combine(format.timestamp(), format.json()),
-    transports: [new transports.File({ filename: "name_to_domain_api.log" })],
-    exceptionHandlers: [new transports.File({ filename: "name_to_domain_api_exceptions.log" })],
-    rejectionHandlers: [new transports.File({ filename: "name_to_domain_api_rejections.log" })],
+    transports: [new transports.File({ filename: "/var/www/html/name_to_domain_api.log" })],
+    exceptionHandlers: [new transports.File({ filename: "/var/www/html/name_to_domain_api_exceptions.log" })],
+    rejectionHandlers: [new transports.File({ filename: "/var/www/html/name_to_domain_api_rejections.log" })],
 });
 
 route.put("/customers/:organisation_id/buttons", [authJWT.verifyToken, authJWT.isAdmin], async(req, res, next) => {
@@ -855,10 +855,11 @@ route.get("/customers/:id/reports", [authJWT.verifyToken, authJWT.isAdmin, authJ
 
 route.get("/customers/:id/reclassify", [authJWT.verifyToken, authJWT.isAdmin], async (req, res, next) => {
     try{
-        let organisationID = req.params.id;
+        const organisationID = req.params.id;
+        const {companies} = req.query
         if(organisationID > 0){
             const getClassifyData = await LogMessages.findAll({
-                where: {organisation_id: organisationID},
+                where: {organisation_id: organisationID, company_id: companies},
                 order: [['id','DESC']]
             })
 
