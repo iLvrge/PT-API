@@ -2284,7 +2284,7 @@ route.get("/events/assets/status/:applicationNumber", [authJWT.verifyToken], asy
         let getList = []
         if(applicationNumber != undefined && applicationNumber != null) {
 
-            const queryStatus = `SELECT status
+            const queryStatus = `SELECT status, status_date
             FROM db_uspto.application_status
             WHERE appno_doc_num = :applicationNumber`
             const getStatusData = await connection.application.query(queryStatus,{
@@ -2322,14 +2322,16 @@ route.get("/events/assets/status/:applicationNumber", [authJWT.verifyToken], asy
             let endDate = ''
             if(getAppData !== null) {
                 endDate = moment(new Date(getAppData.appno_date)).add(20, 'years').format('YYYY-MM-DD')
-                let status = ''
+                let status = '', eventdate = ''
                 if(getStatusData !== null) {
                     status = getStatusData.status
+                    eventdate = moment(new Date(getStatusData.status_date)).add(20, 'years').format('YYYY-MM-DD')
                 }
                 getList.push({
                     id: 1,
                     start_date: getAppData.appno_date,
                     end_date: endDate,
+                    eventdate,
                     status
                 })
             }
@@ -2340,7 +2342,8 @@ route.get("/events/assets/status/:applicationNumber", [authJWT.verifyToken], asy
                     id: 2,
                     status: 'Term Adjustment',
                     start_date: endDate,
-                    end_date: moment(new Date(endDate)).add(getExtensionData.extension, 'days').format('YYYY-MM-DD') 
+                    end_date: moment(new Date(endDate)).add(getExtensionData.extension, 'days').format('YYYY-MM-DD'),
+                    eventdate: ''
                 })
             }
             /* 
