@@ -2282,7 +2282,20 @@ route.get("/events/assets/status/:applicationNumber", [authJWT.verifyToken], asy
         let { applicationNumber } = req.params;
         const {counter} = req.query; 
         let getList = []
-        if(applicationNumber != undefined && applicationNumber != null){
+        if(applicationNumber != undefined && applicationNumber != null) {
+
+            const queryStatus = `SELECT status
+            FROM db_uspto.application_status
+            WHERE appno_doc_num = :applicationNumber`
+            const getStatusData = await connection.application.query(queryStatus,{
+                    type: connection.Sequelize.QueryTypes.SELECT,
+                    raw: true,
+                    plain: true,
+                    logging: console.log,
+                    replacements: { applicationNumber },
+                }
+            );
+
             const queryFillingDate = `SELECT appno_date
             FROM db_patent_grant_bibliographic.application_publication
             WHERE appno_doc_num = :applicationNumber`
@@ -2309,19 +2322,25 @@ route.get("/events/assets/status/:applicationNumber", [authJWT.verifyToken], asy
             let endDate = ''
             if(getAppData !== null) {
                 endDate = moment(new Date(getAppData.appno_date)).add(20, 'years').format('YYYY-MM-DD')
+                let status = ''
+                if(getStatusData !== null) {
+                    status = getStatusData.status
+                }
                 getList.push({
                     id: 1,
                     start_date: getAppData.appno_date,
-                    end_date: endDate
+                    end_date: endDate,
+                    status
                 })
             }
 
-            if(getExtensionData !== null) {
+            if(getExtensionData !== null && getExtensionData.extension > 0) {
                 console.log(getExtensionData)
                 getList.push({
                     id: 2,
+                    status: 'Term Adjustment',
                     start_date: endDate,
-                    end_date: moment(new Date(endDate)).add(getExtensionData.extension, 'days').format('YYYY-MM-DD')
+                    end_date: moment(new Date(endDate)).add(getExtensionData.extension, 'days').format('YYYY-MM-DD') 
                 })
             }
             /* 
