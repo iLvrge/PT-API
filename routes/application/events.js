@@ -2283,14 +2283,56 @@ route.get("/events/assets/status/:applicationNumber", [authJWT.verifyToken], asy
         const {counter} = req.query; 
         let getList = []
         if(applicationNumber != undefined && applicationNumber != null){
-            const query = `SELECT id, status, status_date AS eventdate FROM db_uspto.application_status WHERE appno_doc_num = :applicationNumber`
+            const queryFillingDate = `SELECT appno_date
+            FROM db_patent_grant_bibliographic.application_publication
+            WHERE appno_doc_num = :applicationNumber`
+            const getAppData = await connection.application.query(queryFillingDate,{
+                    type: connection.Sequelize.QueryTypes.SELECT,
+                    raw: true,
+                    plain: true,
+                    logging: console.log,
+                    replacements: { applicationNumber },
+                }
+            );
+
+            const queryExtensionDate = `SELECT extension
+            FROM db_patent_application_bibliographic.grant_extension
+            WHERE appno_doc_num = :applicationNumber`
+            const getExtensionData = await connection.application.query(queryExtensionDate,{
+                    type: connection.Sequelize.QueryTypes.SELECT,
+                    raw: true,
+                    plain: true,
+                    logging: console.log,
+                    replacements: { applicationNumber },
+                }
+            );
+            let endDate = ''
+            if(getAppData !== null) {
+                endDate = moment(new Date(getAppData.appno_date)).add(20, 'years').format('YYYY-MM-DD')
+                getList.push({
+                    id: 1,
+                    start_date: getAppData.appno_date,
+                    end_date: endDate
+                })
+            }
+
+            if(getExtensionData !== null) {
+                console.log(getExtensionData)
+                getList.push({
+                    id: 2,
+                    start_date: endDate,
+                    end_date: moment(new Date(endDate)).add(getExtensionData.extension, 'days').format('YYYY-MM-DD')
+                })
+            }
+            /* 
+            const query = ` SELECT id, status, status_date AS eventdate FROM db_uspto.application_status WHERE appno_doc_num = :applicationNumber  `
             getList = await connection.application.query(query,{
                     type: connection.Sequelize.QueryTypes.SELECT,
                     raw: true,
                     logging: console.log,
                     replacements: { applicationNumber },
                 }
-            );
+            ); */
         }
         if(typeof counter !== 'undefined') {
             res.status(200).send(`${getList.length}`);

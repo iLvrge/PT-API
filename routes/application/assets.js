@@ -94,9 +94,9 @@ route.get("/assets", [authJWT.verifyToken], async(req, res, next) => {
 
 route.post("/assets/cpc", [authJWT.verifyToken, clientDBConnection.connect], async(req, res, next) => {
     try{
-        let { list, total, type, selectedCompanies, tabs, customers, assignments, range, scope, year, other_mode, data_type } = req.body, getList = [], group = [], sales = []
+        let { list, total, type, selectedCompanies, tabs, customers, assignments, range, scope, year, other_mode, data_type, sale, license } = req.body, getList = [], group = [], sales = []
         
-
+        
         if(typeof type !== 'undefined' && type == 'top_law_firms') {
             const getFiilingAssets =   await helpers.findFillingAssets(req) 
 
@@ -128,12 +128,11 @@ route.post("/assets/cpc", [authJWT.verifyToken, clientDBConnection.connect], asy
                     total = list.length
                 }
             } 
-        } else if(typeof data_type !== 'undefined' && data_type == 1) {
+        } else if((typeof data_type !== 'undefined' && data_type == 1) || typeof sale != 'undefined' || typeof license != 'undefined') { 
             list = await helpers.findFilterAssets(req)
             total = list.length
-        }
-  
-
+        } 
+        
         if( list != '' ) {
             if((typeof data_type == 'undefined') || (typeof data_type !== 'undefined' && data_type == 0)) {
                 list = JSON.parse(list)
