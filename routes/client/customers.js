@@ -1200,7 +1200,18 @@ route.get("/:layout/assets", [authJWT.verifyToken, clientDBConnection.connect], 
                             where organisation_id = :organisationID and representative_id  IN (:companies) and type = 30 AND application IN (select appno_doc_num
                             from db_uspto.documentid where rf_id IN (
                             select rf_id from db_new_application.dashboard_items
-                            where organisation_id = :organisationID and representative_id IN (:companies) and type = 40)))`
+                            where organisation_id = :organisationID and representative_id IN (:companies) and type = :layoutID `
+
+                        if(assignments && assignments != '') {
+                            assignments = JSON.parse( assignments )
+                            replacements.assignments = assignments
+                        } 
+
+                        if(Array.isArray(assignments) && assignments.length > 0) {
+                            query += ` AND rf_id IN (:assignments) `
+                        }
+
+                        query += ` )))`
                     } else {
                         query += ` WHERE date_format(assets.appno_date, '%Y') > :date AND assets.layout_id = 15 AND assets.organisation_id = :organisationID `
 
@@ -1813,7 +1824,7 @@ route.get("/lawfirm", [authJWT.verifyToken, clientDBConnection.connect], async(r
             replacements.companies = companies.join(',')
         }
 
-        let tempQuery = `SELECT rf_id AS id, lawfirm FROM db_new_application.dashboard_items
+        let tempQuery = `SELECT rf_id AS id, lawfirm, GROUP_CONCAT(rf_id) AS grp FROM db_new_application.dashboard_items
             WHERE  organisation_id = :organisationID AND type = 40`
 
         if(companies.length > 0) {
@@ -1824,7 +1835,7 @@ route.get("/lawfirm", [authJWT.verifyToken, clientDBConnection.connect], async(r
 
         let distanceName = ''
 
-        if(rfID != undefined) {
+        if(rfID != undefined && rfID != 'undefined' && parseInt(rfID) > 0 ) {
             const findLawFirm = `SELECT cname, lf.name, rlf.representative_id, rlf.representative_name FROM db_uspto.correspondent AS c LEFT JOIN db_uspto.law_firm  as lf ON c.cname = lf.name
             LEFT JOIN db_uspto.representative_law_firm AS rlf ON rlf.representative_id = lf.representative_id WHERE c.rf_id = :rfID`
 
@@ -1845,7 +1856,7 @@ route.get("/lawfirm", [authJWT.verifyToken, clientDBConnection.connect], async(r
                     replacements.name = getLawFirmData.cname
                 }
 
-                tempQuery = `SELECT c.rf_id AS id, c.cname AS lawfirm FROM db_uspto.correspondent AS c LEFT JOIN db_uspto.law_firm  as lf ON c.cname = lf.name
+                tempQuery = `SELECT c.rf_id AS id, c.cname AS lawfirm, GROUP_CONCAT(rf_id) AS grp  FROM db_uspto.correspondent AS c LEFT JOIN db_uspto.law_firm  as lf ON c.cname = lf.name
                 LEFT JOIN db_uspto.representative_law_firm AS rlf ON rlf.representative_id = lf.representative_id WHERE c.rf_id IN (SELECT rf_id FROM db_new_application.activity_parties_transactions WHERE organisation_id = :organisationID AND company_id IN (:companies)) `
 
                 if(typeof replacements.representative_id != 'undefined') {

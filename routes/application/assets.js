@@ -105,6 +105,9 @@ route.post("/assets/cpc", [authJWT.verifyToken, clientDBConnection.connect], asy
                 if(typeof selectedCompanies != 'undefined' && selectedCompanies != '') {            
                     companies = JSON.parse(selectedCompanies)
                 }
+
+
+
                 replacements.type = 40
                 replacements.applications = getFiilingAssets
                 replacements.companies = companies
@@ -174,11 +177,17 @@ route.post("/assets/cpc", [authJWT.verifyToken, clientDBConnection.connect], asy
                     if(typeof other_mode != 'undefined' && other_mode == 'true') {
                         query = `SELECT appno_doc_num FROM db_new_application.assets_for_sale AS assets WHERE assets.organisation_id = :organisationID `
                     } else {
-                        if(typeof type !== 'undefined') {
-                            where.layoutID = helpers.findLayout(type)        
+                        if(typeof type !== 'undefined' ) {
+                            const layoutID = helpers.findLayout(type) 
+                            if(layoutID <= 15) {
+                                where.layoutID = helpers.findLayout(type) 
+                            } else {
+                                where.layoutID = 15
+                            }
+                                   
                         } else {
                             where.layoutID = 15
-                        }
+                        } 
     
                         const companies = JSON.parse(selectedCompanies)
                         if(companies.length > 0) {
@@ -227,7 +236,9 @@ route.post("/assets/cpc", [authJWT.verifyToken, clientDBConnection.connect], asy
                                 query += ` AND activity_parties_transactions.activity_id IN (:tabs)`
                             } else {
                                 /**exclude employees */
-                                query += ' AND activity_parties_transactions.activity_id <> 10 ' 
+                                if(typeof type == 'undefined' || (typeof type !== 'undefined' && type != 'top_law_firms')) {
+                                    query += ' AND activity_parties_transactions.activity_id <> 10 ' 
+                                }
                             } 
     
                             if(Array.isArray(customers) && customers.length > 0 ) {
@@ -235,7 +246,7 @@ route.post("/assets/cpc", [authJWT.verifyToken, clientDBConnection.connect], asy
                             }
     
                             query += ` GROUP BY activity_parties_transactions.rf_id ) GROUP BY documentid.appno_doc_num) `
-                        } else  if(Array.isArray(tabs) && tabs.length === 0) {
+                        } else  if(Array.isArray(tabs) && tabs.length === 0 && (typeof type !== 'undefined' && type !== 'top_law_firms')) {
                             /**exclude employees */
                             query += ` AND assets.appno_doc_num IN (  SELECT documentid.appno_doc_num FROM db_uspto.documentid WHERE rf_id  IN ( SELECT activity_parties_transactions.rf_id  FROM db_new_application.activity_parties_transactions WHERE activity_parties_transactions.organisation_id = :organisationID AND activity_parties_transactions.activity_id <> 10  ` 
 
@@ -894,6 +905,25 @@ route.get("/assets/:patentNumber/:type/outsource",[], async (req, res) =>{
             where,
             attributes:[['grant_doc_num','number']],
         }) 
+        if(record == null) { 
+            record =  await connection.resources.query(`SELECT grant_doc_num from db_patent_application_bibliographic.application_grant WHERE grant_doc_num = :number`,{
+                    type: connection.Sequelize.QueryTypes.SELECT,
+                    replacements: {number: patentNumber},
+                    raw: true,
+                    logging: console.log,
+                }
+            );
+
+            if(record === null) {
+                record =  await connection.resources.query(`SELECT appno_doc_num from db_patent_grant_bibliographic.application_publication WHERE grant_doc_num = :number`,{
+                        type: connection.Sequelize.QueryTypes.SELECT,
+                        replacements: {number: patentNumber},
+                        raw: true,
+                        logging: console.log,
+                    }
+                );
+            }
+        }
         if(record !== null) {            
             console.log('%j',record);                  
             res.status(200).json({url:`https://assignment.uspto.gov/patent/index.html#/patent/search/resultAbstract?id=${patentNumber}&type=${type}`});
