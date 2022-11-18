@@ -2103,6 +2103,8 @@ route.get("/events/all/assets/to_record", [authJWT.verifyToken], async (req, res
 
                 const query = `SELECT  appno_doc_num,  date_format(appno_date, '%Y-%m-%d') AS eventdate FROM db_patent_grant_bibliographic.application_publication
                     WHERE appno_doc_num IN (:applications)
+                    GROUP BY appno_doc_num UNION SELECT  appno_doc_num,  date_format(appno_date, '%Y-%m-%d') AS eventdate FROM db_patent_application_bibliographic.application_grant
+                    WHERE appno_doc_num IN (:applications)
                     GROUP BY appno_doc_num`
 
                 
@@ -2125,6 +2127,10 @@ route.get("/events/all/assets/to_record", [authJWT.verifyToken], async (req, res
                     })
 
                     await Promise.all(promise)
+
+                    if(list.length != findData.length) {
+                        
+                    }
 
                     let eventCodeIcons = {
                         icon1: SvgIconsContent['13'],

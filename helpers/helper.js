@@ -1572,7 +1572,7 @@ let getCompaniesListWithReports = async (DBConnection, organisationID) => {
 
     if(getList.length > 0) {
 
-        const query = `SELECT organisation_id, company_id, companies, activities, entities AS no_of_entities, parties AS no_of_parties, employees, transactions AS no_of_transactions, assets AS assets, arrows AS product, 0 AS documents FROM db_uspto.summary WHERE organisation_id = :organisationID `;
+        const query = `SELECT organisation_id, company_id, companies, activities, entities AS no_of_entities, parties AS no_of_parties, employees AS no_of_employees, transactions AS no_of_transactions, assets AS assets, arrows AS product, 0 AS documents FROM db_uspto.summary WHERE organisation_id = :organisationID `;
 
         let reports = await connection.resources.query(query, {
             type: connection.Sequelize.QueryTypes.SELECT,
