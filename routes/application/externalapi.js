@@ -144,8 +144,7 @@ route.get("/citation/:asset", [authJWT.verifyToken], async (req, res) => {
             const queryString = ``
             const url = `https://api.patentsview.org/patents/query?q={"cited_patent_number":"${asset}"}&f=["patent_number","patent_date","patent_num_combined_citations","patent_title","assignee_organization"]`
             console.log(url)
-            request(url, async(error, response, body) => {
-                console.log(error)
+            request(url, async(error, response, body) => { 
                 if (!error && response.statusCode == 200) {
                     const responseBody = JSON.parse(body)
                     const citationEvents = []
@@ -171,7 +170,7 @@ route.get("/citation/:asset", [authJWT.verifyToken], async (req, res) => {
                                 logo: '',
                                 assignee,
                                 all_assignee: item.assignees
-                            })                            
+                            })
                         })
                         if(assigneeNameMissing.length > 0) {
                             const queryAssginee = `SELECT ag.grant_doc_num, ee.name from db_patent_application_bibliographic.assignee AS ee INNER JOIN db_patent_application_bibliographic.application_grant AS ag ON ag.appno_doc_num = ee.appno_doc_num
@@ -251,86 +250,100 @@ route.post("/citation", [authJWT.verifyToken], async (req, res) => {
         if( list != '' ) {
             list = JSON.parse(list)
             const where = { year: 1997, organisationID: req.orgId, layoutID: 15, list}  
+            if(typeof type !== 'undefined') {
+                where.layoutID = helpers.findLayout(type)        
+            }
+            const companies = JSON.parse(selectedCompanies)
+            if(companies.length > 0) {
+                where.company_id = companies
+            }
+            let query = '' 
             if(parseInt(total) != list.length) {
                 /**
                  * Get List
-                 */
-                let query = '' 
+                 */ 
                 if(typeof other_mode != 'undefined' && other_mode == 'true') {
                     query = `SELECT grant_doc_num FROM db_new_application.assets_for_sale AS assets WHERE assets.organisation_id = :organisationID `
-                } else {                
-                    if(typeof type !== 'undefined') {
-                        where.layoutID = helpers.findLayout(type)        
-                    } 
-
-                    const companies = JSON.parse(selectedCompanies)
-                    if(companies.length > 0) {
-                        where.company_id = companies
-                    }
-
-                
-                    if(tabs && tabs != '') {
-                        tabs = JSON.parse( tabs )
-                        where.tabs = tabs
-                    }
-
-                    if(customers && customers != '') {
-                        customers = JSON.parse( customers )
-                        where.customers = customers
-                    }
-
+                    query += ` GROUP BY grant_doc_num`;
+                } else {     
                     if(assignments && assignments != '') {
                         assignments = JSON.parse( assignments )
                         where.assignments = assignments
-                    }
-
-                    query = `SELECT grant_doc_num FROM db_new_application.assets AS assets `
-
-
-                    query += ` WHERE date_format(assets.appno_date, '%Y') > :year AND assets.layout_id = :layoutID AND assets.organisation_id = :organisationID AND grant_doc_num <> "" `
-                    
-
-                    if(Array.isArray(companies) && companies.length > 0) {
-                        query += ` AND assets.company_id IN (:company_id)`
-                    }
-
-                    if((Array.isArray(assignments) && assignments.length > 0 ) || (Array.isArray(tabs) && tabs.length > 0) || (Array.isArray(customers) && customers.length > 0)) {
-                        query += ` AND assets.appno_doc_num IN ( SELECT documentid.appno_doc_num FROM db_uspto.documentid WHERE rf_id  IN ( SELECT activity_parties_transactions.rf_id  FROM db_new_application.activity_parties_transactions WHERE activity_parties_transactions.organisation_id = :organisationID  `
-
-                        if(Array.isArray(companies) && companies.length > 0 ) {
-                            query += ` AND activity_parties_transactions.company_id IN (:company_id) `
+                    }           
+                     
+                    if(where.layoutID <= 15) {
+                        if(tabs && tabs != '') {
+                            tabs = JSON.parse( tabs )
+                            where.tabs = tabs
                         }
+    
+                        if(customers && customers != '') {
+                            customers = JSON.parse( customers )
+                            where.customers = customers
+                        }
+    
                         
-                        if(Array.isArray(assignments) && assignments.length > 0 ) {
-                            query += ` AND activity_parties_transactions.rf_id IN (:assignments)`
-                        }
+    
+                        query = `SELECT grant_doc_num FROM db_new_application.assets AS assets `
+    
+    
+                        query += ` WHERE date_format(assets.appno_date, '%Y') > :year AND assets.layout_id = :layoutID AND assets.organisation_id = :organisationID AND grant_doc_num <> "" `
 
-                        if(Array.isArray(tabs) && tabs.length > 0 ) {
-                            query += ` AND activity_parties_transactions.activity_id IN (:tabs)`
-                        } else {
-                            /**exclude employees */
-                            query += ' AND activity_parties_transactions.activity_id <> 10 ' 
+                        if(Array.isArray(companies) && companies.length > 0) {
+                            query += ` AND assets.company_id IN (:company_id)`
                         } 
 
-                        if(Array.isArray(customers) && customers.length > 0 ) {
-                            query += ` AND activity_parties_transactions.assignor_and_assignee_id IN (:customers)`
+                        if((Array.isArray(assignments) && assignments.length > 0 ) || (Array.isArray(tabs) && tabs.length > 0) || (Array.isArray(customers) && customers.length > 0)) {
+                            query += ` AND assets.appno_doc_num IN ( SELECT documentid.appno_doc_num FROM db_uspto.documentid WHERE rf_id  IN ( SELECT activity_parties_transactions.rf_id  FROM db_new_application.activity_parties_transactions WHERE activity_parties_transactions.organisation_id = :organisationID  `
+
+                            if(Array.isArray(companies) && companies.length > 0 ) {
+                                query += ` AND activity_parties_transactions.company_id IN (:company_id) `
+                            }
+                            
+                            if(Array.isArray(assignments) && assignments.length > 0 ) {
+                                query += ` AND activity_parties_transactions.rf_id IN (:assignments)`
+                            }
+
+                            if(Array.isArray(tabs) && tabs.length > 0 ) {
+                                query += ` AND activity_parties_transactions.activity_id IN (:tabs)`
+                            } else {
+                                /**exclude employees */
+                                query += ' AND activity_parties_transactions.activity_id <> 10 ' 
+                            } 
+
+                            if(Array.isArray(customers) && customers.length > 0 ) {
+                                query += ` AND activity_parties_transactions.assignor_and_assignee_id IN (:customers)`
+                            }
+
+                            query += ` GROUP BY activity_parties_transactions.rf_id ) GROUP BY documentid.appno_doc_num) `
+                        } else  if(Array.isArray(tabs) && tabs.length === 0) {
+                            /**exclude employees */
+                            query += ` AND assets.appno_doc_num IN (  SELECT documentid.appno_doc_num FROM db_uspto.documentid WHERE rf_id  IN ( SELECT activity_parties_transactions.rf_id  FROM db_new_application.activity_parties_transactions WHERE activity_parties_transactions.organisation_id = :organisationID   AND activity_parties_transactions.activity_id <> 10   ` 
+
+                            if(Array.isArray(companies) && companies.length > 0 ) {
+                                query += ` AND activity_parties_transactions.company_id IN (:company_id) `
+                            }
+
+                            query += ` GROUP BY activity_parties_transactions.rf_id )  GROUP BY documentid.appno_doc_num) `
                         }
+                        query += ` GROUP BY grant_doc_num`;
+                    }  else {
+                        query = `SELECT patent AS grant_doc_num FROM db_new_application.dashboard_items AS assets `
+    
+    
+                        query += ` WHERE  assets.type = :layoutID AND assets.organisation_id = :organisationID AND patent <> "" `
 
-                        query += ` GROUP BY activity_parties_transactions.rf_id ) GROUP BY documentid.appno_doc_num) `
-                    } else  if(Array.isArray(tabs) && tabs.length === 0) {
-                        /**exclude employees */
-                        query += ` AND assets.appno_doc_num IN (  SELECT documentid.appno_doc_num FROM db_uspto.documentid WHERE rf_id  IN ( SELECT activity_parties_transactions.rf_id  FROM db_new_application.activity_parties_transactions WHERE activity_parties_transactions.organisation_id = :organisationID   AND activity_parties_transactions.activity_id <> 10   ` 
+                        if(Array.isArray(companies) && companies.length > 0) {
+                            query += ` AND assets.representative_id IN (:company_id)`
+                        } 
 
-                        if(Array.isArray(companies) && companies.length > 0 ) {
-                            query += ` AND activity_parties_transactions.company_id IN (:company_id) `
+                        if(Array.isArray(assignments) && assignments.length > 0 ) {
+                            query += ` AND assets.rf_id IN (:assignments)`
                         }
-
-                        query += ` GROUP BY activity_parties_transactions.rf_id )  GROUP BY documentid.appno_doc_num) `
+                        query += ` GROUP BY patent`;
                     }
-                }
-
-                query += ` GROUP BY grant_doc_num`;
-            } else  {
+                } 
+            } else  { 
                 query = `SELECT grant_doc_num FROM db_new_application.assets AS assets `
                 query += ` WHERE date_format(assets.appno_date, '%Y') > :year AND assets.layout_id = :layoutID AND assets.organisation_id = :organisationID AND grant_doc_num <> "" `
                 query += ` AND assets.appno_doc_num IN (:list)`

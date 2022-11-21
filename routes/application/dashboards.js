@@ -240,6 +240,8 @@ route.post('/parties', [authJWT.verifyToken, clientDBConnection.connect], async(
         if(typeof search != 'undefined' && search == 'all') {
             layoutID = 15;
         }
+
+        console.log("layoutID", layoutID)
        
         const getRepresentativeName = await helpers.findCompanyName(req.connection_db, selectedCompanies)
 
