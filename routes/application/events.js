@@ -2302,10 +2302,8 @@ route.get("/events/assets/status/:applicationNumber", [authJWT.verifyToken], asy
                 }
             );
 
-            const queryFillingDate = `SELECT appno_date
-            FROM db_patent_grant_bibliographic.application_publication
-            WHERE appno_doc_num = :applicationNumber`
-            const getAppData = await connection.application.query(queryFillingDate,{
+            let queryFillingDate = `SELECT appno_date FROM db_patent_grant_bibliographic.application_publication WHERE appno_doc_num = :applicationNumber UNION SELECT appno_date FROM db_patent_application_bibliographic.application_grant WHERE appno_doc_num = :applicationNumber`
+            let getAppData = await connection.application.query(queryFillingDate,{
                     type: connection.Sequelize.QueryTypes.SELECT,
                     raw: true,
                     plain: true,
@@ -2314,9 +2312,19 @@ route.get("/events/assets/status/:applicationNumber", [authJWT.verifyToken], asy
                 }
             );
 
-            const queryExtensionDate = `SELECT extension
-            FROM db_patent_application_bibliographic.grant_extension
-            WHERE appno_doc_num = :applicationNumber`
+            if(getAppData == null) {
+                queryFillingDate = `SELECT MAX(appno_date) AS appno_date FROM db_uspto.documentid WHERE appno_doc_num = :applicationNumber`
+                getAppData = await connection.application.query(queryFillingDate,{
+                        type: connection.Sequelize.QueryTypes.SELECT,
+                        raw: true,
+                        plain: true,
+                        logging: console.log,
+                        replacements: { applicationNumber },
+                    }
+                );
+            }
+
+            const queryExtensionDate = `SELECT extension FROM db_patent_application_bibliographic.grant_extension WHERE appno_doc_num = :applicationNumber`
             const getExtensionData = await connection.application.query(queryExtensionDate,{
                     type: connection.Sequelize.QueryTypes.SELECT,
                     raw: true,
@@ -2329,6 +2337,7 @@ route.get("/events/assets/status/:applicationNumber", [authJWT.verifyToken], asy
             if(getAppData !== null) {
                 endDate = moment(new Date(getAppData.appno_date)).add(20, 'years').format('YYYY-MM-DD')
                 let status = '', eventdate = ''
+                console.log(getStatusData)
                 if(getStatusData !== null) {
                     status = getStatusData.status
                     eventdate = moment(new Date(getStatusData.status_date)).add(20, 'years').format('YYYY-MM-DD')
@@ -2340,18 +2349,19 @@ route.get("/events/assets/status/:applicationNumber", [authJWT.verifyToken], asy
                     eventdate,
                     status
                 })
+                if( getExtensionData !== null && getExtensionData.extension > 0) {
+                    console.log(getExtensionData)
+                    getList.push({
+                        id: 2,
+                        status: 'Term Adjustment',
+                        start_date: endDate,
+                        end_date: moment(new Date(endDate)).add(getExtensionData.extension, 'days').format('YYYY-MM-DD'),
+                        eventdate: ''
+                    })
+                }
             }
 
-            if(getExtensionData !== null && getExtensionData.extension > 0) {
-                console.log(getExtensionData)
-                getList.push({
-                    id: 2,
-                    status: 'Term Adjustment',
-                    start_date: endDate,
-                    end_date: moment(new Date(endDate)).add(getExtensionData.extension, 'days').format('YYYY-MM-DD'),
-                    eventdate: ''
-                })
-            }
+            
             /* 
             const query = ` SELECT id, status, status_date AS eventdate FROM db_uspto.application_status WHERE appno_doc_num = :applicationNumber  `
             getList = await connection.application.query(query,{
