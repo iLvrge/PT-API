@@ -860,7 +860,7 @@ route.get("/customers/:id/reclassify", [authJWT.verifyToken, authJWT.isAdmin], a
         if(organisationID > 0){
             const getClassifyData = await LogMessages.findAll({
                 where: {organisation_id: organisationID, company_id: companies},
-                order: [['id','DESC']]
+                order: [['id','ASC']]
             })
 
             const logData = [];
@@ -868,17 +868,16 @@ route.get("/customers/:id/reclassify", [authJWT.verifyToken, authJWT.isAdmin], a
             if(getClassifyData.length > 0) {
 
                 const promise = await getClassifyData.map((row, index) => {
-                    if(index > 0) {
-                        const item = {...row} 
-                        item.start_time = getClassifyData[index - 1].end_time
-                        logData.push(item)
-                    } else {
-                        logData.push(row)
+                    const item = row.toJSON()
+                    if(index > 0) { 
+                        item.start_time = getClassifyData[index - 1].end_time 
                     }
+                    logData.push(item)
                 })
 
                 await Promise.all(promise)
             } 
+            console.log(logData)
             res.status(200).json(logData);
         } else {
             res.status(400).send("Invalid inputs");
