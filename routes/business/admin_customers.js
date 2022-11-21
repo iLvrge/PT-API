@@ -863,7 +863,23 @@ route.get("/customers/:id/reclassify", [authJWT.verifyToken, authJWT.isAdmin], a
                 order: [['id','DESC']]
             })
 
-            res.status(200).json(getClassifyData);
+            const logData = [];
+
+            if(getClassifyData.length > 0) {
+
+                const promise = await getClassifyData.map((row, index) => {
+                    if(index > 0) {
+                        const item = {...row} 
+                        item.start_time = getClassifyData[index - 1].end_time
+                        logData.push(item)
+                    } else {
+                        logData.push(row)
+                    }
+                })
+
+                await Promise.all(promise)
+            } 
+            res.status(200).json(logData);
         } else {
             res.status(400).send("Invalid inputs");
         }       
