@@ -1608,6 +1608,8 @@ let getCompaniesListWithReports = async (DBConnection, organisationID) => {
                 if(filter.length > 0) {
                     company.assets = filter[0].assets
                     company.no_of_transactions = filter[0].no_of_transactions
+                    company.no_of_entities = filter[0].no_of_entities
+                    company.no_of_employees = filter[0].no_of_employees
                     company.no_of_parties = filter[0].no_of_parties
                     company.product = filter[0].product
                     company.arrow_assets = parseInt(filter[0].product / filter[0].assets)
@@ -1615,6 +1617,8 @@ let getCompaniesListWithReports = async (DBConnection, organisationID) => {
                 } else {
                     company.assets = 0
                     company.no_of_transactions = 0
+                    company.no_of_entities = 0
+                    company.no_of_employees = 0
                     company.no_of_parties = 0
                     company.product = 0
                     company.arrow_assets = 0
