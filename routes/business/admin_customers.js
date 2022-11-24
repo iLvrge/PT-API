@@ -860,10 +860,25 @@ route.get("/customers/:id/reclassify", [authJWT.verifyToken, authJWT.isAdmin], a
         if(organisationID > 0){
             const getClassifyData = await LogMessages.findAll({
                 where: {organisation_id: organisationID, company_id: companies},
-                order: [['id','DESC']]
+                order: [['id','ASC']]
             })
 
-            res.status(200).json(getClassifyData);
+            const logData = [];
+
+            if(getClassifyData.length > 0) {
+
+                const promise = await getClassifyData.map((row, index) => {
+                    const item = row.toJSON()
+                    if(index > 0) { 
+                        item.start_time = getClassifyData[index - 1].end_time 
+                    }
+                    logData.push(item)
+                })
+
+                await Promise.all(promise)
+            } 
+            console.log(logData)
+            res.status(200).json(logData);
         } else {
             res.status(400).send("Invalid inputs");
         }       
@@ -2059,15 +2074,16 @@ route.get("/customers/retrieve_cited_patents_domain/:customerID/:apiName",[authJ
 })
 
 route.post("/customers/retrieve_cited_patents_logo",[authJWT.verifyToken, authJWT.isAdmin], async (req, res) =>{ 
-    const {client_id, api_name, assignees} = req.body
+    const {client_id, api_name, assignees, all, company_id} = req.body
     console.log('retrieve_cited_patents_logo')
     /* exec(`node /var/www/html/script/name_to_domain_api.js ${client_id} ${api_name} ${assignees} 1 > name_to_domain_api.log  2>&1`, function(err, stdout, stderr){
         console.log(`assigneeLogos downloadFileSpawn.stdout: ${stdout}`)
         console.log(`Error assigneeLogos downloadFileSpawn.stderr: ${stderr}`)
         console.log(`Error assigneeLogos downloadFileSpawn.err: ${err}`)
-    }); */
+    }); */ 
+
     logger.info('Sending request to RapidAPI script')
-    const assigneeLogos = spawn('node', ['/var/www/html/script/name_to_domain_api.js', client_id, api_name, assignees, 1]);
+    const assigneeLogos = spawn('node', ['/var/www/html/script/name_to_domain_api.js', client_id, api_name, assignees, 1, company_id, all]);
 
     assigneeLogos.stdout.on('data', (data) => {
         logger.info(data)
