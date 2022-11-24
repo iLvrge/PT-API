@@ -276,7 +276,8 @@ route.post('/parties', [authJWT.verifyToken, clientDBConnection.connect], async(
                     organisationID: req.orgId,
                     selectedCompanies,
                     layoutID,
-                    acitivityID: [1, 6, 10],
+                    /* acitivityID: [1, 6, 10], */
+                    acitivityID: [1, 6],
                     year: 1997
                 }
             })
