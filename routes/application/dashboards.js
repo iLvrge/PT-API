@@ -54,7 +54,8 @@ const getOwnedAssets = async( req ) => {
         if(selectedCompanies != '' && typeof selectedCompanies != 'undefined' && selectedCompanies != null) {
             selectedCompanies = JSON.parse(selectedCompanies)
         }
-        const query = `SELECT appno_doc_num FROM owned_assets WHERE organisation_id = :organisationID AND company_id IN (:selectedCompanies)`
+        /* const query = `SELECT appno_doc_num FROM owned_assets WHERE organisation_id = :organisationID AND company_id IN (:selectedCompanies)` */
+        const query = `SELECT application FROM dashboard_items WHERE organisation_id = :organisationID AND representative_id IN (:selectedCompanies) AND type = :type AND application <> '' GROUP BY application`
 
         const list =  await connection.applicationNew.query(query,{
             type: connection.Sequelize.QueryTypes.SELECT,
@@ -63,12 +64,13 @@ const getOwnedAssets = async( req ) => {
             replacements: {
                 organisationID: req.orgId,
                 selectedCompanies,
+                type: 30
             }
         })
 
         if(list !== null && list.length > 0) {
             list.forEach( row => {
-                getList.push(`${row.appno_doc_num}`)
+                getList.push(`${row.application}`)
             })
         }
         return getList
