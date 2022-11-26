@@ -1223,7 +1223,7 @@ route.get("/:layout/assets", [authJWT.verifyToken, clientDBConnection.connect], 
                                     SELECT patent FROM db_new_application.dashboard_items WHERE organisation_id = :organisationID AND representative_id IN (:companies) AND type = 30 GROUP BY patent 
                             ) AND application_country NOT IN ('WO', 'US') GROUP BY grant_doc_num)`
                         } else {
-                            if(Array.isArray(customers) && customers.length > 0  && (replacements.layoutID == 32 || replacements.layoutID == 33)) {
+                            if(Array.isArray(customers) && customers.length > 0  && (replacements.layoutID == 32 || replacements.layoutID == 33 || replacements.layoutID == 30 || replacements.layoutID == 22 || replacements.layoutID == 31 )) {
                                 query += `  AND appno_doc_num IN (SELECT application FROM db_new_application.dashboard_items WHERE organisation_id = :organisationID AND representative_id IN (:companies)  AND type = :layoutID AND application IN (
                                         SELECT documentid.appno_doc_num FROM db_uspto.documentid 
                                         WHERE rf_id  IN ( 
