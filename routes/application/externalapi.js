@@ -258,6 +258,7 @@ route.post("/citation", [authJWT.verifyToken], async (req, res) => {
                 where.company_id = companies
             }
             let query = '' 
+            console.log(parseInt(total), list.length)
             if(parseInt(total) != list.length) {
                 /**
                  * Get List
