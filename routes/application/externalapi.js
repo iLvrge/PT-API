@@ -345,10 +345,13 @@ route.post("/citation", [authJWT.verifyToken], async (req, res) => {
                     }
                 } 
             } else  { 
+                
                 query = `SELECT grant_doc_num FROM db_new_application.assets AS assets `
                 query += ` WHERE date_format(assets.appno_date, '%Y') > :year AND assets.layout_id = :layoutID AND assets.organisation_id = :organisationID AND grant_doc_num <> "" `
                 query += ` AND assets.appno_doc_num IN (:list)`
                 query += ` GROUP BY grant_doc_num`;
+
+                where.layoutID = 15;
             }
             const appList =  await connection.applicationNew.query(query,{
                 type: connection.Sequelize.QueryTypes.SELECT,
@@ -356,9 +359,8 @@ route.post("/citation", [authJWT.verifyToken], async (req, res) => {
                 logging: console.log,
                 replacements: where,
             })
-
-            if(appList !== null && appList.length > 0) {
-                list = [];
+            list = [];
+            if(appList !== null && appList.length > 0) { 
                 appList.forEach( row => {
                     list.push(`${row.grant_doc_num}`)
                 })
