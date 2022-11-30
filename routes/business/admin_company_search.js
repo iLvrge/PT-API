@@ -984,7 +984,7 @@ route.get("/company/transactions/:id", [authJWT.verifyToken, authJWT.isAdmin, au
         /**
          * Group of all assignment texts and number of occurences
          */
-        
+        console.log("ALL Assignments")
         let findAllAssignments  = await helpers.allAssignments(customerID, req);
 
         res.status(200).json({list:findAllAssignments, conveyance, type: type, assignment_type: assignment_type});
