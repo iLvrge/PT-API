@@ -309,7 +309,7 @@ route.get('/parties/inventor/:inventorID' , [authJWT.verifyToken], async(req, re
     }
 })
 
-route.post('/parties', [authJWT.verifyToken], async(req, res, next) => {
+route.post('/parties', [authJWT.verifyToken, clientDBConnection.connect], async(req, res, next) => {
     try{
         let {selectedCompanies, search, layout, type} = req.body, getList = [];
         /**
