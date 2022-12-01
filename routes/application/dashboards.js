@@ -291,7 +291,7 @@ route.get('/parties/inventor/:inventorID' , [authJWT.verifyToken], async(req, re
                     name8 = strReplace(name8)
                     names.push(name8.trim().toLowerCase()) 
 
-                const findAssignorAndAssignee = `SELECT assignor_and_assignee_id FROM db_uspto.assignor_and_assignee WHERE name IN (:names) GROUP BY assignor_and_assignee_id LIMIT 1`
+                const findAssignorAndAssignee = `SELECT assignor_and_assignee_id AS id FROM db_uspto.assignor_and_assignee WHERE name IN (:names) GROUP BY assignor_and_assignee_id LIMIT 1`
 
                 getInventorData =  await connection.applicationNew.query(findAssignorAndAssignee,{
                     type: connection.Sequelize.QueryTypes.SELECT,
