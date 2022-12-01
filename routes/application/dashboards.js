@@ -858,7 +858,7 @@ route.post("/", [authJWT.verifyToken], async(req, res, next) => {
                 uri: firstRequest,
                 strictSSL: false
              }
-            rp(option)
+            /* rp(option)
             .then( body => {
                 let responseBody = JSON.parse(body);
                 console.log(responseBody)
@@ -891,7 +891,7 @@ route.post("/", [authJWT.verifyToken], async(req, res, next) => {
                 } else {
                     res.status(200).json(getData);
                 }
-            })
+            }) */
         } else {
             res.status(200).json(getData);
         }
