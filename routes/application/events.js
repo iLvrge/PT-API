@@ -2336,11 +2336,11 @@ route.get("/events/assets/status/:applicationNumber", [authJWT.verifyToken], asy
             let endDate = ''
             if(getAppData !== null) {
                 endDate = moment(new Date(getAppData.appno_date)).add(20, 'years').format('YYYY-MM-DD')
-                let status = '', eventdate = ''
+                let status = '', eventdate = endDate
                 console.log(getStatusData)
                 if(getStatusData !== null) {
                     status = getStatusData.status
-                    eventdate = moment(new Date(getStatusData.status_date)).add(20, 'years').format('YYYY-MM-DD')
+                    //eventdate = moment(new Date(getStatusData.status_date)).add(20, 'years').format('YYYY-MM-DD')
                 }
                 getList.push({
                     id: 1,
@@ -2351,12 +2351,14 @@ route.get("/events/assets/status/:applicationNumber", [authJWT.verifyToken], asy
                 })
                 if( getExtensionData !== null && getExtensionData.extension > 0) {
                     console.log(getExtensionData)
+                    const extenstionStartDate = moment(new Date(endDate)).add(1, 'days').format('YYYY-MM-DD'),
+                    extensiontEndDate = moment(new Date(endDate)).add(getExtensionData.extension, 'days').format('YYYY-MM-DD')
                     getList.push({
                         id: 2,
                         status: 'Term Adjustment',
-                        start_date: endDate,
-                        end_date: moment(new Date(endDate)).add(getExtensionData.extension, 'days').format('YYYY-MM-DD'),
-                        eventdate: ''
+                        start_date: extenstionStartDate,
+                        end_date: extensiontEndDate ,
+                        eventdate: extensiontEndDate
                     })
                 }
             }
