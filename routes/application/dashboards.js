@@ -221,7 +221,95 @@ route.post('/parties/assignor', [authJWT.verifyToken, clientDBConnection.connect
     }
 })
 
-route.post('/parties', [authJWT.verifyToken, clientDBConnection.connect], async(req, res, next) => {
+function removeDoubleSpace(string) {
+	return string.replace(/\s+/, ' ').trim()
+}
+ 
+function strReplace(string) {
+    string = string.replace(/,/, '')
+    string = string.replace(/\./, '')
+    string = string.replace(/!/, '')
+	return string.trim().toLowerCase()
+}
+
+route.get('/parties/inventor/:inventorID' , [authJWT.verifyToken], async(req, res, next) => {
+    try {
+        let {inventorID} = req.params, getInventorData = {};
+
+        if(inventorID > 0) {
+            const query = `SELECT * FROM ( SELECT assignor_and_assignee_id, IF(given_name <> '', CONCAT(' ', given_name), '') AS given_name, IF(middle_name <> '', CONCAT(' ', middle_name), '') AS middle_name, IF(family_name <> '', CONCAT(' ', family_name), '') AS family_name FROM db_patent_application_bibliographic.inventor WHERE assignor_and_assignee_id = :inventorID UNION SELECT assignor_and_assignee_id, IF(given_name <> '', CONCAT(' ', given_name), '') AS given_name, IF(middle_name <> '', CONCAT(' ', middle_name), '') AS middle_name, IF(family_name <> '', CONCAT(' ', family_name), '') AS family_name FROM db_patent_grant_bibliographic.inventor_new WHERE assignor_and_assignee_id = :inventorID ) AS temp LIMIT 1`
+
+            const findInventor =  await connection.applicationNew.query(query,{
+                type: connection.Sequelize.QueryTypes.SELECT,
+                raw: true,
+                plain: true,
+                logging: console.log,
+                replacements: {inventorID}
+            })
+
+            if(findInventor != null && findInventor.assignor_and_assignee_id > 0) {
+
+                const names = [];
+
+                let name1 = findInventor.family_name + findInventor.middle_name + findInventor.given_name 
+                    name1 = removeDoubleSpace(name1)
+                    name1 = strReplace(name1)
+                    names.push(name1.trim().toLowerCase())
+
+                let name2 = findInventor.given_name + findInventor.middle_name + findInventor.family_name
+                    name2 = removeDoubleSpace(name2)
+                    name2 = strReplace(name2)
+                    names.push(name2.trim().toLowerCase())
+
+                let name3 = findInventor.family_name + findInventor.given_name + findInventor.middle_name
+                    name3 = removeDoubleSpace(name3)
+                    name3 = strReplace(name3)
+                    names.push(name3.trim().toLowerCase())
+
+                let name4 = findInventor.given_name + findInventor.family_name + findInventor.middle_name
+                    name4 = removeDoubleSpace(name4)
+                    name4 = strReplace(name4)
+                    names.push(name4.trim().toLowerCase()) 
+
+                let name5 = findInventor.family_name + findInventor.given_name 
+                    name5 = removeDoubleSpace(name5)
+                    name5 = strReplace(name5)
+                    names.push(name5.trim().toLowerCase())  
+
+                let name6 = findInventor.given_name + findInventor.family_name
+                    name6 = removeDoubleSpace(name6)
+                    name6 = strReplace(name6)
+                    names.push(name6.trim().toLowerCase()) 
+
+                let name7 = findInventor.family_name 
+                    name7 = removeDoubleSpace(name7)
+                    name7 = strReplace(name7)
+                    names.push(name7.trim().toLowerCase()) 
+
+                let name8 = findInventor.given_name 
+                    name8 = removeDoubleSpace(name8)
+                    name8 = strReplace(name8)
+                    names.push(name8.trim().toLowerCase()) 
+
+                const findAssignorAndAssignee = `SELECT assignor_and_assignee_id FROM db_uspto.assignor_and_assignee WHERE name IN (:names) GROUP BY assignor_and_assignee_id LIMIT 1`
+
+                getInventorData =  await connection.applicationNew.query(findAssignorAndAssignee,{
+                    type: connection.Sequelize.QueryTypes.SELECT,
+                    raw: true,
+                    plain: true,
+                    logging: console.log,
+                    replacements: {names}
+                })
+            }
+        } 
+        res.status(200).json(getInventorData);
+    } catch (err) {
+        console.log(err);
+        res.status(500).json({message: "Unable to retrieve data"})
+    }
+})
+
+route.post('/parties', [authJWT.verifyToken], async(req, res, next) => {
     try{
         let {selectedCompanies, search, layout, type} = req.body, getList = [];
         /**
@@ -258,7 +346,7 @@ route.post('/parties', [authJWT.verifyToken, clientDBConnection.connect], async(
             let query = ''
 
             if(typeof type != 'undefined' && type == 'filled') {
-                query += `SELECT assignor_and_assignee_id AS id, name, assignee, SUM(app_count) as number FROM ( SELECT aaa.assignor_and_assignee_id, aaa.representative_id, IF(r.representative_name <> "" , r.representative_name, aaa.name) AS name,  COUNT(DISTINCT appno_doc_num) AS app_count, "${getRepresentativeName.representative_name}" as assignee  FROM db_patent_grant_bibliographic.inventor_new  AS apt INNER JOIN db_uspto.assignor_and_assignee AS aaa ON aaa.assignor_and_assignee_id = apt.assignor_and_assignee_id
+                query += `SELECT assignor_and_assignee_id AS id, name, assignee, SUM(app_count) as number FROM ( SELECT aaa.assignor_and_assignee_id, aaa.representative_id, IF(r.representative_name <> "" , r.representative_name, aaa.name) AS name,  COUNT(DISTINCT appno_doc_num) AS app_count, "${getRepresentativeName.representative_name}" as assignee  FROM db_patent_grant_bibliographic.inventor_new  AS apt INNER JOIN db_patent_application_bibliographic.assignor_and_assignee AS aaa ON aaa.assignor_and_assignee_id = apt.assignor_and_assignee_id
                 LEFT JOIN db_uspto.representative As r ON r.representative_id = aaa.representative_id WHERE appno_doc_num IN (${subQuery}) GROUP BY aaa.assignor_and_assignee_id ) AS temp GROUP BY name HAVING assignee <> name ORDER BY number DESC, name ASC `
             } else {
                 query += `SELECT assignor_and_assignee_id AS id, name, assignee, SUM(app_count) as number FROM (SELECT aaa.assignor_and_assignee_id, aaa.representative_id, (CASE  WHEN apt.activity_id = 10 THEN "Employees" WHEN r.representative_name <> "" THEN r.representative_name ELSE aaa.name END) AS name, COUNT(DISTINCT appno_doc_num) AS app_count, "${getRepresentativeName.representative_name}" as assignee  FROM db_new_application.activity_parties_transactions AS apt

@@ -1184,7 +1184,15 @@ route.get("/:layout/assets", [authJWT.verifyToken, clientDBConnection.connect], 
                         if(typeof replacements.companies != 'undefined' && Array.isArray(replacements.companies) && replacements.companies.length > 0) {
                             query += ` AND representative_id IN (:companies) `
                         }
+                        if(Array.isArray(customers) && customers.length > 0){
+                            query += ` AND application IN ( SELECT documentid.appno_doc_num FROM db_uspto.documentid WHERE rf_id  IN ( SELECT activity_parties_transactions.rf_id  FROM db_new_application.activity_parties_transactions WHERE activity_parties_transactions.organisation_id = :organisationID `;
 
+                            if(typeof replacements.companies != 'undefined' && Array.isArray(replacements.companies) && replacements.companies.length > 0) {
+                                query += ` AND company_id IN (:companies) `
+                            }
+
+                            query += ` AND activity_parties_transactions.assignor_and_assignee_id IN (:customers) GROUP BY activity_parties_transactions.rf_id ) GROUP BY documentid.appno_doc_num) `;
+                        }
                         query += ` GROUP BY application) AS queryTemp `;
                     } else if(replacements.layoutID == 45) {
                         query = `SELECT * FROM (SELECT  CASE WHEN patent = '' OR patent IS NULL THEN CONCAT(SUBSTRING(application, 1, 2), '/', FORMAT(SUBSTRING(application, 3), 0)) ELSE FORMAT(patent, 0) END AS format_asset,
@@ -1194,7 +1202,18 @@ route.get("/:layout/assets", [authJWT.verifyToken, clientDBConnection.connect], 
                         if(typeof replacements.companies != 'undefined' && Array.isArray(replacements.companies) && replacements.companies.length > 0) {
                             query += ` AND representative_id IN (:companies) `
                         }
-                        query += ` AND type = 30  AND application NOT IN (SELECT application FROM db_new_application.dashboard_items WHERE organisation_id = :organisationID AND representative_id IN (:companies) ${customers != '' && customers.length > 0 ? ' AND assignor_id IN (:customers) ' : '' } AND type = 34 GROUP BY application)  GROUP BY application) AS queryTemp `
+                        query += ` AND type = 30  AND application NOT IN (SELECT application FROM db_new_application.dashboard_items WHERE organisation_id = :organisationID AND representative_id IN (:companies) ${customers != '' && customers.length > 0 ? ' AND assignor_id IN (:customers) ' : '' } AND type = 34 GROUP BY application)  `
+                        
+                        if(Array.isArray(customers) && customers.length > 0){
+                            query += ` AND application IN ( SELECT documentid.appno_doc_num FROM db_uspto.documentid WHERE rf_id  IN ( SELECT activity_parties_transactions.rf_id  FROM db_new_application.activity_parties_transactions WHERE activity_parties_transactions.organisation_id = :organisationID `;
+
+                            if(typeof replacements.companies != 'undefined' && Array.isArray(replacements.companies) && replacements.companies.length > 0) {
+                                query += ` AND company_id IN (:companies) `
+                            }
+
+                            query += ` AND activity_parties_transactions.assignor_and_assignee_id IN (:customers)   GROUP BY activity_parties_transactions.rf_id ) GROUP BY documentid.appno_doc_num) `;
+                        } 
+                        query += ` GROUP BY application) AS queryTemp `
                     } else if(replacements.layoutID == 40) {
                         query += ` WHERE organisation_id = :organisationID and company_id  IN (:companies) and layout_id = 15 AND date_format(assets.appno_date, '%Y') > :date AND appno_doc_num IN (SELECT application FROM db_new_application.dashboard_items
                             where organisation_id = :organisationID and representative_id  IN (:companies) and type = 30 AND application IN (select appno_doc_num
@@ -1202,16 +1221,27 @@ route.get("/:layout/assets", [authJWT.verifyToken, clientDBConnection.connect], 
                             select rf_id from db_new_application.dashboard_items
                             where organisation_id = :organisationID and representative_id IN (:companies) and type = :layoutID `
 
-                        if(assignments && assignments != '') {
-                            assignments = JSON.parse( assignments )
-                            replacements.assignments = assignments
-                        } 
+                            if(assignments && assignments != '') {
+                                assignments = JSON.parse( assignments )
+                                replacements.assignments = assignments
+                            } 
 
-                        if(Array.isArray(assignments) && assignments.length > 0) {
-                            query += ` AND rf_id IN (:assignments) `
-                        }
+                            if(Array.isArray(assignments) && assignments.length > 0) {
+                                query += ` AND rf_id IN (:assignments) `
+                            }
 
-                        query += ` )))`
+                            query += ` ))) `
+
+
+                        /* if(Array.isArray(customers) && customers.length > 0){
+                            query += ` AND application IN ( SELECT documentid.appno_doc_num FROM db_uspto.documentid WHERE rf_id  IN ( SELECT activity_parties_transactions.rf_id  FROM db_new_application.activity_parties_transactions WHERE activity_parties_transactions.organisation_id = :organisationID `;
+
+                            if(typeof replacements.companies != 'undefined' && Array.isArray(replacements.companies) && replacements.companies.length > 0) {
+                                query += ` AND company_id IN (:companies) `
+                            }
+
+                            query += ` AND activity_parties_transactions.assignor_and_assignee_id IN (:customers)   GROUP BY activity_parties_transactions.rf_id ) GROUP BY documentid.appno_doc_num) `;
+                        } */
                     } else {
                         query += ` WHERE date_format(assets.appno_date, '%Y') > :date AND assets.layout_id = 15 AND assets.organisation_id = :organisationID `
 
@@ -1223,7 +1253,7 @@ route.get("/:layout/assets", [authJWT.verifyToken, clientDBConnection.connect], 
                                     SELECT patent FROM db_new_application.dashboard_items WHERE organisation_id = :organisationID AND representative_id IN (:companies) AND type = 30 GROUP BY patent 
                             ) AND application_country NOT IN ('WO', 'US') GROUP BY grant_doc_num)`
                         } else {
-                            if(Array.isArray(customers) && customers.length > 0  && (replacements.layoutID == 32 || replacements.layoutID == 33 || replacements.layoutID == 30 || replacements.layoutID == 22 || replacements.layoutID == 31 )) {
+                            if(Array.isArray(customers) && customers.length > 0  && (replacements.layoutID == 32 || replacements.layoutID == 33 )) {
                                 query += `  AND appno_doc_num IN (SELECT application FROM db_new_application.dashboard_items WHERE organisation_id = :organisationID AND representative_id IN (:companies)  AND type = :layoutID AND application IN (
                                         SELECT documentid.appno_doc_num FROM db_uspto.documentid 
                                         WHERE rf_id  IN ( 
