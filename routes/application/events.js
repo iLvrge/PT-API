@@ -2353,7 +2353,7 @@ console.log('dates', dates)
                         end_date: moment(new Date(dates.grant_date)).subtract(1, 'day').format('YYYY-MM-DD'),
                         eventdate: dates.filling_date,
                         type: 'background',
-                        className: 'green',
+                        className: 'greenLight',
                         status: 'Filed'
                     })
                     getList.push({
@@ -2362,7 +2362,7 @@ console.log('dates', dates)
                         end_date: moment(new Date(dates.grant_date)).subtract(1, 'day').format('YYYY-MM-DD'),
                         eventdate: dates.filling_date,
                         type: 1,
-                        className: 'green',
+                        className: 'greenBorder',
                         status: 'Filed'
                     })
                 }
@@ -2410,7 +2410,7 @@ console.log('dates', dates)
                         end_date: grantDate,
                         eventdate: dates.grant_date,
                         type: 1,
-                        className: 'green',
+                        className: 'greenBorder',
                         status: 'Granted'
                     })
                 }
