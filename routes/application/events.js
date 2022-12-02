@@ -2346,11 +2346,11 @@ route.get("/events/assets/status/:applicationNumber", [authJWT.verifyToken], asy
             }
 console.log('dates', dates)
             if(getDatesData != null || getGrantDatesData != null || docDates != null) {
-                if(dates.filling_date != '' && dates.pgpub_date != '' && dates.filling_date != null && dates.pgpub_date != null) {
+                if(dates.filling_date != '' && dates.grant_date != '' && dates.filling_date != null && dates.grant_date != null) {
                     getList.push({
                         id: 1,
                         start_date: dates.filling_date,
-                        /* end_date: moment(new Date(dates.pgpub_date)).subtract(1, 'day').format('YYYY-MM-DD'), */
+                        end_date: moment(new Date(dates.grant_date)).subtract(1, 'day').format('YYYY-MM-DD'),
                         eventdate: dates.filling_date,
                         type: 1,
                         className: 'green',
@@ -2364,7 +2364,7 @@ console.log('dates', dates)
                         /* end_date: moment(new Date(dates.grant_date)).subtract(1, 'day').format('YYYY-MM-DD'), */
                         eventdate: dates.pgpub_date,
                         type: 1,
-                        className: 'green',
+                        className: 'greenBorder',
                         status: 'Published'
                     })
                 }
@@ -2401,7 +2401,7 @@ console.log('dates', dates)
                        /*  end_date: extensiontEndDate , */
                         eventdate: extensiontEndDate,
                         type: 1,
-                        className: 'green',
+                        className: 'greenBorder',
                         status: `Term Adjustment: ${getExtensionData.extension} days`,
                     })
                 }
