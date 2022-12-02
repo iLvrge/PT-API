@@ -3590,30 +3590,38 @@ const findFilterAssets = async(req) => {
         if(typeof data_type != 'undefined' && data_type == 1) {
             query = "SELECT appno_doc_num FROM owned_assets WHERE organisation_id = :organisationID AND company_id IN (:company_id)"
         } else { 
-            if(list != '') { 
-                list = JSON.parse(list);
-    
-                if(list.length > 0) { 
-                    if(parseInt(total) != list.length) {
-                        /**
-                         * Get List
-                         */
-    
-                        if((typeof other_mode != 'undefined' && other_mode == 'true') || typeof sale != 'undefined' || typeof license != 'undefined') {
-                            query = `SELECT appno_doc_num FROM db_new_application.assets_for_sale AS assets WHERE assets.organisation_id = :organisationID `
+            list = JSON.parse(list);
 
-                            if(typeof sale != 'undefined'  || typeof license != 'undefined') {
-                                query += ` AND type = :saleLicenceType `
+            /* if(list.length > 0) {  */
 
-                                where.saleLicenceType = typeof sale != 'undefined' && sale == 1 ? 2 : 4
-                            }  
+                if(parseInt(total) != list.length || list.length == 0) {
+                    /**
+                     * Get List
+                     */
+                    if((typeof other_mode != 'undefined' && other_mode == 'true') || typeof sale != 'undefined' || typeof license != 'undefined') {
+                        query = `SELECT appno_doc_num FROM db_new_application.assets_for_sale AS assets WHERE assets.organisation_id = :organisationID `
+
+                        if(typeof sale != 'undefined'  || typeof license != 'undefined') {
+                            query += ` AND type = :saleLicenceType `
+
+                            where.saleLicenceType = typeof sale != 'undefined' && sale == 1 ? 2 : 4
+                        }  
+                        query += ` GROUP BY appno_doc_num`;
+                    } else {
+                        if(typeof type !== 'undefined') {
+                            where.layoutID = findLayout(type)        
                         } else {
-                            if(typeof type !== 'undefined') {
-                                where.layoutID = findLayout(type)        
-                            } else {
-                                where.layoutID = 15
+                            where.layoutID = 15
+                        }
+
+                        if(where.layoutID > 15) {
+                            query = `SELECT application AS appno_doc_num FROM db_new_application.dashboard_items  WHERE organisation_id = :organisationID AND type = :layoutID `
+
+                            if(Array.isArray(companies) && companies.length > 0) {
+                                query += ` AND representative_id IN (:company_id)`
                             }
-                            
+                            query += ` GROUP BY application`;
+                        } else {
                             if(tabs && tabs != '') {
                                 tabs = JSON.parse( tabs )
                                 where.tabs = tabs
@@ -3671,22 +3679,15 @@ const findFilterAssets = async(req) => {
                                 }
     
                                 query += ` GROUP BY activity_parties_transactions.rf_id )  GROUP BY documentid.appno_doc_num) `
+                                
                             }
-                        }
-                        
-                        query += ` GROUP BY appno_doc_num`;
+                            query += ` GROUP BY appno_doc_num`;
+                        } 
                     }
-                } else if(typeof sale != 'undefined' || typeof license != 'undefined') { 
-                    query = `SELECT appno_doc_num FROM db_new_application.assets_for_sale AS assets WHERE assets.organisation_id = :organisationID `
-    
-                    if(typeof sale != 'undefined'  || typeof license != 'undefined') {
-                        query += ` AND type = :saleLicenceType `
-    
-                        where.saleLicenceType = typeof sale != 'undefined' && sale == 1 ? 2 : 4 
-                    }  
-                    query += ` GROUP BY appno_doc_num`;
+                    
+                    
                 }
-            } else if(typeof sale != 'undefined' || typeof license != 'undefined') { 
+            /* } else if(typeof sale != 'undefined' || typeof license != 'undefined') { 
                 query = `SELECT appno_doc_num FROM db_new_application.assets_for_sale AS assets WHERE assets.organisation_id = :organisationID `
 
                 if(typeof sale != 'undefined'  || typeof license != 'undefined') {
@@ -3695,7 +3696,7 @@ const findFilterAssets = async(req) => {
                     where.saleLicenceType = typeof sale != 'undefined' && sale == 1 ? 2 : 4 
                 }  
                 query += ` GROUP BY appno_doc_num`;
-            }
+            } */ 
         }
         if(query != '') {
             const appList =  await connection.applicationNew.query(query,{
