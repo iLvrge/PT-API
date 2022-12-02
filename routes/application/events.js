@@ -2292,8 +2292,9 @@ route.get("/events/assets/status/:applicationNumber", [authJWT.verifyToken], asy
         let getList = []
         if(applicationNumber != undefined && applicationNumber != null) {
 
-            const queryStatus = `SELECT status, status_date FROM db_uspto.application_status WHERE appno_doc_num = :applicationNumber`
-            const getStatusData = await connection.application.query(queryStatus,{
+            let queryDates = `SELECT  ap.appno_date  AS filling_date, ap.pgpub_date  FROM db_patent_grant_bibliographic.application_publication AS ap WHERE ap.appno_doc_num = :applicationNumber`
+
+            let getDatesData = await connection.application.query(queryDates,{
                     type: connection.Sequelize.QueryTypes.SELECT,
                     raw: true,
                     plain: true,
@@ -2301,9 +2302,10 @@ route.get("/events/assets/status/:applicationNumber", [authJWT.verifyToken], asy
                     replacements: { applicationNumber },
                 }
             );
+            console.log(getDatesData)
+            let queryGrantDate = `SELECT ag.appno_date AS filling_date, ag.grant_date FROM db_patent_application_bibliographic.application_grant AS ag WHERE ag.appno_doc_num = :applicationNumber`
 
-            let queryFillingDate = `SELECT appno_date FROM db_patent_grant_bibliographic.application_publication WHERE appno_doc_num = :applicationNumber UNION SELECT appno_date FROM db_patent_application_bibliographic.application_grant WHERE appno_doc_num = :applicationNumber`
-            let getAppData = await connection.application.query(queryFillingDate,{
+            let getGrantDatesData = await connection.application.query(queryGrantDate,{
                     type: connection.Sequelize.QueryTypes.SELECT,
                     raw: true,
                     plain: true,
@@ -2311,10 +2313,11 @@ route.get("/events/assets/status/:applicationNumber", [authJWT.verifyToken], asy
                     replacements: { applicationNumber },
                 }
             );
-
-            if(getAppData == null) {
-                queryFillingDate = `SELECT MAX(appno_date) AS appno_date FROM db_uspto.documentid WHERE appno_doc_num = :applicationNumber`
-                getAppData = await connection.application.query(queryFillingDate,{
+            console.log(getGrantDatesData)
+            let docDates = null
+            if(getDatesData == null) {
+                queryDates = `SELECT MAX(appno_date) AS filling_date, MAX(pgpub_date) AS pgpub_date, MAX(grant_date) AS grant_date FROM db_uspto.documentid WHERE appno_doc_num = :applicationNumber`
+                docDates = await connection.application.query(queryDates,{
                         type: connection.Sequelize.QueryTypes.SELECT,
                         raw: true,
                         plain: true,
@@ -2322,57 +2325,102 @@ route.get("/events/assets/status/:applicationNumber", [authJWT.verifyToken], asy
                         replacements: { applicationNumber },
                     }
                 );
+                console.log(docDates)
             }
 
-            const queryExtensionDate = `SELECT extension FROM db_patent_application_bibliographic.grant_extension WHERE appno_doc_num = :applicationNumber`
-            const getExtensionData = await connection.application.query(queryExtensionDate,{
-                    type: connection.Sequelize.QueryTypes.SELECT,
-                    raw: true,
-                    plain: true,
-                    logging: console.log,
-                    replacements: { applicationNumber },
+            let dates = {filling_date: '', pgpub_date: '', grant_date: ''}
+            if(getDatesData != null) {
+                dates.filling_date = getDatesData.filling_date
+                dates.pgpub_date = getDatesData.pgpub_date
+            } else {
+                if(docDates != null) {
+                    dates.filling_date = docDates.filling_date
+                    dates.pgpub_date = docDates.pgpub_date
                 }
-            );
-            let endDate = ''
-            if(getAppData !== null) {
-                endDate = moment(new Date(getAppData.appno_date)).add(20, 'years').format('YYYY-MM-DD')
-                let status = '', eventdate = endDate
-                console.log(getStatusData)
-                if(getStatusData !== null) {
-                    status = getStatusData.status
-                    //eventdate = moment(new Date(getStatusData.status_date)).add(20, 'years').format('YYYY-MM-DD')
+            }
+            
+            if(getGrantDatesData != null) {
+                dates.grant_date = getGrantDatesData.grant_date
+            } else if(docDates != null) {
+                dates.grant_date = docDates.grant_date
+            }
+console.log('dates', dates)
+            if(getDatesData != null || getGrantDatesData != null || docDates != null) {
+                if(dates.filling_date != '' && dates.pgpub_date != '' && dates.filling_date != null && dates.pgpub_date != null) {
+                    getList.push({
+                        id: 1,
+                        start_date: dates.filling_date,
+                        end_date: moment(new Date(dates.pgpub_date)).subtract(1, 'day').format('YYYY-MM-DD'),
+                        eventdate: dates.filling_date,
+                        status: 'Filling'
+                    })
                 }
-                getList.push({
-                    id: 1,
-                    start_date: getAppData.appno_date,
-                    end_date: endDate,
-                    eventdate,
-                    status
-                })
-                if( getExtensionData !== null && getExtensionData.extension > 0) {
-                    console.log(getExtensionData)
-                    const extenstionStartDate = moment(new Date(endDate)).add(1, 'days').format('YYYY-MM-DD'),
-                    extensiontEndDate = moment(new Date(endDate)).add(getExtensionData.extension, 'days').format('YYYY-MM-DD')
+                if(dates.pgpub_date != '' && dates.grant_date != '' && dates.pgpub_date != null && dates.grant_date != null) {
                     getList.push({
                         id: 2,
-                        status: 'Term Adjustment',
+                        start_date: dates.pgpub_date,
+                        end_date: moment(new Date(dates.grant_date)).subtract(1, 'day').format('YYYY-MM-DD'),
+                        eventdate: dates.pgpub_date,
+                        status: 'Publication'
+                    })
+                }
+
+                if(dates.filling_date != '' && dates.grant_date != '' && dates.filling_date != null && dates.grant_date != null) {
+                    getList.push({
+                        id: 3,
+                        start_date: dates.grant_date,
+                        end_date: moment(new Date(dates.filling_date)).add(20, 'years').format('YYYY-MM-DD'),
+                        eventdate: dates.grant_date,
+                        status: 'Grant'
+                    })
+                }
+
+                const queryExtensionDate = `SELECT extension FROM db_patent_application_bibliographic.grant_extension WHERE appno_doc_num = :applicationNumber`
+                const getExtensionData = await connection.application.query(queryExtensionDate,{
+                        type: connection.Sequelize.QueryTypes.SELECT,
+                        raw: true,
+                        plain: true,
+                        logging: console.log,
+                        replacements: { applicationNumber },
+                    }
+                );
+
+                if( getExtensionData !== null && getExtensionData.extension > 0 && dates.filling_date != '' && dates.filling_date != null) { 
+                    const endDate = moment(new Date(dates.filling_date)).add(20, 'years').format('YYYY-MM-DD')
+                    const extenstionStartDate = moment(new Date(endDate)).add(1, 'days').format('YYYY-MM-DD'),
+                    extensiontEndDate = moment(new Date(extenstionStartDate)).add(getExtensionData.extension, 'days').format('YYYY-MM-DD')
+                    getList.push({
+                        id: 4,
                         start_date: extenstionStartDate,
                         end_date: extensiontEndDate ,
-                        eventdate: extensiontEndDate
+                        eventdate: extensiontEndDate,
+                        status: 'Term Adjustment',
                     })
                 }
             }
 
-            
-            /* 
-            const query = ` SELECT id, status, status_date AS eventdate FROM db_uspto.application_status WHERE appno_doc_num = :applicationNumber  `
-            getList = await connection.application.query(query,{
+
+            const queryStatus = `SELECT id, status, status_date FROM db_uspto.application_status WHERE appno_doc_num = :applicationNumber AND status <> :status`
+            const getStatusData = await connection.application.query(queryStatus,{
                     type: connection.Sequelize.QueryTypes.SELECT,
                     raw: true,
                     logging: console.log,
-                    replacements: { applicationNumber },
+                    replacements: { applicationNumber, status: 'Patented Case' },
                 }
-            ); */
+            );
+
+            if(getStatusData.length > 0) {
+                const promise = getStatusData.map( (item, index) => {
+                    getList.push({
+                        id: parseInt(`${item.id}${index}`),
+                        start_date: item.status_date, 
+                        eventdate: item.status_date,
+                        status: item.status,
+                    })
+                })
+
+                await Promise.all(promise)
+            }  
         }
         if(typeof counter !== 'undefined') {
             res.status(200).send(`${getList.length}`);
