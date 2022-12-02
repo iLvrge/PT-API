@@ -2352,6 +2352,7 @@ console.log('dates', dates)
                         start_date: dates.filling_date,
                         end_date: moment(new Date(dates.pgpub_date)).subtract(1, 'day').format('YYYY-MM-DD'),
                         eventdate: dates.filling_date,
+                        type: 1,
                         status: 'Filled'
                     })
                 }
@@ -2361,6 +2362,7 @@ console.log('dates', dates)
                         start_date: dates.pgpub_date,
                         end_date: moment(new Date(dates.grant_date)).subtract(1, 'day').format('YYYY-MM-DD'),
                         eventdate: dates.pgpub_date,
+                        type: 1,
                         status: 'Published'
                     })
                 }
@@ -2371,6 +2373,7 @@ console.log('dates', dates)
                         start_date: dates.grant_date,
                         end_date: moment(new Date(dates.filling_date)).add(20, 'years').format('YYYY-MM-DD'),
                         eventdate: dates.grant_date,
+                        type: 1,
                         status: 'Granted'
                     })
                 }
@@ -2394,6 +2397,7 @@ console.log('dates', dates)
                         start_date: extenstionStartDate,
                         end_date: extensiontEndDate ,
                         eventdate: extensiontEndDate,
+                        type: 1,
                         status: `Term Adjustment ${getExtensionData.extension} days`,
                     })
                 }
@@ -2416,6 +2420,7 @@ console.log('dates', dates)
                         start_date: item.status_date, 
                         eventdate: item.status_date,
                         status: item.status,
+                        type: 0
                     })
                 })
 
