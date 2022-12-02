@@ -2369,17 +2369,7 @@ console.log('dates', dates)
                     })
                 }
 
-                if(dates.filling_date != '' && dates.grant_date != '' && dates.filling_date != null && dates.grant_date != null) {
-                    getList.push({
-                        id: 3,
-                        start_date: dates.grant_date,
-                        end_date: moment(new Date(dates.filling_date)).add(20, 'years').format('YYYY-MM-DD'),
-                        eventdate: dates.grant_date,
-                        type: 1,
-                        className: 'green',
-                        status: 'Granted'
-                    })
-                }
+                
 
                 const queryExtensionDate = `SELECT extension FROM db_patent_application_bibliographic.grant_extension WHERE appno_doc_num = :applicationNumber`
                 const getExtensionData = await connection.application.query(queryExtensionDate,{
@@ -2390,6 +2380,22 @@ console.log('dates', dates)
                         replacements: { applicationNumber },
                     }
                 );
+
+                if(dates.filling_date != '' && dates.grant_date != '' && dates.filling_date != null && dates.grant_date != null) {
+                    let grantDate = moment(new Date(dates.filling_date)).add(20, 'years').format('YYYY-MM-DD')
+                    if( getExtensionData !== null && getExtensionData.extension > 0) { 
+                        grantDate = moment(new Date(grantDate)).add(getExtensionData.extension, 'days').format('YYYY-MM-DD');
+                    }
+                    getList.push({
+                        id: 3,
+                        start_date: dates.grant_date,
+                        end_date: grantDate,
+                        eventdate: dates.grant_date,
+                        type: 1,
+                        className: 'green',
+                        status: 'Granted'
+                    })
+                }
 
                 if( getExtensionData !== null && getExtensionData.extension > 0 && dates.filling_date != '' && dates.filling_date != null) { 
                     const endDate = moment(new Date(dates.filling_date)).add(20, 'years').format('YYYY-MM-DD')
