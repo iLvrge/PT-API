@@ -2359,7 +2359,6 @@ console.log('dates', dates)
                     getList.push({
                         id: 1,
                         start_date: dates.filling_date,
-                        end_date: moment(new Date(dates.grant_date)).subtract(1, 'day').format('YYYY-MM-DD'),
                         eventdate: dates.filling_date,
                         type: 1,
                         className: 'greenBorder',
@@ -2407,7 +2406,6 @@ console.log('dates', dates)
                     getList.push({
                         id: 3,
                         start_date: dates.grant_date,
-                        end_date: grantDate,
                         eventdate: dates.grant_date,
                         type: 1,
                         className: 'greenBorder',
