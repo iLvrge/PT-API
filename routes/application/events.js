@@ -2353,7 +2353,8 @@ console.log('dates', dates)
                         /* end_date: moment(new Date(dates.pgpub_date)).subtract(1, 'day').format('YYYY-MM-DD'), */
                         eventdate: dates.filling_date,
                         type: 1,
-                        status: 'Filled'
+                        className: 'green',
+                        status: 'Filed'
                     })
                 }
                 if(dates.pgpub_date != '' && dates.grant_date != '' && dates.pgpub_date != null && dates.grant_date != null) {
@@ -2363,6 +2364,7 @@ console.log('dates', dates)
                         /* end_date: moment(new Date(dates.grant_date)).subtract(1, 'day').format('YYYY-MM-DD'), */
                         eventdate: dates.pgpub_date,
                         type: 1,
+                        className: 'green',
                         status: 'Published'
                     })
                 }
@@ -2374,6 +2376,7 @@ console.log('dates', dates)
                         end_date: moment(new Date(dates.filling_date)).add(20, 'years').format('YYYY-MM-DD'),
                         eventdate: dates.grant_date,
                         type: 1,
+                        className: 'green',
                         status: 'Granted'
                     })
                 }
@@ -2398,7 +2401,8 @@ console.log('dates', dates)
                        /*  end_date: extensiontEndDate , */
                         eventdate: extensiontEndDate,
                         type: 1,
-                        status: `Term Adjustment ${getExtensionData.extension} days`,
+                        className: 'green',
+                        status: `Term Adjustment: ${getExtensionData.extension} days`,
                     })
                 }
             }
