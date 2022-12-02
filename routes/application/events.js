@@ -2354,7 +2354,7 @@ console.log('dates', dates)
                         eventdate: dates.filling_date,
                         type: 'background',
                         className: 'greenLight',
-                        status: 'Filed'
+                        status: ''
                     })
                     getList.push({
                         id: 1,
@@ -2402,7 +2402,7 @@ console.log('dates', dates)
                         eventdate: dates.grant_date,
                         type: 'background',
                         className: 'green',
-                        status: 'Granted'
+                        status: ''
                     })
                     getList.push({
                         id: 3,
