@@ -2348,6 +2348,15 @@ console.log('dates', dates)
             if(getDatesData != null || getGrantDatesData != null || docDates != null) {
                 if(dates.filling_date != '' && dates.grant_date != '' && dates.filling_date != null && dates.grant_date != null) {
                     getList.push({
+                        id: 'A',
+                        start_date: dates.filling_date,
+                        end_date: moment(new Date(dates.grant_date)).subtract(1, 'day').format('YYYY-MM-DD'),
+                        eventdate: dates.filling_date,
+                        type: 'background',
+                        className: 'green',
+                        status: 'Filed'
+                    })
+                    getList.push({
                         id: 1,
                         start_date: dates.filling_date,
                         end_date: moment(new Date(dates.grant_date)).subtract(1, 'day').format('YYYY-MM-DD'),
@@ -2386,6 +2395,15 @@ console.log('dates', dates)
                     if( getExtensionData !== null && getExtensionData.extension > 0) { 
                         grantDate = moment(new Date(grantDate)).add(getExtensionData.extension, 'days').format('YYYY-MM-DD');
                     }
+                    getList.push({
+                        id: 'B',
+                        start_date: dates.grant_date,
+                        end_date: grantDate,
+                        eventdate: dates.grant_date,
+                        type: 'background',
+                        className: 'green',
+                        status: 'Granted'
+                    })
                     getList.push({
                         id: 3,
                         start_date: dates.grant_date,
