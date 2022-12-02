@@ -2350,7 +2350,7 @@ console.log('dates', dates)
                     getList.push({
                         id: 1,
                         start_date: dates.filling_date,
-                        end_date: moment(new Date(dates.pgpub_date)).subtract(1, 'day').format('YYYY-MM-DD'),
+                        /* end_date: moment(new Date(dates.pgpub_date)).subtract(1, 'day').format('YYYY-MM-DD'), */
                         eventdate: dates.filling_date,
                         type: 1,
                         status: 'Filled'
@@ -2360,7 +2360,7 @@ console.log('dates', dates)
                     getList.push({
                         id: 2,
                         start_date: dates.pgpub_date,
-                        end_date: moment(new Date(dates.grant_date)).subtract(1, 'day').format('YYYY-MM-DD'),
+                        /* end_date: moment(new Date(dates.grant_date)).subtract(1, 'day').format('YYYY-MM-DD'), */
                         eventdate: dates.pgpub_date,
                         type: 1,
                         status: 'Published'
@@ -2394,8 +2394,8 @@ console.log('dates', dates)
                     extensiontEndDate = moment(new Date(extenstionStartDate)).add(getExtensionData.extension, 'days').format('YYYY-MM-DD')
                     getList.push({
                         id: 4,
-                        start_date: extenstionStartDate,
-                        end_date: extensiontEndDate ,
+                        start_date: extensiontEndDate,
+                       /*  end_date: extensiontEndDate , */
                         eventdate: extensiontEndDate,
                         type: 1,
                         status: `Term Adjustment ${getExtensionData.extension} days`,
