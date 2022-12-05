@@ -283,11 +283,7 @@ route.post("/citation", [authJWT.verifyToken], async (req, res) => {
                             where.customers = customers
                         }
     
-                        
-    
                         query = `SELECT grant_doc_num FROM db_new_application.assets AS assets `
-    
-    
                         query += ` WHERE date_format(assets.appno_date, '%Y') > :year AND assets.layout_id = :layoutID AND assets.organisation_id = :organisationID AND grant_doc_num <> "" `
 
                         if(Array.isArray(companies) && companies.length > 0) {
@@ -330,8 +326,6 @@ route.post("/citation", [authJWT.verifyToken], async (req, res) => {
                         query += ` GROUP BY grant_doc_num`;
                     }  else {
                         query = `SELECT patent AS grant_doc_num FROM db_new_application.dashboard_items AS assets `
-    
-    
                         query += ` WHERE  assets.type = :layoutID AND assets.organisation_id = :organisationID AND patent <> "" `
 
                         if(Array.isArray(companies) && companies.length > 0) {
@@ -344,8 +338,7 @@ route.post("/citation", [authJWT.verifyToken], async (req, res) => {
                         query += ` GROUP BY patent`;
                     }
                 } 
-            } else  { 
-                
+            } else {
                 query = `SELECT grant_doc_num FROM db_new_application.assets AS assets `
                 query += ` WHERE date_format(assets.appno_date, '%Y') > :year AND assets.layout_id = :layoutID AND assets.organisation_id = :organisationID AND grant_doc_num <> "" `
                 query += ` AND assets.appno_doc_num IN (:list)`
@@ -366,7 +359,7 @@ route.post("/citation", [authJWT.verifyToken], async (req, res) => {
                 })
             }
             if( list.length > 0 ) {
-                let queryCitedLgo = "SELECT cp.cited_patent_id AS id, cp.patent_number AS number, o.organisation_name AS assignee, o.logo_optimize AS logo, '' AS combined, o.organisation_name AS all_assignee FROM cited_patents AS cp INNER JOIN assignee_organizations AS ao ON ao.assignee_id = cp.assignee_id LEFT JOIN organisations AS o ON o.organisation_id = ao.organisation_id WHERE cp.patent_number IN (:list) "
+                let queryCitedLgo = "SELECT cp.cited_patent_id AS id, cp.patent_number AS number, o.organisation_name AS assignee, o.logo_optimize AS logo, '' AS combined, o.organisation_name AS all_assignee, cpwa.app_date AS start, cpwa.app_date AS end FROM cited_patents AS cp INNER JOIN assignee_organizations AS ao ON ao.assignee_id = cp.assignee_id INNER JOIN citing_patents_with_assignee AS cpwa ON cpwa.assignee_id = ao.assignee_id AND cpwa.patent_number = cp.patent_number LEFT JOIN organisations AS o ON o.organisation_id = ao.organisation_id WHERE cp.patent_number IN (:list) "
                 citedCompanies =  await connection.applicationNew.query(queryCitedLgo,{
                     type: connection.Sequelize.QueryTypes.SELECT,
                     raw: true,
@@ -374,7 +367,7 @@ route.post("/citation", [authJWT.verifyToken], async (req, res) => {
                     replacements: {list},
                 })
                 
-                if(citedCompanies.length > 0) {
+                /* if(citedCompanies.length > 0) {
                     const uniquePatent = []
                     const promise = citedCompanies.map( c => uniquePatent.push(c.number))
                     await Promise.all(promise)
@@ -401,7 +394,7 @@ route.post("/citation", [authJWT.verifyToken], async (req, res) => {
                         })
                         await Promise.all(patentPromise)
                     }
-                }
+                } */
             }
         }
         res.status(200).json(citedCompanies);
