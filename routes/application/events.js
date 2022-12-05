@@ -2362,18 +2362,35 @@ console.log('dates', dates)
                         eventdate: dates.filling_date,
                         type: 1,
                         className: 'greenBorder',
-                        status: 'Filed'
+                        status: 'Filed:'
+                    })
+                } else if (dates.filling_date != '' && dates.pgpub_date != '' && dates.filling_date != null && dates.pgpub_date != null) {
+                    getList.push({
+                        id: 'A',
+                        start_date: dates.filling_date,
+                        end_date: dates.pgpub_date,
+                        eventdate: dates.filling_date,
+                        type: 'background',
+                        className: 'greenLight',
+                        status: ''
+                    })
+                    getList.push({
+                        id: 1,
+                        start_date: dates.filling_date,
+                        eventdate: dates.filling_date,
+                        type: 1,
+                        className: 'greenBorder',
+                        status: 'Filed:'
                     })
                 }
-                if(dates.pgpub_date != '' && dates.grant_date != '' && dates.pgpub_date != null && dates.grant_date != null) {
+                if(dates.pgpub_date != '' && dates.pgpub_date != null) {
                     getList.push({
                         id: 2,
                         start_date: dates.pgpub_date,
-                        /* end_date: moment(new Date(dates.grant_date)).subtract(1, 'day').format('YYYY-MM-DD'), */
                         eventdate: dates.pgpub_date,
                         type: 1,
                         className: 'greenBorder',
-                        status: 'Published'
+                        status: 'Published:'
                     })
                 }
 
@@ -2409,7 +2426,7 @@ console.log('dates', dates)
                         eventdate: dates.grant_date,
                         type: 1,
                         className: 'greenBorder',
-                        status: 'Granted'
+                        status: 'Granted:'
                     })
                 }
 
@@ -2424,7 +2441,8 @@ console.log('dates', dates)
                         eventdate: extensiontEndDate,
                         type: 1,
                         className: 'greenBorder',
-                        status: `Term Adjustment: ${getExtensionData.extension} days`,
+                        status: `Term Adjustment: <br/>+${getExtensionData.extension} days`,
+                        anotherStatus: `Expected Expiration:`,
                     })
                 }
             }
