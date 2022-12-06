@@ -850,7 +850,7 @@ route.post("/asset_types/assets/agents", [authJWT.verifyToken, clientDBConnectio
                             INNER JOIN db_uspto.law_firm AS l ON l.name = cor.cname
                             LEFT JOIN db_uspto.representative_law_firm AS rlf ON rlf.representative_id = l.representative_id
                             Where apt.organisation_id = :organisationID and apt.company_id = :company_id and doc.appno_doc_num IN (:assets)
-                            GROUP BY cor.convey_ty, apt.rf_id
+                            GROUP BY rac.convey_ty, apt.rf_id
                         ) AS temp
                         GROUP BY name, year`
                     } 
