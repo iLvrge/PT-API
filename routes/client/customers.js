@@ -1923,7 +1923,7 @@ route.get("/lawfirm", [authJWT.verifyToken, clientDBConnection.connect], async(r
             replacements.companies = companies.join(',')
         }
 
-        let tempQuery = `SELECT rf_id AS id, lawfirm, GROUP_CONCAT(rf_id) AS grp FROM db_new_application.dashboard_items
+        let tempQuery = `SELECT rf_id AS id, lawfirm, count(rf_id) AS distance, GROUP_CONCAT(rf_id) AS grp FROM db_new_application.dashboard_items
             WHERE  organisation_id = :organisationID AND type = 40`
 
         if(companies.length > 0) {
