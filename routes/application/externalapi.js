@@ -358,6 +358,13 @@ route.post("/citation", [authJWT.verifyToken], async (req, res) => {
                 } else {
                     query = `SELECT patent AS grant_doc_num FROM db_new_application.dashboard_items AS assets `
                     query += ` WHERE  assets.type = :layoutID AND assets.organisation_id = :organisationID AND patent <> "" `
+                    if(Array.isArray(companies) && companies.length > 0) {
+                        query += ` AND assets.representative_id IN (:company_id)`
+                    } 
+
+                    if(Array.isArray(assignments) && assignments.length > 0 ) {
+                        query += ` AND assets.rf_id IN (:assignments)`
+                    }
                     query += ` GROUP BY patent`;
                 } 
             }
@@ -374,8 +381,8 @@ route.post("/citation", [authJWT.verifyToken], async (req, res) => {
                 })
             }
             if( list.length > 0 ) {
-                let queryCitedLgo = "SELECT cp.cited_patent_id AS id, cpwa.citing_patent_number AS number, o.organisation_name AS assignee, o.logo_optimize AS logo, '' AS combined, o.organisation_name AS all_assignee, cpwa.app_date AS start, cpwa.app_date AS end FROM cited_patents AS cp INNER JOIN assignee_organizations AS ao ON ao.assignee_id = cp.assignee_id INNER JOIN citing_patents_with_assignee AS cpwa ON cpwa.assignee_id = ao.assignee_id AND cpwa.patent_number = cp.patent_number LEFT JOIN organisations AS o ON o.organisation_id = ao.organisation_id WHERE cp.patent_number IN (:list) "
-                citedCompanies =  await connection.applicationNew.query(queryCitedLgo,{
+                let queryCitedLogo = "SELECT cp.cited_patent_id AS id, cpwa.citing_patent_number AS number, MAX(o.organisation_name) AS assignee, MAX(o.logo_optimize) AS logo, COUNT(cpwa.citing_patent_number) AS combined, AS combined, GROUP_CONCAT(o.organisation_name) AS all_assignee, cpwa.app_date AS start, cpwa.app_date AS end FROM cited_patents AS cp INNER JOIN assignee_organizations AS ao ON ao.assignee_id = cp.assignee_id INNER JOIN citing_patents_with_assignee AS cpwa ON cpwa.assignee_id = ao.assignee_id AND cpwa.patent_number = cp.patent_number LEFT JOIN organisations AS o ON o.organisation_id = ao.organisation_id WHERE cp.patent_number IN (:list) GROUP BY cp.patent_number, cpwa.citing_patent_number"
+                citedCompanies =  await connection.applicationNew.query(queryCitedLogo,{
                     type: connection.Sequelize.QueryTypes.SELECT,
                     raw: true,
                     logging: console.log,
