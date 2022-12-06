@@ -142,7 +142,7 @@ route.get("/citation/:asset", [authJWT.verifyToken], async (req, res) => {
         const {counter} = req.query; 
         if(typeof asset !== 'undefined' && asset !== '' && asset !== null) {
             const queryString = ``
-            const url = `https://api.patentsview.org/patents/query?q={"cited_patent_number":"${asset}"}&f=["patent_number","patent_date","patent_num_combined_citations","patent_title","assignee_organization"]`
+            const url = `https://api.patentsview.org/patents/query?q={"cited_patent_number":"${asset}"}&f=["patent_number","patent_date","patent_num_combined_citations","patent_title","assignee_organization", "app_date"]`
             console.log(url)
             request(url, async(error, response, body) => { 
                 if (!error && response.statusCode == 200) {
@@ -160,10 +160,17 @@ route.get("/citation/:asset", [authJWT.verifyToken], async (req, res) => {
                             } else {
                                 assigneeNameMissing.push(item.patent_number)
                             }
+                            let appDate = ''
+                            if(item.applications !== null && item.applications.length > 0) {
+                                appDate = item.applications[0].app_date + ' 00:00:00'
+                            } else {
+                                appDate = item.patent_date + ' 00:00:00'
+                            }
+                            
                             citationEvents.push({
                                 id: uuidv4(),
-                                start: item.patent_date + ' 00:00:00',
-                                end: item.patent_date + ' 00:00:00',
+                                start: appDate,
+                                end: appDate,
                                 title: item.patent_title,
                                 number: item.patent_number,
                                 combined: item.patent_num_combined_citations,
@@ -272,9 +279,11 @@ route.post("/citation", [authJWT.verifyToken], async (req, res) => {
                         where.assignments = assignments
                     }           
                      
+                    console.log('assignments', where)
+
                     if(where.layoutID <= 15) {
                         if(tabs && tabs != '') {
-                            tabs = JSON.parse( tabs )
+                            tabs = JSON.parse( tabs ) 
                             where.tabs = tabs
                         }
     
@@ -339,12 +348,25 @@ route.post("/citation", [authJWT.verifyToken], async (req, res) => {
                     }
                 } 
             } else {
-                query = `SELECT grant_doc_num FROM db_new_application.assets AS assets `
-                query += ` WHERE date_format(assets.appno_date, '%Y') > :year AND assets.layout_id = :layoutID AND assets.organisation_id = :organisationID AND grant_doc_num <> "" `
-                query += ` AND assets.appno_doc_num IN (:list)`
-                query += ` GROUP BY grant_doc_num`;
+                if(where.layoutID <= 15) {
+                    query = `SELECT grant_doc_num FROM db_new_application.assets AS assets `
+                    query += ` WHERE date_format(assets.appno_date, '%Y') > :year AND assets.layout_id = :layoutID AND assets.organisation_id = :organisationID AND grant_doc_num <> "" `
+                    query += ` AND assets.appno_doc_num IN (:list)`
+                    query += ` GROUP BY grant_doc_num`;
+    
+                    where.layoutID = 15;
+                } else {
+                    query = `SELECT patent AS grant_doc_num FROM db_new_application.dashboard_items AS assets `
+                    query += ` WHERE  assets.type = :layoutID AND assets.organisation_id = :organisationID AND patent <> "" `
+                    if(Array.isArray(companies) && companies.length > 0) {
+                        query += ` AND assets.representative_id IN (:company_id)`
+                    } 
 
-                where.layoutID = 15;
+                    if(Array.isArray(assignments) && assignments.length > 0 ) {
+                        query += ` AND assets.rf_id IN (:assignments)`
+                    }
+                    query += ` GROUP BY patent`;
+                } 
             }
             const appList =  await connection.applicationNew.query(query,{
                 type: connection.Sequelize.QueryTypes.SELECT,
@@ -359,8 +381,8 @@ route.post("/citation", [authJWT.verifyToken], async (req, res) => {
                 })
             }
             if( list.length > 0 ) {
-                let queryCitedLgo = "SELECT cp.cited_patent_id AS id, cp.patent_number AS number, o.organisation_name AS assignee, o.logo_optimize AS logo, '' AS combined, o.organisation_name AS all_assignee, cpwa.app_date AS start, cpwa.app_date AS end FROM cited_patents AS cp INNER JOIN assignee_organizations AS ao ON ao.assignee_id = cp.assignee_id INNER JOIN citing_patents_with_assignee AS cpwa ON cpwa.assignee_id = ao.assignee_id AND cpwa.patent_number = cp.patent_number LEFT JOIN organisations AS o ON o.organisation_id = ao.organisation_id WHERE cp.patent_number IN (:list) "
-                citedCompanies =  await connection.applicationNew.query(queryCitedLgo,{
+                let queryCitedLogo = "SELECT cp.cited_patent_id AS id, cpwa.citing_patent_number AS number, MAX(o.organisation_name) AS assignee, MAX(o.logo_optimize) AS logo, COUNT(cpwa.citing_patent_number) AS combined, AS combined, GROUP_CONCAT(o.organisation_name) AS all_assignee, cpwa.app_date AS start, cpwa.app_date AS end FROM cited_patents AS cp INNER JOIN assignee_organizations AS ao ON ao.assignee_id = cp.assignee_id INNER JOIN citing_patents_with_assignee AS cpwa ON cpwa.assignee_id = ao.assignee_id AND cpwa.patent_number = cp.patent_number LEFT JOIN organisations AS o ON o.organisation_id = ao.organisation_id WHERE cp.patent_number IN (:list) GROUP BY cp.patent_number, cpwa.citing_patent_number"
+                citedCompanies =  await connection.applicationNew.query(queryCitedLogo,{
                     type: connection.Sequelize.QueryTypes.SELECT,
                     raw: true,
                     logging: console.log,
