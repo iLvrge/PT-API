@@ -987,7 +987,7 @@ route.get("/company/transactions/:id", [authJWT.verifyToken, authJWT.isAdmin, au
         console.log("ALL Assignments")
         let findAllAssignments  = await helpers.allAssignments(customerID, req);
 
-        res.status(200).json({list:findAllAssignments, conveyance, type: type, assignment_type: assignment_type});
+        res.status(200).json({list:findAllAssignments, conveyance, update_conveyance: conveyance, type: type, assignment_type: assignment_type});
     } catch(e) {
         console.log(e);
         res.status(402).send("Unable to retrieve data.");
@@ -1003,7 +1003,7 @@ route.get("/company/transactions/:id/:representativeID", [authJWT.verifyToken, a
         
         let findAllAssignments  = await helpers.allAssignmentsByRepresentativeIDs(customerID, representativeIDs, req);
 
-        res.status(200).json({list: findAllAssignments.list, conveyance: findAllAssignments.conveyance, type: type, assignment_type: assignment_type});
+        res.status(200).json({list: findAllAssignments.list, conveyance: findAllAssignments.conveyance, update_conveyance: findAllAssignments.update_conveyance, type: type, assignment_type: assignment_type});
     } catch(e) {
         console.log(e);
         res.status(402).send("Unable to retrieve data.");
