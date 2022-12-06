@@ -1345,7 +1345,7 @@ let findAllLawFirms = async (customerID, representativeIDs, req ) => {
 
 
 let allAssignmentsByRepresentativeIDs = async (customerID, representativeIDs, req) => {
-    let queryAllAssignments = "", assignmentsList = [], conveyanceList = [];
+    let queryAllAssignments = "", assignmentsList = [], conveyanceList = [], updateConveyanceList = [];
     if(parseInt(customerID) > 0) {
         let org = await findOrganisationbyID( customerID );
     
@@ -1373,10 +1373,20 @@ let allAssignmentsByRepresentativeIDs = async (customerID, representativeIDs, re
                     logging: console.log,
                     }
                 );
+
+                const queryAllUpdateConveyance = "SELECT ac.convey_ty as name FROM representative_assignment_conveyance AS ac INNER JOIN assignor AS aor ON aor.rf_id = ac.rf_id AND date_format(aor.exec_dt, '%Y') > :year WHERE ac.rf_id IN (SELECT d.rf_id FROM documentid as d WHERE appno_doc_num IN (SELECT appno_doc_num FROM documentid WHERE appno_doc_num <> '' AND rf_id IN (SELECT rf_id FROM list2 WHERE organisation_id = :organisationID AND company_id IN (:representativeID)) GROUP BY appno_doc_num ) GROUP BY d.rf_id) GROUP BY ac.convey_ty";
+
+                updateConveyanceList =  await connection.resources.query(queryAllUpdateConveyance,{
+                    type: connection.Sequelize.QueryTypes.SELECT,
+                    replacements: { year: EXEC_YEAR, organisationID: org.organisation_id, representativeID: representativeIDs },
+                    raw: true,
+                    logging: console.log,
+                    }
+                );
             }
         }
     }
-    return {list: assignmentsList, conveyance: conveyanceList} ;
+    return {list: assignmentsList, conveyance: conveyanceList, update_conveyance: updateConveyanceList} ;
 }
 
 let getCompanyListByEmployee = async(companyName) => {
