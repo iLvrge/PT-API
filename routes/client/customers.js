@@ -828,7 +828,40 @@ route.post("/asset_types/assets/agents", [authJWT.verifyToken, clientDBConnectio
                     /** 
                     * Filling 
                     */
-                    query += `SELECT name, year, COUNT(appno_doc_num) AS counter FROM (  SELECT l.name, l.appno_doc_num, date_format(ag.appno_date, '%Y') AS year  FROM db_patent_application_bibliographic.lawfirm AS l INNER JOIN  db_patent_application_bibliographic.application_grant AS ag ON ag.appno_doc_num = l.appno_doc_num WHERE l.name IN (SELECT lawfirm FROM db_new_application.dashboard_items WHERE organisation_id = :organisationID AND representative_id = :company_id AND type = :lawfirmType GROUP BY lawfirm) AND l.appno_doc_num IN (:assets)) AS temp GROUP BY name, year`
+                    query += `SELECT name, year, COUNT(appno_doc_num) AS counter FROM (  SELECT l.name, l.appno_doc_num, date_format(ag.appno_date, '%Y') AS year  FROM db_patent_application_bibliographic.lawfirm AS l INNER JOIN  db_patent_application_bibliographic.application_grant AS ag ON ag.appno_doc_num = l.appno_doc_num WHERE l.name IN (SELECT lawfirm FROM db_new_application.dashboard_items WHERE organisation_id = :organisationID AND representative_id = :company_id AND type = :lawfirmType GROUP BY lawfirm) `
+
+                    console.log('assignments.length', assignments.length)
+
+                    if( assignments.length > 0 ) {
+                        const findLawFirm = `SELECT cname, lf.name, rlf.representative_id, rlf.representative_name FROM db_uspto.correspondent AS c LEFT JOIN db_uspto.law_firm  as lf ON c.cname = lf.name
+                        LEFT JOIN db_uspto.representative_law_firm AS rlf ON rlf.representative_id = lf.representative_id WHERE c.rf_id IN (:assignments)`
+
+                        const getLawFirmData = await connection.applicationNew.query(findLawFirm, {
+                            type: connection.Sequelize.QueryTypes.SELECT,
+                            raw: true,
+                            logging: console.log,
+                            replacements: {assignments: where.assignments},
+                        })  
+                         
+                        if(getLawFirmData.length > 0) {
+                            const lawfirmNames = []
+                            const promise = getLawFirmData.map( item => {
+                                if(item.name != '' && !lawfirmNames.includes(item.name)) {
+                                    lawfirmNames.push(item.name)
+                                }
+                                lawfirmNames.push(item.name)
+                                if(item.representative_name != '' && !lawfirmNames.includes(item.representative_name)) {
+                                    lawfirmNames.push(item.representative_name)
+                                }
+                            })
+                            await Promise.all(promise)
+                            query += ` AND  l.name IN (:lawfirms) `
+
+                            console.log('query', query)
+                            where.lawfirms = lawfirmNames
+                        }
+                    }
+                    query += ` AND l.appno_doc_num IN (:assets)) AS temp GROUP BY name, year `
                 } else {
                     /**
                      * Assignments
