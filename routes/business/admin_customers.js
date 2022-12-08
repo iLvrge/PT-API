@@ -1799,6 +1799,13 @@ route.get("/customers/:organisation_id/:representative_id/find_inventor", [authJ
 route.get("/customers/:organisation_id/publish", [authJWT.verifyToken, authJWT.isAdmin], async(req, res, next) => {
     try{
         let organisationID = req.params.organisation_id;
+        let {company_id} = req.query
+
+        if(company_id != '' && company_id != undefined && company_id != null && company_id != '[]') {
+            company_id = JSON.parse(company_id)
+        } else {
+            company_id = []
+        }
         if(organisationID > 0){
             let org = await helpers.findOrganisationbyID( organisationID );
             if(org != null && org.organisation_id > 0) {
@@ -1810,13 +1817,36 @@ route.get("/customers/:organisation_id/publish", [authJWT.verifyToken, authJWT.i
                     col: 'user_id'
                 });
                 if(findUsers > 0) {
-                    console.log(`php -f /var/www/html/trash/create_data_for_company_db_application.php "${organisationID}"  ""`);
-                    await exec(`php -f /var/www/html/trash/create_data_for_company_db_application.php "${organisationID}"  ""`, async (error, stdout, stderr) => {    
-                        console.log("tree_script");
-                        console.log(error);
-                        console.log(stderr);
-                        res.status(200).send("UPDATED!");                        
-                    });
+                    if(company_id.length == 0) {
+                        console.log(`php -f /var/www/html/trash/create_data_for_company_db_application.php "${organisationID}"  ""`);
+                        await exec(`php -f /var/www/html/trash/create_data_for_company_db_application.php "${organisationID}"  ""`, async (error, stdout, stderr) => {    
+                            console.log("tree_script");
+                            console.log(error);
+                            console.log(stderr);
+                            res.status(200).send("UPDATED!");                        
+                        });
+                    } else {
+                        const queryRepresentativeName = `SELECT representative_name FROM db_uspto.list1 WHERE company_id IN (:company_id) AND organisation_id = :organisationID GROUP BY representative_name`;
+                        const companyNames =  await connection.applicationNew.query(queryRepresentativeName,{
+                            type: connection.Sequelize.QueryTypes.SELECT,
+                            replacements: { organisationID, company_id  },
+                            raw: true,
+                            logging: console.log,
+                            }
+                        );
+
+                        if(companyNames.length > 0) {
+                            companyNames.map( async company => { 
+                                await exec(`php -f /var/www/html/trash/create_data_for_company_db_application.php "${organisationID}"  "${company.representative_name}" "1"`, async (error, stdout, stderr) => {    
+                                    console.log("tree_script");
+                                    console.log(error);
+                                    console.log(stderr);
+                                    res.status(200).send("UPDATED!");                        
+                                });
+                            })
+                        }
+
+                    }
                 } else {
                     res.status(200).send("Please create a admin user first for this customer.");
                 }
