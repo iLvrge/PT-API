@@ -311,13 +311,13 @@ route.get("/timeline/filling_assets", [authJWT.verifyToken, clientDBConnection.c
             replacements.type = 40
             replacements.applications = allAssets 
 
-            let queryFillingLawFirm = `SELECT l.id, l.id AS name_id, l.id AS law_firm_id, l.name AS lawfirm, 0 AS repID, l.appno_doc_num,  (SELECT appno_date FROM db_patent_grant_bibliographic.application_publication AS ap WHERE ap.appno_doc_num = l.appno_doc_num) AS exec_dt, '' AS release_rf_id, '' AS release_exec_dt, '' AS partial_transaction, '' AS all_release_ids, 0 AS releaseAssets, '' AS customerName, 0 AS tab_id, '' AS 'group', '' AS 'company', 0 AS asset, 1 AS type, '' AS patent, '' AS title FROM db_patent_application_bibliographic.lawfirm AS l  WHERE l.appno_doc_num IN (:applications) AND l.name IN ( SELECT lawfirm FROM dashboard_items WHERE organisation_id = :organisation_id  AND representative_id IN (:companies) AND type = :type `
+            let queryFillingLawFirm = `SELECT temp.*, IF(exec_dt IS NULL,  another_exec_dt, exec_dt) AS exec_dt FROM ( SELECT l.id, l.id AS name_id, l.id AS law_firm_id, l.name AS lawfirm, 0 AS repID, l.appno_doc_num,  (SELECT appno_date FROM db_patent_grant_bibliographic.application_publication AS ap WHERE ap.appno_doc_num = l.appno_doc_num LIMIT 1) AS exec_dt, (SELECT appno_date FROM db_patent_application_bibliographic.application_grant AS ap WHERE ap.appno_doc_num = l.appno_doc_num LIMIT 1) AS another_exec_dt, '' AS release_rf_id, '' AS release_exec_dt, '' AS partial_transaction, '' AS all_release_ids, 0 AS releaseAssets, '' AS customerName, 0 AS tab_id, '' AS 'group', '' AS company, 0 AS asset, 1 AS type, '' AS patent, '' AS title FROM db_patent_application_bibliographic.lawfirm AS l  WHERE l.appno_doc_num IN (:applications) AND l.name IN ( SELECT lawfirm FROM dashboard_items WHERE organisation_id = :organisation_id  AND representative_id IN (:companies) AND type = :type `
 
             if(replacements.rf_ids.length > 0) {
                 queryFillingLawFirm += ` AND rf_id IN (:rf_ids) `
             }
 
-            queryFillingLawFirm += ` GROUP BY lawfirm ) GROUP BY l.appno_doc_num `
+            queryFillingLawFirm += ` GROUP BY lawfirm ) GROUP BY l.appno_doc_num ) AS temp`
 
             list =  await connection.applicationNew.query(queryFillingLawFirm, {
                 type: connection.Sequelize.QueryTypes.SELECT,
