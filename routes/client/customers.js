@@ -150,7 +150,10 @@ route.get("/timeline", [authJWT.verifyToken], async(req, res, next) => {
 
             } else if(replacements.layout == 40) {
                 /**LawFirm */
-                query = "SELECT cor.rf_id as id, apt.exec_dt, release_rf_id, release_exec_dt, full_match AS partial_transaction, all_release_ids, total_assets AS releaseAssets, IF(rlf.representative_name <> '', rlf.representative_name, lf.name) AS lawfirm, lf.law_firm_id, lf.law_firm_id AS name_id, lf.representative_id AS repID, IF(representative.representative_name <> '', representative.representative_name, assignor_and_assignee.name)  AS customerName, 0 AS tab_id, '' AS `group`, '' AS `company`, /*(SELECT count(asset) FROM ( SELECT IF(dd.grant_doc_num <> '', dd.grant_doc_num, dd.appno_doc_num) AS asset FROM db_uspto.documentid AS dd WHERE dd.rf_id = cor.rf_id GROUP BY asset ) AS temp)*/ 0 AS totalAssets FROM db_uspto.correspondent AS cor INNER JOIN activity_parties_transactions AS apt ON apt.rf_id = cor.rf_id INNER JOIN db_uspto.assignee AS ass ON ass.rf_id = cor.rf_id INNER JOIN db_uspto.assignor_and_assignee AS assignor_and_assignee ON assignor_and_assignee.assignor_and_assignee_id = ass.assignor_and_assignee_id LEFT JOIN db_uspto.representative AS representative ON representative.representative_id = assignor_and_assignee.representative_id INNER JOIN db_uspto.law_firm AS lf ON cor.cname = lf.name LEFT JOIN  db_uspto.representative_law_firm AS rlf ON rlf.representative_id = lf.representative_id  WHERE "
+                /* query = "SELECT cor.rf_id as id, apt.exec_dt, release_rf_id, release_exec_dt, full_match AS partial_transaction, all_release_ids, total_assets AS releaseAssets, IF(cor.cname <> '', cor.cname, cor.caddress_1) AS lawfirm, cor.law_firm_id, cor.law_firm_id AS name_id, 0 AS repID, '' AS customerName, 0 AS tab_id, '' AS `group`, '' AS `company`, 0 AS totalAssets FROM db_uspto.correspondent AS cor INNER JOIN activity_parties_transactions AS apt ON apt.rf_id = cor.rf_id INNER JOIN db_uspto.assignee AS ass ON ass.assignor_and_assignee_id = apt.recorded_assignor_and_assignee_id INNER JOIN db_uspto.list1 AS li ON li.assignor_and_assignee_id = apt.recorded_assignor_and_assignee_id WHERE apt.organisation_id = :organisation_id AND apt.company_id IN (:companies) AND li.organisation_id = :organisation_id AND li.company_id IN (:companies) "  */
+
+                query = "Select cor.rf_id as id, apt.exec_dt, release_rf_id, release_exec_dt, full_match AS partial_transaction, all_release_ids, total_assets AS releaseAssets, IF(cor.cname <> '', cor.cname, cor.caddress_1) AS lawfirm, cor.law_firm_id, cor.law_firm_id AS name_id, 0 AS repID, '' AS customerName,  0 AS tab_id, '' AS `group`, '' AS `company`, 0 AS totalAssets  FROM db_new_application.activity_parties_transactions AS apt  INNER JOIN db_uspto.assignee AS ass ON ass.rf_id = apt.rf_id INNER JOIN db_uspto.correspondent AS cor ON cor.rf_id = ass.rf_id WHERE apt.organisation_id = :organisation_id AND apt.company_id IN (:companies) AND ass.assignor_and_assignee_id IN (SELECT assignor_and_assignee_id FROM db_uspto.list1 WHERE organisation_id = :organisation_id AND company_id IN (:companies)) ";
+
                 if(rf_ids.length > 0) {
 
                     const findLawFirm = `SELECT cname, lf.name, rlf.representative_id, rlf.representative_name FROM db_uspto.correspondent AS c LEFT JOIN db_uspto.law_firm  as lf ON c.cname = lf.name
@@ -179,20 +182,18 @@ route.get("/timeline", [authJWT.verifyToken], async(req, res, next) => {
                             tempQuery += ` AND c.cname = :name`
                         }
                         tempQuery += ` GROUP BY  c.rf_id`
-                        query += ` cor.rf_id IN (${tempQuery}) ` 
+                        query += ` AND cor.rf_id IN (${tempQuery}) ` 
                     } 
 
-
-
-
+ 
                     //replacements.rf_ids = rf_ids
                     /* query += " cor.rf_id IN (SELECT apt.rf_id FROM activity_parties_transactions AS apt INNER JOIN db_uspto.correspondent  AS c ON c.rf_id = apt.rf_id WHERE c.cname IN (SELECT cname FROM db_uspto.correspondent WHERE rf_id IN (:rf_ids)) AND apt.organisation_id = :organisation_id  AND apt.company_id IN (:companies)) " */
 
                     
                 } else {
-                    query += " cor.rf_id IN (SELECT rf_id FROM dashboard_items WHERE organisation_id = :organisation_id  AND representative_id IN (:companies) AND type = :layout GROUP BY rf_id) "
+                    /* query += " cor.rf_id IN (SELECT rf_id FROM dashboard_items WHERE organisation_id = :organisation_id  AND representative_id IN (:companies) AND type = :layout GROUP BY rf_id) " */
                 }
-                query += " GROUP BY cor.rf_id ORDER BY exec_dt DESC "
+                query += " GROUP BY apt.rf_id ORDER BY exec_dt DESC "
 
             } else if (replacements.layout == 39) {
                 query = "SELECT assignment.rf_id as id, MAX(aor.exec_dt) AS exec_dt, release_rf_id, release_exec_dt, full_match AS partial_transaction, all_release_ids, total_assets AS releaseAssets, IF(representative.representative_name <> '', representative.representative_name, assignor_and_assignee.name)  AS customerName, assignor_and_assignee.assignor_and_assignee_id AS name_id,representative.representative_id as repID, apt.activity_id AS tab_id, '' AS `group`, '' AS `company`, (SELECT count(asset) FROM ( SELECT IF(dd.grant_doc_num <> '', dd.grant_doc_num, dd.appno_doc_num) AS asset FROM db_uspto.documentid AS dd WHERE dd.rf_id = assignment.rf_id GROUP BY asset ) AS temp) AS totalAssets FROM db_uspto.assignment INNER JOIN activity_parties_transactions AS apt ON apt.rf_id = assignment.rf_id INNER JOIN db_uspto.assignor AS aor ON aor.rf_id = assignment.rf_id INNER JOIN db_uspto.assignor_and_assignee AS assignor_and_assignee ON assignor_and_assignee.assignor_and_assignee_id = aor.assignor_and_assignee_id LEFT JOIN db_uspto.representative AS representative ON representative.representative_id = assignor_and_assignee.representative_id WHERE assignment.rf_id IN (SELECT rf_id FROM dashboard_items WHERE organisation_id = :organisation_id  AND representative_id IN (:companies) AND type = :layout)  GROUP BY assignment.rf_id ORDER BY exec_dt DESC "
