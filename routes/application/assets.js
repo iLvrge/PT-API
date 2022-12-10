@@ -444,7 +444,7 @@ route.post("/assets/cpc/:year/:cpcCode", [authJWT.verifyToken, clientDBConnectio
             const getFiilingAssets =   await helpers.findFillingAssets(req) 
 
             if(getFiilingAssets.length > 0) {
-                const replacements = { organisation_id: req.orgId, year: 1997 }
+                const replacements = { organisation_id: req.orgId, year: 1999 }
                 if(typeof selectedCompanies != 'undefined' && selectedCompanies != '') {            
                     companies = JSON.parse(selectedCompanies)
                 }
