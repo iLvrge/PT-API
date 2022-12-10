@@ -425,7 +425,7 @@ route.post("/assets/cpc", [authJWT.verifyToken, clientDBConnection.connect], asy
                         })
                         await Promise.all(promise);
                     }
-                    console.log(mainList.length, remainigItems.length, assetsInFirstQuery)
+                    //console.log(mainList.length, remainigItems.length, assetsInFirstQuery)
                 } 
             }
         }
@@ -436,7 +436,7 @@ route.post("/assets/cpc", [authJWT.verifyToken, clientDBConnection.connect], asy
     }
 })
 
-route.post("/assets/cpc/:year/:cpcCode", [authJWT.verifyToken], async(req, res, next) => {
+route.post("/assets/cpc/:year/:cpcCode", [authJWT.verifyToken, clientDBConnection.connect], async(req, res, next) => {
     try {
         let { list, total, type,  selectedCompanies, range, data_type } = req.body, getList = []
 
