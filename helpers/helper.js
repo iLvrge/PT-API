@@ -883,57 +883,55 @@ let getAddressListByLawfirmID = async( ID ) => {
           }
         );
 
-        let representativeQuery = ''
-        const replacements = { ID: ID, year: 1997 };
-        if(representative !== null && representative.representative_id > 0) {
-            const representativeNameQuery =  `SELECT representative_id FROM representative_law_firm WHERE representative_name = :name`;
-            const representativeName = await connection.resources.query(representativeNameQuery,{
-                type: connection.Sequelize.QueryTypes.SELECT,
-                raw: true,
-                replacements: { name: representative.name },
-                logging: console.log,
-                plain: true
-              }
-            );
-            if(representativeName !== null && representativeName.representative_id > 0) {
-                replacements.representativeID = representativeName.representative_id
-                representativeQuery = `SELECT law_firm_id FROM  law_firm WHERE
-                representative_id = :representativeID GROUP BY law_firm_id`
-            } else {
-                representativeQuery = `:ID`
+        let allLawFirms = []
+        if(representative !== null){
+            allLawFirms.push(representative.name)
+            if(representative.representative_id > 0) {
+                const representativeNameQuery =  `SELECT name FROM  law_firm WHERE
+                representative_id IN (SELECT representative_id FROM representative_law_firm WHERE representative_name = :name) GROUP BY name`;
+                const allNames = await connection.resources.query(representativeNameQuery,{
+                    type: connection.Sequelize.QueryTypes.SELECT,
+                    raw: true,
+                    replacements: { name: representative.name },
+                    logging: console.log, 
+                });
+                if(allNames.length > 0) {
+                    const promise = allNames.map( item => !allLawFirms.includes(item.name))
+                    await Promise.all(promise)
+                }
             }
-        } else {
-            representativeQuery = `:ID`
-        }
+        } 
+        const replacements = { ID: ID, year: 1997, names: allLawFirms };  
+
         const queryFindIDS = `SELECT address, rf_id FROM (
             SELECT cor.caddress_7 as address, ass.rf_id FROM correspondent AS cor
             INNER JOIN assignment AS ass ON ass.rf_id = cor.rf_id
-            WHERE  date_format(ass.record_dt, '%Y') >= :year AND ass.law_firm_id IN (${representativeQuery})  AND cor.caddress_7 <> '' 
+            WHERE  date_format(ass.record_dt, '%Y') >= :year AND (ass.cname IN (:names) OR ass.caddress_1 IN (:names))  AND cor.caddress_7 <> '' 
             GROUP BY address
             UNION
             SELECT cor.caddress_5 as address, ass.rf_id FROM correspondent  AS cor
             INNER JOIN assignment AS ass ON ass.rf_id = cor.rf_id
-            WHERE  date_format(ass.record_dt, '%Y') >= :year AND ass.law_firm_id IN (${representativeQuery})  AND cor.caddress_5 <> '' 
+            WHERE  date_format(ass.record_dt, '%Y') >= :year AND (ass.cname IN (:names) OR ass.caddress_1 IN (:names))  AND cor.caddress_5 <> '' 
             GROUP BY address
             UNION
             SELECT cor.caddress_6 as address, ass.rf_id FROM correspondent  AS cor
             INNER JOIN assignment AS ass ON ass.rf_id = cor.rf_id
-            WHERE  date_format(ass.record_dt, '%Y') >= :year AND ass.law_firm_id IN (${representativeQuery})  AND cor.caddress_6 <> '' 
+            WHERE  date_format(ass.record_dt, '%Y') >= :year AND (ass.cname IN (:names) OR ass.caddress_1 IN (:names))  AND cor.caddress_6 <> '' 
             GROUP BY address
             UNION
             SELECT cor.caddress_3 as address, ass.rf_id FROM correspondent  AS cor
             INNER JOIN assignment AS ass ON ass.rf_id = cor.rf_id
-            WHERE  date_format(ass.record_dt, '%Y') >= :year AND ass.law_firm_id IN (${representativeQuery})  AND cor.caddress_3 <> '' 
+            WHERE  date_format(ass.record_dt, '%Y') >= :year AND (ass.cname IN (:names) OR ass.caddress_1 IN (:names))  AND cor.caddress_3 <> '' 
             GROUP BY address
             UNION
             SELECT cor.caddress_4 as address, ass.rf_id FROM correspondent  AS cor
             INNER JOIN assignment AS ass ON ass.rf_id = cor.rf_id
-            WHERE  date_format(ass.record_dt, '%Y') >= :year AND ass.law_firm_id IN (${representativeQuery})  AND cor.caddress_4 <> '' 
+            WHERE  date_format(ass.record_dt, '%Y') >= :year AND (ass.cname IN (:names) OR ass.caddress_1 IN (:names))  AND cor.caddress_4 <> '' 
             GROUP BY address
             UNION
             SELECT cor.caddress_2 as address, ass.rf_id FROM correspondent  AS cor
             INNER JOIN assignment AS ass ON ass.rf_id = cor.rf_id
-            WHERE  date_format(ass.record_dt, '%Y') >= :year AND ass.law_firm_id IN (${representativeQuery})   AND cor.caddress_2 <> '' 
+            WHERE  date_format(ass.record_dt, '%Y') >= :year AND (ass.cname IN (:names) OR ass.caddress_1 IN (:names))   AND cor.caddress_2 <> '' 
             GROUP BY address
         ) as temp GROUP BY address  ORDER BY address ASC`;
 
