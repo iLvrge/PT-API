@@ -127,8 +127,8 @@ route.post("/assets/cpc", [authJWT.verifyToken, clientDBConnection.connect], asy
                         list.push(`${row.appno_doc_num}`)
                     }) 
                     await Promise.all(promiseAssets)
-                    list = JSON.stringify(list)
                     total = list.length
+                    list = JSON.stringify(list)
                 }
             } 
         } else if((typeof data_type !== 'undefined' && data_type == 1) || typeof sale != 'undefined' || typeof license != 'undefined') { 
@@ -294,7 +294,7 @@ route.post("/assets/cpc", [authJWT.verifyToken, clientDBConnection.connect], asy
                 }
                                 
                 let scopeCondition = '';
-                const replacements = {date: 2000}
+                const replacements = {date: 1999}
 
                 if( scope != undefined && scope != 'undefined' && scope != null) {
                     replacements.scopeList = JSON.parse(scope)
@@ -467,8 +467,8 @@ route.post("/assets/cpc/:year/:cpcCode", [authJWT.verifyToken, clientDBConnectio
                         list.push(`${row.appno_doc_num}`)
                     }) 
                     await Promise.all(promiseAssets)
-                    list = JSON.stringify(list)
                     total = list.length
+                    list = JSON.stringify(list)
                 }
             } 
         } else  if(typeof data_type !== 'undefined' && data_type == 1) {
