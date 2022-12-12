@@ -387,6 +387,7 @@ route.post("/assets/cpc", [authJWT.verifyToken, clientDBConnection.connect], asy
 
                         if(remainingList.length > 0) {
                             getList = [...getList, ...remainingList]
+                            console.log('getList', getList)
                             const promise = remainingList.map( item => {  
                                 if(!cpcCode.includes(item.cpc_code)){
                                     cpcCode.push(item.cpc_code) 
