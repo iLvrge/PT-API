@@ -117,8 +117,9 @@ route.post("/assets/cpc", [authJWT.verifyToken, clientDBConnection.connect], asy
                 if(assignments && assignments != '') {
                     assignments = JSON.parse( assignments )
                     replacements.assignments = assignments
-
-                    queryFillingLawFirm += ` AND rf_id IN (:assignments) `
+                    if(assignments.length > 0) {
+                        queryFillingLawFirm += ` AND rf_id IN (:assignments) `
+                    }
                 }
 
                 queryFillingLawFirm += ` GROUP BY lawfirm) GROUP BY l.appno_doc_num `
@@ -354,7 +355,7 @@ route.post("/assets/cpc", [authJWT.verifyToken, clientDBConnection.connect], asy
                 const cpcCode = [];
                 if(getList.length > 0) { 
                     let assetsInFirstQuery = []
-                    let 
+                     
                     const promise = getList.map( item => {
                         const allAssets = item.appNum.split(',');
                         if(allAssets.length > 0) {
