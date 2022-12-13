@@ -3838,7 +3838,29 @@ const findFillingAssets = async (req) => {
     return allAssets;
 }
 
+const getFamilyList = async(replacements) => {
+
+    const query = `SELECT grant_doc_num FROM db_uspto.assets_family AS af WHERE grant_doc_num IN ( 
+        SELECT patent FROM db_new_application.dashboard_items WHERE organisation_id = :organisationID AND representative_id IN (:companies) AND type = :type GROUP BY patent ) AND application_country NOT IN ('WO', 'US') GROUP BY grant_doc_num `
+    replacements.type = 30
+    const grantAssets =  await connection.applicationNew.query(query, {
+        type: connection.Sequelize.QueryTypes.SELECT,
+        raw: true,
+        logging: console.log,
+        replacements: replacements,
+    });  
+    const allAssets = []
+    if(grantAssets != null && grantAssets.length > 0) { 
+        const promiseAssets = grantAssets.map(row => {
+            allAssets.push(`${row.grant_doc_num}`)
+        }) 
+        await Promise.all(promiseAssets)
+    }
+    return allAssets;
+}
+
 const helper = {};
+helper.getFamilyList = getFamilyList
 helper.findFillingAssets = findFillingAssets
 helper.findCompanyName = findCompanyName
 helper.checkTabs = checkTabs;
