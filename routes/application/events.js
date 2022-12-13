@@ -2344,7 +2344,7 @@ route.get("/events/assets/status/:applicationNumber", [authJWT.verifyToken], asy
             } else if(docDates != null) {
                 dates.grant_date = docDates.grant_date
             }
-console.log('dates', dates)
+ 
             if(getDatesData != null || getGrantDatesData != null || docDates != null) {
                 if(dates.filling_date != '' && dates.grant_date != '' && dates.filling_date != null && dates.grant_date != null) {
                     getList.push({
@@ -2444,6 +2444,20 @@ console.log('dates', dates)
                         status: `Term Adjustment: <br/>+${getExtensionData.extension} days`,
                         anotherStatus: `Expected Expiration:`,
                     })
+                } else {
+                    if(dates.grant_date != '') {
+                        const endDate = moment(new Date(dates.filling_date)).add(20, 'years').format('YYYY-MM-DD')
+                        getList.push({
+                            id: 4,
+                            start_date: endDate,
+                           /*  end_date: extensiontEndDate , */
+                            eventdate: endDate,
+                            type: 1,
+                            className: 'greenBorder',
+                            status: `Term Adjustment: <br/>0 days`,
+                            anotherStatus: `Expected Expiration:`,
+                        })
+                    }
                 }
             }
 
