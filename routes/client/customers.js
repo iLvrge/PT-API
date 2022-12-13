@@ -1371,7 +1371,7 @@ route.get("/:layout/assets", [authJWT.verifyToken, clientDBConnection.connect], 
                             query += ` AND grant_doc_num IN (:assetList) `
                         } else {
                             if(Array.isArray(customers) && customers.length > 0  && (replacements.layoutID == 32 || replacements.layoutID == 33 )) {
-                                query += `  AND appno_doc_num IN (SELECT application FROM db_new_application.dashboard_items WHERE organisation_id = :organisationID AND representative_id IN (:companies)  AND type = :layoutID AND application IN (
+                                query += `  AND appno_doc_num IN (SELECT application COLLATE utf8mb4_0900_ai_ci FROM db_new_application.dashboard_items WHERE organisation_id = :organisationID AND representative_id IN (:companies)  AND type = :layoutID AND application IN (
                                         SELECT documentid.appno_doc_num FROM db_uspto.documentid 
                                         WHERE rf_id  IN ( 
                                         SELECT activity_parties_transactions.rf_id  FROM db_new_application.activity_parties_transactions 
@@ -1384,7 +1384,7 @@ route.get("/:layout/assets", [authJWT.verifyToken, clientDBConnection.connect], 
                                         GROUP BY documentid.appno_doc_num
                                     ) GROUP BY application) `
                             } else {
-                                query += ` AND appno_doc_num IN (SELECT application FROM db_new_application.dashboard_items WHERE organisation_id = :organisationID AND representative_id IN (:companies) ${customers != '' && customers.length > 0 ? ' AND assignor_id IN (:customers) ' : '' } AND type = :layoutID GROUP BY application)`
+                                query += ` AND appno_doc_num IN (SELECT application COLLATE utf8mb4_0900_ai_ci FROM db_new_application.dashboard_items WHERE organisation_id = :organisationID AND representative_id IN (:companies) ${customers != '' && customers.length > 0 ? ' AND assignor_id IN (:customers) ' : '' } AND type = :layoutID GROUP BY application)`
                             }
                         }  
                     }           
