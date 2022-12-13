@@ -178,9 +178,9 @@ route.post('/parties/assignor', [authJWT.verifyToken, clientDBConnection.connect
                 AND apt.company_id IN (:selectedCompanies)
                 GROUP BY aor.rf_id)
                 GROUP BY aaa.assignor_and_assignee_id)AS temp GROUP BY name ORDER BY number DESC, name ASC ;`  */
-                let subQuery = `SELECT application FROM dashboard_items WHERE organisation_id = :organisationID AND representative_id IN (:selectedCompanies) AND type = 33`;
+                let subQuery = `SELECT application COLLATE utf8mb4_0900_ai_ci FROM dashboard_items WHERE organisation_id = :organisationID AND representative_id IN (:selectedCompanies) AND type = :type`;
                 if(typeof search != 'undefined' && search == 'all') {
-                    subQuery = `SELECT appno_doc_num FROM assets WHERE organisation_id = :organisationID AND company_id IN (:selectedCompanies) AND layout_id = 15`;
+                    subQuery = `SELECT appno_doc_num FROM assets WHERE organisation_id = :organisationID AND company_id IN (:selectedCompanies) AND layout_id = :layoutID`;
                 }
                 const query = `SELECT assignor_and_assignee_id AS id, name, assignor, SUM(app_count) as number FROM
                 (SELECT  aaa.assignor_and_assignee_id, "${getRepresentativeName.representative_name}" as assignor, aaa.representative_id, 
@@ -209,7 +209,8 @@ route.post('/parties/assignor', [authJWT.verifyToken, clientDBConnection.connect
                         selectedCompanies,
                         layoutID: 15,
                         activityID: [2, 7],
-                        year: 1997
+                        year: 1997,
+                        type: 33
                     }
                 })
             /*} */           
@@ -337,7 +338,7 @@ route.post('/parties', [authJWT.verifyToken, clientDBConnection.connect], async(
 
         if( getRepresentativeName != null) {
 
-            let subQuery = `SELECT application FROM dashboard_items WHERE organisation_id = :organisationID AND representative_id IN (:selectedCompanies) AND type = :layoutID` 
+            let subQuery = `SELECT application COLLATE utf8mb4_0900_ai_ci FROM dashboard_items WHERE organisation_id = :organisationID AND representative_id IN (:selectedCompanies) AND type = :layoutID` 
              
             if(typeof search != 'undefined' && search == 'all') {
                 subQuery = `SELECT appno_doc_num FROM assets WHERE organisation_id = :organisationID AND company_id IN (:selectedCompanies) AND layout_id = :layoutID`;

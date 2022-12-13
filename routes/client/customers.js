@@ -836,7 +836,7 @@ route.post("/asset_types/assets/agents", [authJWT.verifyToken, clientDBConnectio
                     */
                     query += `SELECT name, year, COUNT(appno_doc_num) AS counter FROM (  SELECT l.name, l.appno_doc_num, date_format(ag.appno_date, '%Y') AS year  FROM db_patent_application_bibliographic.lawfirm AS l INNER JOIN  db_patent_application_bibliographic.application_grant AS ag ON ag.appno_doc_num = l.appno_doc_num WHERE l.name IN (SELECT lawfirm FROM db_new_application.dashboard_items WHERE organisation_id = :organisationID AND representative_id = :company_id AND type = :lawfirmType GROUP BY lawfirm) `
 
-                    console.log('assignments.length', assignments.length)
+                     
 
                     if( assignments.length > 0 ) {
                         const findLawFirm = `SELECT cname, lf.name, rlf.representative_id, rlf.representative_name FROM db_uspto.correspondent AS c LEFT JOIN db_uspto.law_firm  as lf ON c.cname = lf.name
@@ -881,7 +881,7 @@ route.post("/asset_types/assets/agents", [authJWT.verifyToken, clientDBConnectio
                         ) AS temp
                         GROUP BY name, year `
                     } else {
-                        query = `SELECT name, year, COUNT(rf_id) AS counter FROM (
+                        /* query = `SELECT name, year, COUNT(rf_id) AS counter FROM (
                             Select rac.convey_ty AS name, date_format(apt.exec_dt, '%Y') AS year, apt.rf_id  from db_new_application.activity_parties_transactions AS apt
                             INNER JOIN db_uspto.correspondent as cor ON cor.rf_id = apt.rf_id
                             INNER JOIN db_uspto.representative_assignment_conveyance as rac ON rac.rf_id = apt.rf_id
@@ -890,6 +890,15 @@ route.post("/asset_types/assets/agents", [authJWT.verifyToken, clientDBConnectio
                             LEFT JOIN db_uspto.representative_law_firm AS rlf ON rlf.representative_id = l.representative_id
                             Where apt.organisation_id = :organisationID and apt.company_id = :company_id and doc.appno_doc_num IN (:assets)
                             GROUP BY rac.convey_ty, apt.rf_id
+                        ) AS temp
+                        GROUP BY name, year` */
+                        query = `SELECT name, year, COUNT(appno_doc_num) AS counter FROM (
+                            Select IF(rlf.representative_name <> '' , rlf.representative_name, l.name) AS name, doc.appno_doc_num, date_format(doc.appno_date, '%Y') AS year from db_new_application.activity_parties_transactions AS apt
+                            INNER JOIN db_uspto.correspondent as cor ON cor.rf_id = apt.rf_id
+                            INNER JOIN db_uspto.documentid AS doc ON doc.rf_id = apt.rf_id
+                            INNER JOIN db_uspto.law_firm AS l ON l.name = cor.cname
+                            LEFT JOIN db_uspto.representative_law_firm AS rlf ON rlf.representative_id = l.representative_id
+                            Where apt.organisation_id = :organisationID and apt.company_id = :company_id and doc.appno_doc_num IN (:assets)
                         ) AS temp
                         GROUP BY name, year`
                     } 
@@ -1357,9 +1366,9 @@ route.get("/:layout/assets", [authJWT.verifyToken, clientDBConnection.connect], 
                             query += ` AND assets.company_id IN (:companies)`
                         }
                         if (replacements.layoutID == 38) {
-                            query += ` AND grant_doc_num IN (SELECT grant_doc_num FROM db_uspto.assets_family AS af WHERE grant_doc_num IN ( 
-                                    SELECT patent FROM db_new_application.dashboard_items WHERE organisation_id = :organisationID AND representative_id IN (:companies) AND type = 30 GROUP BY patent 
-                            ) AND application_country NOT IN ('WO', 'US') GROUP BY grant_doc_num)`
+                            const getFamilyList = await helpers.getFamilyList(replacements)
+                            replacements.assetList = getFamilyList
+                            query += ` AND grant_doc_num IN (:assetList) `
                         } else {
                             if(Array.isArray(customers) && customers.length > 0  && (replacements.layoutID == 32 || replacements.layoutID == 33 )) {
                                 query += `  AND appno_doc_num IN (SELECT application FROM db_new_application.dashboard_items WHERE organisation_id = :organisationID AND representative_id IN (:companies)  AND type = :layoutID AND application IN (
