@@ -2065,10 +2065,16 @@ route.get("/patents/:patentNumber/assignments",[authJWT.verifyToken, authJWT.isA
 
 
 route.get("/customers/retrieve_cited_patents/:customerID",[authJWT.verifyToken, authJWT.isAdmin], async (req, res) =>{ 
-    const {customerID} = req.params
-    const {companies, type} = req.query
-    spawn('node', ['/var/www/html/script/retrieve_cited_patents_assignees.js', customerID, `${companies}` `${type}`]);
-    res.status(200).send("Run retireved assignee script");
+    try {
+        const {customerID} = req.params
+        const {companies, type} = req.query
+        console.log('companies', companies, type)
+        spawn('node', ['/var/www/html/script/retrieve_cited_patents_assignees.js', customerID, `${companies}` `${type}`]);
+        res.status(200).send("Run retireved assignee script");
+    } catch (err) {
+        res.status(500).send("Invalid input");
+    }
+    
 })
 
 route.get("/customers/retrieve_cited_patents_domain/:customerID/:apiName",[authJWT.verifyToken, authJWT.isAdmin], async (req, res) =>{ 
