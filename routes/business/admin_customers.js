@@ -2066,14 +2066,14 @@ route.get("/patents/:patentNumber/assignments",[authJWT.verifyToken, authJWT.isA
 
 route.get("/customers/retrieve_cited_patents/:customerID",[authJWT.verifyToken, authJWT.isAdmin], async (req, res) =>{ 
     const {customerID} = req.params
-    const {companies} = req.query
-    spawn('node', ['/var/www/html/script/retrieve_cited_patents_assignees.js', customerID, `${companies}`]);
+    const {companies, type} = req.query
+    spawn('node', ['/var/www/html/script/retrieve_cited_patents_assignees.js', customerID, `${companies}` `${type}`]);
     res.status(200).send("Run retireved assignee script");
 })
 
 route.get("/customers/retrieve_cited_patents_domain/:customerID/:apiName",[authJWT.verifyToken, authJWT.isAdmin], async (req, res) =>{ 
     const {customerID, apiName} = req.params
-    const {assignees} = req.query
+    const {assignees, type} = req.query
     console.log('retrieve_cited_patents_domain')
     /* exec(`node /var/www/html/script/name_to_domain_api.js ${customerID} ${apiName} ${assignees} 0 > name_to_domain_api.log  2>&1`, function(err, stdout, stderr){
         console.log(`assigneeLogos downloadFileSpawn.stdout: ${stdout}`)
@@ -2104,7 +2104,7 @@ route.get("/customers/retrieve_cited_patents_domain/:customerID/:apiName",[authJ
 })
 
 route.post("/customers/retrieve_cited_patents_logo",[authJWT.verifyToken, authJWT.isAdmin], async (req, res) =>{ 
-    const {client_id, api_name, assignees, all, company_id} = req.body
+    const {client_id, api_name, assignees, all, company_id, type} = req.body
     console.log('retrieve_cited_patents_logo')
     /* exec(`node /var/www/html/script/name_to_domain_api.js ${client_id} ${api_name} ${assignees} 1 > name_to_domain_api.log  2>&1`, function(err, stdout, stderr){
         console.log(`assigneeLogos downloadFileSpawn.stdout: ${stdout}`)
@@ -2113,7 +2113,7 @@ route.post("/customers/retrieve_cited_patents_logo",[authJWT.verifyToken, authJW
     }); */ 
 
     logger.info('Sending request to RapidAPI script')
-    const assigneeLogos = spawn('node', ['/var/www/html/script/name_to_domain_api.js', client_id, api_name, assignees, 1, company_id, all]);
+    const assigneeLogos = spawn('node', ['/var/www/html/script/name_to_domain_api.js', client_id, api_name, assignees, 1, company_id, all, type]);
 
     assigneeLogos.stdout.on('data', (data) => {
         logger.info(data)
