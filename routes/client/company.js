@@ -132,7 +132,9 @@ route.put("/:companyID", [authJWT.verifyToken, clientDBConnection.connect], asyn
         const Representative = req.connection_db.define('ClientRepesentative', ClientRepesentative.mainStructure, ClientRepesentative.options);
         if(companyID > 0) {
             const company = Representative.findOne({
-                representative_id: companyID
+                where: {
+                    representative_id: companyID
+                }
             })
             if(company != null) {
                 let item = {name}
