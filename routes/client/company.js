@@ -131,29 +131,29 @@ route.put("/:companyID", [authJWT.verifyToken, clientDBConnection.connect], asyn
         const {companyID} = req.params;
         const Representative = req.connection_db.define('ClientRepesentative', ClientRepesentative.mainStructure, ClientRepesentative.options);
         if(companyID > 0) {
-            const company = Representative.findOne({
+            const company = await Representative.findOne({
                 where: {
                     representative_id: companyID
                 }
-            })
+            }) 
             if(company != null) {
-                let item = {name}
+                let item = {}
                 let updateRecord = false
                 if(typeof name !== 'undefined' && name != '' && name != null && company.type == 1) {
+                    item = {original_name: name, representative_name: name}
                     updateRecord = true; 
                 } else if (typeof parent_id !== 'undefined' && parent_id != null && parent_id >= 0) {
                     item = {parent_id}
                     if(parent_id == 0 && company.child == 1) {
                         item.child = 0
                     } else if (parent_id > 0 && company.child == 0) {
-                        item.child = 0
+                        item.child = 1
                     }
                     updateRecord = true; 
-                }
+                } 
                 if(updateRecord === true) {
-                    company.update(item).success(function () {
-                        res.status(200).json(company)
-                    })
+                    const update = await company.update(item)
+                    res.status(200).json(company)
                 }
             } else {
                 res.status(500).json({message: "Invalid input data."})
