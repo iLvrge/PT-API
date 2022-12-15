@@ -152,8 +152,8 @@ route.put("/:companyID", [authJWT.verifyToken, clientDBConnection.connect], asyn
                     updateRecord = true; 
                 } 
                 if(updateRecord === true) {
-                    const update = await company.update(item)
-                    res.status(200).json(company)
+                    const getCompaniesList = await helpers.getCompaniesWithChildren(req.connection_db, req.orgId);
+                    res.status(200).json(getCompaniesList); 
                 }
             } else {
                 res.status(500).json({message: "Invalid input data."})
