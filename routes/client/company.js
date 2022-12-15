@@ -41,6 +41,8 @@ const Errors = require("../../model/application/Errors");
 
 const Timelines = require("../../model/application/Timelines");
 
+const ClientRepesentative = require("../../model/client/Representatives");
+
 const helpers = require("../../helpers/helper");
 
 const authJWT = require("../../helpers/verifyJwtToken");
@@ -122,6 +124,46 @@ route.get("/", [authJWT.verifyToken, clientDBConnection.connect], async(req, res
         res.status(500).json({message: "Unable to retrieve companies"})
     }
 });
+
+route.put("/:companyID", [authJWT.verifyToken, clientDBConnection.connect], async(req, res, next) => {
+    try {
+        const { name, parent_id} = req.body;
+        const {companyID} = req.params;
+        const Representative = req.connection_db.define('ClientRepesentative', ClientRepesentative.mainStructure, ClientRepesentative.options);
+        if(companyID > 0) {
+            const company = Representative.findOne({
+                representative_id: companyID
+            })
+            if(company != null) {
+                let item = {name}
+                let updateRecord = false
+                if(typeof name !== 'undefined' && name != '' && name != null && company.type == 1) {
+                    updateRecord = true; 
+                } else if (typeof parent_id !== 'undefined' && parent_id != null && parent_id >= 0) {
+                    item = {parent_id}
+                    if(parent_id == 0 && company.child == 1) {
+                        item.child = 0
+                    } else if (parent_id > 0 && company.child == 0) {
+                        item.child = 0
+                    }
+                    updateRecord = true; 
+                }
+                if(updateRecord === true) {
+                    company.update(item).success(function () {
+                        res.status(200).json(company)
+                    })
+                }
+            } else {
+                res.status(500).json({message: "Invalid input data."})
+            } 
+        } else {
+            res.status(500).json({message: "Invalid input data."})
+        }
+    } catch (err) {
+        console.log(err);
+        res.status(500).json({message: "Error while update company data"})
+    }
+})
 
 /**
  * Summary
