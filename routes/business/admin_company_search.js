@@ -3223,7 +3223,7 @@ route.post("/company/cited/:id/export", [authJWT.verifyToken, authJWT.isAdmin, a
                 }
             }    
 
-            let queryOwnedAssets = `SELECT application FROM db_new_application.dashboard_items WHERE organisation_id = :organisationID `
+            let queryOwnedAssets = `SELECT application FROM db_new_application.dashboard_items WHERE type = 30 AND organisation_id = :organisationID `
 
             if(typeof where.companiesIDs !== 'undefined') {
                 queryOwnedAssets += ` AND representative_id IN (:companiesIDs) `
