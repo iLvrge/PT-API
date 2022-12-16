@@ -3253,6 +3253,9 @@ route.post("/company/cited/:id/export", [authJWT.verifyToken, authJWT.isAdmin, a
                     INNER JOIN cited_patents AS cp ON cp.assignee_id = ao.assignee_id
                     INNER JOIN assets AS a ON a.grant_doc_num  COLLATE utf8mb4_general_ci  = cp.patent_number  COLLATE utf8mb4_general_ci 
                     WHERE a.layout_id = :layout_id AND a.organisation_id = :organisationID ` 
+
+                    queryCitedPatentsAssignee +=   `AND a.appno_doc_num IN (:application)  `
+                    where.application = allOwnedAssets
                     
                     if(typeof where.companiesIDs !== 'undefined') {
                         queryCitedPatentsAssignee +=   `AND a.company_id IN (:companiesIDs) AND ao.organisation_id = 0`
