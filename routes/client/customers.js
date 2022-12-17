@@ -1409,7 +1409,7 @@ route.get("/:layout/assets", [authJWT.verifyToken, clientDBConnection.connect], 
                         query += ` GROUP BY application) AS queryTemp `
                     } else if(replacements.layoutID == 40) {
                         query += ` WHERE organisation_id = :organisationID and company_id  IN (:companies) and layout_id = 15 AND date_format(assets.appno_date, '%Y') > :date AND appno_doc_num IN (SELECT application COLLATE utf8mb4_0900_ai_ci FROM db_new_application.dashboard_items
-                            where organisation_id = :organisationID and representative_id  IN (:companies) and type = 30 AND application IN (select appno_doc_num
+                            where organisation_id = :organisationID and representative_id  IN (:companies) and type = 31 AND application IN (select appno_doc_num
                             from db_uspto.documentid where rf_id IN (
                             select rf_id from db_new_application.dashboard_items
                             where organisation_id = :organisationID and representative_id IN (:companies) and type = :layoutID `
