@@ -221,7 +221,7 @@ let searchCompany = async(query, t) => {
                 }
             } */
 
-            queryCompany = `SELECT a.assignor_and_assignee_id as id, a.assignor_and_assignee_id, a.name, a.instances as counter, c.representative_name as normalize_name, (select rr.representative_name FROM representative as rr WHERE rr.representative_name = a.name GROUP BY rr.representative_name) as representative_company, (SELECT concat(ass.reel_no,'-', ass.frame_no) FROM assignee as ee INNER JOIN assignment as ass ON ass.rf_id = ee.rf_id  WHERE ee.assignor_and_assignee_id = a.assignor_and_assignee_id  LIMIT 1) as assigneeRFID, (SELECT concat(asss.reel_no,'-', asss.frame_no) FROM assignor as assi INNER JOIN assignment as asss ON asss.rf_id = assi.rf_id WHERE assi.assignor_and_assignee_id = a.assignor_and_assignee_id LIMIT 1) as assignorRFID, 0 AS assigneeBibRFID, 0 AS assignorBibRFID, '1' AS flag  FROM assignor_and_assignee as a 
+            queryCompany = `SELECT a.assignor_and_assignee_id as id, a.assignor_and_assignee_id, a.name COLLATE utf8mb4_general_ci  AS name, a.instances COLLATE utf8mb4_general_ci as counter , c.representative_name as normalize_name, (select rr.representative_name FROM representative as rr WHERE rr.representative_name = a.name GROUP BY rr.representative_name) as representative_company, (SELECT concat(ass.reel_no,'-', ass.frame_no) FROM assignee as ee INNER JOIN assignment as ass ON ass.rf_id = ee.rf_id  WHERE ee.assignor_and_assignee_id = a.assignor_and_assignee_id  LIMIT 1) as assigneeRFID, (SELECT concat(asss.reel_no,'-', asss.frame_no) FROM assignor as assi INNER JOIN assignment as asss ON asss.rf_id = assi.rf_id WHERE assi.assignor_and_assignee_id = a.assignor_and_assignee_id LIMIT 1) as assignorRFID, 0 AS assigneeBibRFID, 0 AS assignorBibRFID, '1' AS flag  FROM assignor_and_assignee as a 
             LEFT JOIN representative as c ON c.representative_id = a.representative_id 
             INNER JOIN LATERAL (Select assignee.assignor_and_assignee_id from assignment
                 INNER JOIN assignee ON assignee.rf_id = assignment.rf_id
@@ -266,15 +266,25 @@ let searchCompany = async(query, t) => {
              */
 
             queryApplicant = `SELECT a.assignor_and_assignee_id as id, a.assignor_and_assignee_id, a.name, a.instances as counter, c.representative_name as normalize_name, (select rr.representative_name FROM db_uspto.representative as rr WHERE rr.representative_name = a.name GROUP BY rr.representative_name) as representative_company, (SELECT appno_doc_num FROM db_patent_application_bibliographic.applicant WHERE assignor_and_assignee_id > 0 AND assignor_and_assignee_id = a.assignor_and_assignee_id  LIMIT 1) as assigneeRFID, (SELECT appno_doc_num FROM db_patent_grant_bibliographic.applicant WHERE assignor_and_assignee_id > 0 AND assignor_and_assignee_id = a.assignor_and_assignee_id  LIMIT 1) as assignorRFID, (SELECT appno_doc_num FROM db_patent_application_bibliographic.assignee WHERE assignor_and_assignee_id > 0 AND assignor_and_assignee_id = a.assignor_and_assignee_id LIMIT 1) as assigneeBibRFID, (SELECT appno_doc_num FROM db_patent_grant_bibliographic.assignee WHERE assignor_and_assignee_id > 0 AND assignor_and_assignee_id = a.assignor_and_assignee_id LIMIT 1) as assignorBibRFID, '2' AS flag  FROM db_patent_application_bibliographic.assignor_and_assignee as a 
-            LEFT JOIN db_uspto.representative as c ON c.representative_id = a.representative_id ` ;
+            LEFT JOIN db_uspto.representative as c ON c.representative_id = a.representative_id ` ; 
+
+            /* queryApplicant = `SELECT a.applicant_and_inventor_id as id, a.applicant_and_inventor_id AS assignor_and_assignee_id, a.name, a.instances as counter, c.representative_name COLLATE utf8mb4_general_ci as normalize_name, (select rr.representative_name FROM db_uspto.representative as rr WHERE rr.representative_name  COLLATE utf8mb4_general_ci = a.name  COLLATE utf8mb4_general_ci GROUP BY rr.representative_name) as representative_company, (
+                SELECT appno_doc_num 
+                FROM db_patent_examiner_data.application_applicant
+                WHERE applicant_inventor_id > 0 
+                AND applicant_inventor_id = a.applicant_and_inventor_id LIMIT 1
+            ) as assigneeRFID, "" as assignorRFID, "" as assigneeBibRFID, "" as assignorBibRFID, '2' AS flag  FROM db_patent_examiner_data.applicant_and_inventor as a 
+            LEFT JOIN db_uspto.representative as c ON c.representative_id  COLLATE utf8mb4_general_ci = a.representative_id  COLLATE utf8mb4_general_ci ` ; */
                  
             if(search.length == 1) {
                 queryApplicant += `WHERE trim(a.name) = :search `
             } else {
                 queryApplicant += `WHERE MATCH(a.name) AGAINST (:search IN BOOLEAN MODE) `
             }
-
+            //queryApplicant += ` AND a.type = 1 `
             if(t == 1) {
+                queryApplicant += ` AND a.type = 1 `
+            } else {
                 queryApplicant += ` AND a.type = 0 `
             }
 
@@ -3765,9 +3775,8 @@ const findFillingAssets = async (req) => {
     let {selectedCompanies} = req.body
     const replacements = { organisation_id: req.orgId, year: 1997 }
 
-
     const allAssets = []
-    if(typeof companies != 'undefined' && companies != '') {            
+    if(typeof companies != 'undefined' && companies != '') {
         companies = JSON.parse(companies)
     } else if(typeof selectedCompanies != 'undefined' && selectedCompanies != '') {            
         companies = JSON.parse(selectedCompanies)
@@ -3817,7 +3826,7 @@ const findFillingAssets = async (req) => {
 
         replacements.companyNames = allCompanyNames
         replacements.companies = companies
-        replacements.type = 30
+        replacements.type = 31
         replacements.representativeIDs = representativeIDs
             
         const assigneeAssets =  await connection.applicationNew.query(findAllAssigneeAssets, {

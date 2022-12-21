@@ -818,32 +818,43 @@ route.post("/asset_types/assets/agents", [authJWT.verifyToken, clientDBConnectio
         where.ownedType = helpers.findLayout(type); 
         let query = '';
         if(typeof data_type != 'undefined') { 
+            let  assets = [];
+            if(data_type == 1) {
+                /**
+                 * Filled
+                 */
+                assets =  await helpers.findFillingAssets(req) 
+            } else {
+                const ownedAssets = `SELECT application FROM db_new_application.dashboard_items WHERE organisation_id = :organisationID AND representative_id = :company_id AND type = :ownedType GROUP BY application `;
 
-            const ownedAssets = `SELECT application FROM db_new_application.dashboard_items WHERE organisation_id = :organisationID AND representative_id = :company_id AND type = :ownedType GROUP BY application `;
+                const getAssetsData = await connection.application.query(ownedAssets,{
+                        type: connection.Sequelize.QueryTypes.SELECT,
+                        raw: true,
+                        logging: console.log,
+                        replacements: where,
+                    }
+                ); 
+                if(getAssetsData != null && getAssetsData.length > 0) {
+                    const promise = getAssetsData.map( row => {
+                        assets.push(`${row.application}`)
+                    })
 
-            const getAssetsData = await connection.application.query(ownedAssets,{
-                    type: connection.Sequelize.QueryTypes.SELECT,
-                    raw: true,
-                    logging: console.log,
-                    replacements: where,
+                    await Promise.all(promise)
                 }
-            ); 
+            }
 
-            if(getAssetsData != null && getAssetsData.length > 0) {
-                const assets = [];
-                const promise = getAssetsData.map( row => {
-                    assets.push(`${row.application}`)
-                })
+            
 
-                await Promise.all(promise)
+            if(assets != null && assets.length > 0) {
+               
 
                 if(data_type == 1) {
                     /** 
                     * Filling 
                     */
-                    query += `SELECT name, year, COUNT(appno_doc_num) AS counter FROM (  SELECT l.name, l.appno_doc_num, date_format(ag.appno_date, '%Y') AS year  FROM db_patent_application_bibliographic.lawfirm AS l INNER JOIN  db_patent_application_bibliographic.application_grant AS ag ON ag.appno_doc_num = l.appno_doc_num WHERE l.name IN (SELECT lawfirm FROM db_new_application.dashboard_items WHERE organisation_id = :organisationID AND representative_id = :company_id AND type = :lawfirmType GROUP BY lawfirm) `
+                    /* query += `SELECT name, year, COUNT(appno_doc_num) AS counter FROM (  SELECT l.name, l.appno_doc_num, date_format(ag.appno_date, '%Y') AS year  FROM db_patent_application_bibliographic.lawfirm AS l INNER JOIN  db_patent_application_bibliographic.application_grant AS ag ON ag.appno_doc_num = l.appno_doc_num WHERE l.name IN (SELECT lawfirm FROM db_new_application.dashboard_items WHERE organisation_id = :organisationID AND representative_id = :company_id AND type = :lawfirmType GROUP BY lawfirm) ` */
+                    query = `SELECT name, year, COUNT(appno_doc_num) AS counter FROM (  SELECT l.name, l.appno_doc_num, date_format(ag.appno_date, '%Y') AS year  FROM db_patent_examiner_data.application_correspondence AS l INNER JOIN  db_patent_examiner_data.application_publication_grant AS ag ON ag.appno_doc_num = l.appno_doc_num WHERE l.name IN (SELECT lawfirm FROM db_new_application.dashboard_items WHERE organisation_id = :organisationID AND representative_id = :company_id AND type = :lawfirmType GROUP BY lawfirm) `
 
-                     
 
                     if( assignments.length > 0 ) {
                         const findLawFirm = `SELECT cname, lf.name, rlf.representative_id, rlf.representative_name FROM db_uspto.correspondent AS c LEFT JOIN db_uspto.law_firm  as lf ON c.cname = lf.name
@@ -914,7 +925,7 @@ route.post("/asset_types/assets/agents", [authJWT.verifyToken, clientDBConnectio
                             INNER JOIN db_uspto.correspondent as cor ON cor.rf_id = apt.rf_id 
                             INNER JOIN db_uspto.law_firm AS l ON l.name = cor.cname
                             LEFT JOIN db_uspto.representative_law_firm AS rlf ON rlf.representative_id = l.representative_id
-                            Where apt.organisation_id = :organisationID AND apt.company_id = :company_id AND di.organisation_id = 126 AND di.representative_id IN(:company_id) AND di.type = 40 AND date_format(apt.exec_dt, '%Y') > :year
+                            Where apt.organisation_id = :organisationID AND apt.company_id = :company_id AND di.organisation_id = :organisationID  AND di.representative_id IN(:company_id) AND di.type = 40 AND date_format(apt.exec_dt, '%Y') > :year
                         ) AS temp
                         GROUP BY name, year`
                         where.type = 40
