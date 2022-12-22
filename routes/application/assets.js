@@ -95,20 +95,26 @@ route.get("/assets", [authJWT.verifyToken], async(req, res, next) => {
 route.post("/assets/cpc", [authJWT.verifyToken, clientDBConnection.connect], async(req, res, next) => {
     try{
         let { list, total, type, selectedCompanies, tabs, customers, assignments, range, scope, year, other_mode, data_type, sale, license, primary } = req.body, getList = [], group = [], sales = []
-        
-        
+        const replacements = { organisation_id: req.orgId, year: 2000 }
+        let companies = []
+        if(typeof selectedCompanies != 'undefined' && selectedCompanies != '') {            
+            companies = JSON.parse(selectedCompanies)
+        }
+        replacements.type = helpers.findLayout(type); 
         if(typeof type !== 'undefined' && type == 'top_law_firms') {
             let getFiilingAssets = []
             if(typeof primary != 'undefined'){
                 getFiilingAssets = await helpers.findFillingAssets(req) 
             } else {
-                const ownedAssets = `SELECT application FROM db_new_application.dashboard_items WHERE organisation_id = :organisationID AND representative_id = :company_id AND type = :ownedType GROUP BY application `;
+  
+                replacements.companies = companies
+                const ownedAssets = `SELECT application FROM db_new_application.dashboard_items WHERE organisation_id = :organisation_id AND representative_id = :companies AND type = :type GROUP BY application `;
 
                 const getAssetsData = await connection.application.query(ownedAssets,{
                         type: connection.Sequelize.QueryTypes.SELECT,
                         raw: true,
                         logging: console.log,
-                        replacements: where,
+                        replacements: replacements,
                     }
                 ); 
                 if(getAssetsData != null && getAssetsData.length > 0) {
@@ -120,13 +126,7 @@ route.post("/assets/cpc", [authJWT.verifyToken, clientDBConnection.connect], asy
                 }
             }
 
-            if(getFiilingAssets.length > 0) {
-                const replacements = { organisation_id: req.orgId, year: 2000 }
-                if(typeof selectedCompanies != 'undefined' && selectedCompanies != '') {            
-                    companies = JSON.parse(selectedCompanies)
-                }
-
-                replacements.type = 40
+            if(getFiilingAssets.length > 0) {  
                 replacements.applications = getFiilingAssets
                 replacements.companies = companies
     
