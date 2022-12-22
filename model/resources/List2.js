@@ -6,6 +6,8 @@ const Assignors = require("./Assignors");
 
 const Assignees = require("./Assignees");
 
+const AssetsPartiesAssignment = require("../application/AssetsPartiesAssignment");
+
 const List2 = connection.resources.define('list2',{
     representative_id: {
         type: Sequelize.INTEGER,
@@ -37,5 +39,6 @@ const List2 = connection.resources.define('list2',{
 
 List2.belongsTo(Assignors, { foreignKey: 'rf_id', as: 'assignor', otherKey: 'rf_id'});
 List2.belongsTo(Assignees, { foreignKey: 'rf_id', as: 'assignee', otherKey: 'rf_id'});
+List2.belongsTo(AssetsPartiesAssignment, { foreignKey: 'rf_id', as: 'assetspartiesassignment', otherKey: 'rf_id'});
 
 module.exports = List2;

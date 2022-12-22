@@ -18,6 +18,9 @@ const helpers = require("../../helpers/helper");
 
 const Organisations = require('../../model/business/Organisations');
 
+
+const AssetsPartiesAssignment = require('../../model/application/AssetsPartiesAssignment');
+
 const Representatives = require('../../model/resources/Representatives');
 
 const RepresentativeAddress = require('../../model/resources/RepresentativeAddress');
@@ -1352,15 +1355,15 @@ route.get("/company/law_firms/:id", [authJWT.verifyToken, authJWT.isAdmin, authJ
                 where.assignor_and_assignee_id = assignorAndAssigneeIDs;
             }
 
-            let query = "SELECT `lawfirm`.`law_firm_id` AS `law_firm_id`, `lawfirm`.`name` AS `name`, COUNT('law_firm_id') AS `counter`, `lawfirm`.`instances` AS `total_occurences`, `lawfirm->representativelawfirm`.`representative_id` AS `representative_id`, `lawfirm->representativelawfirm`.`representative_name` AS `representative_name` FROM `correspondent` AS `assignment` INNER JOIN `list2` AS `representativetransaction` ON `assignment`.`rf_id` = `representativetransaction`.`rf_id` AND `representativetransaction`.`organisation_id` = :organisation_id "
+            let query = " SELECT `lawfirm`.`law_firm_id` AS `law_firm_id`, IF(`lawfirm`.`name` <> '' , `lawfirm`.`name`, `assignment`.`cname`) AS name,  COUNT('law_firm_id') AS `counter`, `lawfirm`.`instances` AS `total_occurences`, `lawfirm->representativelawfirm`.`representative_id` AS `representative_id`, `lawfirm->representativelawfirm`.`representative_name` AS `representative_name` FROM `correspondent` AS `assignment` INNER JOIN `list2` AS `representativetransaction` ON `assignment`.`rf_id` = `representativetransaction`.`rf_id` AND `representativetransaction`.`organisation_id` = :organisation_id "
 
             if(representativeIDs.length > 0) {
                 query += " AND `representativetransaction`.`company_id` IN (:company_id)";
             }
             
-            query += " INNER JOIN `assignee` AS `representativetransaction->assignee` ON `representativetransaction`.`rf_id` = `representativetransaction->assignee`.`rf_id` AND `representativetransaction->assignee`.`assignor_and_assignee_id` IN (:assignor_and_assignee_id) INNER JOIN `law_firm` AS `lawfirm` ON `assignment`.`cname` = `lawfirm`.`name` LEFT OUTER JOIN `representative_law_firm` AS `lawfirm->representativelawfirm` ON `lawfirm`.`representative_id` = `lawfirm->representativelawfirm`.`representative_id` GROUP BY name";
+            query += " INNER JOIN `assignee` AS `representativetransaction->assignee` ON `representativetransaction`.`rf_id` = `representativetransaction->assignee`.`rf_id` AND `representativetransaction->assignee`.`assignor_and_assignee_id` IN (:assignor_and_assignee_id) INNER JOIN db_new_application.activity_parties_transactions AS apt ON apt.rf_id =  `representativetransaction->assignee`.`rf_id` LEFT JOIN `law_firm` AS `lawfirm` ON `assignment`.`cname` = `lawfirm`.`name` LEFT OUTER JOIN `representative_law_firm` AS `lawfirm->representativelawfirm` ON `lawfirm`.`representative_id` = `lawfirm->representativelawfirm`.`representative_id` WHERE date_format(apt.exec_dt, '%Y') > :year GROUP BY name";
 
-
+            where.year = 1999
             findAllLawFirms = await connection.resources.query(query,{
                 type: connection.Sequelize.QueryTypes.SELECT,
                 raw: true,
@@ -1435,7 +1438,7 @@ route.get("/company/law_firms/:id", [authJWT.verifyToken, authJWT.isAdmin, authJ
 /* route.put("/company/law_firms", [authJWT.verifyToken, authJWT.isAdmin, authJWT.addClientID, clientDBConnection.connect], async (req, res, next) => { */
 route.put("/company/law_firms", [authJWT.verifyToken, authJWT.isAdmin], async (req, res, next) => {
     try{
-        let IDs = JSON.parse(req.body.law_firm_ids), normalize_name = req.body.normalize_name;
+        let IDs = JSON.parse(req.body.law_firm_ids), allSelectedNames = JSON.parse(req.body.names), normalize_name = req.body.normalize_name;
 
         
         const client_id = req.body.client_id , otherIDs = [];
@@ -1447,7 +1450,42 @@ route.put("/company/law_firms", [authJWT.verifyToken, authJWT.isAdmin], async (r
 
                 let getList = await LawFirms.findAll({
                     where:{law_firm_id: IDs}
-                });
+                }); 
+
+                if(allSelectedNames.length > 0) {
+                    let getNameList = await LawFirms.findAll({
+                        where:{name: allSelectedNames}
+                    });
+                    const findSelectedNames = []
+                    if(getNameList.length > 0) {
+                        const promise = getNameList.map(lawfirm => findSelectedNames.push(lawfirm.name))
+                        await Promise.all(promise)
+                    }
+
+                    const remainingNames = allSelectedNames.filter(name => !findSelectedNames.includes(name)); 
+
+                    if(remainingNames.length > 0) {
+                        const insertQuery = 'INSERT IGNORE INTO db_uspto.law_firm(name, instances) SELECT cname, COUNT(cname) FROM db_uspto.correspondent WHERE cname IN (:names) GROUP BY cname ';
+                        const addedRows = await connection.resources.query(insertQuery,{
+                            type: connection.Sequelize.QueryTypes.INSERT,
+                            raw: true,
+                            replacements: {names: remainingNames},
+                            logging: console.log,
+                        }); 
+                        if(addedRows) {
+                            let getNewNameList = await LawFirms.findAll({
+                                where:{name: remainingNames}
+                            }); 
+
+                            const promiseIDs = getNewNameList.map(item => IDs.push(item.law_firm_id))
+                            await Promise.all(promiseIDs)
+                            if(getNewNameList.length > 0) {
+                                getList = [...getList, ...getNewNameList]
+                            }
+                        }
+                    }
+                }
+                
 
                 console.log("getList->length", getList.length);
 
@@ -2012,7 +2050,7 @@ route.get("/company/raw/assignments/:id", [authJWT.verifyToken, authJWT.isAdmin,
     const customerID = req.params.id, representativeIDs = JSON.parse(req.query.portfolios != undefined ? req.query.portfolios : "[]");
     let getList = [];
     if(customerID > 0) {
-        const where = {organisation_id: customerID};
+        const where = {organisation_id: customerID, year: 1999};
         let whereRepresentative = {};
         if(representativeIDs.length > 0) {
             where.company_id = representativeIDs;
@@ -2085,6 +2123,16 @@ route.get("/company/raw/assignments/:id", [authJWT.verifyToken, authJWT.isAdmin,
                                 as: 'assignee',
                                 attributes: [],
                                 where: whereAssignor
+                            },
+                            {
+                                model: AssetsPartiesAssignment,
+                                as: 'assetspartiesassignment',
+                                attributes: [],
+                                where: {
+                                    [connection.Sequelize.fn('date_format', Sequelize.col('exec_dt'), '%Y')]:{
+                                        [connection.Op.gt]: 1999
+                                    }
+                                }
                             }
                         ]                      
                     }
@@ -2111,6 +2159,16 @@ route.get("/company/raw/assignments/:id", [authJWT.verifyToken, authJWT.isAdmin,
                                 as: 'assignee',
                                 attributes: [],
                                 where: whereAssignor
+                            },
+                            {
+                                model: AssetsPartiesAssignment,
+                                as: 'assetspartiesassignment',
+                                attributes: [],
+                                where: {
+                                    [connection.Sequelize.fn('date_format', Sequelize.col('exec_dt'), '%Y')]:{
+                                        [connection.Op.gt]: 1999
+                                    }
+                                }
                             }
                         ]                      
                     }
