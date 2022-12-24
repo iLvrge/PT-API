@@ -2303,7 +2303,7 @@ route.get("/events/assets/status/:applicationNumber", [authJWT.verifyToken], asy
                 }
             );
             console.log(getDatesData)
-            let queryGrantDate = `SELECT ag.appno_date AS filling_date, ag.grant_date FROM db_patent_application_bibliographic.application_grant AS ag WHERE ag.appno_doc_num = :applicationNumber`
+            let queryGrantDate = `SELECT ag.appno_date AS filling_date, ag.grant_doc_num, ag.grant_date FROM db_patent_application_bibliographic.application_grant AS ag WHERE ag.appno_doc_num = :applicationNumber`
 
             let getGrantDatesData = await connection.application.query(queryGrantDate,{
                     type: connection.Sequelize.QueryTypes.SELECT,
@@ -2313,7 +2313,7 @@ route.get("/events/assets/status/:applicationNumber", [authJWT.verifyToken], asy
                     replacements: { applicationNumber },
                 }
             );
-            console.log(getGrantDatesData)
+            
             let docDates = null
             if(getDatesData == null) {
                 queryDates = `SELECT MAX(appno_date) AS filling_date, MAX(pgpub_date) AS pgpub_date, MAX(grant_date) AS grant_date FROM db_uspto.documentid WHERE appno_doc_num = :applicationNumber`
@@ -2344,6 +2344,15 @@ route.get("/events/assets/status/:applicationNumber", [authJWT.verifyToken], asy
             } else if(docDates != null) {
                 dates.grant_date = docDates.grant_date
             }
+
+            const queryStatus = `SELECT id, status, status_date FROM db_uspto.application_status WHERE appno_doc_num = :applicationNumber AND status <> :status`
+            const getStatusData = await connection.application.query(queryStatus,{
+                    type: connection.Sequelize.QueryTypes.SELECT,
+                    raw: true,
+                    logging: console.log,
+                    replacements: { applicationNumber, status: 'Patented Case' },
+                }
+            );
  
             if(getDatesData != null || getGrantDatesData != null || docDates != null) {
                 if(dates.filling_date != '' && dates.grant_date != '' && dates.filling_date != null && dates.grant_date != null) {
@@ -2368,7 +2377,7 @@ route.get("/events/assets/status/:applicationNumber", [authJWT.verifyToken], asy
                     getList.push({
                         id: 'A',
                         start_date: dates.filling_date,
-                        end_date: dates.pgpub_date,
+                        end_date: getStatusData.length > 0 ? getStatusData[0].status_date : moment(new Date()).format('YYYY-MM-DD'),
                         eventdate: dates.filling_date,
                         type: 'background',
                         className: 'greenLight',
@@ -2383,7 +2392,7 @@ route.get("/events/assets/status/:applicationNumber", [authJWT.verifyToken], asy
                         status: 'Filed:'
                     })
                 }
-                if(dates.pgpub_date != '' && dates.pgpub_date != null) {
+                if(dates.pgpub_date != '' && dates.pgpub_date != null && dates.pgpub_date != '0000-00-00') {
                     getList.push({
                         id: 2,
                         start_date: dates.pgpub_date,
@@ -2393,8 +2402,6 @@ route.get("/events/assets/status/:applicationNumber", [authJWT.verifyToken], asy
                         status: 'Published:'
                     })
                 }
-
-                
 
                 const queryExtensionDate = `SELECT extension FROM db_patent_application_bibliographic.grant_extension WHERE appno_doc_num = :applicationNumber`
                 const getExtensionData = await connection.application.query(queryExtensionDate,{
@@ -2406,8 +2413,22 @@ route.get("/events/assets/status/:applicationNumber", [authJWT.verifyToken], asy
                     }
                 );
 
+                let grantDesign = false
+                if(getGrantDatesData != null && getGrantDatesData.grant_doc_num.indexOf('D') !== -1) {
+                    grantDesign = true
+                }
+
                 if(dates.filling_date != '' && dates.grant_date != '' && dates.filling_date != null && dates.grant_date != null) {
-                    let grantDate = moment(new Date(dates.filling_date)).add(20, 'years').format('YYYY-MM-DD')
+                    let expiryYear = 20
+                    if(grantDesign === true ) {
+                        if(dates.grant_date < '2015-05-13'){
+                            expiryYear = 14
+                        } else {
+                            expiryYear = 15
+                        }
+                    }
+                    
+                    let grantDate = moment(new Date(grantDesign === true ? dates.grant_date : dates.filling_date)).add(expiryYear, 'years').format('YYYY-MM-DD')
                     if( getExtensionData !== null && getExtensionData.extension > 0) { 
                         grantDate = moment(new Date(grantDate)).add(getExtensionData.extension, 'days').format('YYYY-MM-DD');
                     }
@@ -2430,7 +2451,7 @@ route.get("/events/assets/status/:applicationNumber", [authJWT.verifyToken], asy
                     })
                 }
 
-                if( getExtensionData !== null && getExtensionData.extension > 0 && dates.filling_date != '' && dates.filling_date != null) { 
+                if( getExtensionData !== null && getExtensionData.extension > 0 && dates.filling_date != '' && dates.filling_date != null && grantDesign === false) { 
                     const endDate = moment(new Date(dates.filling_date)).add(20, 'years').format('YYYY-MM-DD')
                     const extenstionStartDate = moment(new Date(endDate)).add(1, 'days').format('YYYY-MM-DD'),
                     extensiontEndDate = moment(new Date(extenstionStartDate)).add(getExtensionData.extension, 'days').format('YYYY-MM-DD')
@@ -2445,7 +2466,8 @@ route.get("/events/assets/status/:applicationNumber", [authJWT.verifyToken], asy
                         anotherStatus: `Expected Expiration:`,
                     })
                 } else {
-                    if(dates.grant_date != '') {
+                    
+                    if(dates.grant_date != '' && grantDesign === false) { 
                         const endDate = moment(new Date(dates.filling_date)).add(20, 'years').format('YYYY-MM-DD')
                         getList.push({
                             id: 4,
@@ -2462,14 +2484,7 @@ route.get("/events/assets/status/:applicationNumber", [authJWT.verifyToken], asy
             }
 
 
-            const queryStatus = `SELECT id, status, status_date FROM db_uspto.application_status WHERE appno_doc_num = :applicationNumber AND status <> :status`
-            const getStatusData = await connection.application.query(queryStatus,{
-                    type: connection.Sequelize.QueryTypes.SELECT,
-                    raw: true,
-                    logging: console.log,
-                    replacements: { applicationNumber, status: 'Patented Case' },
-                }
-            );
+            
 
             if(getStatusData.length > 0) {
                 const promise = getStatusData.map( (item, index) => {

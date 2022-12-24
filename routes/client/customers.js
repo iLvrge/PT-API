@@ -1454,6 +1454,9 @@ route.get("/:layout/assets", [authJWT.verifyToken, clientDBConnection.connect], 
                         }
                         if (replacements.layoutID == 38) {
                             const getFamilyList = await helpers.getFamilyList(replacements)
+                            
+                            console.log(getFamilyList);
+                            
                             replacements.assetList = getFamilyList
                             query += ` AND grant_doc_num IN (:assetList) `
                         } else {
