@@ -678,7 +678,7 @@ const getPublicationNumber = async(applicationNumber) => {
 }
 
 const getGrantNumber = async(applicationNumber) => {
-    const query = `SELECT grant_doc_num, grant_doc_num AS pgpub_doc_num, appno_doc_num, file_name, grant_date, '' AS title FROM db_patent_application_bibliographic.application_grant WHERE appno_doc_num = :applicationNumber`
+    const query = `SELECT grant_doc_num, grant_doc_num AS pgpub_doc_num, appno_doc_num, file_name, appno_date, grant_date, '' AS title FROM db_patent_application_bibliographic.application_grant WHERE appno_doc_num = :applicationNumber`
     const getPublicationData = await connection.resources.query(query,{
         type: connection.Sequelize.QueryTypes.SELECT,
         raw: true,
