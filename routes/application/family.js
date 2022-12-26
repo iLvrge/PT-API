@@ -1295,10 +1295,10 @@ route.get("/family/single/:applicationNumber", [authJWT.verifyToken], async (req
                 logging: console.log,
                 replacements: { patentNumber: findPatent.grant_doc_num, applicationNumber},
                 plain: true
-            });
-            if(getFamily.length === 0) {
-                getFamily = await getFamilyDataFromXML(req)
-            }
+            }); 
+        }
+        if(getFamily.length === 0) {
+            getFamily = await getFamilyDataFromXML(req)
         }
         res.status(200).json(getFamily);
     } catch( err ) {
