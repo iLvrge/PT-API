@@ -306,6 +306,7 @@ const getFamilyDataFromXML = async(req) => {
                     }
                 }
             }
+            console.log(findPatent)
             if(getFamily.length == 0) {
                 getFamily.push({
                     family_id: 0,
@@ -664,7 +665,7 @@ const getContentFromXML = async (fileContent, contentType, type) => {
 }
 
 const getPublicationNumber = async(applicationNumber) => {
-    const query = `SELECT pgpub_doc_num, appno_doc_num, file_name, appno_date, '' AS title FROM db_patent_grant_bibliographic.application_publication WHERE appno_doc_num = :applicationNumber`
+    const query = `SELECT pgpub_doc_num, appno_doc_num, file_name, appno_date, pgpub_date, '' AS title FROM db_patent_grant_bibliographic.application_publication WHERE appno_doc_num = :applicationNumber`
     const getPublicationData = await connection.resources.query(query,{
         type: connection.Sequelize.QueryTypes.SELECT,
         raw: true,
