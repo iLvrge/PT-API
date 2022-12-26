@@ -137,201 +137,207 @@ route.get('/family/list/:grantNumber', [authJWT.verifyToken], async (req, res) =
     res.status(200).json(familyData);
 })
 
-route.get("/family/:applicationNumber", [authJWT.verifyToken], async (req, res) =>{  
 
-    try{
-        const applicationNumber = req.params.applicationNumber;
-        const {counter} = req.query;   
-        /* const applicationNumber = '09775636'; */
-
-        let getFamily = [];
+const getFamilyDataFromXML = async(req) => {
+    let getFamily = [];
     
-        let findPatent = await Documentid.findOne({
-                attributes: ['rf_id', [connection.Sequelize.fn('MAX', connection.Sequelize.col('grant_doc_num')), 'grant_doc_num'], [connection.Sequelize.fn('MAX', connection.Sequelize.col('appno_doc_num')),'appno_doc_num'], [connection.Sequelize.fn('MAX', connection.Sequelize.col('appno_date')),'appno_date'], 'title', [connection.Sequelize.fn('MAX', connection.Sequelize.col('grant_date')),'grant_date']],
-                where: {
-                        [connection.Op.or]: [
-                        {appno_doc_num: applicationNumber},
-                        {grant_doc_num: applicationNumber}
-                ]},
-                group: ['grant_doc_num', 'appno_doc_num', 'pgpub_doc_num'],
-                order:[['grant_date', 'desc']]
-            })
+    let findPatent = await Documentid.findOne({
+            attributes: ['rf_id', [connection.Sequelize.fn('MAX', connection.Sequelize.col('grant_doc_num')), 'grant_doc_num'], [connection.Sequelize.fn('MAX', connection.Sequelize.col('appno_doc_num')),'appno_doc_num'], [connection.Sequelize.fn('MAX', connection.Sequelize.col('appno_date')),'appno_date'], 'title', [connection.Sequelize.fn('MAX', connection.Sequelize.col('grant_date')),'grant_date']],
+            where: {
+                    [connection.Op.or]: [
+                    {appno_doc_num: applicationNumber},
+                    {grant_doc_num: applicationNumber}
+            ]},
+            group: ['grant_doc_num', 'appno_doc_num', 'pgpub_doc_num'],
+            order:[['grant_date', 'desc']]
+        })
 
-           
-    
-        /* if(findPatent != null && findPatent.rf_id > 0 && findPatent.grant_doc_num != null && findPatent.grant_doc_num != '') {
-           
-    
-            const queryFamily = 'SELECT * FROM patent_family_member WHERE family_id = (SELECT family_id FROM patent_family_member WHERE patent_number = :patentNumber AND family_id > 0 LIMIT 1) OR (patent_number = :patentNumber AND family_id = 0)';
-    
-            getFamily = await connection.resources.query(queryFamily,{
-                type: connection.Sequelize.QueryTypes.SELECT,
-                raw: true,
-                logging: console.log,
-                replacements: {patentNumber: findPatent.grant_doc_num}
-            });
-        } */      
-        let asset = findPatent != null && findPatent.grant_doc_num != null && findPatent.grant_doc_num != '' ? findPatent.grant_doc_num : applicationNumber
+       
 
-        const formatAsset = `US${asset}`
+    /* if(findPatent != null && findPatent.rf_id > 0 && findPatent.grant_doc_num != null && findPatent.grant_doc_num != '') {
+       
 
-          
-        if(formatAsset !== null && formatAsset !== '') {
-                        
-            let getFamilyData = '', fileExist = false
-            if (fs.existsSync(`${extraDiskPath}FAMILY/${formatAsset}.XML`)) {
-                //file exists
-                console.log('FILE EXIST')
-                fileExist = true
-                getFamilyData = await fs.promises.readFile(`${extraDiskPath}FAMILY/${formatAsset}.XML`, 'utf8');
-            } else {
-                const token = await epo.readToken('HedCET') 
-                if(token !== 'undefined' && token != '') {
-                    const publication = findPatent != null && findPatent.grant_doc_num != null && findPatent.grant_doc_num != '' ? 'publication' : 'application'
-                    getFamilyData = await epo.runUrl(token, 'family', publication, 'docdb', `${formatAsset}`);
-                    if( !getFamilyData  || getFamilyData.indexOf('EntityNotFound') !== -1) {
-                        getFamilyData = await epo.runUrl(token, 'family', publication,'epodoc', `${formatAsset}`);
-                    }
-                }
-            }
+        const queryFamily = 'SELECT * FROM patent_family_member WHERE family_id = (SELECT family_id FROM patent_family_member WHERE patent_number = :patentNumber AND family_id > 0 LIMIT 1) OR (patent_number = :patentNumber AND family_id = 0)';
 
-            if( getFamilyData !== '' ) {
-                console.log('getFamilyData', getFamilyData)
-                const parser = new xml2js.Parser
-                const xmlData = await new Promise((resolve, reject) => parser.parseString(getFamilyData, (err, result) => {
-                    if (err){
-                        reject(err);
-                    } else {
-                        resolve(result);
-                    }
-                }));
-                //const xmlData = JSON.stringify(result)    
-                if( xmlData.hasOwnProperty('ops:world-patent-data') ){
+        getFamily = await connection.resources.query(queryFamily,{
+            type: connection.Sequelize.QueryTypes.SELECT,
+            raw: true,
+            logging: console.log,
+            replacements: {patentNumber: findPatent.grant_doc_num}
+        });
+    } */      
+    let asset = findPatent != null && findPatent.grant_doc_num != null && findPatent.grant_doc_num != '' ? findPatent.grant_doc_num : applicationNumber
+
+    const formatAsset = `US${asset}`
+
+      
+    if(formatAsset !== null && formatAsset !== '') {
                     
-                    if(fileExist === false) {
-                        fs.writeFileSync(`${extraDiskPath}FAMILY/${formatAsset}.XML`, getFamilyData);
-                    }
-                    const worldPatentData = xmlData['ops:world-patent-data']
-                    if(worldPatentData.hasOwnProperty('ops:patent-family')) {
-                        const patentFamily =  worldPatentData['ops:patent-family']
-                        
-                        if( patentFamily.length > 0 && typeof patentFamily[0] !== 'undefined' ) {
-                            const familyMembers = patentFamily[0]['ops:family-member']
-                            if( familyMembers.length > 0 ) {                                
-                                let familyID = 0
-                                familyMembers.forEach(family => {
-                                    let dbTypeData = family['publication-reference'][0]['document-id'][0]
-                                    if( dbTypeData.$['document-id-type'] !== 'docdb' ) {
-                                        dbTypeData = family['publication-reference'][0]['document-id'][1]
-                                    }
-                                    if(dbTypeData.hasOwnProperty('doc-number')) {
-                                        if(findPatent == null || findPatent.grant_doc_num == null || findPatent.grant_doc_num == '') {
-                                            dbTypeData = family['application-reference'][0]['document-id'][0]
-                                        }
-                                        console.log("dbTypeData['doc-number'] == asset", dbTypeData['doc-number'], asset)
-                                        if((familyID === 0 && dbTypeData['doc-number'].toString() == asset) || (familyID !== 0 && familyID == family.$['family-id'])) {
-                                            if(familyID === 0 && dbTypeData['doc-number'].toString() == asset) {
-                                                familyID = family.$['family-id']
-                                            }                                                                                            
-                                        }
-                                    }
-                                });
-                                console.log('familyID', familyID)
-                                if(familyID > 0) {
-                                    const allApplicationNumbers = []
-                                    familyMembers.forEach(family => {
-                                        if(familyID === family.$['family-id']) {
-                                                                                       
-                                            let dbTypeData = family['publication-reference'][0]['document-id'][0]
-                                            if( dbTypeData.$['document-id-type'] !== 'docdb' ) {
-                                                dbTypeData = family['publication-reference'][0]['document-id'][1]
-                                            }
-                                            if(dbTypeData.hasOwnProperty('doc-number')) {
-                                                if(findPatent == null || findPatent.grant_doc_num == null || findPatent.grant_doc_num == '') {
-                                                    dbTypeData = family['application-reference'][0]['document-id'][0]
-                                                }
-                                            }
-                                            if(!allApplicationNumbers.includes(family['application-reference'][0]['document-id'][0]['date'].toString())){
-                                                allApplicationNumbers.push(family['application-reference'][0]['document-id'][0]['date'].toString())
-                                            } else {
-                                                console.log('APPLICATION', dbTypeData['kind'].toString().toLowerCase().indexOf('b'))
-                                                if(dbTypeData['kind'].toString().toLowerCase().indexOf('b') !== null) {
-                                                    const findIndex = getFamily.findIndex( r => r.application_number == family['application-reference'][0]['document-id'][0]['doc-number'].toString())
-                                                    if(findIndex !== -1) {
-                                                        getFamily.splice(findIndex, 1)
-                                                    }
-                                                }
-                                            } 
-                                            getFamily.push({
-                                                family_id: familyID,
-                                                patent_number: dbTypeData['doc-number'].toString(),
-                                                publication_number: dbTypeData['doc-number'].toString(),
-                                                application_number: family['application-reference'][0]['document-id'][0]['doc-number'].toString(),
-                                                application_date: family['application-reference'][0]['document-id'][0]['date'].toString(),                                                
-                                                publication_date: dbTypeData['date'].toString(),
-                                                application_country: dbTypeData['country'].toString(),
-                                                publication_country: dbTypeData['country'].toString(),
-                                                publication_kind: dbTypeData['kind'].toString(),                                            
-                                                application_kind: family['application-reference'][0]['document-id'][0]['kind'].toString(),
-                                                classifications: null,
-                                                assigments: null,
-                                                images: null,
-                                                abstracts: null,
-                                                specification: null,
-                                                claims: null,
-                                                inventors: null,
-                                                assignee: null,
-                                                applicants: [],
-                                                title: findPatent != null ? findPatent.title : ''
-                                            })
-                                        }                                        
-                                    }) 
-                                    /* if(allApplicationNumbers.length > 1) {
-                                        //Find Duplicates and remove it from array and at the time of removing element check if publication number character length of one index is greater than the patent number character length then remove the publication number index from array
-
-                                        const count = numbers => numbers.reduce((a, b) => ({ ...a, [b]: (a[b] || 0) + 1 }), {})
-
-                                        const duplicates = dict => Object.keys(dict).filter((a) => dict[a] > 1)
-
-                                        const getDuplicateNumber duplicates(count(allApplicationNumbers))
-
-                                        if(getDuplicateNumber.length > 0) {
-                                            getDuplicateNumber.forEach( number => {
-                                                
-                                            })
-                                        }
-                                    } */                                
-                                }
-                            } 
-                        }
-                    }
-                }
-                if(getFamily.length == 0) {
-                    getFamily.push({
-                        family_id: 0,
-                        patent_number: findPatent != null && findPatent.grant_doc_num != null && findPatent.grant_doc_num != '' ? findPatent.grant_doc_num : null,
-                        publication_number: findPatent != null && findPatent.grant_doc_num != null && findPatent.grant_doc_num != '' ? findPatent.grant_doc_num : null,                            
-                        application_number: applicationNumber,    
-                        publication_date: findPatent != null && findPatent.grant_doc_num != null && findPatent.grant_doc_num != '' ? findPatent.grant_date : null,                        
-                        application_date: findPatent != null ? findPatent.appno_date : '00000000',
-                        publication_country: 'US',
-                        application_country: 'US',
-                        publication_kind: findPatent != null && findPatent.grant_doc_num != null && findPatent.grant_doc_num != '' ? 'B1' : 'A',
-                        application_kind: 'A',                           
-                        classifications: null,
-                        assigments: null,
-                        images: null,
-                        abstracts: null,
-                        claims: null,
-                        inventors: null,
-                        specification: null,
-                        assignee: null,
-                        applicants: [],
-                        title: findPatent != null ? findPatent.title : ''
-                    })
+        let getFamilyData = '', fileExist = false
+        if (fs.existsSync(`${extraDiskPath}FAMILY/${formatAsset}.XML`)) {
+            //file exists
+            console.log('FILE EXIST')
+            fileExist = true
+            getFamilyData = await fs.promises.readFile(`${extraDiskPath}FAMILY/${formatAsset}.XML`, 'utf8');
+        } else {
+            const token = await epo.readToken('HedCET') 
+            if(token !== 'undefined' && token != '') {
+                const publication = findPatent != null && findPatent.grant_doc_num != null && findPatent.grant_doc_num != '' ? 'publication' : 'application'
+                getFamilyData = await epo.runUrl(token, 'family', publication, 'docdb', `${formatAsset}`);
+                if( !getFamilyData  || getFamilyData.indexOf('EntityNotFound') !== -1) {
+                    getFamilyData = await epo.runUrl(token, 'family', publication,'epodoc', `${formatAsset}`);
                 }
             }
         }
+
+        if( getFamilyData !== '' ) {
+            console.log('getFamilyData', getFamilyData)
+            const parser = new xml2js.Parser
+            const xmlData = await new Promise((resolve, reject) => parser.parseString(getFamilyData, (err, result) => {
+                if (err){
+                    reject(err);
+                } else {
+                    resolve(result);
+                }
+            }));
+            //const xmlData = JSON.stringify(result)    
+            if( xmlData.hasOwnProperty('ops:world-patent-data') ){
+                
+                if(fileExist === false) {
+                    fs.writeFileSync(`${extraDiskPath}FAMILY/${formatAsset}.XML`, getFamilyData);
+                }
+                const worldPatentData = xmlData['ops:world-patent-data']
+                if(worldPatentData.hasOwnProperty('ops:patent-family')) {
+                    const patentFamily =  worldPatentData['ops:patent-family']
+                    
+                    if( patentFamily.length > 0 && typeof patentFamily[0] !== 'undefined' ) {
+                        const familyMembers = patentFamily[0]['ops:family-member']
+                        if( familyMembers.length > 0 ) {                                
+                            let familyID = 0
+                            familyMembers.forEach(family => {
+                                let dbTypeData = family['publication-reference'][0]['document-id'][0]
+                                if( dbTypeData.$['document-id-type'] !== 'docdb' ) {
+                                    dbTypeData = family['publication-reference'][0]['document-id'][1]
+                                }
+                                if(dbTypeData.hasOwnProperty('doc-number')) {
+                                    if(findPatent == null || findPatent.grant_doc_num == null || findPatent.grant_doc_num == '') {
+                                        dbTypeData = family['application-reference'][0]['document-id'][0]
+                                    }
+                                    console.log("dbTypeData['doc-number'] == asset", dbTypeData['doc-number'], asset)
+                                    if((familyID === 0 && dbTypeData['doc-number'].toString() == asset) || (familyID !== 0 && familyID == family.$['family-id'])) {
+                                        if(familyID === 0 && dbTypeData['doc-number'].toString() == asset) {
+                                            familyID = family.$['family-id']
+                                        }                                                                                            
+                                    }
+                                }
+                            });
+                            console.log('familyID', familyID)
+                            if(familyID > 0) {
+                                const allApplicationNumbers = []
+                                familyMembers.forEach(family => {
+                                    if(familyID === family.$['family-id']) {
+                                                                                   
+                                        let dbTypeData = family['publication-reference'][0]['document-id'][0]
+                                        if( dbTypeData.$['document-id-type'] !== 'docdb' ) {
+                                            dbTypeData = family['publication-reference'][0]['document-id'][1]
+                                        }
+                                        if(dbTypeData.hasOwnProperty('doc-number')) {
+                                            if(findPatent == null || findPatent.grant_doc_num == null || findPatent.grant_doc_num == '') {
+                                                dbTypeData = family['application-reference'][0]['document-id'][0]
+                                            }
+                                        }
+                                        if(!allApplicationNumbers.includes(family['application-reference'][0]['document-id'][0]['date'].toString())){
+                                            allApplicationNumbers.push(family['application-reference'][0]['document-id'][0]['date'].toString())
+                                        } else {
+                                            console.log('APPLICATION', dbTypeData['kind'].toString().toLowerCase().indexOf('b'))
+                                            if(dbTypeData['kind'].toString().toLowerCase().indexOf('b') !== null) {
+                                                const findIndex = getFamily.findIndex( r => r.application_number == family['application-reference'][0]['document-id'][0]['doc-number'].toString())
+                                                if(findIndex !== -1) {
+                                                    getFamily.splice(findIndex, 1)
+                                                }
+                                            }
+                                        } 
+                                        getFamily.push({
+                                            family_id: familyID,
+                                            patent_number: dbTypeData['doc-number'].toString(),
+                                            publication_number: dbTypeData['doc-number'].toString(),
+                                            application_number: family['application-reference'][0]['document-id'][0]['doc-number'].toString(),
+                                            application_date: family['application-reference'][0]['document-id'][0]['date'].toString(),                                                
+                                            publication_date: dbTypeData['date'].toString(),
+                                            application_country: dbTypeData['country'].toString(),
+                                            publication_country: dbTypeData['country'].toString(),
+                                            publication_kind: dbTypeData['kind'].toString(),                                            
+                                            application_kind: family['application-reference'][0]['document-id'][0]['kind'].toString(),
+                                            classifications: null,
+                                            assigments: null,
+                                            images: null,
+                                            abstracts: null,
+                                            specification: null,
+                                            claims: null,
+                                            inventors: null,
+                                            assignee: null,
+                                            applicants: [],
+                                            title: findPatent != null ? findPatent.title : ''
+                                        })
+                                    }                                        
+                                }) 
+                                /* if(allApplicationNumbers.length > 1) {
+                                    //Find Duplicates and remove it from array and at the time of removing element check if publication number character length of one index is greater than the patent number character length then remove the publication number index from array
+
+                                    const count = numbers => numbers.reduce((a, b) => ({ ...a, [b]: (a[b] || 0) + 1 }), {})
+
+                                    const duplicates = dict => Object.keys(dict).filter((a) => dict[a] > 1)
+
+                                    const getDuplicateNumber duplicates(count(allApplicationNumbers))
+
+                                    if(getDuplicateNumber.length > 0) {
+                                        getDuplicateNumber.forEach( number => {
+                                            
+                                        })
+                                    }
+                                } */                                
+                            }
+                        } 
+                    }
+                }
+            }
+            if(getFamily.length == 0) {
+                getFamily.push({
+                    family_id: 0,
+                    patent_number: findPatent != null && findPatent.grant_doc_num != null && findPatent.grant_doc_num != '' ? findPatent.grant_doc_num : null,
+                    publication_number: findPatent != null && findPatent.grant_doc_num != null && findPatent.grant_doc_num != '' ? findPatent.grant_doc_num : null,                            
+                    application_number: applicationNumber,    
+                    publication_date: findPatent != null && findPatent.grant_doc_num != null && findPatent.grant_doc_num != '' ? findPatent.grant_date : null,                        
+                    application_date: findPatent != null ? findPatent.appno_date : '00000000',
+                    publication_country: 'US',
+                    application_country: 'US',
+                    publication_kind: findPatent != null && findPatent.grant_doc_num != null && findPatent.grant_doc_num != '' ? 'B1' : 'A',
+                    application_kind: 'A',                           
+                    classifications: null,
+                    assigments: null,
+                    images: null,
+                    abstracts: null,
+                    claims: null,
+                    inventors: null,
+                    specification: null,
+                    assignee: null,
+                    applicants: [],
+                    title: findPatent != null ? findPatent.title : ''
+                })
+            }
+        }
+    }
+    return getFamily
+}
+
+route.get("/family/:applicationNumber", [authJWT.verifyToken], async (req, res) =>{  
+
+    try{
+        
+        const {counter} = req.query;   
+        /* const applicationNumber = '09775636'; */
+        const getFamily = await getFamilyDataFromXML(req)
+        
         if(typeof counter !== 'undefined') {
             res.status(200).send(`${getFamily.length}`);
         } else {
@@ -1290,6 +1296,9 @@ route.get("/family/single/:applicationNumber", [authJWT.verifyToken], async (req
                 replacements: { patentNumber: findPatent.grant_doc_num, applicationNumber},
                 plain: true
             });
+            if(getFamily.length === 0) {
+                getFamily = await getFamilyDataFromXML(req)
+            }
         }
         res.status(200).json(getFamily);
     } catch( err ) {
