@@ -139,8 +139,8 @@ route.get('/family/list/:grantNumber', [authJWT.verifyToken], async (req, res) =
 
 
 const getFamilyDataFromXML = async(req) => {
+    const applicationNumber = req.params.applicationNumber;
     let getFamily = [];
-    
     let findPatent = await Documentid.findOne({
             attributes: ['rf_id', [connection.Sequelize.fn('MAX', connection.Sequelize.col('grant_doc_num')), 'grant_doc_num'], [connection.Sequelize.fn('MAX', connection.Sequelize.col('appno_doc_num')),'appno_doc_num'], [connection.Sequelize.fn('MAX', connection.Sequelize.col('appno_date')),'appno_date'], 'title', [connection.Sequelize.fn('MAX', connection.Sequelize.col('grant_date')),'grant_date']],
             where: {
