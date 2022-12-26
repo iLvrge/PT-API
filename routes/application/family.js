@@ -152,7 +152,12 @@ const getFamilyDataFromXML = async(req) => {
             order:[['grant_date', 'desc']]
         })
 
-       
+    if(findPatent == null ) {
+        findPatent = await getGrantNumber(applicationNumber)
+        if(findPatent == null){
+            findPatent = await getPublicationNumber(applicationNumber)
+        }
+    }
 
     /* if(findPatent != null && findPatent.rf_id > 0 && findPatent.grant_doc_num != null && findPatent.grant_doc_num != '') {
        
