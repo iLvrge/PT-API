@@ -2417,9 +2417,9 @@ route.get("/events/assets/status/:applicationNumber", [authJWT.verifyToken], asy
                 if(getGrantDatesData != null && getGrantDatesData.grant_doc_num.indexOf('D') !== -1) {
                     grantDesign = true
                 }
-
+                let expiryYear = 20
                 if(dates.filling_date != '' && dates.grant_date != '' && dates.filling_date != null && dates.grant_date != null) {
-                    let expiryYear = 20
+                    
                     if(grantDesign === true ) {
                         if(dates.grant_date < '2015-05-13'){
                             expiryYear = 14
@@ -2452,7 +2452,7 @@ route.get("/events/assets/status/:applicationNumber", [authJWT.verifyToken], asy
                 }
 
                 if( getExtensionData !== null && getExtensionData.extension > 0 && dates.filling_date != '' && dates.filling_date != null && grantDesign === false) { 
-                    const endDate = moment(new Date(dates.filling_date)).add(20, 'years').format('YYYY-MM-DD')
+                    const endDate = moment(new Date(dates.filling_date)).add(expiryYear, 'years').format('YYYY-MM-DD')
                     const extenstionStartDate = moment(new Date(endDate)).add(1, 'days').format('YYYY-MM-DD'),
                     extensiontEndDate = moment(new Date(extenstionStartDate)).add(getExtensionData.extension, 'days').format('YYYY-MM-DD')
                     getList.push({
@@ -2468,7 +2468,7 @@ route.get("/events/assets/status/:applicationNumber", [authJWT.verifyToken], asy
                 } else {
                     
                     if(dates.grant_date != '' && grantDesign === false) { 
-                        const endDate = moment(new Date(dates.filling_date)).add(20, 'years').format('YYYY-MM-DD')
+                        const endDate = moment(new Date(dates.filling_date)).add(expiryYear, 'years').format('YYYY-MM-DD')
                         getList.push({
                             id: 4,
                             start_date: endDate,
@@ -2478,6 +2478,17 @@ route.get("/events/assets/status/:applicationNumber", [authJWT.verifyToken], asy
                             className: 'greenBorder',
                             status: `Term Adjustment: <br/>0 days`,
                             anotherStatus: `Expected Expiration:`,
+                        })
+                    } else if(grantDesign === true ) {
+                        const endDate = moment(new Date(grantDate)).add( expiryYear, 'days').format('YYYY-MM-DD');
+                        getList.push({
+                            id: 4,
+                            start_date: endDate,
+                           /*  end_date: extensiontEndDate , */
+                            eventdate: endDate,
+                            type: 1,
+                            className: 'greenBorder', 
+                            status: `Expected Expiration: <br/>`,
                         })
                     }
                 }
