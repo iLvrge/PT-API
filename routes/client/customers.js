@@ -892,7 +892,7 @@ route.post("/asset_types/assets/agents", [authJWT.verifyToken, clientDBConnectio
                      */ 
                     if( assignments.length > 0 ) {
                         query = `SELECT name,  year, COUNT(rf_id) AS counter FROM (
-                            Select cor.convey_ty AS name, date_format(apt.exec_dt, '%Y') AS year, apt.rf_id from db_new_application.activity_parties_transactions AS apt
+                            Select CASE WHEN cor.convey_ty == 'assignment' THEN 'Acquisition' WHEN cor.convey_ty == 'correct' THEN 'Corrections' WHEN cor.convey_ty == 'employee' THEN 'Employees' ELSE cor.convey_ty END AS name, date_format(apt.exec_dt, '%Y') AS year, apt.rf_id from db_new_application.activity_parties_transactions AS apt
                             INNER JOIN db_uspto.representative_assignment_conveyance as cor ON cor.rf_id = apt.rf_id
                             Where cor.rf_id IN (:assignments) AND apt.organisation_id = :organisationID AND apt.company_id = :company_id
                             GROUP BY cor.convey_ty, apt.rf_id

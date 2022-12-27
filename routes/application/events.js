@@ -2314,6 +2314,7 @@ route.get("/events/assets/status/:applicationNumber", [authJWT.verifyToken], asy
                 }
             );
             
+            
             let docDates = null
             if(getDatesData == null) {
                 queryDates = `SELECT MAX(appno_date) AS filling_date, MAX(pgpub_date) AS pgpub_date, MAX(grant_date) AS grant_date FROM db_uspto.documentid WHERE appno_doc_num = :applicationNumber`
@@ -2325,26 +2326,32 @@ route.get("/events/assets/status/:applicationNumber", [authJWT.verifyToken], asy
                         replacements: { applicationNumber },
                     }
                 );
-                console.log(docDates)
+                
             }
 
             let dates = {filling_date: '', pgpub_date: '', grant_date: ''}
             if(getDatesData != null) {
+                console.log(1)
                 dates.filling_date = getDatesData.filling_date
                 dates.pgpub_date = getDatesData.pgpub_date
             } else {
-                if(docDates != null) {
+                console.log(docDates)
+                if(docDates != null && docDates.filling_date != '' && docDates.filling_date != null) {
+                    console.log(2)
                     dates.filling_date = docDates.filling_date
                     dates.pgpub_date = docDates.pgpub_date
+                } else if(getGrantDatesData != null) {
+                    console.log(3)
+                    dates.filling_date = getGrantDatesData.filling_date
                 }
             }
             
-            if(getGrantDatesData != null) {
+            if(getGrantDatesData != null ) {
                 dates.grant_date = getGrantDatesData.grant_date
             } else if(docDates != null) {
                 dates.grant_date = docDates.grant_date
             }
-
+            console.log(dates);
             const queryStatus = `SELECT id, status, status_date FROM db_uspto.application_status WHERE appno_doc_num = :applicationNumber AND status <> :status`
             const getStatusData = await connection.application.query(queryStatus,{
                     type: connection.Sequelize.QueryTypes.SELECT,
@@ -2374,10 +2381,17 @@ route.get("/events/assets/status/:applicationNumber", [authJWT.verifyToken], asy
                         status: 'Filed:'
                     })
                 } else if (dates.filling_date != '' && dates.pgpub_date != '' && dates.filling_date != null && dates.pgpub_date != null) {
+                    let enddate = moment(new Date()).format('YYYY-MM-DD')
+                    if(getStatusData.length > 0 ){
+                        let status = getStatusData[0].status;
+                        if(status.toLowerCase().indexOf('abandoned') !== -1 || status.toLowerCase().indexOf('expired') !== -1) {
+                            enddate = getStatusData[0].status_date
+                        }
+                    } 
                     getList.push({
                         id: 'A',
                         start_date: dates.filling_date,
-                        end_date: getStatusData.length > 0 ? getStatusData[0].status_date : moment(new Date()).format('YYYY-MM-DD'),
+                        end_date: enddate ,
                         eventdate: dates.filling_date,
                         type: 'background',
                         className: 'greenLight',
