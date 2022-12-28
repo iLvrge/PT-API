@@ -197,7 +197,7 @@ route.get("/timeline", [authJWT.verifyToken], async(req, res, next) => {
                 } else {
                     /* query += " cor.rf_id IN (SELECT rf_id FROM dashboard_items WHERE organisation_id = :organisation_id  AND representative_id IN (:companies) AND type = :layout GROUP BY rf_id) " */
                 }
-                query += " GROUP BY apt.rf_id ORDER BY apt.exec_dt DESC "
+                query += " GROUP BY apt.rf_id ORDER BY apt.exec_dt DESC  LIMIT 0, 500"
                 
             } else if (replacements.layout == 39) {
 
