@@ -90,7 +90,7 @@ const findCollateralizedAssets = async(replacements) => {
 }
 
 route.get("/timeline", [authJWT.verifyToken], async(req, res, next) => {
-    let {companies, tabs, customers, rf_ids, layout, exclude, limit, offset } = req.query, list = [], groups = []
+    let {companies, tabs, customers, rf_ids, layout, exclude, start, end, limit, offset } = req.query, list = [], groups = []
     try {                
         
         const replacements = { organisation_id: req.orgId, year: 1999 }
@@ -154,7 +154,16 @@ route.get("/timeline", [authJWT.verifyToken], async(req, res, next) => {
 
                 /* query = "Select cor.rf_id as id, apt.exec_dt, release_rf_id, release_exec_dt, full_match AS partial_transaction, all_release_ids, total_assets AS releaseAssets, IF(cor.cname <> '', cor.cname, cor.caddress_1) AS lawfirm, cor.law_firm_id, cor.law_firm_id AS name_id, 0 AS repID, '' AS customerName,  0 AS tab_id, '' AS `group`, '' AS `company`, 0 AS totalAssets  FROM db_new_application.activity_parties_transactions AS apt  INNER JOIN db_uspto.assignee AS ass ON ass.rf_id = apt.rf_id INNER JOIN db_uspto.correspondent AS cor ON cor.rf_id = ass.rf_id WHERE apt.organisation_id = :organisation_id AND apt.company_id IN (:companies) AND ass.assignor_and_assignee_id IN (SELECT assignor_and_assignee_id FROM db_uspto.list1 WHERE organisation_id = :organisation_id AND company_id IN (:companies)) AND date_format(apt.exec_dt, '%Y') >= :year"; */
 
-                query = "Select apt.rf_id as id, MAX(apt.exec_dt) AS exec_dt, release_rf_id, release_exec_dt, full_match AS partial_transaction, all_release_ids, total_assets AS releaseAssets, di.lawfirm, 0 AS name_id, 0 AS  name_id, 0 AS repID, '' AS customerName, apt.activity_id AS tab_id,  '' AS `group`, '' AS `company`, 0 AS totalAssets FROM db_new_application.activity_parties_transactions AS apt INNER JOIN db_new_application.dashboard_items AS di ON di.rf_id = apt.rf_id WHERE apt.organisation_id = :organisation_id AND apt.company_id IN(:companies) AND di.organisation_id = :organisation_id AND di.representative_id IN(:companies) AND di.type = :layout AND date_format(apt.exec_dt, '%Y') > :year"
+                query = "Select apt.rf_id as id, MAX(apt.exec_dt) AS exec_dt, release_rf_id, release_exec_dt, full_match AS partial_transaction, all_release_ids, total_assets AS releaseAssets, di.lawfirm, 0 AS name_id, 0 AS  name_id, 0 AS repID, '' AS customerName, apt.activity_id AS tab_id,  '' AS `group`, '' AS `company`, 0 AS totalAssets FROM db_new_application.activity_parties_transactions AS apt INNER JOIN db_new_application.dashboard_items AS di ON di.rf_id = apt.rf_id WHERE apt.organisation_id = :organisation_id AND apt.company_id IN(:companies) AND di.organisation_id = :organisation_id AND di.representative_id IN(:companies) AND di.type = :layout "
+                
+                if(typeof start != 'undefined' && typeof end != 'undefined') {
+                    replacements.start = start
+                    replacements.end = end
+                    query += " AND  apt.exec_dt BETWEEN :start AND :end "
+                } else {
+                    query += " AND date_format(apt.exec_dt, '%Y') > :year "
+                }
+
  
 
 
@@ -197,7 +206,7 @@ route.get("/timeline", [authJWT.verifyToken], async(req, res, next) => {
                 } else {
                     /* query += " cor.rf_id IN (SELECT rf_id FROM dashboard_items WHERE organisation_id = :organisation_id  AND representative_id IN (:companies) AND type = :layout GROUP BY rf_id) " */
                 }
-                query += " GROUP BY apt.rf_id ORDER BY apt.exec_dt DESC "
+                query += " GROUP BY apt.rf_id ORDER BY apt.exec_dt DESC  LIMIT 0, 500"
                 
             } else if (replacements.layout == 39) {
 
