@@ -283,8 +283,6 @@ let searchCompany = async(query, t) => {
             }
             //queryApplicant += ` AND a.type = 1 `
             if(t == 1) {
-                queryApplicant += ` AND a.type = 1 `
-            } else {
                 queryApplicant += ` AND a.type = 0 `
             }
 
