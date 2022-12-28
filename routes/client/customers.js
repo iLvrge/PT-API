@@ -920,12 +920,13 @@ route.post("/asset_types/assets/agents", [authJWT.verifyToken, clientDBConnectio
                         ) AS temp
                         GROUP BY name, year` */
                         query = `SELECT name, year, COUNT(DISTINCT rf_id) AS counter FROM (
-                            Select IF(rlf.representative_name <> '' , rlf.representative_name, l.name) AS name, apt.rf_id, date_format(apt.exec_dt, '%Y') AS year from db_new_application.activity_parties_transactions AS apt
+                            Select IF(MAX(rlf.representative_name) <> '' , MAX(rlf.representative_name), di.lawfirm) AS name, di.rf_id, date_format(apt.exec_dt, '%Y') AS year from db_new_application.activity_parties_transactions AS apt
                             INNER JOIN db_new_application.dashboard_items AS di ON di.rf_id = apt.rf_id
                             INNER JOIN db_uspto.correspondent as cor ON cor.rf_id = apt.rf_id 
                             INNER JOIN db_uspto.law_firm AS l ON l.name = cor.cname
                             LEFT JOIN db_uspto.representative_law_firm AS rlf ON rlf.representative_id = l.representative_id
                             Where apt.organisation_id = :organisationID AND apt.company_id = :company_id AND di.organisation_id = :organisationID  AND di.representative_id IN(:company_id) AND di.type = 40 AND date_format(apt.exec_dt, '%Y') > :year
+                            GROUP BY di.rf_id
                         ) AS temp
                         GROUP BY name, year`
                         where.type = 40
