@@ -156,7 +156,7 @@ route.get("/timeline", [authJWT.verifyToken], async(req, res, next) => {
 
                 query = "Select apt.rf_id as id, MAX(apt.exec_dt) AS exec_dt, release_rf_id, release_exec_dt, full_match AS partial_transaction, all_release_ids, total_assets AS releaseAssets, di.lawfirm, 0 AS name_id, 0 AS  name_id, 0 AS repID, '' AS customerName, apt.activity_id AS tab_id,  '' AS `group`, '' AS `company`, 0 AS totalAssets FROM db_new_application.activity_parties_transactions AS apt INNER JOIN db_new_application.dashboard_items AS di ON di.rf_id = apt.rf_id WHERE apt.organisation_id = :organisation_id AND apt.company_id IN(:companies) AND di.organisation_id = :organisation_id AND di.representative_id IN(:companies) AND di.type = :layout "
                 
-                if(typeof start != 'undefined' && typeof end != 'undefined') {
+                if(typeof start != 'undefined' && start != '' && typeof end != 'undefined' && end != '') {
                     replacements.start = start
                     replacements.end = end
                     query += " AND  apt.exec_dt BETWEEN :start AND :end "
