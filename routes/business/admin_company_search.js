@@ -1177,8 +1177,7 @@ route.get("/company/:companyID/law_firms", [authJWT.verifyToken, authJWT.isAdmin
             raw: true,
             replacements: { allIDs },
             logging: console.log,
-            }
-        );
+        });
         res.status(200).json(findAllLawFirms);
     } catch(e) {
         console.log(e);
