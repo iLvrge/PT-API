@@ -19,7 +19,7 @@ const app = express();
 // instrument express after the agent has been loaded
 newrelic.instrumentLoadedModule(
     'express',    // the module's name, as a string
-    expressModule // the module instance
+    express // the module instance
 );
 
 Sentry.init({
