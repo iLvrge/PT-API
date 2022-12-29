@@ -11,8 +11,16 @@ const Tracing = require("@sentry/tracing");
 
 const upload = require("express-fileupload");
 
+// load the agent
+const newrelic = require('newrelic');
 
 const app = express();
+
+// instrument express after the agent has been loaded
+newrelic.instrumentLoadedModule(
+    'express',    // the module's name, as a string
+    express // the module instance
+);
 
 Sentry.init({
     dsn: "https://9dbb99721e484a939592c18830855a52@o487723.ingest.sentry.io/5547034",
