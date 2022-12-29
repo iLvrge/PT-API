@@ -90,7 +90,33 @@ route.get("/assets", [authJWT.verifyToken], async(req, res, next) => {
     });
 });
 
+const findLawFirmName = async (props) => {
+    let queryFillingLawFirm = ` SELECT lawfirm FROM dashboard_items WHERE organisation_id = :organisation_id  AND representative_id IN (:companies) AND type = :type `
 
+    if(typeof props.assignments  != 'undefined' && props.assignments.length > 0) {  
+        queryFillingLawFirm += ` AND rf_id IN (:assignments) ` 
+    }
+
+    queryFillingLawFirm += ` GROUP BY lawfirm `
+
+    const assetsWithLawFirm =  await connection.applicationNew.query(queryFillingLawFirm, {
+        type: connection.Sequelize.QueryTypes.SELECT,
+        raw: true,
+        logging: console.log,
+        replacements: props,
+    }); 
+
+    const lawFirm = []
+
+    if(assetsWithLawFirm.length > 0) {
+        const promise = assetsWithLawFirm.map( row => {
+            lawFirm.push(`${row.lawfirm}`)
+        })
+
+        await Promise.all(promise)
+    }
+    return lawFirm;
+}
 
 route.post("/assets/cpc", [authJWT.verifyToken, clientDBConnection.connect], async(req, res, next) => {
     try{
@@ -129,18 +155,15 @@ route.post("/assets/cpc", [authJWT.verifyToken, clientDBConnection.connect], asy
             if(getFiilingAssets.length > 0) {  
                 replacements.applications = getFiilingAssets
                 replacements.companies = companies
-    
-                let queryFillingLawFirm = `SELECT l.appno_doc_num FROM db_patent_application_bibliographic.lawfirm AS l  WHERE l.appno_doc_num IN (:applications) AND l.name IN (SELECT lawfirm FROM dashboard_items WHERE organisation_id = :organisation_id  AND representative_id IN (:companies) AND type = :type `
-
                 if(assignments && assignments != '') {
                     assignments = JSON.parse( assignments )
                     replacements.assignments = assignments
-                    if(assignments.length > 0) {
-                        queryFillingLawFirm += ` AND rf_id IN (:assignments) `
-                    }
                 }
+                const lawfirmName = await helpers.findLawFirmName(replacements)
 
-                queryFillingLawFirm += ` GROUP BY lawfirm) GROUP BY l.appno_doc_num `
+                replacements.lawfirm_name = lawfirmName
+
+                let queryFillingLawFirm = `SELECT l.appno_doc_num FROM db_patent_application_bibliographic.lawfirm AS l  WHERE l.appno_doc_num IN (:applications) AND l.name IN (:lawfirm_name) GROUP BY l.appno_doc_num `
     
                 const assetsWithLawFirm =  await connection.applicationNew.query(queryFillingLawFirm, {
                     type: connection.Sequelize.QueryTypes.SELECT,

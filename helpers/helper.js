@@ -3866,7 +3866,36 @@ const getFamilyList = async(replacements) => {
     return allAssets;
 }
 
+const findLawFirmName = async (props) => {
+    let queryFillingLawFirm = ` SELECT lawfirm FROM dashboard_items WHERE organisation_id = :organisation_id  AND representative_id IN (:companies) AND type = :type `
+
+    if(typeof props.assignments  != 'undefined' && props.assignments.length > 0) {  
+        queryFillingLawFirm += ` AND rf_id IN (:assignments) ` 
+    }
+
+    queryFillingLawFirm += ` GROUP BY lawfirm `
+
+    const assetsWithLawFirm =  await connection.applicationNew.query(queryFillingLawFirm, {
+        type: connection.Sequelize.QueryTypes.SELECT,
+        raw: true,
+        logging: console.log,
+        replacements: props,
+    }); 
+
+    const lawFirm = []
+
+    if(assetsWithLawFirm.length > 0) {
+        const promise = assetsWithLawFirm.map( row => {
+            lawFirm.push(`${row.lawfirm}`)
+        })
+
+        await Promise.all(promise)
+    }
+    return lawFirm;
+}
+
 const helper = {};
+helper.findLawFirmName = findLawFirmName
 helper.getFamilyList = getFamilyList
 helper.findFillingAssets = findFillingAssets
 helper.findCompanyName = findCompanyName
