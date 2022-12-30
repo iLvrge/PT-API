@@ -2,3 +2,6 @@
 /src
 .env*
 .log*
+
+newrelic_agent.log
+package-lock.json
