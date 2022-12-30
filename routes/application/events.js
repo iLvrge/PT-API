@@ -19,7 +19,7 @@ const MaintainenceCode = require("../../model/maintainence/MaintainenceCode"),
     Representatives = require("../../model/client/Representatives");
 
 const SvgIconsContent = {
-        1: `<svg version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" x="0px" y="0px" width="25px"
+        1: `<svg version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1997/xlink" x="0px" y="0px" width="25px"
         height="25px" viewBox="0 0 25 25" style="enable-background:new 0 0 25 25;" xml:space="preserve">
        <g>
            <path class="svg_red" d="M5.921,8.525l1.853,1.853L8.62,9.532L6.525,7.438C6.364,7.276,6.123,7.236,5.881,7.317
@@ -54,7 +54,7 @@ const SvgIconsContent = {
                c0,0.121,0.081,0.282,0.161,0.363l1.249,1.209l-0.604,0.604L12.971,15.252z"/>
        </g>
    </svg>`,
-    2: `<svg version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" x="0px" y="0px" width="25px"
+    2: `<svg version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1997/xlink" x="0px" y="0px" width="25px"
     height="25px" viewBox="0 0 25 25" style="enable-background:new 0 0 25 25;" xml:space="preserve">
    <g>
 	   <path class="svg_blue" d="M12.5,25C5.625,25,0.074,19.375,0.074,12.5S5.662,0,12.5,0s12.426,5.625,12.426,12.5
@@ -69,7 +69,7 @@ const SvgIconsContent = {
 		   c2.022,0.809,3.088,1.838,3.088,3.603c0,1.544-1.066,3.015-3.088,3.382v2.059L11.691,20.515z"/>
    </g>
 </svg>`,
-    3: `<svg version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" x="0px" y="0px" width="40px"
+    3: `<svg version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1997/xlink" x="0px" y="0px" width="40px"
     height="40px" viewBox="0 0 40 40" style="enable-background:new 0 0 40 40;" xml:space="preserve">
 	<g>
 	   <path  d="M19.439,22.82c0.162-1.245,0.209-2.539-0.51-3.46c-0.626-0.797-1.599-1.07-2.457-1.294
@@ -170,7 +170,7 @@ const SvgIconsContent = {
 	   </g>
    </g>
 </svg>`,
-    4: `<svg version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" x="0px" y="0px" width="40px"
+    4: `<svg version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1997/xlink" x="0px" y="0px" width="40px"
     height="40px" viewBox="0 0 40 40" style="enable-background:new 0 0 40 40;" xml:space="preserve">
     <g>
         <path  d="M19.439,22.82c0.162-1.245,0.209-2.539-0.51-3.46c-0.626-0.797-1.599-1.07-2.457-1.294
@@ -263,7 +263,7 @@ const SvgIconsContent = {
             l3.791,3.134L35.9,24.72c0.177-0.171,0.46-0.166,0.632,0.011c0.171,0.177,0.166,0.46-0.011,0.632L28.861,32.763z"/>
     </g>
 </svg>`,
-    5: `<svg version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" x="0px" y="0px" width="40px"
+    5: `<svg version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1997/xlink" x="0px" y="0px" width="40px"
     height="40px" viewBox="0 0 40 40" style="enable-background:new 0 0 40 40;" xml:space="preserve">
 	<g>
 	   <path class="svg_blue" d="M39.468,32.829H0.498C0.232,32.829,0,32.597,0,32.332V7.668c0-0.266,0.232-0.498,0.498-0.498h38.97
@@ -286,7 +286,7 @@ const SvgIconsContent = {
 		   C39.169,32.431,39.069,32.464,38.97,32.464z"/>
    </g>
 </svg>`,
-    6: `<svg version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" x="0px" y="0px" width="40px"
+    6: `<svg version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1997/xlink" x="0px" y="0px" width="40px"
     height="40px" viewBox="0 0 40 40" style="enable-background:new 0 0 40 40;" xml:space="preserve">
    <g>
        <path class="svg_blue" d="M8.92,7.686L9.246,8.59C9.354,8.879,9.68,9.024,9.933,8.915c0.289-0.108,0.434-0.398,0.325-0.687l-0.47-1.302
@@ -383,7 +383,7 @@ const SvgIconsContent = {
            l-0.145-0.289L22.482,25.117z"/>
    </g>
 </svg>`,
-    7: `<svg version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" x="0px" y="0px" width="40px"
+    7: `<svg version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1997/xlink" x="0px" y="0px" width="40px"
     height="40px" viewBox="0 0 40 40" style="enable-background:new 0 0 40 40;" xml:space="preserve">
    <g>
 	   <path d="M25.306,17.399h-0.821v-5.351H8.481v4.038H7.66v-4.448c0-0.227,0.184-0.41,0.41-0.41h16.825
@@ -494,7 +494,7 @@ const SvgIconsContent = {
 	   </g>
    </g>
 </svg>`,
-    8: `<svg version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" x="0px" y="0px" width="40px"
+    8: `<svg version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1997/xlink" x="0px" y="0px" width="40px"
     height="40px" viewBox="0 0 40 40" style="enable-background:new 0 0 40 40;" xml:space="preserve">
    <g>
 	   <path d="M19.989,22.241c0.181,0,0.34-0.158,0.34-0.34s-0.158-0.34-0.34-0.34c-0.181,0-0.34,0.158-0.34,0.34
@@ -665,7 +665,7 @@ const SvgIconsContent = {
 		   c0,0.721,0.603,1.045,1.124,1.245c0.466,0.196,0.529,0.35,0.529,0.475C20.309,9.784,20.126,9.93,19.853,9.93z"/>
    </g>
 </svg>`,
-    9: `<svg version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" x="0px" y="0px" width="40px"
+    9: `<svg version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1997/xlink" x="0px" y="0px" width="40px"
     height="40px" viewBox="0 0 40 40" style="enable-background:new 0 0 40 40;" xml:space="preserve">
    <g>
 	   <path class="svg_red" d="M20.173,17.942c-0.127,0-0.253-0.063-0.348-0.158l-2.688-3.163c-0.127-0.158-0.158-0.38-0.063-0.538
@@ -751,7 +751,7 @@ const SvgIconsContent = {
 		   C4.296,8.581,4.422,8.517,4.58,8.517c0.19,0,0.38,0.063,0.506,0.221l1.455,1.739C6.763,10.795,6.731,11.206,6.446,11.427z"/>
    </g>
 </svg>`,
-    10: `<svg version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" x="0px" y="0px" width="40px"
+    10: `<svg version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1997/xlink" x="0px" y="0px" width="40px"
     height="28px" viewBox="0 0 40 28" style="enable-background:new 0 0 40 28;" xml:space="preserve">
    <g>
        <path d="M40,26.544V1.486c0-0.263-0.23-0.493-0.493-0.493H6.437c-0.263,0-0.493,0.23-0.493,0.493v4.105
@@ -817,7 +817,7 @@ const SvgIconsContent = {
            v-1.018c1.084-0.197,1.642-0.92,1.642-1.773C8.867,12.324,8.374,11.798,7.258,11.404z"/>
    </g>
 </svg>`,
-    11: `<svg version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" x="0px" y="0px" width="40px"
+    11: `<svg version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1997/xlink" x="0px" y="0px" width="40px"
     height="28px" viewBox="0 0 40 28" style="enable-background:new 0 0 40 28;" xml:space="preserve">
    <g>
        <g>
@@ -851,7 +851,7 @@ const SvgIconsContent = {
            c0.535-0.1,1.036-0.401,1.337-0.869C18.613,7.835,18.747,7.3,18.647,6.732z"/>
    </g>
 </svg>`,
-    12: `<svg version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" x="0px" y="0px" width="40px"
+    12: `<svg version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1997/xlink" x="0px" y="0px" width="40px"
     height="28px" viewBox="0 0 40 28" style="enable-background:new 0 0 40 28;" xml:space="preserve">
    <g>
        <path d="M15.94,8.655v-4.57c0-0.302-0.264-0.567-0.567-0.567H4.042c-0.302,0-0.567,0.264-0.567,0.567v4.608
@@ -878,7 +878,7 @@ const SvgIconsContent = {
        </g>
    </g>
 </svg>`,
-    13: `<svg version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" x="0px" y="0px" width="40px"
+    13: `<svg version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1997/xlink" x="0px" y="0px" width="40px"
     height="28px" viewBox="0 0 40 28" style="enable-background:new 0 0 40 28;" xml:space="preserve">
    <g>
        <path class="svg_green" d="M34.909,11.897l-1.061-1.288c-0.152-0.189-0.189-0.379-0.152-0.606l0.379-1.629
@@ -924,7 +924,7 @@ const SvgIconsContent = {
            L36.235,26.863z"/>
    </g>
 </svg>`,
-    14: `<svg version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" x="0px" y="0px" width="40px"
+    14: `<svg version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1997/xlink" x="0px" y="0px" width="40px"
     height="28px" viewBox="0 0 40 28" style="enable-background:new 0 0 40 28;" xml:space="preserve">
    <g>
        
@@ -964,7 +964,7 @@ const SvgIconsContent = {
            c0.292,0,0.547-0.256,0.547-0.548C40,17.923,39.744,17.631,39.453,17.631z"/>
    </g>
 </svg>`,
-    15: `<svg version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" x="0px" y="0px" width="40px"
+    15: `<svg version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1997/xlink" x="0px" y="0px" width="40px"
     height="28px" viewBox="0 0 40 28" style="enable-background:new 0 0 40 28;" xml:space="preserve">
    <g>
 	   <rect x="11.39" y="4.041" width="17.186" height="1.011"/>
@@ -994,7 +994,7 @@ const SvgIconsContent = {
 		   c0.203-0.202,0.509-0.202,0.712,0c0.203,0.202,0.203,0.506,0,0.708l-2.814,2.797C9.085,18.567,8.949,18.634,8.814,18.634z"/>
    </g>
 </svg>`,
-    16: `<svg version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" x="0px" y="0px" width="52px"
+    16: `<svg version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1997/xlink" x="0px" y="0px" width="52px"
     height="25px" viewBox="0 0 52 25" style="enable-background:new 0 0 52 25;" xml:space="preserve">
 	<g>
 	   <path class="svg_blue" d="M26.586,24.931H15.739c-0.172,0-0.31-0.069-0.413-0.207c-0.826-1.033-8.161-10.124-8.299-10.331
@@ -1040,7 +1040,7 @@ const SvgIconsContent = {
 		   C45.457,24.759,45.216,25,44.94,25z"/>
 	</g>
 </svg>`,
-    17: `<svg version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" x="0px" y="0px" width="40px"
+    17: `<svg version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1997/xlink" x="0px" y="0px" width="40px"
     height="40px" viewBox="0 0 40 40" style="enable-background:new 0 0 40 40;" xml:space="preserve">
 	<g>
 	   <path d="M18.997,24.62h-1.305c-0.283,0-0.522,0.239-0.522,0.522v4.889c0,0.283,0.239,0.522,0.522,0.522h1.305
@@ -1136,7 +1136,7 @@ const SvgIconsContent = {
 	   c0.633,1.056,1.783,1.718,3.04,1.718c0.615,0,1.19-0.147,1.711-0.44C38.59,11.183,39.292,9.704,39.055,8.236z M36.473,1.044v1.78
            l-4.795-0.019c0,0-0.001,0-0.001,0H3.508V1.044H36.473z"/>
 </svg>`,
-    18: `<svg version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" x="0px" y="0px" width="40px"
+    18: `<svg version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1997/xlink" x="0px" y="0px" width="40px"
     height="40px" viewBox="0 0 40 40" style="enable-background:new 0 0 40 40;" xml:space="preserve">
    <g>
        <path class="svg_blue" d="M33.617,24.639c-0.003-0.03-0.011-0.055-0.018-0.075l-2.745-6.438c-0.33-0.747-0.917-1.308-1.609-1.539
@@ -1181,7 +1181,7 @@ const SvgIconsContent = {
            c0-0.326,0.275-0.601,0.601-0.601C20.356,30.838,20.62,31.102,20.62,31.439z"/>
    </g>
 </svg>`,
-    19: `<svg version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" x="0px" y="0px" width="40px"
+    19: `<svg version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1997/xlink" x="0px" y="0px" width="40px"
     height="40px" viewBox="0 0 40 40" style="enable-background:new 0 0 40 40;" xml:space="preserve">
    <g>
        <path class="svg_blue" d="M36.314,21.586h-6.252V0.469C30.062,0.215,29.847,0,29.593,0H10.388c-0.254,0-0.469,0.215-0.469,0.469v13.607
@@ -1269,7 +1269,7 @@ const SvgIconsContent = {
        </g>
    </g>
 </svg>`,
-    20: `<svg version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" x="0px" y="0px" width="40px"
+    20: `<svg version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1997/xlink" x="0px" y="0px" width="40px"
     height="40px" viewBox="0 0 40 40" style="enable-background:new 0 0 40 40;" xml:space="preserve">
    <g>
        <g>
@@ -1323,7 +1323,7 @@ const SvgIconsContent = {
        </g>
    </g>
 </svg>`,
-    21: `<svg version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" x="0px" y="0px" width="40px"
+    21: `<svg version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1997/xlink" x="0px" y="0px" width="40px"
     height="40px" viewBox="0 0 40 40" style="enable-background:new 0 0 40 40;" xml:space="preserve">
 	<g>
 	   <g>
@@ -1400,7 +1400,7 @@ const SvgIconsContent = {
 		   />
    </g>
 </svg>`,
-    22: `<svg version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" x="0px" y="0px" width="40px"
+    22: `<svg version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1997/xlink" x="0px" y="0px" width="40px"
     height="40px" viewBox="0 0 40 40" style="enable-background:new 0 0 40 40;" xml:space="preserve">
    <g>
        <path d="M38.946,22.14h-1.067v-8.361H12.973v6.333h-1.067v-6.867c0-0.295,0.239-0.534,0.534-0.534h25.973
@@ -1455,7 +1455,7 @@ const SvgIconsContent = {
            C19.485,27.962,19.305,27.975,19.124,27.975z"/>
    </g>
 </svg>`,
-    23: `<svg version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" x="0px" y="0px" width="40px"
+    23: `<svg version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1997/xlink" x="0px" y="0px" width="40px"
     height="40px" viewBox="0 0 40 40" style="enable-background:new 0 0 40 40;" xml:space="preserve">
    <g class="st5">
        <path d="M13.011,20.187c0-0.828,0.518-1.484,1.277-1.795v-0.035c-0.69-0.38-1.035-0.966-1.035-1.588
@@ -1485,7 +1485,7 @@ const SvgIconsContent = {
        <rect x="23.684" y="21.471" width="3.072" height="3.072"/>
    </g>
 </svg>`,
-    24: `<svg version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" x="0px" y="0px" width="40px"
+    24: `<svg version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1997/xlink" x="0px" y="0px" width="40px"
     height="40px" viewBox="0 0 40 40" style="enable-background:new 0 0 40 40;" xml:space="preserve">
 	<g>
 	   <path class="svg_blue" d="M19.381,28.828c-0.561-0.232-0.794-0.407-0.794-0.716c0-0.252,0.194-0.561,0.678-0.561
@@ -1630,9 +1630,9 @@ route.get("/events/tabs/:tabID/companies/:representativeID/customers/:customerID
         if( list != '' ) {
             list = JSON.parse(list)
             if( list.length > 0 ) {
-                const query = "SELECT assets.company_id, assets.organisation_id, documentid.appno_doc_num AS application, documentid.grant_doc_num AS patent, documentid.status AS `status`,  documentid.appno_date AS appno_date FROM db_new_application.assets AS assets INNER JOIN db_uspto.documentid AS documentid ON assets.appno_doc_num = documentid.appno_doc_num WHERE assets.organisation_id = :organisation_id AND documentid.appno_doc_num IN (:list) AND date_format(documentid.appno_date, '%Y') > 1997 GROUP BY assets.company_id, assets.organisation_id, documentid.appno_doc_num"
+                const query = "SELECT assets.company_id, assets.organisation_id, documentid.appno_doc_num AS application, documentid.grant_doc_num AS patent, documentid.status AS `status`,  documentid.appno_date AS appno_date FROM db_new_application.assets AS assets INNER JOIN db_uspto.documentid AS documentid ON assets.appno_doc_num = documentid.appno_doc_num WHERE assets.organisation_id = :organisation_id AND documentid.appno_doc_num IN (:list) AND date_format(documentid.appno_date, '%Y') > :year GROUP BY assets.company_id, assets.organisation_id, documentid.appno_doc_num"
 
-                const replacements = {list, organisation_id: req.orgId}
+                const replacements = {list, organisation_id: req.orgId, year: connection.DEFAULT_YEAR}
                 getList = await connection.applicationNew.query(query, {
                     type: connection.Sequelize.QueryTypes.SELECT,
                     replacements: replacements,
@@ -1676,6 +1676,168 @@ route.get("/events/tabs/:tabID/companies/:representativeID/customers/:customerID
         res.status(500).send("Internal server error.");
     }
 }) */
+route.post("/events/abandoned/maintainence/assets", [authJWT.verifyToken], async(req, res, next) => {
+    try{
+        let { list, total, type, selectedCompanies, tabs, customers, assignments, other_mode } = req.body, assetsLifeSpan = []
+
+        const where = { year: connection.DEFAULT_YEAR, organisationID: req.orgId, status: ['Patent Expired Due to NonPayment of Maintenance Fees Under 37 CFR 1.362', 'Provisional Application Expired', 'Final Rejection Mailed', 
+        'Expressly Abandoned  --  During Publication Process', 
+        'Expressly Abandoned  --  During Examination', 
+        'Abandoned  --  After Examiner\'s Answer or Board of Appeals Decision', 
+        'Abandoned  --  Failure to Pay Issue Fee', 
+        'Abandoned  --  File-Wrapper-Continuation Parent Application',
+        'Abandoned  --  Failure to Respond to an Office Action',  
+        'Abandoned  --  Incomplete (Filing Date Under Rule 53 (b) - PreExam)',
+        'Abandoned  --  Incomplete Application (Pre-examination)', 'Abandonment for Failure to Correct Drawings/Oath/NonPub Request']}  
+        where.layoutID = helpers.findLayout(type) 
+        const companies = JSON.parse(selectedCompanies)
+        if(companies.length > 0) {
+            where.company_id = companies
+        } 
+       
+        const assets = `SELECT application FROM db_new_application.dashboard_items AS assets WHERE assets.organisation_id = :organisationID AND representative_id IN (:company_id) AND type = :layoutID GROUP BY application`;
+
+        const appList =  await connection.applicationNew.query(assets,{
+            type: connection.Sequelize.QueryTypes.SELECT,
+            raw: true,
+            logging: console.log,
+            replacements: where,
+        })
+
+        if(appList !== null && appList.length > 0) {
+            list = [];
+            appList.forEach( row => {
+                list.push(`${row.application}`)
+            })
+            where.list = list
+        }
+        const allAssetsSteps = []
+        if(list.length > 0) {
+            where.event_code = ['M1552','M2552', 'M3552', 'M1553','M2553', 'M3553', 'M1551','M2551', 'M3551']
+            const query = "SELECT  emf.appno_doc_num, event_code FROM db_patent_maintainence_fee.event_maintainence_fees AS emf WHERE emf.appno_doc_num IN ( :list )   AND event_code IN (:event_code) "
+
+            const getList = await connection.applicationNew.query(query, {
+                type: connection.Sequelize.QueryTypes.SELECT,
+                replacements: where,
+                raw: true,
+                logging: console.log,
+            })   
+            if(getList.length > 0) {
+                const FirstYear = [], SecondYear = [], ThirdYear = [], uniqueAssets = [] 
+                const promise = getList.map( asset => { 
+                    if(asset.event_code == 'M1551' || asset.event_code == 'M2551' || asset.event_code == 'M3551') {
+                        if(!FirstYear.includes(asset.appno_doc_num)) {
+                            FirstYear.push(asset.appno_doc_num)
+                        }
+                    } else if(asset.event_code == 'M1552' || asset.event_code == 'M2552' || asset.event_code == 'M3552') {
+                        if(!SecondYear.includes(asset.appno_doc_num)) {
+                            SecondYear.push(asset.appno_doc_num)
+                        }
+                    } else if(asset.event_code == 'M1553' || asset.event_code == 'M2553' || asset.event_code == 'M3553') {
+                        if(!ThirdYear.includes(asset.appno_doc_num)) {
+                            ThirdYear.push(asset.appno_doc_num)
+                        }
+                    }
+
+                    if(!uniqueAssets.includes(asset.appno_doc_num)) {
+                        uniqueAssets.push(asset.appno_doc_num)
+                    } 
+                }) 
+                await Promise.all(promise) 
+                const allYears = [...FirstYear, ...SecondYear, ...ThirdYear] 
+                const filterAsset = list.filter( asset => !uniqueAssets.includes(asset)) 
+
+                const abandonedSecondPayments = [], abandonedThirdPayments = []
+                const promiseFind = uniqueAssets.map(asset => {
+                    if(!filterAsset.includes(asset) && FirstYear.includes(asset) && !SecondYear.includes(asset)) {
+                        abandonedSecondPayments.push(asset)
+                    }
+
+                    if(!filterAsset.includes(asset) && !abandonedSecondPayments.includes(asset) && FirstYear.includes(asset) && SecondYear.includes(asset) && !ThirdYear.includes(asset)) {
+                        abandonedThirdPayments.push(asset)
+                    }
+                })
+                await Promise.all(promiseFind)  
+                if(filterAsset.length > 0) { 
+                    allAssetsSteps.push(["Before First Maintainence", filterAsset.length]) 
+                }
+
+                if(abandonedSecondPayments.length > 0) { 
+                    allAssetsSteps.push(["Before Second Maintainence", abandonedSecondPayments.length]) 
+                }
+
+                if(abandonedThirdPayments.length > 0) { 
+                    allAssetsSteps.push(["Before Third Maintainence", abandonedSecondPayments.length]) 
+                } 
+            } else {
+                allAssetsSteps.push(["Before First Maintainence", asset.length])
+            }
+        }  
+        res.status(200).json(allAssetsSteps);
+    } catch (err) {
+        console.log(err);
+        res.status(500).send("Internal server error.");
+    }
+})
+
+route.post("/events/abandoned/yearly/assets", [authJWT.verifyToken], async(req, res, next) => {
+    try{
+        let { list, total, type, selectedCompanies, tabs, customers, assignments, other_mode } = req.body, assetsLifeSpan = []
+
+        const where = { year: connection.DEFAULT_YEAR, organisationID: req.orgId, status: ['Patent Expired Due to NonPayment of Maintenance Fees Under 37 CFR 1.362', 'Provisional Application Expired', 'Final Rejection Mailed', 
+        'Expressly Abandoned  --  During Publication Process', 
+        'Expressly Abandoned  --  During Examination', 
+        'Abandoned  --  After Examiner\'s Answer or Board of Appeals Decision', 
+        'Abandoned  --  Failure to Pay Issue Fee', 
+        'Abandoned  --  File-Wrapper-Continuation Parent Application',
+        'Abandoned  --  Failure to Respond to an Office Action',  
+        'Abandoned  --  Incomplete (Filing Date Under Rule 53 (b) - PreExam)',
+        'Abandoned  --  Incomplete Application (Pre-examination)', 'Abandonment for Failure to Correct Drawings/Oath/NonPub Request']}  
+        where.layoutID = helpers.findLayout(type) 
+        const companies = JSON.parse(selectedCompanies)
+        if(companies.length > 0) {
+            where.company_id = companies
+        } 
+       
+        const assets = `SELECT application FROM db_new_application.dashboard_items AS assets WHERE assets.organisation_id = :organisationID AND representative_id IN (:company_id) AND type = :layoutID GROUP BY application`;
+
+        const appList =  await connection.applicationNew.query(assets,{
+            type: connection.Sequelize.QueryTypes.SELECT,
+            raw: true,
+            logging: console.log,
+            replacements: where,
+        })
+
+        if(appList !== null && appList.length > 0) {
+            list = [];
+            appList.forEach( row => {
+                list.push(`${row.application}`)
+            })
+            where.list = list
+        }
+        let getList = []
+        if(list.length > 0) {
+            const query = "SELECT date_format(status_date, '%Y') AS year, COUNT(appno_doc_num) AS counter, status FROM db_uspto.application_status WHERE date_format(status_date, '%Y') > :year AND appno_doc_num IN ( :list ) AND status IN (:status) GROUP BY year "
+
+            getList = await connection.applicationNew.query(query, {
+                type: connection.Sequelize.QueryTypes.SELECT,
+                replacements: where,
+                raw: true,
+                logging: console.log,
+            }) 
+        } 
+        res.status(200).json(getList);
+    } catch (err) {
+        console.log(err);
+        res.status(500).send("Internal server error.");
+    }
+})
+
+
+
+
+
+
 
 route.post("/events/assets", [authJWT.verifyToken], async(req, res, next) => {
     try{
@@ -1689,7 +1851,7 @@ route.post("/events/assets", [authJWT.verifyToken], async(req, res, next) => {
                  * Get List
                  */
 
-                const where = { year: 1997, organisationID: req.orgId}  
+                const where = { year: connection.DEFAULT_YEAR, organisationID: req.orgId}  
                 let query = '' 
                 if(typeof other_mode != 'undefined' && other_mode == 'true') {
                     query = `SELECT appno_doc_num FROM db_new_application.assets_for_sale AS assets WHERE assets.organisation_id = :organisationID  GROUP BY appno_doc_num`
@@ -1747,7 +1909,7 @@ route.post("/events/assets", [authJWT.verifyToken], async(req, res, next) => {
                                 query += ` AND activity_parties_transactions.activity_id IN (:tabs)`
                             } else {
                                 /**exclude employees */
-                                query += ' AND activity_parties_transactions.activity_id <> 10 ' 
+                                //query += ' AND activity_parties_transactions.activity_id <> 10 ' 
                             } 
 
                             if(Array.isArray(customers) && customers.length > 0 ) {
@@ -1757,7 +1919,7 @@ route.post("/events/assets", [authJWT.verifyToken], async(req, res, next) => {
                             query += ` GROUP BY activity_parties_transactions.rf_id ) GROUP BY documentid.appno_doc_num) `
                         } else  if(Array.isArray(tabs) && tabs.length === 0) {
                             /**exclude employees */
-                            query += ` AND assets.appno_doc_num IN (  SELECT documentid.appno_doc_num FROM db_uspto.documentid WHERE rf_id  IN ( SELECT activity_parties_transactions.rf_id  FROM db_new_application.activity_parties_transactions WHERE activity_parties_transactions.organisation_id = :organisationID  AND activity_parties_transactions.activity_id <> 10   ` 
+                            query += ` AND assets.appno_doc_num IN (  SELECT documentid.appno_doc_num FROM db_uspto.documentid WHERE rf_id  IN ( SELECT activity_parties_transactions.rf_id  FROM db_new_application.activity_parties_transactions WHERE activity_parties_transactions.organisation_id = :organisationID   ` 
 
                             if(Array.isArray(companies) && companies.length > 0 ) {
                                 query += ` AND activity_parties_transactions.company_id IN (:company_id) `
@@ -1786,9 +1948,9 @@ route.post("/events/assets", [authJWT.verifyToken], async(req, res, next) => {
                 }
             }
             if( list.length > 0 ) {
-                const query = "SELECT documentid.appno_doc_num AS application, documentid.grant_doc_num AS patent, documentid.status AS `status`,  documentid.appno_date AS appno_date FROM activity_parties_transactions INNER JOIN db_uspto.documentid AS documentid ON documentid.rf_id = activity_parties_transactions.rf_id WHERE documentid.appno_doc_num IN (:list) AND date_format(documentid.appno_date, '%Y') > 1997 AND documentid.grant_doc_num <> '' GROUP BY documentid.appno_doc_num"
+                const query = "SELECT documentid.appno_doc_num AS application, documentid.grant_doc_num AS patent, documentid.status AS `status`,  documentid.appno_date AS appno_date FROM activity_parties_transactions INNER JOIN db_uspto.documentid AS documentid ON documentid.rf_id = activity_parties_transactions.rf_id WHERE documentid.appno_doc_num IN (:list) AND date_format(documentid.appno_date, '%Y') > :year AND documentid.grant_doc_num <> '' GROUP BY documentid.appno_doc_num"
 
-                const replacements = {list}
+                const replacements = {list, year: connection.DEFAULT_YEAR}
                 getList = await connection.applicationNew.query(query, {
                     type: connection.Sequelize.QueryTypes.SELECT,
                     replacements: replacements,

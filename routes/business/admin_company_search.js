@@ -1128,7 +1128,7 @@ route.get("/company/lenders/:id/companies", [authJWT.verifyToken, authJWT.isAdmi
                 querySearchResult = await connection.resources.query(queryCompany,{
                     type: connection.Sequelize.QueryTypes.SELECT,
                     raw: true,
-                    replacements: { assignorAndAssigneeIDs: firmIDs, year: 1997, conveyanceTypes: ['security', 'restatedsecurity'] },
+                    replacements: { assignorAndAssigneeIDs: firmIDs, year: connection.DEFAULT_YEAR, conveyanceTypes: ['security', 'restatedsecurity'] },
                     logging: console.log,
                 });
             }
@@ -1362,7 +1362,7 @@ route.get("/company/law_firms/:id", [authJWT.verifyToken, authJWT.isAdmin, authJ
             
             query += " INNER JOIN `assignee` AS `representativetransaction->assignee` ON `representativetransaction`.`rf_id` = `representativetransaction->assignee`.`rf_id` AND `representativetransaction->assignee`.`assignor_and_assignee_id` IN (:assignor_and_assignee_id) INNER JOIN db_new_application.activity_parties_transactions AS apt ON apt.rf_id =  `representativetransaction->assignee`.`rf_id` LEFT JOIN `law_firm` AS `lawfirm` ON `assignment`.`cname` = `lawfirm`.`name` LEFT OUTER JOIN `representative_law_firm` AS `lawfirm->representativelawfirm` ON `lawfirm`.`representative_id` = `lawfirm->representativelawfirm`.`representative_id` WHERE date_format(apt.exec_dt, '%Y') > :year GROUP BY name";
 
-            where.year = 1999
+            where.year = connection.DEFAULT_YEAR
             findAllLawFirms = await connection.resources.query(query,{
                 type: connection.Sequelize.QueryTypes.SELECT,
                 raw: true,
@@ -2049,7 +2049,7 @@ route.get("/company/raw/assignments/:id", [authJWT.verifyToken, authJWT.isAdmin,
     const customerID = req.params.id, representativeIDs = JSON.parse(req.query.portfolios != undefined ? req.query.portfolios : "[]");
     let getList = [];
     if(customerID > 0) {
-        const where = {organisation_id: customerID, year: 1999};
+        const where = {organisation_id: customerID, year: connection.DEFAULT_YEAR};
         let whereRepresentative = {};
         if(representativeIDs.length > 0) {
             where.company_id = representativeIDs;
@@ -2129,7 +2129,7 @@ route.get("/company/raw/assignments/:id", [authJWT.verifyToken, authJWT.isAdmin,
                                 attributes: [],
                                 where: {
                                     [connection.Sequelize.fn('date_format', Sequelize.col('exec_dt'), '%Y')]:{
-                                        [connection.Op.gt]: 1999
+                                        [connection.Op.gt]: connection.DEFAULT_YEAR
                                     }
                                 }
                             }
@@ -2165,7 +2165,7 @@ route.get("/company/raw/assignments/:id", [authJWT.verifyToken, authJWT.isAdmin,
                                 attributes: [],
                                 where: {
                                     [connection.Sequelize.fn('date_format', Sequelize.col('exec_dt'), '%Y')]:{
-                                        [connection.Op.gt]: 1999
+                                        [connection.Op.gt]: connection.DEFAULT_YEAR
                                     }
                                 }
                             }

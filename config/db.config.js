@@ -116,6 +116,8 @@ const slackConfig = {
 
 const DEFAULT_LIMIT = 100 
 
-const db = { Sequelize, Op, application, applicationNew, resources, business, maintainence, biblioGrant, biblioApplication, config, bucketConfig, slackConfig, DEFAULT_LIMIT };
+const DEFAULT_YEAR = 1999
+
+const db = { Sequelize, Op, application, applicationNew, resources, business, maintainence, biblioGrant, biblioApplication, config, bucketConfig, slackConfig, DEFAULT_LIMIT, DEFAULT_YEAR };
  
 module.exports = db;

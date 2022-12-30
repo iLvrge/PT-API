@@ -48,8 +48,7 @@ const { create } = require('xmlbuilder2');
 const ASSETS_LIFE_SPAN_DATE_FORMAT = 'YYYY';
 
 const fs = require('fs');
-
-const EXEC_YEAR = 1999
+ 
 
 /**
  * 
@@ -258,9 +257,9 @@ let searchCompany = async(query, t) => {
             /* let querySearchResult = await connection.resources.query(queryCompany,{
                 type: connection.Sequelize.QueryTypes.SELECT,
                 raw: true,
-                replacements: { search: search, year: 1997 },
+                replacements: { search: search, year: connection.DEFAULT_YEAR },
                 logging: console.log,
-            });  */
+            });  */  
             /**
              * Query from Applicant 
              */
@@ -294,7 +293,7 @@ let searchCompany = async(query, t) => {
             let querySearchResult = await connection.resources.query(`SELECT * FROM (${queryCompany} UNION ${queryApplicant}) AS temp ORDER BY counter DESC`,{
                 type: connection.Sequelize.QueryTypes.SELECT,
                 raw: true,
-                replacements: { search: search, year: 1997 },
+                replacements: { search: search, year: connection.DEFAULT_YEAR },
                 logging: console.log,
             }); 
 
@@ -548,7 +547,7 @@ let searchLenders = async( search ) => {
     const querySearchResult = await connection.resources.query(queryLender,{
         type: connection.Sequelize.QueryTypes.SELECT,
         raw: true,
-        replacements: { search: search, year: 1997, conveyanceType: ['security', 'restatedsecurity'] },
+        replacements: { search: search, year: connection.DEFAULT_YEAR, conveyanceType: ['security', 'restatedsecurity'] },
         logging: console.log,
     });
 
@@ -564,7 +563,7 @@ let searchCompanyByAddress = async( address ) => {
         searchResult = await connection.resources.query(queryCompany,{
             type: connection.Sequelize.QueryTypes.SELECT,
             raw: true,
-            replacements: { address: address, flag: 0, year: 1997},
+            replacements: { address: address, flag: 0, year: connection.DEFAULT_YEAR},
             logging: console.log,
           }
         );
@@ -582,7 +581,7 @@ let searchCompanyByCountry = async( name ) => {
         searchResult = await connection.resources.query(queryCompany,{
             type: connection.Sequelize.QueryTypes.SELECT,
             raw: true,
-            replacements: { name, flag: 0, year: 1997},
+            replacements: { name, flag: 0, year: connection.DEFAULT_YEAR},
             logging: console.log,
           }
         );
@@ -605,7 +604,7 @@ let getAddressDataFromLastTransaction = async( ID, address1, address2 ) => {
             plain: true
           }
         );
-        const replacements = { ID: ID, address1, address2, year: 1997, conveyanceType: ['security', 'restatedsecurity'] };
+        const replacements = { ID: ID, address1, address2, year: connection.DEFAULT_YEAR, conveyanceType: ['security', 'restatedsecurity'] };
         let representativeQuery = ''
         if(representative !== null && representative.representative_id > 0) {
             const representativeNameQuery =  `SELECT representative_id FROM representative WHERE representative_name = :name`;
@@ -656,7 +655,7 @@ let getAddressWithTransactionsListByCompanyID = async( ID, type ) => {
 
         let representativeQuery = ''
 
-        const replacements = { ID: ID, year: 1997, conveyanceType: ['security', 'restatedsecurity'] };
+        const replacements = { ID: ID, year: connection.DEFAULT_YEAR, conveyanceType: ['security', 'restatedsecurity'] };
 
         if(representative !== null && representative.representative_id > 0) {
             const representativeNameQuery =  `SELECT representative_id FROM representative WHERE representative_name = :name`;
@@ -820,7 +819,7 @@ let getAddressListByCompanyID = async( ID, type ) => {
 
         let representativeQuery = ''
 
-        const replacements = { ID: ID, year: 1997, conveyanceType: ['security', 'restatedsecurity'] };
+        const replacements = { ID: ID, year: connection.DEFAULT_YEAR, conveyanceType: ['security', 'restatedsecurity'] };
 
         if(representative !== null && representative.representative_id > 0) {
             const representativeNameQuery =  `SELECT representative_id FROM representative WHERE representative_name = :name`;
@@ -909,7 +908,7 @@ let getAddressListByLawfirmID = async( ID ) => {
                 }
             }
         } 
-        const replacements = { ID: ID, year: 1997, names: allLawFirms };  
+        const replacements = { ID: ID, year: connection.DEFAULT_YEAR, names: allLawFirms };  
 
         const queryFindIDS = `SELECT address, rf_id FROM (
             SELECT cor.caddress_7 as address, ass.rf_id FROM correspondent AS cor
@@ -972,7 +971,7 @@ let searchLawfirmIDByAddress = async( addresses ) => {
             searchResult = await connection.resources.query(queryCompany,{
                 type: connection.Sequelize.QueryTypes.SELECT,
                 raw: true,
-                replacements: { address: listAddress.join(' '), flag: 0, year: 1997},
+                replacements: { address: listAddress.join(' '), flag: 0, year: connection.DEFAULT_YEAR},
                 logging: console.log,
                 }
             );      
@@ -1005,13 +1004,13 @@ let searchCompanyIDByAddress = async( addresses, type ) => {
             searchResult = await connection.resources.query(queryCompany,{
                 type: connection.Sequelize.QueryTypes.SELECT,
                 raw: true,
-                replacements: { address: listAddress.join(' '), flag: 0, year: 1997, conveyanceType: ['security', 'restatedsecurity']},
+                replacements: { address: listAddress.join(' '), flag: 0, year: connection.DEFAULT_YEAR, conveyanceType: ['security', 'restatedsecurity']},
                 logging: console.log,
                 }
             );   
             
             if(searchResult.length == 0) {
-                let  replacements = {flag: 0, year: 1997}
+                let  replacements = {flag: 0, year: connection.DEFAULT_YEAR}
 
                 if(isNaN(type) === false && type == 1) {
                     replacements.conveyanceType = ['security', 'restatedsecurity']
@@ -1183,7 +1182,7 @@ let allAssignments = async (customerID, req) => {
 
                 assignmentsList =  await connection.resources.query(queryAllAssignments,{
                     type: connection.Sequelize.QueryTypes.SELECT,
-                    replacements: { year: EXEC_YEAR,  organisationID: org.organisation_id  },
+                    replacements: { year: connection.DEFAULT_YEAR,  organisationID: org.organisation_id  },
                     raw: true,
                     logging: console.log,
                     }
@@ -1364,7 +1363,7 @@ let allAssignmentsByRepresentativeIDs = async (customerID, representativeIDs, re
             
                 assignmentsList = await connection.resources.query(queryAssigneeAssignorRFIDs,{
                     type: connection.Sequelize.QueryTypes.SELECT,
-                    replacements: {  year: EXEC_YEAR, organisationID: org.organisation_id, representativeID: representativeIDs },
+                    replacements: {  year: connection.DEFAULT_YEAR, organisationID: org.organisation_id, representativeID: representativeIDs },
                     raw: true,
                     logging: console.log,
                     }
@@ -1374,7 +1373,7 @@ let allAssignmentsByRepresentativeIDs = async (customerID, representativeIDs, re
 
                 conveyanceList =  await connection.resources.query(queryAllConveyance,{
                     type: connection.Sequelize.QueryTypes.SELECT,
-                    replacements: { year: EXEC_YEAR, organisationID: org.organisation_id, representativeID: representativeIDs },
+                    replacements: { year: connection.DEFAULT_YEAR, organisationID: org.organisation_id, representativeID: representativeIDs },
                     raw: true,
                     logging: console.log,
                     }
@@ -1384,7 +1383,7 @@ let allAssignmentsByRepresentativeIDs = async (customerID, representativeIDs, re
 
                 updateConveyanceList =  await connection.resources.query(queryAllUpdateConveyance,{
                     type: connection.Sequelize.QueryTypes.SELECT,
-                    replacements: { year: EXEC_YEAR, organisationID: org.organisation_id, representativeID: representativeIDs },
+                    replacements: { year: connection.DEFAULT_YEAR, organisationID: org.organisation_id, representativeID: representativeIDs },
                     raw: true,
                     logging: console.log,
                     }
@@ -2189,7 +2188,7 @@ let findAssignorAndAssigneeListFromRFIDs = async(rfIDs, type) => {
 
                 const assetsList = await connection.resources.query(queryAssets,{
                     type: connection.Sequelize.QueryTypes.SELECT,
-                    replacements: { IDs: rfIDs, year: 1997 },
+                    replacements: { IDs: rfIDs, year: connection.DEFAULT_YEAR },
                     raw: true,
                     logging: console.log,
                     }   
@@ -2282,7 +2281,7 @@ let findAssignorAndAssigneeListFromRFIDs = async(rfIDs, type) => {
        
         assignors = await connection.resources.query(queryAssignor,{
             type: connection.Sequelize.QueryTypes.SELECT,
-            replacements: { rfIDs, year: EXEC_YEAR },
+            replacements: { rfIDs, year: connection.DEFAULT_YEAR },
             raw: true,
             logging: console.log,
             }
@@ -2974,7 +2973,7 @@ let getCompaniesMinAndMaxDateTransaction = async(searchData) => {
 
     let firstDate = "", secondDate = "", minDate = "", maxDate = "";
 
-    let customMinQuery = 'SELECT concat(aa.assignor_and_assignee_id,ac.rf_id) as id, ac.rf_id, aa.name as raw_name, r1.representative_name as normalize_name, acc.convey_ty, acc.employer_assign, ac.exec_dt FROM assignor as ac INNER JOIN assignment_conveyance as acc ON acc.rf_id = ac.rf_id INNER JOIN assignor_and_assignee as aa ON aa.assignor_and_assignee_id = ac.assignor_and_assignee_id LEFT JOIN representative as r1 ON r1.representative_id = aa.representative_id INNER JOIN (SELECT ee.rf_id FROM assignee as ee INNER JOIN documentid as d ON d.rf_id = ee.rf_id INNER JOIN assignor_and_assignee as aaa ON aaa.assignor_and_assignee_id = ee.assignor_and_assignee_id LEFT JOIN representative as r ON r.representative_id = aaa.representative_id WHERE (aaa.name IN (:name)  or r.representative_name IN (:name)) AND date_format(d.appno_date,"%Y") > "1999") as temp ON temp.rf_id = ac.rf_id WHERE acc.convey_ty IN (:convey_type) AND acc.employer_assign = :employer_assign GROUP BY ac.rf_id ORDER BY ac.exec_dt ASC LIMIT :recordLimit';
+    let customMinQuery = 'SELECT concat(aa.assignor_and_assignee_id,ac.rf_id) as id, ac.rf_id, aa.name as raw_name, r1.representative_name as normalize_name, acc.convey_ty, acc.employer_assign, ac.exec_dt FROM assignor as ac INNER JOIN assignment_conveyance as acc ON acc.rf_id = ac.rf_id INNER JOIN assignor_and_assignee as aa ON aa.assignor_and_assignee_id = ac.assignor_and_assignee_id LEFT JOIN representative as r1 ON r1.representative_id = aa.representative_id INNER JOIN (SELECT ee.rf_id FROM assignee as ee INNER JOIN documentid as d ON d.rf_id = ee.rf_id INNER JOIN assignor_and_assignee as aaa ON aaa.assignor_and_assignee_id = ee.assignor_and_assignee_id LEFT JOIN representative as r ON r.representative_id = aaa.representative_id WHERE (aaa.name IN (:name)  or r.representative_name IN (:name)) AND date_format(d.appno_date,"%Y") > "connection.DEFAULT_YEAR") as temp ON temp.rf_id = ac.rf_id WHERE acc.convey_ty IN (:convey_type) AND acc.employer_assign = :employer_assign GROUP BY ac.rf_id ORDER BY ac.exec_dt ASC LIMIT :recordLimit';
 
     let getMinAssignmentData = await connection.application.query(customMinQuery,{
         type: connection.Sequelize.QueryTypes.SELECT,
@@ -2989,7 +2988,7 @@ let getCompaniesMinAndMaxDateTransaction = async(searchData) => {
         firstDate = new Date(getMinAssignmentData.exec_dt).getTime();
     }
 
-    customMinQuery = 'SELECT concat(aa.assignor_and_assignee_id,ac.rf_id) as id, ac.rf_id, aa.name as raw_name, r1.representative_name as normalize_name, acc.convey_ty, acc.employer_assign, (SELECT ap.exec_dt FROM assignor as ap WHERE ap.rf_id = ac.rf_id ORDER BY ap.exec_dt ASC LIMIT 1) as exec_dt FROM assignee as ac INNER JOIN assignment_conveyance as acc ON acc.rf_id = ac.rf_id  INNER JOIN assignor_and_assignee as aa ON aa.assignor_and_assignee_id = ac.assignor_and_assignee_id LEFT JOIN representative as r1 ON r1.representative_id = aa.representative_id INNER JOIN (SELECT or.rf_id FROM assignor as `or` INNER JOIN documentid as d ON d.rf_id = or.rf_id INNER JOIN assignor_and_assignee as aaa ON aaa.assignor_and_assignee_id = or.assignor_and_assignee_id LEFT JOIN representative as r ON r.representative_id = aaa.representative_id  WHERE (aaa.name IN ( :name ) or r.representative_name  IN (:name)) AND date_format(d.appno_date,"%Y") > "1999" ) as temp ON temp.rf_id = ac.rf_id WHERE acc.convey_ty IN (:convey_type) AND acc.employer_assign = :employer_assign GROUP BY ac.rf_id ORDER BY exec_dt ASC LIMIT :recordLimit';
+    customMinQuery = 'SELECT concat(aa.assignor_and_assignee_id,ac.rf_id) as id, ac.rf_id, aa.name as raw_name, r1.representative_name as normalize_name, acc.convey_ty, acc.employer_assign, (SELECT ap.exec_dt FROM assignor as ap WHERE ap.rf_id = ac.rf_id ORDER BY ap.exec_dt ASC LIMIT 1) as exec_dt FROM assignee as ac INNER JOIN assignment_conveyance as acc ON acc.rf_id = ac.rf_id  INNER JOIN assignor_and_assignee as aa ON aa.assignor_and_assignee_id = ac.assignor_and_assignee_id LEFT JOIN representative as r1 ON r1.representative_id = aa.representative_id INNER JOIN (SELECT or.rf_id FROM assignor as `or` INNER JOIN documentid as d ON d.rf_id = or.rf_id INNER JOIN assignor_and_assignee as aaa ON aaa.assignor_and_assignee_id = or.assignor_and_assignee_id LEFT JOIN representative as r ON r.representative_id = aaa.representative_id  WHERE (aaa.name IN ( :name ) or r.representative_name  IN (:name)) AND date_format(d.appno_date,"%Y") > "connection.DEFAULT_YEAR" ) as temp ON temp.rf_id = ac.rf_id WHERE acc.convey_ty IN (:convey_type) AND acc.employer_assign = :employer_assign GROUP BY ac.rf_id ORDER BY exec_dt ASC LIMIT :recordLimit';
     
     /*Assignment organization as assignor i.e sale, security*/
         
@@ -3022,7 +3021,7 @@ let getCompaniesMinAndMaxDateTransaction = async(searchData) => {
      * Find Max Date
      */
     searchData.recordLimit = 1;        
-    let customMaxQuery = 'SELECT concat(aa.assignor_and_assignee_id,ac.rf_id) as id, ac.rf_id, aa.name as raw_name, r1.representative_name as normalize_name, acc.convey_ty, acc.employer_assign, ac.exec_dt FROM assignor as ac INNER JOIN assignment_conveyance as acc ON acc.rf_id = ac.rf_id INNER JOIN assignor_and_assignee as aa ON aa.assignor_and_assignee_id = ac.assignor_and_assignee_id LEFT JOIN representative as r1 ON r1.representative_id = aa.representative_id INNER JOIN (SELECT ee.rf_id FROM assignee as ee INNER JOIN documentid as d ON d.rf_id = ee.rf_id INNER JOIN assignor_and_assignee as aaa ON aaa.assignor_and_assignee_id = ee.assignor_and_assignee_id LEFT JOIN representative as r ON r.representative_id = aaa.representative_id WHERE (aaa.name IN (:name)  or r.representative_name IN (:name)) AND date_format(d.appno_date,"%Y") > "1999") as temp ON temp.rf_id = ac.rf_id WHERE acc.convey_ty IN (:convey_type) AND acc.employer_assign = :employer_assign GROUP BY ac.rf_id ORDER BY ac.exec_dt DESC LIMIT :recordLimit';
+    let customMaxQuery = 'SELECT concat(aa.assignor_and_assignee_id,ac.rf_id) as id, ac.rf_id, aa.name as raw_name, r1.representative_name as normalize_name, acc.convey_ty, acc.employer_assign, ac.exec_dt FROM assignor as ac INNER JOIN assignment_conveyance as acc ON acc.rf_id = ac.rf_id INNER JOIN assignor_and_assignee as aa ON aa.assignor_and_assignee_id = ac.assignor_and_assignee_id LEFT JOIN representative as r1 ON r1.representative_id = aa.representative_id INNER JOIN (SELECT ee.rf_id FROM assignee as ee INNER JOIN documentid as d ON d.rf_id = ee.rf_id INNER JOIN assignor_and_assignee as aaa ON aaa.assignor_and_assignee_id = ee.assignor_and_assignee_id LEFT JOIN representative as r ON r.representative_id = aaa.representative_id WHERE (aaa.name IN (:name)  or r.representative_name IN (:name)) AND date_format(d.appno_date,"%Y") > "connection.DEFAULT_YEAR") as temp ON temp.rf_id = ac.rf_id WHERE acc.convey_ty IN (:convey_type) AND acc.employer_assign = :employer_assign GROUP BY ac.rf_id ORDER BY ac.exec_dt DESC LIMIT :recordLimit';
 
 
     let getMaxAssignmentData = await connection.application.query(customMaxQuery,{
@@ -3040,7 +3039,7 @@ let getCompaniesMinAndMaxDateTransaction = async(searchData) => {
         firstDate = new Date(getMaxAssignmentData.exec_dt).getTime();
     }
 
-    customMaxQuery = 'SELECT concat(aa.assignor_and_assignee_id,ac.rf_id) as id, ac.rf_id, aa.name as raw_name, r1.representative_name as normalize_name, acc.convey_ty, acc.employer_assign, (SELECT ap.exec_dt FROM assignor as ap WHERE ap.rf_id = ac.rf_id ORDER BY ap.exec_dt ASC LIMIT 1) as exec_dt FROM assignee as ac INNER JOIN assignment_conveyance as acc ON acc.rf_id = ac.rf_id  INNER JOIN assignor_and_assignee as aa ON aa.assignor_and_assignee_id = ac.assignor_and_assignee_id LEFT JOIN representative as r1 ON r1.representative_id = aa.representative_id INNER JOIN (SELECT or.rf_id FROM assignor as `or` INNER JOIN documentid as d ON d.rf_id = or.rf_id INNER JOIN assignor_and_assignee as aaa ON aaa.assignor_and_assignee_id = or.assignor_and_assignee_id LEFT JOIN representative as r ON r.representative_id = aaa.representative_id  WHERE (aaa.name IN ( :name ) or r.representative_name  IN (:name)) AND date_format(d.appno_date,"%Y") > "1999" ) as temp ON temp.rf_id = ac.rf_id WHERE acc.convey_ty IN (:convey_type) AND acc.employer_assign = :employer_assign GROUP BY ac.rf_id ORDER BY exec_dt DESC LIMIT :recordLimit';
+    customMaxQuery = 'SELECT concat(aa.assignor_and_assignee_id,ac.rf_id) as id, ac.rf_id, aa.name as raw_name, r1.representative_name as normalize_name, acc.convey_ty, acc.employer_assign, (SELECT ap.exec_dt FROM assignor as ap WHERE ap.rf_id = ac.rf_id ORDER BY ap.exec_dt ASC LIMIT 1) as exec_dt FROM assignee as ac INNER JOIN assignment_conveyance as acc ON acc.rf_id = ac.rf_id  INNER JOIN assignor_and_assignee as aa ON aa.assignor_and_assignee_id = ac.assignor_and_assignee_id LEFT JOIN representative as r1 ON r1.representative_id = aa.representative_id INNER JOIN (SELECT or.rf_id FROM assignor as `or` INNER JOIN documentid as d ON d.rf_id = or.rf_id INNER JOIN assignor_and_assignee as aaa ON aaa.assignor_and_assignee_id = or.assignor_and_assignee_id LEFT JOIN representative as r ON r.representative_id = aaa.representative_id  WHERE (aaa.name IN ( :name ) or r.representative_name  IN (:name)) AND date_format(d.appno_date,"%Y") > "connection.DEFAULT_YEAR" ) as temp ON temp.rf_id = ac.rf_id WHERE acc.convey_ty IN (:convey_type) AND acc.employer_assign = :employer_assign GROUP BY ac.rf_id ORDER BY exec_dt DESC LIMIT :recordLimit';
         /*Assignment organization as assignor i.e sale, security*/
         
     let getMaxAssigneeData = await connection.application.query(customMaxQuery,{
@@ -3596,7 +3595,7 @@ const findFilterAssets = async(req) => {
     try {
         let { list, total, type, selectedCompanies, tabs, customers, assignments, data_type, format_type, other_mode, sale, license } = req.body
         
-        const where = { year: 1997, organisationID: req.orgId}  
+        const where = { year: connection.DEFAULT_YEAR, organisationID: req.orgId}  
 
         const companies = JSON.parse(selectedCompanies)
         if(companies.length > 0) {
@@ -3771,7 +3770,7 @@ const findCompanyName = async(DBConnection, selectedCompanies) => {
 const findFillingAssets = async (req) => {
     let {companies } = req.query;
     let {selectedCompanies} = req.body
-    const replacements = { organisation_id: req.orgId, year: 1997 }
+    const replacements = { organisation_id: req.orgId, year: connection.DEFAULT_YEAR }
 
     const allAssets = []
     if(typeof companies != 'undefined' && companies != '') {

@@ -209,7 +209,7 @@ route.post('/parties/assignor', [authJWT.verifyToken, clientDBConnection.connect
                         selectedCompanies,
                         layoutID: 15,
                         activityID: [2, 7],
-                        year: 1997,
+                        year: connection.DEFAULT_YEAR,
                         type: 33
                     }
                 })
@@ -369,7 +369,7 @@ route.post('/parties', [authJWT.verifyToken, clientDBConnection.connect], async(
                     layoutID,
                     /* acitivityID: [1, 6, 10], */
                     acitivityID: [1, 6],
-                    year: 1997
+                    year: connection.DEFAULT_YEAR
                 }
             })
         }
@@ -505,7 +505,7 @@ route.post("/timeline", [authJWT.verifyToken, clientDBConnection.connect], async
                         const where = {
                             organisationID: req.orgId,
                             companyIDs: selectedCompanies,
-                            year: 1997,
+                            year: connection.DEFAULT_YEAR,
                             list,
                             activityIDs,
                             assignorAssigneeIDs
@@ -545,7 +545,7 @@ route.post("/count", [authJWT.verifyToken], async(req, res, next) => {
     try{
 
         let {selectedCompanies, customers, type, data_format, format_type, company} = req.body, getData = {}
-            const where = { year: 1997, organisationID: req.orgId}, typeList = [38, 39, 40, 41]
+            const where = { year: connection.DEFAULT_YEAR, organisationID: req.orgId}, typeList = [38, 39, 40, 41]
             let query = '';
             const companies = JSON.parse(selectedCompanies) 
 
@@ -588,7 +588,7 @@ route.post("/example", [authJWT.verifyToken], async(req, res, next) => {
     try{
 
         let {selectedCompanies, customers, type, data_format, format_type, company} = req.body, getData = {}
-            const where = { year: 1997, organisationID: req.orgId};
+            const where = { year: connection.DEFAULT_YEAR, organisationID: req.orgId};
             let query = '';
             const companies = JSON.parse(selectedCompanies) 
 
@@ -631,7 +631,7 @@ route.post("/example", [authJWT.verifyToken], async(req, res, next) => {
 route.post("/", [authJWT.verifyToken], async(req, res, next) => {
     try{
         let {selectedCompanies, customers, type, data_format, format_type, company, assignments} = req.body, getData = {}
-        const where = { year: 1997, organisationID: req.orgId, type: parseInt(type)} 
+        const where = { year: connection.DEFAULT_YEAR, organisationID: req.orgId, type: parseInt(type)} 
         let query = '',  typeList = [38, 39, 40, 41];
         const companies = JSON.parse(selectedCompanies)
         if(companies.length > 0) {
@@ -691,7 +691,7 @@ route.post("/", [authJWT.verifyToken], async(req, res, next) => {
                      * Other Banks
                      */
                     typeList = [21, 27]
-                    where.year = 1997
+                    where.year = connection.DEFAULT_YEAR
                     where.activityIDs = [5, 12]
                     const tableName = parseInt(type) == 27 ? 'borrowers_activity_parties_transactions' : 'activity_parties_transactions'
                     query = `SELECT apt.rf_id as id, assign.reel_no, assign.frame_no, exec_dt, release_rf_id, release_exec_dt, apt.full_match AS partial_transaction, total_assets AS releaseAssets, all_release_ids, assign1.reel_no AS release_reel_no, assign1.frame_no AS release_frame_no, IF(r.representative_name <> '', r.representative_name,aaa.name)  AS customerName, activity_id AS tab_id, company_id AS company, (SELECT count(asset) FROM ( SELECT IF(dd.grant_doc_num <> '', dd.grant_doc_num, dd.appno_doc_num) AS asset FROM db_uspto.documentid AS dd WHERE dd.rf_id = apt.rf_id GROUP BY asset ) AS temp) AS totalAssets FROM ${tableName} AS apt
@@ -910,7 +910,7 @@ route.post("/temp", [authJWT.verifyToken], async(req, res, next) => {
             list = []
             let query = '';
             total = 0;
-            const where = { year: 1997, organisationID: req.orgId}
+            const where = { year: connection.DEFAULT_YEAR, organisationID: req.orgId}
             
             const companies = JSON.parse(selectedCompanies)
             if(companies.length > 0) {
