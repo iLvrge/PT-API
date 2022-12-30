@@ -313,7 +313,7 @@ route.get("/timeline", [authJWT.verifyToken], async(req, res, next) => {
 route.get("/timeline/filling_assets", [authJWT.verifyToken, clientDBConnection.connect], async(req, res, next) => {
     try {
         let {companies, rf_ids, lawfirm, start, end } = req.query, list = [], groups = []
-        const replacements = { organisation_id: req.orgId, year: 1997 }
+        const replacements = { organisation_id: req.orgId, year: 1999 }
 
         if(typeof companies != 'undefined' && companies != '') {            
             companies = JSON.parse(companies)
@@ -390,7 +390,7 @@ route.get("/timeline/security", [authJWT.verifyToken], async(req, res, next) => 
     let {companies, tabs, customers, rf_ids, layout, exclude, limit, offset } = req.query, list = [], groups = []
     try {                
         
-        const replacements = { organisation_id: req.orgId, year: 1997 }
+        const replacements = { organisation_id: req.orgId, year: 1999 }
 
         if(typeof companies != 'undefined' && companies != '') {            
             companies = JSON.parse(companies)
@@ -999,7 +999,7 @@ route.post("/asset_types/assets/family", [authJWT.verifyToken, clientDBConnectio
                     type: connection.Sequelize.QueryTypes.SELECT,
                     raw: true,
                     logging: console.log,
-                    replacements: {list, year: 1997},
+                    replacements: {list, year: 1999},
                 }
             ); 
            
@@ -1023,7 +1023,7 @@ route.post("/asset_types/assets/family", [authJWT.verifyToken, clientDBConnectio
                     type: connection.Sequelize.QueryTypes.SELECT,
                     raw: true,
                     logging: console.log,
-                    replacements: {list, year: 1997},
+                    replacements: {list, year: 1999},
                     plain: true
                 }
             ); 
@@ -1084,7 +1084,7 @@ route.post("/asset_types/inventors/location", [authJWT.verifyToken, clientDBConn
                     type: connection.Sequelize.QueryTypes.SELECT,
                     raw: true,
                     logging: console.log,
-                    replacements: {list, year: 1997},
+                    replacements: {list, year: 1999},
                 }
             ); 
            
@@ -1153,7 +1153,7 @@ route.get("/:layout/assets", [authJWT.verifyToken, clientDBConnection.connect], 
             customers: '',
             assignments: '',
             layoutID: layoutID,
-            date: 1997,
+            date: 1999,
             expiredEvents: ['EXP.', 'EXPX'],
         },
         assets = {
@@ -1486,7 +1486,6 @@ route.get("/:layout/assets", [authJWT.verifyToken, clientDBConnection.connect], 
                                         SELECT activity_parties_transactions.rf_id  FROM db_new_application.activity_parties_transactions 
                                         WHERE activity_parties_transactions.organisation_id = :organisationID 
                                         AND activity_parties_transactions.company_id IN (:companies)  
-                                        AND activity_parties_transactions.activity_id <> 10   
                                         AND activity_parties_transactions.assignor_and_assignee_id IN (:customers) 
                                         GROUP BY activity_parties_transactions.rf_id
                                         ) 
@@ -1533,7 +1532,7 @@ route.get("/:layout/assets", [authJWT.verifyToken, clientDBConnection.connect], 
                             } else {
                                 /**exclude employees */
                                 
-                                query += ' AND activity_parties_transactions.activity_id <> 10 ' 
+                                //query += ' AND activity_parties_transactions.activity_id <> 10 ' 
                             } 
                         }
             
@@ -1550,7 +1549,7 @@ route.get("/:layout/assets", [authJWT.verifyToken, clientDBConnection.connect], 
                             query += `  AND activity_parties_transactions.company_id IN (:companies) `
                         }
                         if(replacements.layoutID == 15) {
-                            query += `  AND activity_parties_transactions.activity_id <> 10   `
+                            //query += `  AND activity_parties_transactions.activity_id <> 10   `
                         }        
                         query += `  GROUP BY activity_parties_transactions.rf_id )  GROUP BY documentid.appno_doc_num) `        
                     }
@@ -2071,7 +2070,7 @@ route.get("/lawfirm", [authJWT.verifyToken, clientDBConnection.connect], async(r
 
         let replacements =  { 
             companies: '', 
-            year: 1997,
+            year: 1999,
             organisationID: req.orgId
         }
 
