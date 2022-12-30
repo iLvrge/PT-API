@@ -256,7 +256,7 @@ route.post("/citation", [authJWT.verifyToken], async (req, res) => {
         let citedCompanies = []
         if( list != '' ) {
             list = JSON.parse(list)
-            const where = { year: 1997, organisationID: req.orgId, layoutID: 15, list}  
+            const where = { year: connection.DEFAULT_YEAR, organisationID: req.orgId, layoutID: 15, list}  
             if(typeof type !== 'undefined') {
                 where.layoutID = helpers.findLayout(type)        
             }

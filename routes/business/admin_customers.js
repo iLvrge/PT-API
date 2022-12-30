@@ -1633,7 +1633,7 @@ route.get("/customers/:id/patents", [authJWT.verifyToken, authJWT.isAdmin], asyn
                 if(queryAllPatentList !== '')  {
                     patentList = await connection.applicationNew.query(queryAllPatentList,{
                         type: connection.Sequelize.QueryTypes.SELECT,
-                        replacements: { organisationID, representativeID, year: 1997 },
+                        replacements: { organisationID, representativeID, year: connection.DEFAULT_YEAR },
                         raw: true,
                         logging: console.log,
                         }

@@ -345,7 +345,7 @@ route.post("/assets/cpc", [authJWT.verifyToken, clientDBConnection.connect], asy
                 }
                                 
                 let scopeCondition = '';
-                const replacements = {date: 1999}
+                const replacements = {date: connection.DEFAULT_YEAR}
 
                 if( scope != undefined && scope != 'undefined' && scope != null) {
                     replacements.scopeList = JSON.parse(scope)
@@ -501,7 +501,7 @@ route.post("/assets/cpc/:year/:cpcCode", [authJWT.verifyToken, clientDBConnectio
             const getFiilingAssets =   await helpers.findFillingAssets(req) 
 
             if(getFiilingAssets.length > 0) {
-                const replacements = { organisation_id: req.orgId, year: 1999 }
+                const replacements = { organisation_id: req.orgId, year: connection.DEFAULT_YEAR }
                 if(typeof selectedCompanies != 'undefined' && selectedCompanies != '') {            
                     companies = JSON.parse(selectedCompanies)
                 }
@@ -549,7 +549,7 @@ route.post("/assets/cpc/:year/:cpcCode", [authJWT.verifyToken, clientDBConnectio
                             connection.applicationNew.where(
 								connection.applicationNew.fn('YEAR', connection.applicationNew.col('appno_date')), 
 								{
-									[connection.Op.gte]: 1997
+									[connection.Op.gte]: connection.DEFAULT_YEAR
 								}
 							),
                             {organisation_id:  req.orgId}
