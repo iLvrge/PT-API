@@ -39,7 +39,7 @@ const OFFSET = 0
 
 route.get("/events/", [authJWT.verifyToken, clientDBConnection.connect], async(req, res, next) => {
     try{
-        console.log("EVENTSSSS");
+         
         const tabID = req.query.tab_id, portfolioID = req.query.portfolio;
         let portfolioList = [], assetsLifeSpan = [];
         if(portfolioID != '' && portfolioID != null && portfolioID != 'undefined') {            

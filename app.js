@@ -23,7 +23,7 @@ newrelic.instrumentLoadedModule(
 );
 
 Sentry.init({
-    dsn: "https://9dbb99721e484a939592c18830855a52@o487723.ingest.sentry.io/5547034",
+    dsn: "https://9b208378541b4e1ca9201363140d27f4@o4504419505012736.ingest.sentry.io/4504419571466240",
     integrations: [
       // enable HTTP calls tracing
       new Sentry.Integrations.Http({ tracing: true }),
@@ -34,11 +34,15 @@ Sentry.init({
     // We recommend adjusting this value in production, or using tracesSampler
     // for finer control
     tracesSampleRate: 1.0,
-  });
+});
+const transaction = Sentry.startTransaction({
+    op: "Application Production",
+    name: "Transaction",
+});
 
-  app.use(Sentry.Handlers.requestHandler());
-  app.use(Sentry.Handlers.tracingHandler());
-  app.use(Sentry.Handlers.errorHandler());
+app.use(Sentry.Handlers.requestHandler());
+app.use(Sentry.Handlers.tracingHandler());
+app.use(Sentry.Handlers.errorHandler());
 
 app.use(express.json({limit: '100mb', type:'application/json'}));
 app.use(express.urlencoded({limit: '100mb', extended:false, parameterLimit:100000, type:'application/x-www-form-urlencoded'}));
