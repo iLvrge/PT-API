@@ -1303,7 +1303,7 @@ route.get("/family/single/:applicationNumber", [authJWT.verifyToken], async (req
                 plain: true
             }); 
         }
-        if(getFamily.length === 0) {
+        if(getFamily == null || getFamily.length === 0) {
             getFamily = await getFamilyDataFromXML(req)
         }
         res.status(200).json(getFamily);
