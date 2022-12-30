@@ -2587,9 +2587,8 @@ route.get("/events/assets/status/:applicationNumber", [authJWT.verifyToken], asy
                         logging: console.log,
                         replacements: { applicationNumber },
                     }
-                );
-
-                let grantDesign = false
+                ); 
+                let grantDesign = false, grantDate = ''
                 if(getGrantDatesData != null && getGrantDatesData.grant_doc_num.indexOf('D') !== -1) {
                     grantDesign = true
                 }
@@ -2604,7 +2603,7 @@ route.get("/events/assets/status/:applicationNumber", [authJWT.verifyToken], asy
                         }
                     }
                     
-                    let grantDate = moment(new Date(grantDesign === true ? dates.grant_date : dates.filling_date)).add(expiryYear, 'years').format('YYYY-MM-DD')
+                    grantDate = moment(new Date(grantDesign === true ? dates.grant_date : dates.filling_date)).add(expiryYear, 'years').format('YYYY-MM-DD')
                     if( getExtensionData !== null && getExtensionData.extension > 0) { 
                         grantDate = moment(new Date(grantDate)).add(getExtensionData.extension, 'days').format('YYYY-MM-DD');
                     }
