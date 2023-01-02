@@ -970,8 +970,8 @@ route.post("/asset_types/assets/agents", [authJWT.verifyToken, clientDBConnectio
 route.post("/asset_types/assets/family", [authJWT.verifyToken, clientDBConnection.connect], async(req, res, next) => {
     try {
         
-
-        const list = await helpers.findFilterAssets(req);
+        const {type} = req.body
+        let list = await helpers.findFilterAssets(req);
         
         let result = [['Country', 'Assets']]
         if(list != '' && Array.isArray(list) && list.length > 0) {
@@ -980,16 +980,39 @@ route.post("/asset_types/assets/family", [authJWT.verifyToken, clientDBConnectio
 
 
 
-
-            const query = `SELECT name, COUNT(application_country) AS number FROM (SELECT grant_doc_num, application_number, application_country, cwc.name AS name FROM db_uspto.assets_family  AS af
+            
+            let query = `SELECT name, COUNT(application_country) AS number FROM (SELECT grant_doc_num, application_number, application_country, cwc.name AS name FROM db_uspto.assets_family  AS af
                 INNER JOIN db_uspto.country_with_codes AS cwc ON cwc.country_code = af.application_country          
-                WHERE grant_doc_num IN (
-                    SELECT grant_doc_num FROM db_uspto.documentid 
+                WHERE grant_doc_num IN ( `
+
+                if(type == 'missed_monetization') {
+
+                    const biblioQuery  = ` SELECT ag.grant_doc_num FROM db_patent_application_bibliographic.application_grant AS ag WHERE ag.appno_doc_num IN (:list) AND date_format(ag.appno_date, '%Y') > :year GROUP BY ag.grant_doc_num `
+                    const getBiblioList = await connection.application.query(biblioQuery,{
+                            type: connection.Sequelize.QueryTypes.SELECT,
+                            raw: true,
+                            logging: console.log,
+                            replacements: {list, year: 1999},
+                        }
+                    ); 
+
+                    
+                    if(getBiblioList.length > 0) {
+                        list = []
+                        const promise = getBiblioList.map( item => list.push(`${item.grant_doc_num}`))
+                        await Promise.all(promise) 
+                    }
+                    query += `  :list `
+                } else { 
+
+                    query += ` SELECT grant_doc_num FROM db_uspto.documentid 
                     WHERE appno_doc_num IN (:list) 
                     AND grant_doc_num <> '' 
                     AND date_format(appno_date, '%Y') > :year
-                    GROUP BY grant_doc_num
-                )
+                    GROUP BY grant_doc_num `
+
+                }
+                query += ` )
                 AND application_country <> 'WO' 
                 GROUP BY application_number) AS temp GROUP BY name`;
 

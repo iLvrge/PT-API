@@ -252,7 +252,7 @@ route.get("/citation/:asset", [authJWT.verifyToken], async (req, res) => {
 
 route.post("/citation", [authJWT.verifyToken], async (req, res) => {  
     try{
-        let { list, total, type, selectedCompanies, tabs, customers, assignments, other_mode } = req.body, assetsLifeSpan = []
+        let { list, total, type, selectedCompanies, tabs, customers, assignments, other_mode, counter } = req.body, assetsLifeSpan = []
         let citedCompanies = []
         if( list != '' ) {
             list = JSON.parse(list)
@@ -418,8 +418,13 @@ route.post("/citation", [authJWT.verifyToken], async (req, res) => {
                     }
                 } */
             }
+        } 
+        if(typeof counter != 'undefined' && counter == 1) {
+            res.status(200).send(citedCompanies.length);
+        } else {
+            res.status(200).json(citedCompanies);
         }
-        res.status(200).json(citedCompanies);
+        
     } catch(error) {
         console.log('ERROR => /citationall/', error)
         res.status(500).send('Error while rendering asset details')
