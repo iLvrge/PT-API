@@ -712,6 +712,12 @@ route.get("/family/abstract/:applicationNumber", [authJWT.verifyToken], async (r
             
         if(findPatent == null) {
             findPatent = await getPublicationNumber(asset)
+            if(findPatent === null) {
+                findPatent = await getGrantNumber(asset)
+                if(findPatent !== null) {
+                    type = 2
+                }
+            }
         } else {
             if(findPatent.grant_doc_num !== null && findPatent.grant_doc_num !== '') {                
                 const applicationNumber = findPatent.appno_doc_num
@@ -874,6 +880,12 @@ route.get("/family/claims/:applicationNumber", [authJWT.verifyToken], async (req
 
             if(findPatent == null) {
                 findPatent = await getPublicationNumber(asset)
+                if(findPatent === null) {
+                    findPatent = await getGrantNumber(asset)
+                    if(findPatent !== null) {
+                        type = 2
+                    }
+                }
             } else {
                 if(findPatent.grant_doc_num !== null && findPatent.grant_doc_num !== '') {
                     const applicationNumber = findPatent.appno_doc_num
@@ -1013,6 +1025,12 @@ route.get("/family/specifications/:applicationNumber", [authJWT.verifyToken], as
 
         if(findPatent == null) {
             findPatent = await getPublicationNumber(asset)
+            if(findPatent === null) {
+                findPatent = await getGrantNumber(asset)
+                if(findPatent !== null) {
+                    type = 2
+                }
+            }
         } else {
             if(findPatent.grant_doc_num !== null && findPatent.grant_doc_num !== '') {
                 const applicationNumber = findPatent.appno_doc_num
@@ -1101,6 +1119,12 @@ route.get("/family/images/:applicationNumber", [authJWT.verifyToken], async (req
 
         if(findPatent === null) {
             findPatent = await getPublicationNumber(asset)
+            if(findPatent === null) {
+                findPatent = await getGrantNumber(asset)
+                if(findPatent !== null) {
+                    type = 2
+                }
+            }
         } else {
             if(findPatent.grant_doc_num !== null && findPatent.grant_doc_num !== '') {               
                 const applicationNumber = findPatent.appno_doc_num

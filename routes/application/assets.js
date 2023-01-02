@@ -127,16 +127,70 @@ route.post("/assets/cpc", [authJWT.verifyToken, clientDBConnection.connect], asy
             companies = JSON.parse(selectedCompanies)
         }
         replacements.type = helpers.findLayout(type); 
-        if(typeof type !== 'undefined' && type == 'top_law_firms') {
-            let getFiilingAssets = []
-            if(typeof primary != 'undefined'){
-                getFiilingAssets = await helpers.findFillingAssets(req) 
+        if(typeof type !== 'undefined' && type != 'due_dilligence') {
+            if(type == 'top_law_firms') { 
+                let getFiilingAssets = []
+                if(typeof primary != 'undefined'){
+                    getFiilingAssets = await helpers.findFillingAssets(req) 
+                } else {
+      
+                    replacements.companies = companies
+                    const ownedAssets = `SELECT application FROM db_new_application.dashboard_items WHERE organisation_id = :organisation_id AND representative_id = :companies AND type = :type GROUP BY application `;
+    
+                    const getAssetsData = await connection.application.query(ownedAssets,{
+                            type: connection.Sequelize.QueryTypes.SELECT,
+                            raw: true,
+                            logging: console.log,
+                            replacements: replacements,
+                        }
+                    ); 
+                    if(getAssetsData != null && getAssetsData.length > 0) {
+                        const promise = getAssetsData.map( row => {
+                            getFiilingAssets.push(`${row.application}`)
+                        })
+    
+                        await Promise.all(promise)
+                    }
+                }
+    
+                if(getFiilingAssets.length > 0) {  
+                    replacements.applications = getFiilingAssets
+                    replacements.companies = companies
+                    if(assignments && assignments != '') {
+                        assignments = JSON.parse( assignments )
+                        replacements.assignments = assignments
+                    }
+                    const lawfirmName = await helpers.findLawFirmName(replacements)
+    
+                    replacements.lawfirm_name = lawfirmName
+    
+                    let queryFillingLawFirm = `SELECT l.appno_doc_num FROM db_patent_application_bibliographic.lawfirm AS l  WHERE l.appno_doc_num IN (:applications) AND l.name IN (:lawfirm_name) GROUP BY l.appno_doc_num `
+        
+                    const assetsWithLawFirm =  await connection.applicationNew.query(queryFillingLawFirm, {
+                        type: connection.Sequelize.QueryTypes.SELECT,
+                        raw: true,
+                        logging: console.log,
+                        replacements: replacements,
+                    }); 
+    
+                    if(assetsWithLawFirm != null && assetsWithLawFirm.length > 0) {
+                        list = [] 
+                        const promiseAssets = assetsWithLawFirm.map(row => {
+                            list.push(`${row.appno_doc_num}`)
+                        }) 
+                        await Promise.all(promiseAssets)
+                        total = list.length
+                        list = JSON.stringify(list)
+                    }
+                } 
             } else {
-  
+                const queryAssets = `SELECT application FROM db_new_application.dashboard_items WHERE organisation_id = :organisation_id AND representative_id = :companies AND type = :type GROUP BY application `;
                 replacements.companies = companies
-                const ownedAssets = `SELECT application FROM db_new_application.dashboard_items WHERE organisation_id = :organisation_id AND representative_id = :companies AND type = :type GROUP BY application `;
-
-                const getAssetsData = await connection.application.query(ownedAssets,{
+                if(assignments && assignments != '') {
+                    assignments = JSON.parse( assignments )
+                    replacements.assignments = assignments
+                }
+                const getAssetsData = await connection.application.query(queryAssets,{
                         type: connection.Sequelize.QueryTypes.SELECT,
                         raw: true,
                         logging: console.log,
@@ -144,265 +198,303 @@ route.post("/assets/cpc", [authJWT.verifyToken, clientDBConnection.connect], asy
                     }
                 ); 
                 if(getAssetsData != null && getAssetsData.length > 0) {
+                    list = []
                     const promise = getAssetsData.map( row => {
-                        getFiilingAssets.push(`${row.application}`)
+                        list.push(`${row.application}`)
                     })
-
+                    total = list.length
+                    list = JSON.stringify(list)
                     await Promise.all(promise)
                 }
             }
-
-            if(getFiilingAssets.length > 0) {  
-                replacements.applications = getFiilingAssets
-                replacements.companies = companies
-                if(assignments && assignments != '') {
-                    assignments = JSON.parse( assignments )
-                    replacements.assignments = assignments
-                }
-                const lawfirmName = await helpers.findLawFirmName(replacements)
-
-                replacements.lawfirm_name = lawfirmName
-
-                let queryFillingLawFirm = `SELECT l.appno_doc_num FROM db_patent_application_bibliographic.lawfirm AS l  WHERE l.appno_doc_num IN (:applications) AND l.name IN (:lawfirm_name) GROUP BY l.appno_doc_num `
-    
-                const assetsWithLawFirm =  await connection.applicationNew.query(queryFillingLawFirm, {
-                    type: connection.Sequelize.QueryTypes.SELECT,
-                    raw: true,
-                    logging: console.log,
-                    replacements: replacements,
-                }); 
-
-                if(assetsWithLawFirm != null && assetsWithLawFirm.length > 0) {
-                    list = [] 
-                    const promiseAssets = assetsWithLawFirm.map(row => {
-                        list.push(`${row.appno_doc_num}`)
-                    }) 
-                    await Promise.all(promiseAssets)
-                    total = list.length
-                    list = JSON.stringify(list)
-                }
-            } 
         } else if((typeof data_type !== 'undefined' && data_type == 1) || typeof sale != 'undefined' || typeof license != 'undefined') { 
             list = await helpers.findFilterAssets(req)
             total = list.length
         } 
         
-        if( list != '' ) {
+        if( list != '' || list.length == 0 ) {
             if((typeof data_type == 'undefined') || (typeof data_type !== 'undefined' && data_type == 0)) {
                 list = JSON.parse(list)
             }            
 
-            if( list.length > 0 ) {
-                let rangeConcat = 'CONCAT(section, class)'
+            let rangeConcat = 'CONCAT(section, class)'
 
-                if( range != undefined && range != 'undefined' && range != null) {
-                    switch(parseInt(range)) {
-                        case 5:
-                            rangeConcat = 'section'
-                            break;                        
-                        case 3:
-                            rangeConcat = 'CONCAT(section, class, sub_class)'
-                            break;
-                        case 2:
-                            rangeConcat = 'CONCAT(section, class, sub_class, main_group, "/00")'
-                            break;
-                        case 1:
-                            rangeConcat = 'CONCAT(section, class, sub_class, main_group, "/", sub_group)'
-                            break;                            
-                        case 4:
-                        default:
-                            rangeConcat = 'CONCAT(section, class)'
-                            break;
-                    }
+            if( range != undefined && range != 'undefined' && range != null) {
+                switch(parseInt(range)) {
+                    case 5:
+                        rangeConcat = 'section'
+                        break;                        
+                    case 3:
+                        rangeConcat = 'CONCAT(section, class, sub_class)'
+                        break;
+                    case 2:
+                        rangeConcat = 'CONCAT(section, class, sub_class, main_group, "/00")'
+                        break;
+                    case 1:
+                        rangeConcat = 'CONCAT(section, class, sub_class, main_group, "/", sub_group)'
+                        break;                            
+                    case 4:
+                    default:
+                        rangeConcat = 'CONCAT(section, class)'
+                        break;
                 }
+            }
 
-                let query = '';
-                
-                if(parseInt(total) != list.length) {
-                    /**
-                     * Get List
-                     */
+            let query = '';
+            
+            if(parseInt(total) != list.length) {
+                /**
+                 * Get List
+                 */
 
-                    const where = { year: 2000, organisationID: req.orgId}   
+                const where = { year: 2000, organisationID: req.orgId}   
 
-                    if(typeof other_mode != 'undefined' && other_mode == 'true') {
-                        query = `SELECT appno_doc_num FROM db_new_application.assets_for_sale AS assets WHERE assets.organisation_id = :organisationID `
-                    } else {
-                        if(typeof type !== 'undefined' ) {
-                            const layoutID = helpers.findLayout(type) 
-                            if(layoutID <= 15) {
-                                where.layoutID = helpers.findLayout(type) 
-                            } else {
-                                where.layoutID = 15
-                            }
-                                   
+                if(typeof other_mode != 'undefined' && other_mode == 'true') {
+                    query = `SELECT appno_doc_num FROM db_new_application.assets_for_sale AS assets WHERE assets.organisation_id = :organisationID `
+                } else {
+                    if(typeof type !== 'undefined' ) {
+                        const layoutID = helpers.findLayout(type) 
+                        if(layoutID <= 15) {
+                            where.layoutID = helpers.findLayout(type) 
                         } else {
                             where.layoutID = 15
-                        } 
-    
-                        const companies = JSON.parse(selectedCompanies)
-                        if(companies.length > 0) {
-                            where.company_id = companies
                         }
-    
-                        
-                        if(tabs && tabs != '') {
-                            tabs = JSON.parse( tabs )
-                            tabs = helpers.checkTabs(tabs)
-                            where.tabs = tabs
-                        }
-    
-                        if(customers && customers != '') {
-                            customers = JSON.parse( customers )
-                            where.customers = customers
-                        }
-    
-                        if(assignments && assignments != '') {
-                            assignments = JSON.parse( assignments )
-                            where.assignments = assignments
-                        }
-    
-                        query = `SELECT appno_doc_num FROM db_new_application.assets AS assets `
-    
-    
-                        query += ` WHERE date_format(assets.appno_date, '%Y') > :year AND assets.layout_id = :layoutID AND assets.organisation_id = :organisationID `
-                        
-    
-                        if(Array.isArray(companies) && companies.length > 0) {
-                            query += ` AND assets.company_id IN (:company_id)`
-                        }
-    
-                        if((Array.isArray(assignments) && assignments.length > 0 ) || (Array.isArray(tabs) && tabs.length > 0) || (Array.isArray(customers) && customers.length > 0)) {
-                            query += ` AND assets.appno_doc_num IN ( SELECT documentid.appno_doc_num FROM db_uspto.documentid WHERE rf_id  IN ( SELECT activity_parties_transactions.rf_id  FROM db_new_application.activity_parties_transactions WHERE activity_parties_transactions.organisation_id = :organisationID  `
+                                
+                    } else {
+                        where.layoutID = 15
+                    } 
 
-                            if(Array.isArray(companies) && companies.length > 0 ) {
-                                query += ` AND activity_parties_transactions.company_id IN (:company_id) `
-                            }
-    
-                            if(Array.isArray(assignments) && assignments.length > 0 ) {
-                                query += ` AND activity_parties_transactions.rf_id IN (:assignments)`
-                            }
-    
-                            if(Array.isArray(tabs) && tabs.length > 0 ) {
-                                query += ` AND activity_parties_transactions.activity_id IN (:tabs)`
-                            } else {
-                                /**exclude employees */
-                                if(typeof type == 'undefined' || (typeof type !== 'undefined' && type != 'top_law_firms')) {
-                                    query += ' AND activity_parties_transactions.activity_id <> 10 ' 
-                                }
-                            } 
-    
-                            if(Array.isArray(customers) && customers.length > 0 ) {
-                                query += ` AND activity_parties_transactions.assignor_and_assignee_id IN (:customers)`
-                            }
-    
-                            query += ` GROUP BY activity_parties_transactions.rf_id ) GROUP BY documentid.appno_doc_num) `
-                        } else  if(Array.isArray(tabs) && tabs.length === 0 && (typeof type !== 'undefined' && type !== 'top_law_firms')) {
-                            /**exclude employees */
-                            query += ` AND assets.appno_doc_num IN (  SELECT documentid.appno_doc_num FROM db_uspto.documentid WHERE rf_id  IN ( SELECT activity_parties_transactions.rf_id  FROM db_new_application.activity_parties_transactions WHERE activity_parties_transactions.organisation_id = :organisationID AND activity_parties_transactions.activity_id <> 10  ` 
-
-                            if(Array.isArray(companies) && companies.length > 0 ) {
-                                query += ` AND activity_parties_transactions.company_id IN (:company_id) `
-                            }
-
-                            query += ` GROUP BY activity_parties_transactions.rf_id )  GROUP BY documentid.appno_doc_num) `
-                        }
+                    const companies = JSON.parse(selectedCompanies)
+                    if(companies.length > 0) {
+                        where.company_id = companies
                     }
-                    
-                    query += ` GROUP BY appno_doc_num`;
 
-                    const appList =  await connection.applicationNew.query(query,{
-                        type: connection.Sequelize.QueryTypes.SELECT,
-                        raw: true,
-                        logging: console.log,
-                        replacements: where,
+                    
+                    if(tabs && tabs != '') {
+                        tabs = JSON.parse( tabs )
+                        tabs = helpers.checkTabs(tabs)
+                        where.tabs = tabs
+                    }
+
+                    if(customers && customers != '') {
+                        customers = JSON.parse( customers )
+                        where.customers = customers
+                    }
+
+                    if(assignments && assignments != '') {
+                        assignments = JSON.parse( assignments )
+                        where.assignments = assignments
+                    }
+
+                    query = `SELECT appno_doc_num FROM db_new_application.assets AS assets `
+
+
+                    query += ` WHERE date_format(assets.appno_date, '%Y') > :year AND assets.layout_id = :layoutID AND assets.organisation_id = :organisationID `
+                    
+
+                    if(Array.isArray(companies) && companies.length > 0) {
+                        query += ` AND assets.company_id IN (:company_id)`
+                    }
+
+                    if((Array.isArray(assignments) && assignments.length > 0 ) || (Array.isArray(tabs) && tabs.length > 0) || (Array.isArray(customers) && customers.length > 0)) {
+                        query += ` AND assets.appno_doc_num IN ( SELECT documentid.appno_doc_num FROM db_uspto.documentid WHERE rf_id  IN ( SELECT activity_parties_transactions.rf_id  FROM db_new_application.activity_parties_transactions WHERE activity_parties_transactions.organisation_id = :organisationID  `
+
+                        if(Array.isArray(companies) && companies.length > 0 ) {
+                            query += ` AND activity_parties_transactions.company_id IN (:company_id) `
+                        }
+
+                        if(Array.isArray(assignments) && assignments.length > 0 ) {
+                            query += ` AND activity_parties_transactions.rf_id IN (:assignments)`
+                        }
+
+                        if(Array.isArray(tabs) && tabs.length > 0 ) {
+                            query += ` AND activity_parties_transactions.activity_id IN (:tabs)`
+                        } else {
+                            /**exclude employees */
+                            if(typeof type == 'undefined' || (typeof type !== 'undefined' && type != 'top_law_firms')) {
+                                query += ' AND activity_parties_transactions.activity_id <> 10 ' 
+                            }
+                        } 
+
+                        if(Array.isArray(customers) && customers.length > 0 ) {
+                            query += ` AND activity_parties_transactions.assignor_and_assignee_id IN (:customers)`
+                        }
+
+                        query += ` GROUP BY activity_parties_transactions.rf_id ) GROUP BY documentid.appno_doc_num) `
+                    } else  if(Array.isArray(tabs) && tabs.length === 0 && (typeof type !== 'undefined' && type !== 'top_law_firms')) {
+                        /**exclude employees */
+                        query += ` AND assets.appno_doc_num IN (  SELECT documentid.appno_doc_num FROM db_uspto.documentid WHERE rf_id  IN ( SELECT activity_parties_transactions.rf_id  FROM db_new_application.activity_parties_transactions WHERE activity_parties_transactions.organisation_id = :organisationID AND activity_parties_transactions.activity_id <> 10  ` 
+
+                        if(Array.isArray(companies) && companies.length > 0 ) {
+                            query += ` AND activity_parties_transactions.company_id IN (:company_id) `
+                        }
+
+                        query += ` GROUP BY activity_parties_transactions.rf_id )  GROUP BY documentid.appno_doc_num) `
+                    }
+                }
+                
+                query += ` GROUP BY appno_doc_num`;
+
+                const appList =  await connection.applicationNew.query(query,{
+                    type: connection.Sequelize.QueryTypes.SELECT,
+                    raw: true,
+                    logging: console.log,
+                    replacements: where,
+                })
+
+                if(appList !== null && appList.length > 0) {
+                    list = [];
+                    appList.forEach( row => {
+                        list.push(`${row.appno_doc_num}`)
                     })
 
-                    if(appList !== null && appList.length > 0) {
-                        list = [];
-                        appList.forEach( row => {
-                            list.push(`${row.appno_doc_num}`)
+                    if(typeof other_mode != 'undefined' && other_mode == 'true') {
+                        sales = [...list]
+                    } else {
+                        const salesQuery = `SELECT appno_doc_num FROM db_new_application.assets_for_sale AS assets WHERE appno_doc_num IN (:list) AND assets.organisation_id = :organisationID GROUP BY appno_doc_num`;
+                        const salesList = await connection.applicationNew.query(salesQuery, {
+                            type: connection.Sequelize.QueryTypes.SELECT,
+                            replacements: {list, organisationID: req.orgId},
+                            raw: true,
+                            logging: console.log,
                         })
 
-                        if(typeof other_mode != 'undefined' && other_mode == 'true') {
-                            sales = [...list]
-                        } else {
-                            const salesQuery = `SELECT appno_doc_num FROM db_new_application.assets_for_sale AS assets WHERE appno_doc_num IN (:list) AND assets.organisation_id = :organisationID GROUP BY appno_doc_num`;
-                            const salesList = await connection.applicationNew.query(salesQuery, {
-                                type: connection.Sequelize.QueryTypes.SELECT,
-                                replacements: {list, organisationID: req.orgId},
-                                raw: true,
-                                logging: console.log,
+                        if(salesList.length > 0) {
+                            salesList.forEach( row => {
+                                sales.push(`${row.appno_doc_num}`)
                             })
-
-                            if(salesList.length > 0) {
-                                salesList.forEach( row => {
-                                    sales.push(`${row.appno_doc_num}`)
-                                })
-                            }
                         }
                     }
                 }
-                                
-                let scopeCondition = '';
-                const replacements = {date: connection.DEFAULT_YEAR}
+            }
+                            
+            let scopeCondition = '';
+            const replacements = {date: connection.DEFAULT_YEAR}
 
-                if( scope != undefined && scope != 'undefined' && scope != null) {
-                    replacements.scopeList = JSON.parse(scope)
-                    if(Array.isArray(replacements.scopeList) && replacements.scopeList.length > 0){
-                        if(data_type == 1) {
-                            scopeCondition = ` AND section IN (:scopeList) `
-                        } else {
-                            scopeCondition = ` AND ${rangeConcat} IN (:scopeList) `
-                        }
+            if( scope != undefined && scope != 'undefined' && scope != null) {
+                replacements.scopeList = JSON.parse(scope)
+                if(Array.isArray(replacements.scopeList) && replacements.scopeList.length > 0){
+                    if(data_type == 1) {
+                        scopeCondition = ` AND section IN (:scopeList) `
+                    } else {
+                        scopeCondition = ` AND ${rangeConcat} IN (:scopeList) `
                     }
                 }
+            }
 
-                if(typeof year !== 'undefined' && year != null) {
-                    year = JSON.parse(year)
+            if(typeof year !== 'undefined' && year != null) {
+                year = JSON.parse(year)
 
-                    if(year.length > 0) {
-                        replacements.date = year
-                    }
+                if(year.length > 0) {
+                    replacements.date = year
                 }
-                let stringYear = ">= :date"
+            }
+            let stringYear = ">= :date"
 
-                if(Array.isArray(replacements.date)) {
-                    stringYear = "IN (:date)"
-                }
-                replacements.list = list
-
-                
-                
+            if(Array.isArray(replacements.date)) {
+                stringYear = "IN (:date)"
+            }
+            replacements.list = list
+            if(type == 'missed_monetization') {
+                query = `SELECT REPLACE_STRING FROM ( SELECT application_cpc.grant_doc_num AS patent_number, application_cpc.application_number , date_format(ag.appno_date, '%Y') AS fillingYear, ${rangeConcat} AS cpc_code, section, class, sub_class, main_group, sub_group, (SELECT GROUP_CONCAT(distinct IF(representative_name <> '' , representative_name, aaa.name) SEPARATOR '@@ ') FROM db_patent_application_bibliographic.inventor AS inv INNER JOIN db_patent_application_bibliographic.assignor_and_assignee AS aaa ON aaa.assignor_and_assignee_id = inv.assignor_and_assignee_id LEFT JOIN db_uspto.representative ON representative.representative_id = aaa.representative_id WHERE inv.appno_doc_num  = application_cpc.application_number  ) AS origin FROM db_patent_application_bibliographic.patent_cpc AS application_cpc 
+                INNER JOIN db_patent_application_bibliographic.application_grant AS ag ON ag.grant_doc_num =  application_cpc.grant_doc_num AND ag.appno_doc_num IN (:list)
+                WHERE application_cpc.application_number IN (:list) AND application_cpc.type = 0  ${scopeCondition} ) AS temp1 GROUP_STRING `
+            } else { 
                 query = `SELECT REPLACE_STRING FROM ( SELECT temp.grant_doc_num AS patent_number, temp.appno_doc_num AS application_number, date_format(temp.appno_date, '%Y') AS fillingYear, ${rangeConcat} AS cpc_code, section, class, sub_class, main_group, sub_group, (SELECT GROUP_CONCAT(distinct IF(representative_name <> '' , representative_name, name) SEPARATOR '@@ ') FROM db_uspto.assignee INNER JOIN db_uspto.assignor_and_assignee ON assignor_and_assignee.assignor_and_assignee_id = assignee.assignor_and_assignee_id LEFT JOIN db_uspto.representative ON representative.representative_id = assignor_and_assignee.representative_id INNER JOIN db_uspto.representative_assignment_conveyance ON representative_assignment_conveyance.rf_id = assignee.rf_id WHERE assignee.rf_id IN (     SELECT rf_id FROM db_uspto.documentid WHERE documentid.appno_doc_num = application_cpc.application_number) AND representative_assignment_conveyance.employer_assign = 1 ) AS origin FROM db_patent_application_bibliographic.patent_cpc AS application_cpc INNER JOIN (SELECT documentid.appno_doc_num, documentid.grant_doc_num, documentid.appno_date FROM db_uspto.documentid AS documentid WHERE date_format(documentid.appno_date, '%Y') ${stringYear} AND documentid.appno_doc_num IN(:list) AND documentid.grant_doc_num <> ''  GROUP BY documentid.appno_doc_num) AS temp ON temp.appno_doc_num = application_cpc.application_number WHERE application_cpc.type = 0  ${scopeCondition} GROUP BY temp.appno_doc_num ) AS temp1 GROUP_STRING `
+            }
+            
+            
 
 
-                /*UNION SELECT temp.grant_doc_num AS patent_number, temp.appno_doc_num AS application_number, date_format(temp.appno_date, '%Y') AS fillingYear, ${rangeConcat} AS cpc_code, section, class, sub_class, main_group, sub_group, (SELECT GROUP_CONCAT(distinct IF(representative_name <> '' , representative_name, name) SEPARATOR '@@ ') FROM db_uspto.assignee INNER JOIN db_uspto.assignor_and_assignee ON assignor_and_assignee.assignor_and_assignee_id = assignee.assignor_and_assignee_id LEFT JOIN db_uspto.representative ON representative.representative_id = assignor_and_assignee.representative_id INNER JOIN db_uspto.representative_assignment_conveyance ON representative_assignment_conveyance.rf_id = assignee.rf_id WHERE assignee.rf_id IN (     SELECT rf_id FROM db_uspto.documentid WHERE documentid.appno_doc_num = application_cpc.application_number) AND representative_assignment_conveyance.employer_assign = 1 ) AS origin FROM db_patent_grant_bibliographic.application_cpc AS application_cpc INNER JOIN (SELECT documentid.appno_doc_num, documentid.grant_doc_num, documentid.appno_date FROM db_uspto.documentid AS documentid WHERE date_format(documentid.appno_date, '%Y') ${stringYear} AND documentid.appno_doc_num IN(:list) AND documentid.grant_doc_num = ''  GROUP BY documentid.appno_doc_num) AS temp ON temp.appno_doc_num = application_cpc.application_number WHERE application_cpc.type = 0  ${scopeCondition} GROUP BY temp.appno_doc_num  */
+            /*UNION SELECT temp.grant_doc_num AS patent_number, temp.appno_doc_num AS application_number, date_format(temp.appno_date, '%Y') AS fillingYear, ${rangeConcat} AS cpc_code, section, class, sub_class, main_group, sub_group, (SELECT GROUP_CONCAT(distinct IF(representative_name <> '' , representative_name, name) SEPARATOR '@@ ') FROM db_uspto.assignee INNER JOIN db_uspto.assignor_and_assignee ON assignor_and_assignee.assignor_and_assignee_id = assignee.assignor_and_assignee_id LEFT JOIN db_uspto.representative ON representative.representative_id = assignor_and_assignee.representative_id INNER JOIN db_uspto.representative_assignment_conveyance ON representative_assignment_conveyance.rf_id = assignee.rf_id WHERE assignee.rf_id IN (     SELECT rf_id FROM db_uspto.documentid WHERE documentid.appno_doc_num = application_cpc.application_number) AND representative_assignment_conveyance.employer_assign = 1 ) AS origin FROM db_patent_grant_bibliographic.application_cpc AS application_cpc INNER JOIN (SELECT documentid.appno_doc_num, documentid.grant_doc_num, documentid.appno_date FROM db_uspto.documentid AS documentid WHERE date_format(documentid.appno_date, '%Y') ${stringYear} AND documentid.appno_doc_num IN(:list) AND documentid.grant_doc_num = ''  GROUP BY documentid.appno_doc_num) AS temp ON temp.appno_doc_num = application_cpc.application_number WHERE application_cpc.type = 0  ${scopeCondition} GROUP BY temp.appno_doc_num  */
 
-                /* const query = `SELECT REPLACE_STRING FROM ( SELECT temp.grant_doc_num AS patent_number, temp.appno_doc_num AS application_number, date_format(temp.appno_date, '%Y') AS fillingYear, ${rangeConcat} AS cpc_code, section, class, sub_class, main_group, sub_group, (SELECT GROUP_CONCAT(distinct ee_name SEPARATOR '@@ ') FROM db_uspto.assignee INNER JOIN db_uspto.assignment_conveyance ON assignment_conveyance.rf_id = assignee.rf_id WHERE assignee.rf_id IN (     SELECT rf_id FROM db_uspto.documentid WHERE documentid.appno_doc_num = application_cpc.application_number) AND assignment_conveyance.employer_assign = 1 ) AS origin FROM db_patent_grant_bibliographic.application_cpc AS application_cpc INNER JOIN (SELECT DISTINCT documentid.appno_doc_num, documentid.grant_doc_num, documentid.appno_date FROM db_uspto.documentid AS documentid WHERE date_format(documentid.appno_date, '%Y') ${stringYear} AND (documentid.appno_doc_num IN(:list) OR documentid.grant_doc_num IN(:list)) GROUP BY documentid.appno_doc_num) AS temp ON temp.appno_doc_num = application_cpc.application_number WHERE application_cpc.type = 0  ${scopeCondition} GROUP BY temp.appno_doc_num ) AS temp1 GROUP_STRING ` */
+            /* const query = `SELECT REPLACE_STRING FROM ( SELECT temp.grant_doc_num AS patent_number, temp.appno_doc_num AS application_number, date_format(temp.appno_date, '%Y') AS fillingYear, ${rangeConcat} AS cpc_code, section, class, sub_class, main_group, sub_group, (SELECT GROUP_CONCAT(distinct ee_name SEPARATOR '@@ ') FROM db_uspto.assignee INNER JOIN db_uspto.assignment_conveyance ON assignment_conveyance.rf_id = assignee.rf_id WHERE assignee.rf_id IN (     SELECT rf_id FROM db_uspto.documentid WHERE documentid.appno_doc_num = application_cpc.application_number) AND assignment_conveyance.employer_assign = 1 ) AS origin FROM db_patent_grant_bibliographic.application_cpc AS application_cpc INNER JOIN (SELECT DISTINCT documentid.appno_doc_num, documentid.grant_doc_num, documentid.appno_date FROM db_uspto.documentid AS documentid WHERE date_format(documentid.appno_date, '%Y') ${stringYear} AND (documentid.appno_doc_num IN(:list) OR documentid.grant_doc_num IN(:list)) GROUP BY documentid.appno_doc_num) AS temp ON temp.appno_doc_num = application_cpc.application_number WHERE application_cpc.type = 0  ${scopeCondition} GROUP BY temp.appno_doc_num ) AS temp1 GROUP_STRING ` */
 
+            
+
+            let listQuery =  query.replace('REPLACE_STRING', "SUM(IF(patent_number != '' AND application_number >0, 1, 0)) AS patent_number, SUM(IF (patent_number = '' AND application_number > 0, 1, 0 )) AS application_number, GROUP_CONCAT(application_number) AS appNum, (SUM(if(patent_number != '' AND application_number >0, 1, 0)) + SUM(IF (patent_number = '' AND application_number > 0, 1, 0 ))) AS countAssets, fillingYear, cpc_code, section, class, sub_class, main_group, sub_group, GROUP_CONCAT(distinct origin SEPARATOR '@@ ') AS group_name").replace('GROUP_STRING', "GROUP BY fillingYear, cpc_code")
+
+            listQuery += ` ORDER BY cpc_code ASC`
+            getList = await connection.applicationNew.query(listQuery, {
+                type: connection.Sequelize.QueryTypes.SELECT,
+                replacements: replacements,
+                raw: true,
+                logging: console.log,
+            })
+            let remainigItems = [], k = 1;
+            const cpcCode = [];
+            if(getList.length > 0) { 
+                let assetsInFirstQuery = []
+                    
+                const promise = getList.map( item => {
+                    const allAssets = item.appNum.split(',');
+                    if(allAssets.length > 0) {
+                        assetsInFirstQuery = [...assetsInFirstQuery, ...allAssets]
+                    } 
+
+                    if(!cpcCode.includes(item.cpc_code)){
+                        cpcCode.push(item.cpc_code) 
+                        group.push({
+                            id: k,
+                            cpc_code: item.cpc_code, 
+                            section: item.section, 
+                            class: item.class, 
+                            sub_class: item.sub_class, 
+                            main_group: item.main_group, 
+                            sub_group: item.sub_group,
+                            title: ''
+                        })
+                        k++;
+                    }
+                }) 
+                await Promise.all(promise);
+                const mainList = replacements.list;
+                remainigItems = mainList.filter(asset => !assetsInFirstQuery.includes(asset)) 
                 
-
-                let listQuery =  query.replace('REPLACE_STRING', "SUM(IF(patent_number != '' AND application_number >0, 1, 0)) AS patent_number, SUM(IF (patent_number = '' AND application_number > 0, 1, 0 )) AS application_number, GROUP_CONCAT(application_number) AS appNum, (SUM(if(patent_number != '' AND application_number >0, 1, 0)) + SUM(IF (patent_number = '' AND application_number > 0, 1, 0 ))) AS countAssets, fillingYear, cpc_code, section, class, sub_class, main_group, sub_group, GROUP_CONCAT(distinct origin SEPARATOR '@@ ') AS group_name").replace('GROUP_STRING', "GROUP BY fillingYear, cpc_code")
-
+                //console.log(mainList.length, remainigItems.length, assetsInFirstQuery)
+            } else {
+                remainigItems =list
+            }
                 
-                getList = await connection.applicationNew.query(listQuery, {
+            if(remainigItems.length > 0) {
+                replacements.list = remainigItems
+
+                if(type == 'missed_monetization') {
+                    query = `SELECT REPLACE_STRING FROM ( SELECT '' AS patent_number, application_cpc.application_number AS application_number, date_format(ap.appno_date, '%Y') AS fillingYear, ${rangeConcat} AS cpc_code, section, class, sub_class, main_group, sub_group, (SELECT GROUP_CONCAT(distinct IF(representative_name <> '' , representative_name, aaa.name) SEPARATOR '@@ ') FROM db_patent_grant_bibliographic.inventor_new AS inv INNER JOIN db_patent_application_bibliographic.assignor_and_assignee AS aaa ON aaa.assignor_and_assignee_id = inv.assignor_and_assignee_id LEFT JOIN db_uspto.representative ON representative.representative_id = aaa.representative_id WHERE inv.appno_doc_num  = application_cpc.application_number ) AS origin FROM db_patent_grant_bibliographic.application_cpc AS application_cpc 
+                    INNER JOIN db_patent_grant_bibliographic.application_publication AS ap ON ap.appno_doc_num =  application_cpc.application_number AND ap.appno_doc_num IN (:list)
+                    WHERE application_cpc.application_number IN (:list) AND application_cpc.type = 0  ${scopeCondition} ) AS temp1 GROUP_STRING `
+                } else { 
+                    query = `SELECT REPLACE_STRING FROM ( SELECT temp.grant_doc_num AS patent_number, temp.appno_doc_num AS application_number, date_format(temp.appno_date, '%Y') AS fillingYear, ${rangeConcat} AS cpc_code, section, class, sub_class, main_group, sub_group, (SELECT GROUP_CONCAT(distinct IF(representative_name <> '' , representative_name, name) SEPARATOR '@@ ') FROM db_uspto.assignee INNER JOIN db_uspto.assignor_and_assignee ON assignor_and_assignee.assignor_and_assignee_id = assignee.assignor_and_assignee_id LEFT JOIN db_uspto.representative ON representative.representative_id = assignor_and_assignee.representative_id INNER JOIN db_uspto.representative_assignment_conveyance ON representative_assignment_conveyance.rf_id = assignee.rf_id WHERE assignee.rf_id IN (     SELECT rf_id FROM db_uspto.documentid WHERE documentid.appno_doc_num = application_cpc.application_number) AND representative_assignment_conveyance.employer_assign = 1 ) AS origin FROM db_patent_grant_bibliographic.application_cpc AS application_cpc INNER JOIN (SELECT documentid.appno_doc_num, documentid.grant_doc_num, documentid.appno_date FROM db_uspto.documentid AS documentid WHERE date_format(documentid.appno_date, '%Y') ${stringYear} AND documentid.appno_doc_num IN(:list)  GROUP BY documentid.appno_doc_num) AS temp ON temp.appno_doc_num = application_cpc.application_number WHERE application_cpc.type = 0  ${scopeCondition} GROUP BY temp.appno_doc_num  ) AS temp1 GROUP_STRING `
+                }
+
+                 
+
+                listQuery =  query.replace('REPLACE_STRING', "SUM(IF(patent_number != '' AND application_number >0, 1, 0)) AS patent_number, SUM(IF (patent_number = '' AND application_number > 0, 1, 0 )) AS application_number, GROUP_CONCAT(application_number) AS appNum, (SUM(if(patent_number != '' AND application_number >0, 1, 0)) + SUM(IF (patent_number = '' AND application_number > 0, 1, 0 ))) AS countAssets, fillingYear, cpc_code, section, class, sub_class, main_group, sub_group, GROUP_CONCAT(distinct origin SEPARATOR '@@ ') AS group_name").replace('GROUP_STRING', "GROUP BY fillingYear, cpc_code")
+
+                listQuery += ` ORDER BY cpc_code ASC`
+
+                const remainingList = await connection.applicationNew.query(listQuery, {
                     type: connection.Sequelize.QueryTypes.SELECT,
                     replacements: replacements,
                     raw: true,
                     logging: console.log,
                 })
-                let remainigItems = [], k = 1;
-                const cpcCode = [];
-                if(getList.length > 0) { 
-                    let assetsInFirstQuery = []
-                     
-                    const promise = getList.map( item => {
-                        const allAssets = item.appNum.split(',');
-                        if(allAssets.length > 0) {
-                            assetsInFirstQuery = [...assetsInFirstQuery, ...allAssets]
-                        } 
 
+                if(remainingList.length > 0) {
+                    getList = [...getList, ...remainingList]
+                    getList = getList.sort(function(a,b) {
+                        return a.cpc_code - b.cpc_code;
+                    });
+
+                    getList.sort((a, b) => {
+                        const itemFirst = a['cpc_code'], itemSecond =  b['cpc_code'] 
+                        if (itemFirst < itemSecond) {
+                          return -1;
+                        }
+                        return 0;
+                    });
+                    console.log('getList', getList)
+                    const promise = remainingList.map( item => {  
                         if(!cpcCode.includes(item.cpc_code)){
                             cpcCode.push(item.cpc_code) 
                             group.push({
@@ -419,70 +511,27 @@ route.post("/assets/cpc", [authJWT.verifyToken, clientDBConnection.connect], asy
                         }
                     }) 
                     await Promise.all(promise);
-                    const mainList = replacements.list;
-                    remainigItems = mainList.filter(asset => !assetsInFirstQuery.includes(asset)) 
-                    
-                    //console.log(mainList.length, remainigItems.length, assetsInFirstQuery)
-                } else {
-                    remainigItems =list
                 }
-                 
-                if(remainigItems.length > 0) {
-                    replacements.list = remainigItems
+            } 
 
-                    query = `SELECT REPLACE_STRING FROM ( SELECT temp.grant_doc_num AS patent_number, temp.appno_doc_num AS application_number, date_format(temp.appno_date, '%Y') AS fillingYear, ${rangeConcat} AS cpc_code, section, class, sub_class, main_group, sub_group, (SELECT GROUP_CONCAT(distinct IF(representative_name <> '' , representative_name, name) SEPARATOR '@@ ') FROM db_uspto.assignee INNER JOIN db_uspto.assignor_and_assignee ON assignor_and_assignee.assignor_and_assignee_id = assignee.assignor_and_assignee_id LEFT JOIN db_uspto.representative ON representative.representative_id = assignor_and_assignee.representative_id INNER JOIN db_uspto.representative_assignment_conveyance ON representative_assignment_conveyance.rf_id = assignee.rf_id WHERE assignee.rf_id IN (     SELECT rf_id FROM db_uspto.documentid WHERE documentid.appno_doc_num = application_cpc.application_number) AND representative_assignment_conveyance.employer_assign = 1 ) AS origin FROM db_patent_grant_bibliographic.application_cpc AS application_cpc INNER JOIN (SELECT documentid.appno_doc_num, documentid.grant_doc_num, documentid.appno_date FROM db_uspto.documentid AS documentid WHERE date_format(documentid.appno_date, '%Y') ${stringYear} AND documentid.appno_doc_num IN(:list)  GROUP BY documentid.appno_doc_num) AS temp ON temp.appno_doc_num = application_cpc.application_number WHERE application_cpc.type = 0  ${scopeCondition} GROUP BY temp.appno_doc_num  ) AS temp1 GROUP_STRING ` 
+            if(getList.length > 0) {
+                let titleQuery = `SELECT cpc_code, title FROM db_patent_grant_bibliographic.cpc_defination AS cpc_defination WHERE cpc_defination.cpc_code IN (:code)`
 
-                    listQuery =  query.replace('REPLACE_STRING', "SUM(IF(patent_number != '' AND application_number >0, 1, 0)) AS patent_number, SUM(IF (patent_number = '' AND application_number > 0, 1, 0 )) AS application_number, GROUP_CONCAT(application_number) AS appNum, (SUM(if(patent_number != '' AND application_number >0, 1, 0)) + SUM(IF (patent_number = '' AND application_number > 0, 1, 0 ))) AS countAssets, fillingYear, cpc_code, section, class, sub_class, main_group, sub_group, GROUP_CONCAT(distinct origin SEPARATOR '@@ ') AS group_name").replace('GROUP_STRING', "GROUP BY fillingYear, cpc_code")
+                const titleData =  await connection.applicationNew.query(titleQuery,{
+                    type: connection.Sequelize.QueryTypes.SELECT,
+                    replacements: {code: cpcCode},
+                    raw: true,
+                    logging: console.log,
+                })
 
-                    const remainingList = await connection.applicationNew.query(listQuery, {
-                        type: connection.Sequelize.QueryTypes.SELECT,
-                        replacements: replacements,
-                        raw: true,
-                        logging: console.log,
+                if(titleData.length > 0) {
+                    const promise = titleData.map( item => {
+                        const findIndex = group.findIndex( row => row.cpc_code == item.cpc_code)
+                        if(findIndex !== -1) {
+                            group[findIndex].title = item.title
+                        }
                     })
-
-                    if(remainingList.length > 0) {
-                        getList = [...getList, ...remainingList]
-                        console.log('getList', getList)
-                        const promise = remainingList.map( item => {  
-                            if(!cpcCode.includes(item.cpc_code)){
-                                cpcCode.push(item.cpc_code) 
-                                group.push({
-                                    id: k,
-                                    cpc_code: item.cpc_code, 
-                                    section: item.section, 
-                                    class: item.class, 
-                                    sub_class: item.sub_class, 
-                                    main_group: item.main_group, 
-                                    sub_group: item.sub_group,
-                                    title: ''
-                                })
-                                k++;
-                            }
-                        }) 
-                        await Promise.all(promise);
-                    }
-                } 
-
-                if(getList.length > 0) {
-                    let titleQuery = `SELECT cpc_code, title FROM db_patent_grant_bibliographic.cpc_defination AS cpc_defination WHERE cpc_defination.cpc_code IN (:code)`
-
-                    const titleData =  await connection.applicationNew.query(titleQuery,{
-                        type: connection.Sequelize.QueryTypes.SELECT,
-                        replacements: {code: cpcCode},
-                        raw: true,
-                        logging: console.log,
-                    })
-    
-                    if(titleData.length > 0) {
-                        const promise = titleData.map( item => {
-                            const findIndex = group.findIndex( row => row.cpc_code == item.cpc_code)
-                            if(findIndex !== -1) {
-                                group[findIndex].title = item.title
-                            }
-                        })
-                        await Promise.all(promise);
-                    }
+                    await Promise.all(promise);
                 }
             }
         }
