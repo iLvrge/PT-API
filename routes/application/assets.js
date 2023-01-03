@@ -395,6 +395,7 @@ route.post("/assets/cpc", [authJWT.verifyToken, clientDBConnection.connect], asy
                 stringYear = "IN (:date)"
             }
             replacements.list = list
+            const cpcCode = [];
             if(type == 'missed_monetization') {
                 query = `SELECT REPLACE_STRING FROM ( SELECT application_cpc.grant_doc_num AS patent_number, application_cpc.application_number , date_format(ag.appno_date, '%Y') AS fillingYear, ${rangeConcat} AS cpc_code, section, class, sub_class, main_group, sub_group, (SELECT GROUP_CONCAT(distinct IF(representative_name <> '' , representative_name, aaa.name) SEPARATOR '@@ ') FROM db_patent_application_bibliographic.inventor AS inv INNER JOIN db_patent_application_bibliographic.assignor_and_assignee AS aaa ON aaa.assignor_and_assignee_id = inv.assignor_and_assignee_id LEFT JOIN db_uspto.representative ON representative.representative_id = aaa.representative_id WHERE inv.appno_doc_num  = application_cpc.application_number  ) AS origin FROM db_patent_application_bibliographic.patent_cpc AS application_cpc 
                 INNER JOIN db_patent_application_bibliographic.application_grant AS ag ON ag.grant_doc_num =  application_cpc.grant_doc_num AND ag.appno_doc_num IN (:list)
@@ -423,7 +424,7 @@ route.post("/assets/cpc", [authJWT.verifyToken, clientDBConnection.connect], asy
                     logging: console.log,
                 })
                 let remainigItems = [], k = 1;
-                const cpcCode = [];
+                
                 if(getList.length > 0) { 
                     let assetsInFirstQuery = []
                         
