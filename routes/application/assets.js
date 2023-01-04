@@ -416,7 +416,7 @@ route.post("/assets/cpc", [authJWT.verifyToken, clientDBConnection.connect], asy
 
                 let listQuery =  query.replace('REPLACE_STRING', "SUM(IF(patent_number != '' AND application_number >0, 1, 0)) AS patent_number, SUM(IF (patent_number = '' AND application_number > 0, 1, 0 )) AS application_number, GROUP_CONCAT(application_number) AS appNum, (SUM(if(patent_number != '' AND application_number >0, 1, 0)) + SUM(IF (patent_number = '' AND application_number > 0, 1, 0 ))) AS countAssets, fillingYear, cpc_code, section, class, sub_class, main_group, sub_group, GROUP_CONCAT(distinct origin SEPARATOR '@@ ') AS group_name").replace('GROUP_STRING', "GROUP BY fillingYear, cpc_code")
     
-                listQuery += ` ORDER BY cpc_code ASC`
+                listQuery += ` ORDER BY cpc_code DESC`
                 getList = await connection.applicationNew.query(listQuery, {
                     type: connection.Sequelize.QueryTypes.SELECT,
                     replacements: replacements,
@@ -473,7 +473,7 @@ route.post("/assets/cpc", [authJWT.verifyToken, clientDBConnection.connect], asy
     
                     listQuery =  query.replace('REPLACE_STRING', "SUM(IF(patent_number != '' AND application_number >0, 1, 0)) AS patent_number, SUM(IF (patent_number = '' AND application_number > 0, 1, 0 )) AS application_number, GROUP_CONCAT(application_number) AS appNum, (SUM(if(patent_number != '' AND application_number >0, 1, 0)) + SUM(IF (patent_number = '' AND application_number > 0, 1, 0 ))) AS countAssets, fillingYear, cpc_code, section, class, sub_class, main_group, sub_group, GROUP_CONCAT(distinct origin SEPARATOR '@@ ') AS group_name").replace('GROUP_STRING', "GROUP BY fillingYear, cpc_code")
     
-                    listQuery += ` ORDER BY cpc_code ASC`
+                    listQuery += ` ORDER BY cpc_code DESC`
     
                     const remainingList = await connection.applicationNew.query(listQuery, {
                         type: connection.Sequelize.QueryTypes.SELECT,
@@ -490,8 +490,8 @@ route.post("/assets/cpc", [authJWT.verifyToken, clientDBConnection.connect], asy
     
                         getList.sort((a, b) => {
                             const itemFirst = a['cpc_code'], itemSecond =  b['cpc_code'] 
-                            if (itemFirst < itemSecond) {
-                              return -1;
+                            if (itemFirst > itemSecond) {
+                              return 1;
                             }
                             return 0;
                         });
