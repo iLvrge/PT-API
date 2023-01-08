@@ -133,7 +133,7 @@ route.post("/assets/cpc", [authJWT.verifyToken, clientDBConnection.connect], asy
                 if(typeof primary != 'undefined'){
                     getFiilingAssets = await helpers.findFillingAssets(req) 
                 } else {
-      
+                    
                     replacements.companies = companies
                     const ownedAssets = `SELECT application FROM db_new_application.dashboard_items WHERE organisation_id = :organisation_id AND representative_id = :companies AND type = :type GROUP BY application `;
     
@@ -184,6 +184,9 @@ route.post("/assets/cpc", [authJWT.verifyToken, clientDBConnection.connect], asy
                     }
                 } 
             } else {
+                if(replacements.type == 38) {
+                    replacements.type = 30
+                }
                 const queryAssets = `SELECT application FROM db_new_application.dashboard_items WHERE organisation_id = :organisation_id AND representative_id = :companies AND type = :type GROUP BY application `;
                 replacements.companies = companies
                 if(assignments && assignments != '') {
