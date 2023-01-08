@@ -3496,9 +3496,9 @@ const findLayout = (layout) => {
         case 'restore_ownership':
             layoutID = 1
             break
-        case 'pay_maintainence_fee':
+        /* case 'pay_maintainence_fee':
             layoutID = 3
-            break;
+            break; */
         case 'clear_encumbrances':
             layoutID = 18
             break
@@ -3628,8 +3628,11 @@ const findFilterAssets = async(req) => {
                         } else {
                             where.layoutID = 15
                         }
-
-                        if(where.layoutID > 15) {
+                        console.log("where.layoutID", where.layoutID)
+                        if(where.layoutID > 15 || where.layoutID == 3) {
+                            if(where.layoutID == 38) {
+                                where.layoutID = 30
+                            }
                             query = `SELECT application AS appno_doc_num FROM db_new_application.dashboard_items  WHERE organisation_id = :organisationID AND type = :layoutID `
 
                             if(Array.isArray(companies) && companies.length > 0) {
