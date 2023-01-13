@@ -447,7 +447,7 @@ route.post("/assets/cpc", [authJWT.verifyToken, clientDBConnection.connect], asy
                                 sub_class: item.sub_class, 
                                 main_group: item.main_group, 
                                 sub_group: item.sub_group,
-                                title: ''
+                                defination: ''
                             })
                             k++;
                         }
@@ -510,7 +510,7 @@ route.post("/assets/cpc", [authJWT.verifyToken, clientDBConnection.connect], asy
                                     sub_class: item.sub_class, 
                                     main_group: item.main_group, 
                                     sub_group: item.sub_group,
-                                    title: ''
+                                    defination: ''
                                 })
                                 k++;
                             }
@@ -521,7 +521,7 @@ route.post("/assets/cpc", [authJWT.verifyToken, clientDBConnection.connect], asy
             }
 
             if(getList.length > 0) {
-                let titleQuery = `SELECT cpc_code, title FROM db_patent_grant_bibliographic.cpc_defination AS cpc_defination WHERE cpc_defination.cpc_code IN (:code)`
+                let titleQuery = `SELECT cpc_code, title AS defination  FROM db_patent_grant_bibliographic.cpc_defination AS cpc_defination WHERE cpc_defination.cpc_code IN (:code)`
 
                 const titleData =  await connection.applicationNew.query(titleQuery,{
                     type: connection.Sequelize.QueryTypes.SELECT,
@@ -534,7 +534,7 @@ route.post("/assets/cpc", [authJWT.verifyToken, clientDBConnection.connect], asy
                     const promise = titleData.map( item => {
                         const findIndex = group.findIndex( row => row.cpc_code == item.cpc_code)
                         if(findIndex !== -1) {
-                            group[findIndex].title = item.title
+                            group[findIndex].defination = item.defination
                         }
                     })
                     await Promise.all(promise);
@@ -550,43 +550,100 @@ route.post("/assets/cpc", [authJWT.verifyToken, clientDBConnection.connect], asy
 
 route.post("/assets/cpc/:year/:cpcCode", [authJWT.verifyToken, clientDBConnection.connect], async(req, res, next) => {
     try {
-        let { list, total, type,  selectedCompanies, range, data_type } = req.body, getList = []
-
-        if(typeof type !== 'undefined' && type == 'top_law_firms') {
-            const getFiilingAssets =   await helpers.findFillingAssets(req) 
-
-            if(getFiilingAssets.length > 0) {
-                const replacements = { organisation_id: req.orgId, year: connection.DEFAULT_YEAR }
-                if(typeof selectedCompanies != 'undefined' && selectedCompanies != '') {            
-                    companies = JSON.parse(selectedCompanies)
+        let { list, total, type, selectedCompanies, tabs, customers, assignments, range, scope, year, other_mode, data_type, sale, license, primary } = req.body, getList = []
+        const replacements = { organisation_id: req.orgId, year: 2000 }
+        let companies = []
+        if(typeof selectedCompanies != 'undefined' && selectedCompanies != '') {            
+            companies = JSON.parse(selectedCompanies)
+        }
+        replacements.type = helpers.findLayout(type); 
+        if(typeof type !== 'undefined' && type != 'due_dilligence') {
+            if(type == 'top_law_firms') { 
+                let getFiilingAssets = []
+                if(typeof primary != 'undefined'){
+                    getFiilingAssets = await helpers.findFillingAssets(req) 
+                } else {
+                    
+                    replacements.companies = companies
+                    const ownedAssets = `SELECT application FROM db_new_application.dashboard_items WHERE organisation_id = :organisation_id AND representative_id = :companies AND type = :type GROUP BY application `;
+    
+                    const getAssetsData = await connection.application.query(ownedAssets,{
+                            type: connection.Sequelize.QueryTypes.SELECT,
+                            raw: true,
+                            logging: console.log,
+                            replacements: replacements,
+                        }
+                    ); 
+                    if(getAssetsData != null && getAssetsData.length > 0) {
+                        const promise = getAssetsData.map( row => {
+                            getFiilingAssets.push(`${row.application}`)
+                        })
+    
+                        await Promise.all(promise)
+                    }
                 }
-                replacements.type = 40
-                replacements.applications = getFiilingAssets
+    
+                if(getFiilingAssets.length > 0) {  
+                    replacements.applications = getFiilingAssets
+                    replacements.companies = companies
+                    if(assignments && assignments != '') {
+                        assignments = JSON.parse( assignments )
+                        replacements.assignments = assignments
+                    }
+                    const lawfirmName = await helpers.findLawFirmName(replacements)
+    
+                    replacements.lawfirm_name = lawfirmName
+    
+                    let queryFillingLawFirm = `SELECT l.appno_doc_num FROM db_patent_application_bibliographic.lawfirm AS l  WHERE l.appno_doc_num IN (:applications) AND l.name IN (:lawfirm_name) GROUP BY l.appno_doc_num `
+        
+                    const assetsWithLawFirm =  await connection.applicationNew.query(queryFillingLawFirm, {
+                        type: connection.Sequelize.QueryTypes.SELECT,
+                        raw: true,
+                        logging: console.log,
+                        replacements: replacements,
+                    }); 
+    
+                    if(assetsWithLawFirm != null && assetsWithLawFirm.length > 0) {
+                        list = [] 
+                        const promiseAssets = assetsWithLawFirm.map(row => {
+                            list.push(`${row.appno_doc_num}`)
+                        }) 
+                        await Promise.all(promiseAssets)
+                        total = list.length
+                        list = JSON.stringify(list)
+                    }
+                } 
+            } else {
+                if(replacements.type == 38) {
+                    replacements.type = 30
+                }
+                const queryAssets = `SELECT application FROM db_new_application.dashboard_items WHERE organisation_id = :organisation_id AND representative_id = :companies AND type = :type GROUP BY application `;
                 replacements.companies = companies
-    
-                const queryFillingLawFirm = `SELECT l.appno_doc_num FROM db_patent_application_bibliographic.lawfirm AS l  WHERE l.appno_doc_num IN (:applications) AND l.name IN (SELECT lawfirm FROM dashboard_items WHERE organisation_id = :organisation_id  AND representative_id IN (:companies) AND type = :type GROUP BY lawfirm) GROUP BY l.appno_doc_num `
-    
-                const assetsWithLawFirm =  await connection.applicationNew.query(queryFillingLawFirm, {
-                    type: connection.Sequelize.QueryTypes.SELECT,
-                    raw: true,
-                    logging: console.log,
-                    replacements: replacements,
-                }); 
-
-                if(assetsWithLawFirm != null && assetsWithLawFirm.length > 0) {
-                    list = [] 
-                    const promiseAssets = assetsWithLawFirm.map(row => {
-                        list.push(`${row.appno_doc_num}`)
-                    }) 
-                    await Promise.all(promiseAssets)
+                if(assignments && assignments != '') {
+                    assignments = JSON.parse( assignments )
+                    replacements.assignments = assignments
+                }
+                const getAssetsData = await connection.application.query(queryAssets,{
+                        type: connection.Sequelize.QueryTypes.SELECT,
+                        raw: true,
+                        logging: console.log,
+                        replacements: replacements,
+                    }
+                ); 
+                if(getAssetsData != null && getAssetsData.length > 0) {
+                    list = []
+                    const promise = getAssetsData.map( row => {
+                        list.push(`${row.application}`)
+                    })
                     total = list.length
                     list = JSON.stringify(list)
+                    await Promise.all(promise)
                 }
-            } 
-        } else  if(typeof data_type !== 'undefined' && data_type == 1) {
+            }
+        } else if((typeof data_type !== 'undefined' && data_type == 1) || typeof sale != 'undefined' || typeof license != 'undefined') { 
             list = await helpers.findFilterAssets(req)
             total = list.length
-        }
+        } 
 
         if( list != '' ) {
             if(typeof data_type == 'undefined' || (typeof data_type !== 'undefined' && data_type == 0)) {
