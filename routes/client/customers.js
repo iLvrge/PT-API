@@ -209,7 +209,9 @@ route.get("/timeline", [authJWT.verifyToken], async(req, res, next) => {
                 query += " GROUP BY apt.rf_id ORDER BY apt.exec_dt DESC  LIMIT 0, 500"
                 
             } else if (replacements.layout == 39) {
-
+                /**
+                 * Inventors
+                 */
                 query = "SELECT assignment.rf_id as id, MAX(aor.exec_dt) AS exec_dt, release_rf_id, release_exec_dt, full_match AS partial_transaction, all_release_ids, total_assets AS releaseAssets, IF(representative.representative_name <> '', representative.representative_name, assignor_and_assignee.name)  AS customerName, assignor_and_assignee.assignor_and_assignee_id AS name_id,representative.representative_id as repID, apt.activity_id AS tab_id, '' AS `group`, '' AS `company`, (SELECT count(asset) FROM ( SELECT IF(dd.grant_doc_num <> '', dd.grant_doc_num, dd.appno_doc_num) AS asset FROM db_uspto.documentid AS dd WHERE dd.rf_id = assignment.rf_id GROUP BY asset ) AS temp) AS totalAssets FROM db_uspto.assignment INNER JOIN activity_parties_transactions AS apt ON apt.rf_id = assignment.rf_id INNER JOIN db_uspto.assignor AS aor ON aor.rf_id = assignment.rf_id INNER JOIN db_uspto.assignor_and_assignee AS assignor_and_assignee ON assignor_and_assignee.assignor_and_assignee_id = aor.assignor_and_assignee_id LEFT JOIN db_uspto.representative AS representative ON representative.representative_id = assignor_and_assignee.representative_id WHERE assignment.rf_id IN (SELECT rf_id FROM dashboard_items WHERE organisation_id = :organisation_id  AND representative_id IN (:companies) AND type = :layout "
 
                 if(customers.length > 0) {

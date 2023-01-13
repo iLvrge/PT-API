@@ -2392,9 +2392,8 @@ route.get("/events/all/assets/surcharge", [authJWT.verifyToken], async (req, res
                     assets.push(`${item.application}`)
                 })
                 await Promise.all(promise)
-
-                
-                const event_code = ['F176', 'M1554', 'M176', 'M177', 'M186', 'M2554', 'M277', 'M286', 'M3554', 'M3555', 'M3556'], attributes = ['grant_doc_num', 'appno_doc_num', 'grant_date', [connection.Sequelize.fn('date_format', connection.Sequelize.col('event_date'), '%Y-%m-%d'), 'eventdate'], 'event_code', 'event_icon'], group = ['eventdate','event_code'], include = [
+ 
+                const event_code = ['F176', 'M1554', 'M1555', 'M1556', 'M1557', 'M1558', 'M176', 'M177', 'M178', 'M181', 'M182', 'M186', 'M187', 'M188', 'M2554', 'M2555', 'M2556', 'M2558', 'M277', 'M281', 'M282', 'M286', 'M3554', 'M3555', 'M3556', 'M3557', 'M3558'], attributes = ['grant_doc_num', 'appno_doc_num', 'grant_date', [connection.Sequelize.fn('date_format', connection.Sequelize.col('event_date'), '%Y-%m-%d'), 'eventdate'], 'event_code', 'event_icon'], group = ['eventdate','event_code'], include = [
                     {
                         model: MaintainenceCode,
                         as: 'maintainence_code',
@@ -2406,7 +2405,8 @@ route.get("/events/all/assets/surcharge", [authJWT.verifyToken], async (req, res
                 findData = await MaintainenceFees.findAll({
                     attributes: attributes,
                     where: where, 
-                    include: include
+                    include: include,
+                    group: ['appno_doc_num', 'eventdate']
                 });
 
                 let  expiredEvents = ['EXP.'], expired = false, eventExpiredDate = ''
