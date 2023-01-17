@@ -1743,7 +1743,7 @@ route.get("/:layout/assets", [authJWT.verifyToken, clientDBConnection.connect], 
 
 route.get("/:layout/transactions", [authJWT.verifyToken, clientDBConnection.connect], async(req, res, next) => {
     try {
-        let {companies, tabs, customers, limit, offset } = req.query,
+        let {companies, tabs, customers, lawfirm, limit, offset } = req.query,
             layoutID = 15
             
         const replacements =  { 
@@ -1769,7 +1769,40 @@ route.get("/:layout/transactions", [authJWT.verifyToken, clientDBConnection.conn
             if(companies.length > 0) {
                 replacements.companies = companies
             }
-            const query = "SELECT trans.rf_id, assignment.reel_no, assignment.frame_no, '' AS channel, trans.`date`, `assets`, sum(`assets`) OVER (ORDER BY rf_id) AS grand_total  FROM (SELECT documentid.rf_id, (SELECT date_format(exec_dt,'%m-%d-%Y') FROM db_uspto.assignor AS assignor WHERE assignor.rf_id = documentid.rf_id LIMIT 1) AS date, COUNT(distinct documentid.appno_doc_num) AS assets FROM db_uspto.documentid As documentid WHERE documentid.rf_id IN (SELECT rf_id FROM dashboard_items WHERE organisation_id = :organisationID AND representative_id IN (:companies) AND type = :layoutID GROUP BY rf_id) GROUP BY documentid.rf_id) AS trans INNER JOIN db_uspto.assignment AS assignment ON assignment.rf_id = trans.rf_id ORDER BY `date` DESC";
+            let query = "SELECT trans.rf_id, assignment.reel_no, assignment.frame_no, '' AS channel, trans.`date`, `assets`, sum(`assets`) OVER (ORDER BY rf_id) AS grand_total  FROM (SELECT documentid.rf_id, (SELECT date_format(exec_dt,'%m-%d-%Y') FROM db_uspto.assignor AS assignor WHERE assignor.rf_id = documentid.rf_id LIMIT 1) AS date, COUNT(distinct documentid.appno_doc_num) AS assets FROM db_uspto.documentid As documentid WHERE documentid.rf_id IN (SELECT rf_id FROM dashboard_items WHERE organisation_id = :organisationID AND representative_id IN (:companies) AND type = :layoutID GROUP BY rf_id) GROUP BY documentid.rf_id) AS trans INNER JOIN db_uspto.assignment AS assignment ON assignment.rf_id = trans.rf_id "
+            
+            if(lawfirm > 0) { 
+                const findLawFirm = `SELECT cname, lf.name, rlf.representative_id, rlf.representative_name FROM db_uspto.correspondent AS c LEFT JOIN db_uspto.law_firm  as lf ON c.cname = lf.name
+                LEFT JOIN db_uspto.representative_law_firm AS rlf ON rlf.representative_id = lf.representative_id WHERE c.rf_id = :lawfirm`
+
+                const getLawFirmData = await connection.applicationNew.query(findLawFirm, {
+                    type: connection.Sequelize.QueryTypes.SELECT,
+                    raw: true,
+                    plain: true,
+                    logging: console.log,
+                    replacements: {lawfirm},
+                })  
+                if(getLawFirmData != null ) { 
+                    if(getLawFirmData.representative_id > 0) {
+                        replacements.representative_id = getLawFirmData.representative_id 
+                    } else {
+                        replacements.name = getLawFirmData.cname
+                    }
+    
+                    let tempQuery = `SELECT c.rf_id  FROM db_uspto.correspondent AS c LEFT JOIN db_uspto.law_firm  as lf ON c.cname = lf.name
+                    LEFT JOIN db_uspto.representative_law_firm AS rlf ON rlf.representative_id = lf.representative_id WHERE c.rf_id IN (SELECT rf_id FROM db_new_application.activity_parties_transactions WHERE organisation_id = :organisationID AND company_id IN (:companies)) `
+    
+                    if(typeof replacements.representative_id != 'undefined') {
+                        tempQuery += ` AND rlf.representative_id = :representative_id`
+                    } else {
+                        tempQuery += ` AND c.cname = :name`
+                    }
+                    tempQuery += ` GROUP BY  c.rf_id`
+                    query += ` WHERE assignment.rf_id IN (${tempQuery}) ` 
+                }  
+            }
+            
+            query += " ORDER BY `date` DESC";
 
             transactions.list = await connection.applicationNew.query(query, {
                 type: connection.Sequelize.QueryTypes.SELECT,
