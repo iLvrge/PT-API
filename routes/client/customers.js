@@ -922,7 +922,8 @@ route.post("/asset_types/assets/agents", [authJWT.verifyToken, clientDBConnectio
                     /** 
                     * Filling 
                     */
-                    query += `SELECT name, year, COUNT(appno_doc_num) AS counter FROM (  SELECT l.name, l.appno_doc_num, date_format(ag.appno_date, '%Y') AS year  FROM db_patent_application_bibliographic.lawfirm AS l INNER JOIN  db_patent_application_bibliographic.application_grant AS ag ON ag.appno_doc_num = l.appno_doc_num WHERE l.name IN (SELECT lawfirm FROM db_new_application.dashboard_items WHERE organisation_id = :organisationID AND representative_id = :company_id AND type = :lawfirmType GROUP BY lawfirm) ` 
+                    query += `SELECT name, year, COUNT(appno_doc_num) AS counter FROM ( 
+                        SELECT name, appno_doc_num, IF(appYear = null, grantyear, appYear) AS year FROM (  SELECT l.name, l.appno_doc_num, date_format(ag.appno_date, '%Y') AS grantyear, date_format(ap.appno_date, '%Y') AS appYear  FROM db_patent_application_bibliographic.lawfirm AS l LEFT JOIN  db_patent_application_bibliographic.application_grant AS ag ON ag.appno_doc_num = l.appno_doc_num LEFT JOIN  db_patent_grant_bibliographic.application_publication AS ap ON ap.appno_doc_num = l.appno_doc_num WHERE l.name IN (SELECT lawfirm FROM db_new_application.dashboard_items WHERE organisation_id = :organisationID AND representative_id = :company_id AND type = :lawfirmType GROUP BY lawfirm) ` 
                     /* query = `SELECT name, year, COUNT(appno_doc_num) AS counter FROM (  SELECT l.name, l.appno_doc_num, date_format(ag.appno_date, '%Y') AS year  FROM db_patent_examiner_data.application_correspondence AS l INNER JOIN  db_patent_examiner_data.application_publication_grant AS ag ON ag.appno_doc_num = l.appno_doc_num WHERE l.name IN (SELECT lawfirm FROM db_new_application.dashboard_items WHERE organisation_id = :organisationID AND representative_id = :company_id AND type = :lawfirmType GROUP BY lawfirm) ` */
 
 
@@ -955,7 +956,8 @@ route.post("/asset_types/assets/agents", [authJWT.verifyToken, clientDBConnectio
                             where.lawfirms = lawfirmNames
                         }
                     }
-                    query += ` AND l.appno_doc_num IN (:assets)) AS temp GROUP BY name, year `
+                    query += ` AND l.appno_doc_num IN (:assets)) AS tempData
+                    ) AS temp GROUP BY name, year `
                 } else {
                     /**
                      * Assignments
@@ -1769,7 +1771,7 @@ route.get("/:layout/transactions", [authJWT.verifyToken, clientDBConnection.conn
             if(companies.length > 0) {
                 replacements.companies = companies
             }
-            let query = "SELECT trans.rf_id, assignment.reel_no, assignment.frame_no, '' AS channel, trans.`date`, `assets`, sum(`assets`) OVER (ORDER BY rf_id) AS grand_total  FROM (SELECT documentid.rf_id, (SELECT date_format(exec_dt,'%m-%d-%Y') FROM db_uspto.assignor AS assignor WHERE assignor.rf_id = documentid.rf_id LIMIT 1) AS date, COUNT(distinct documentid.appno_doc_num) AS assets FROM db_uspto.documentid As documentid WHERE documentid.rf_id IN (SELECT rf_id FROM dashboard_items WHERE organisation_id = :organisationID AND representative_id IN (:companies) AND type = :layoutID GROUP BY rf_id) GROUP BY documentid.rf_id) AS trans INNER JOIN db_uspto.assignment AS assignment ON assignment.rf_id = trans.rf_id "
+            let query = "SELECT trans.rf_id, assignment.reel_no, assignment.frame_no, '' AS channel, trans.`date`, `assets`, sum(`assets`) OVER (ORDER BY trans.`date`) AS grand_total  FROM (SELECT documentid.rf_id, (SELECT date_format(exec_dt,'%m-%d-%Y') FROM db_uspto.assignor AS assignor WHERE assignor.rf_id = documentid.rf_id LIMIT 1) AS date, COUNT(distinct documentid.appno_doc_num) AS assets FROM db_uspto.documentid As documentid WHERE documentid.rf_id IN (SELECT rf_id FROM dashboard_items WHERE organisation_id = :organisationID AND representative_id IN (:companies) AND type = :layoutID GROUP BY rf_id) GROUP BY documentid.rf_id) AS trans INNER JOIN db_uspto.assignment AS assignment ON assignment.rf_id = trans.rf_id "
             
             if(lawfirm > 0) { 
                 const findLawFirm = `SELECT cname, lf.name, rlf.representative_id, rlf.representative_name FROM db_uspto.correspondent AS c LEFT JOIN db_uspto.law_firm  as lf ON c.cname = lf.name
