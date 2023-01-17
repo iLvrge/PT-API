@@ -252,7 +252,7 @@ route.get("/citation/:asset", [authJWT.verifyToken], async (req, res) => {
 
 route.post("/citation", [authJWT.verifyToken], async (req, res) => {  
     try{
-        let { list, total, type, selectedCompanies, tabs, customers, assignments, other_mode, counter } = req.body, assetsLifeSpan = []
+        let { list, total, type, selectedCompanies, tabs, customers, assignments, other_mode, counter, start, end } = req.body, assetsLifeSpan = []
         let citedCompanies = []
         if( list != '' ) {
             list = JSON.parse(list)
@@ -381,12 +381,26 @@ route.post("/citation", [authJWT.verifyToken], async (req, res) => {
                 })
             }
             if( list.length > 0 ) {
-                let queryCitedLogo = "SELECT cpwa.citing_id AS id, cpwa.citing_patent_number AS number, MAX(o.organisation_name) AS assignee, MAX(o.logo_optimize) AS logo, COUNT(cpwa.citing_patent_number) AS combined, GROUP_CONCAT(o.organisation_name) AS all_assignee, cpwa.app_date AS start, cpwa.app_date AS end FROM cited_patents AS cp INNER JOIN assignee_organizations AS ao ON ao.assignee_id = cp.assignee_id INNER JOIN citing_patents_with_assignee AS cpwa ON cpwa.assignee_id = ao.assignee_id AND cpwa.patent_number = cp.patent_number LEFT JOIN organisations AS o ON o.organisation_id = ao.organisation_id WHERE cp.patent_number IN (:list) GROUP BY cp.patent_number, cpwa.citing_patent_number"
+                const replacements =  {list}
+                let queryCitedLogo = "SELECT cpwa.citing_id AS id, cpwa.citing_patent_number AS number, MAX(o.organisation_name) AS assignee, MAX(o.logo_optimize) AS logo, COUNT(cpwa.citing_patent_number) AS combined, GROUP_CONCAT(o.organisation_name) AS all_assignee, cpwa.app_date AS start, cpwa.app_date AS end FROM cited_patents AS cp INNER JOIN assignee_organizations AS ao ON ao.assignee_id = cp.assignee_id INNER JOIN citing_patents_with_assignee AS cpwa ON cpwa.assignee_id = ao.assignee_id AND cpwa.patent_number = cp.patent_number LEFT JOIN organisations AS o ON o.organisation_id = ao.organisation_id WHERE cp.patent_number IN (:list) ";
+
+                if(start != '' && end != '') {
+                    replacements.start = start
+                    replacements.end = end
+                    queryCitedLogo = " AND cpwa.app_date BETWEEM :start AND :end "
+                }
+
+
+                queryCitedLogo += " GROUP BY cp.patent_number, cpwa.citing_patent_number "
+
+                if(typeof counter == 'undefined' ) { 
+                    queryCitedLogo += " LIMIT 0, 500";
+                }
                 citedCompanies =  await connection.applicationNew.query(queryCitedLogo,{
                     type: connection.Sequelize.QueryTypes.SELECT,
                     raw: true,
                     logging: console.log,
-                    replacements: {list},
+                    replacements,
                 })
                 
                 /* if(citedCompanies.length > 0) {

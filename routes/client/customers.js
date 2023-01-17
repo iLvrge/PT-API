@@ -922,7 +922,8 @@ route.post("/asset_types/assets/agents", [authJWT.verifyToken, clientDBConnectio
                     /** 
                     * Filling 
                     */
-                    query += `SELECT name, year, COUNT(appno_doc_num) AS counter FROM (  SELECT l.name, l.appno_doc_num, date_format(ag.appno_date, '%Y') AS year  FROM db_patent_application_bibliographic.lawfirm AS l INNER JOIN  db_patent_application_bibliographic.application_grant AS ag ON ag.appno_doc_num = l.appno_doc_num WHERE l.name IN (SELECT lawfirm FROM db_new_application.dashboard_items WHERE organisation_id = :organisationID AND representative_id = :company_id AND type = :lawfirmType GROUP BY lawfirm) ` 
+                    query += `SELECT name, year, COUNT(appno_doc_num) AS counter FROM ( 
+                        SELECT name, appno_doc_num, IF(appYear = null, grantyear, appYear) AS year FROM (  SELECT l.name, l.appno_doc_num, date_format(ag.appno_date, '%Y') AS grantyear, date_format(ap.appno_date, '%Y') AS appYear  FROM db_patent_application_bibliographic.lawfirm AS l LEFT JOIN  db_patent_application_bibliographic.application_grant AS ag ON ag.appno_doc_num = l.appno_doc_num LEFT JOIN  db_patent_grant_bibliographic.application_publication AS ap ON ap.appno_doc_num = l.appno_doc_num WHERE l.name IN (SELECT lawfirm FROM db_new_application.dashboard_items WHERE organisation_id = :organisationID AND representative_id = :company_id AND type = :lawfirmType GROUP BY lawfirm) ` 
                     /* query = `SELECT name, year, COUNT(appno_doc_num) AS counter FROM (  SELECT l.name, l.appno_doc_num, date_format(ag.appno_date, '%Y') AS year  FROM db_patent_examiner_data.application_correspondence AS l INNER JOIN  db_patent_examiner_data.application_publication_grant AS ag ON ag.appno_doc_num = l.appno_doc_num WHERE l.name IN (SELECT lawfirm FROM db_new_application.dashboard_items WHERE organisation_id = :organisationID AND representative_id = :company_id AND type = :lawfirmType GROUP BY lawfirm) ` */
 
 
@@ -955,7 +956,8 @@ route.post("/asset_types/assets/agents", [authJWT.verifyToken, clientDBConnectio
                             where.lawfirms = lawfirmNames
                         }
                     }
-                    query += ` AND l.appno_doc_num IN (:assets)) AS temp GROUP BY name, year `
+                    query += ` AND l.appno_doc_num IN (:assets)) AS tempData
+                    ) AS temp GROUP BY name, year `
                 } else {
                     /**
                      * Assignments
