@@ -1543,7 +1543,11 @@ route.get("/:layout/assets", [authJWT.verifyToken, clientDBConnection.connect], 
                             query += ` AND activity_parties_transactions.assignor_and_assignee_id IN (:customers)   GROUP BY activity_parties_transactions.rf_id ) GROUP BY documentid.appno_doc_num) `;
                         } */
                     } else {
-                        query += ` WHERE date_format(assets.appno_date, '%Y') > :date AND assets.layout_id = 15 AND assets.organisation_id = :organisationID `
+                        query += ` WHERE assets.layout_id = 15 AND assets.organisation_id = :organisationID `
+
+                        if(replacements.layoutID != 24) {
+                            query += ` AND date_format(assets.appno_date, '%Y') > :date `
+                        }
 
                         if(Array.isArray(companies) && companies.length > 0) {
                             query += ` AND assets.company_id IN (:companies)`
