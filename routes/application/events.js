@@ -2483,7 +2483,7 @@ route.get("/events/assets/status/:applicationNumber", [authJWT.verifyToken], asy
             
             
             let docDates = null
-            if(getDatesData == null) {
+            if(getGrantDatesData == null) {
                 queryDates = `SELECT MAX(appno_date) AS filling_date, MAX(pgpub_date) AS pgpub_date, MAX(grant_date) AS grant_date FROM db_uspto.documentid WHERE appno_doc_num = :applicationNumber`
                 docDates = await connection.application.query(queryDates,{
                         type: connection.Sequelize.QueryTypes.SELECT,
@@ -2529,7 +2529,7 @@ route.get("/events/assets/status/:applicationNumber", [authJWT.verifyToken], asy
             );
  
             if(getDatesData != null || getGrantDatesData != null || docDates != null) {
-                if(dates.filling_date != '' && dates.grant_date != '' && dates.filling_date != null && dates.grant_date != null) {
+                if(dates.filling_date != '' && dates.grant_date != null && dates.grant_date != '' && dates.grant_date != '0000-00-00' && dates.filling_date != null ) {
                     getList.push({
                         id: 'A',
                         start_date: dates.filling_date,
@@ -2598,7 +2598,7 @@ route.get("/events/assets/status/:applicationNumber", [authJWT.verifyToken], asy
                     grantDesign = true
                 }
                 let expiryYear = 20
-                if(dates.filling_date != '' && dates.grant_date != '' && dates.filling_date != null && dates.grant_date != null) {
+                if(dates.filling_date != ''  && dates.grant_date != null && dates.grant_date != '' && dates.grant_date != '0000-00-00' && dates.filling_date != null ) {
                     
                     if(grantDesign === true ) {
                         if(dates.grant_date < '2015-05-13'){
@@ -2647,7 +2647,7 @@ route.get("/events/assets/status/:applicationNumber", [authJWT.verifyToken], asy
                     })
                 } else {
                     
-                    if(dates.grant_date != '' && grantDesign === false) { 
+                    if(dates.grant_date != null && dates.grant_date != '' && dates.grant_date != '0000-00-00' && grantDesign === false) { 
                         const endDate = moment(new Date(dates.filling_date)).add(expiryYear, 'years').format('YYYY-MM-DD')
                         getList.push({
                             id: 4,
