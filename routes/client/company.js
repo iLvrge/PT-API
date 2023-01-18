@@ -191,7 +191,8 @@ route.get("/summary", [authJWT.verifyToken, clientDBConnection.connect], async(r
 
     /* const query = `SELECT ${allCompanies.length} as companies, count(DISTINCT no_of_activities) as activites, sum(no_of_parties) as parties,  sum(no_of_inventor) as employees, sum(no_of_transactions) as transactions, sum(no_of_assets) as assets, (SELECT SUM(arrows) FROM assignment_arrows WHERE rf_id IN (SELECT rf_id FROM report_representative_assets_transactions WHERE representative_name IN (:representativeName))) as rights, 0 as documents  FROM representative_reports WHERE representative_name IN (:representativeName)` */
 
-    const query = `SELECT companies, activities AS activites, entities, parties, entities, employees, transactions, assets, arrows AS rights, 0 AS documents FROM db_uspto.summary WHERE organisation_id = :organisationID AND company_id = 0`;
+    /* const query = `SELECT companies, activities AS activites, entities, parties, entities, employees, transactions, assets, arrows AS rights, 0 AS documents FROM db_uspto.summary WHERE organisation_id = :organisationID AND company_id = 0`; */
+    const query = `SELECT companies, activities AS activites, entities, parties, entities, employees, transactions, assets, arrows AS rights  FROM db_uspto.summary WHERE organisation_id = :organisationID AND company_id = 0`;
 
     report = await connection.resources.query(query,{
         type: connection.Sequelize.QueryTypes.SELECT,
@@ -202,7 +203,7 @@ route.get("/summary", [authJWT.verifyToken, clientDBConnection.connect], async(r
     })
 
 
-    if(typeof user_account != 'undefined' && typeof access_token !== 'undefined' && access_token != '' && user_account != '') {
+    /* if(typeof user_account != 'undefined' && typeof access_token !== 'undefined' && access_token != '' && user_account != '') {
         let getRepo = await Repository.findOne({
             where: { organisation_id: req.orgId, user_account: user_account}
         })     
@@ -233,7 +234,7 @@ route.get("/summary", [authJWT.verifyToken, clientDBConnection.connect], async(r
                 console.log('Company Summary Document error', err)
             }            
         }
-    }
+    } */
     res.status(200).json(report)
 })
 

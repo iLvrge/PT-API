@@ -187,12 +187,25 @@ route.post("/assets/cpc", [authJWT.verifyToken, clientDBConnection.connect], asy
                 if(replacements.type == 38) {
                     replacements.type = 30
                 }
-                const queryAssets = `SELECT application FROM db_new_application.dashboard_items WHERE organisation_id = :organisation_id AND representative_id = :companies AND type = :type GROUP BY application `;
+                let queryAssets = `SELECT application FROM db_new_application.dashboard_items WHERE organisation_id = :organisation_id AND representative_id = :companies AND type = :type `
                 replacements.companies = companies
                 if(assignments && assignments != '') {
                     assignments = JSON.parse( assignments )
-                    replacements.assignments = assignments
+                    if(assignments.length > 0) { 
+                        replacements.assignments = assignments
+                        queryAssets += ` AND rf_id IN (:assignments) `;
+                    }
                 }
+
+                if(customers && customers != '') {
+                    customers = JSON.parse( customers )
+                    replacements.customers = customers
+                    if(customers.length > 0) {  
+                        queryAssets += ` AND assignor_id IN (:customers) `;
+                    }
+                }
+
+                queryAssets += `GROUP BY application `;
                 const getAssetsData = await connection.application.query(queryAssets,{
                         type: connection.Sequelize.QueryTypes.SELECT,
                         raw: true,
