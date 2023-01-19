@@ -1717,7 +1717,14 @@ route.post("/events/abandoned/maintainence/assets", [authJWT.verifyToken], async
         const allAssetsSteps = [['type', 'count', {type: 'string', role: 'style'}]]
         if(list.length > 0) {
             where.event_code = ['M1552','M2552', 'M3552', 'M1553','M2553', 'M3553', 'M1551','M2551', 'M3551']
-            const query = "SELECT  emf.appno_doc_num, event_code FROM db_patent_maintainence_fee.event_maintainence_fees AS emf WHERE emf.appno_doc_num IN ( :list )   AND event_code IN (:event_code) "
+            let query = `SELECT  emf.appno_doc_num, event_code FROM db_patent_maintainence_fee.event_maintainence_fees AS emf WHERE emf.appno_doc_num IN ( :list )  `
+            
+            if(applications.length > 0) {
+                where.applications = applications
+                query += ` AND appno_doc_num NOT IN (:applications) `
+            }
+            
+            query += ` AND event_code IN (:event_code) `
 
             const getList = await connection.applicationNew.query(query, {
                 type: connection.Sequelize.QueryTypes.SELECT,
@@ -1754,7 +1761,7 @@ route.post("/events/abandoned/maintainence/assets", [authJWT.verifyToken], async
                 const filterAsset = list.filter( asset => !uniqueAssets.includes(asset)) 
 
                 const abandonedSecondPayments = [], abandonedThirdPayments = []
-                const promiseFind = uniqueAssets.map(asset => {
+                const promiseFind = uniqueAssets.map(asset => { 
                     if(!filterAsset.includes(asset) && FirstYear.includes(asset) && !SecondYear.includes(asset)) {
                         abandonedSecondPayments.push(asset)
                     }
@@ -1765,7 +1772,8 @@ route.post("/events/abandoned/maintainence/assets", [authJWT.verifyToken], async
                 })
                 await Promise.all(promiseFind)  
                 if(filterAsset.length > 0) { 
-                    allAssetsSteps.push(["4th Year", filterAsset.length, "stroke-width:1;stroke-color:#2196f3;fill-color:#1565C0;"]) 
+                    const findPatentExpired = filterAsset.filter( asset => !applications.includes(asset)) 
+                    allAssetsSteps.push(["4th Year", findPatentExpired.length, "stroke-width:1;stroke-color:#2196f3;fill-color:#1565C0;"]) 
                 }
 
                 if(abandonedSecondPayments.length > 0) { 
