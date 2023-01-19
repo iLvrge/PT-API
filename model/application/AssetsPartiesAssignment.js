@@ -10,11 +10,12 @@ const AssetsPartiesAssignment = connection.applicationNew.define('activity_parti
     },        
     company_id:{
         type: Sequelize.INTEGER,
-        allowNull: false,
+        allowNull: false, 
     },
     rf_id:{
         type: Sequelize.INTEGER,
         allowNull: false,
+        primary: true,
     },
     exec_dt:{
         type: Sequelize.STRING,
@@ -34,6 +35,7 @@ const AssetsPartiesAssignment = connection.applicationNew.define('activity_parti
     timestamps: false,
     freezeTableName: true,
     tableName: 'activity_parties_transactions',
+    schema: "db_new_application"
 });
 
 module.exports = AssetsPartiesAssignment;

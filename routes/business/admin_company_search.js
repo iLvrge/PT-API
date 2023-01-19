@@ -2049,7 +2049,7 @@ route.get("/company/raw/assignments/:id", [authJWT.verifyToken, authJWT.isAdmin,
     const customerID = req.params.id, representativeIDs = JSON.parse(req.query.portfolios != undefined ? req.query.portfolios : "[]");
     let getList = [];
     if(customerID > 0) {
-        const where = {organisation_id: customerID, year: connection.DEFAULT_YEAR};
+        const where = {organisation_id: customerID};
         let whereRepresentative = {};
         if(representativeIDs.length > 0) {
             where.company_id = representativeIDs;
@@ -2128,10 +2128,19 @@ route.get("/company/raw/assignments/:id", [authJWT.verifyToken, authJWT.isAdmin,
                                 as: 'assetspartiesassignment',
                                 attributes: [],
                                 where: {
-                                    [connection.Sequelize.fn('date_format', Sequelize.col('exec_dt'), '%Y')]:{
-                                        [connection.Op.gt]: connection.DEFAULT_YEAR
-                                    }
-                                }
+                                    [connection.Op.and]: [
+                                        connection.Sequelize.where(
+                                            connection.Sequelize.fn(
+                                                'DATE_FORMAT',
+                                                connection.Sequelize.col('exec_dt'),
+                                                '%Y'
+                                            ),
+                                            connection.Sequelize.Op.gte,
+                                            connection.DEFAULT_YEAR
+                                        ),
+                                        {exec_dt: {[connection.Op.ne]: '0000-00-00'}} 
+                                    ]
+                                } 
                             }
                         ]                      
                     }
@@ -2164,9 +2173,18 @@ route.get("/company/raw/assignments/:id", [authJWT.verifyToken, authJWT.isAdmin,
                                 as: 'assetspartiesassignment',
                                 attributes: [],
                                 where: {
-                                    [connection.Sequelize.fn('date_format', Sequelize.col('exec_dt'), '%Y')]:{
-                                        [connection.Op.gt]: connection.DEFAULT_YEAR
-                                    }
+                                    [connection.Op.and]: [
+                                        connection.Sequelize.where(
+                                            connection.Sequelize.fn(
+                                                'DATE_FORMAT',
+                                                connection.Sequelize.col('exec_dt'),
+                                                '%Y'
+                                            ),
+                                            connection.Sequelize.Op.gte,
+                                            connection.DEFAULT_YEAR
+                                        ),
+                                        {exec_dt: {[connection.Op.ne]: '0000-00-00'}} 
+                                    ]
                                 }
                             }
                         ]                      

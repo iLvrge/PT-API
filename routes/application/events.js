@@ -1714,7 +1714,7 @@ route.post("/events/abandoned/maintainence/assets", [authJWT.verifyToken], async
             })
             where.list = list
         }
-        const allAssetsSteps = [['type', 'count', {type: 'string', role: 'style'}]]
+        const allAssetsSteps = [['Element', 'Density', {type: 'string', role: 'style'}]]
         if(list.length > 0) {
             where.event_code = ['M1552','M2552', 'M3552', 'M1553','M2553', 'M3553', 'M1551','M2551', 'M3551']
             let query = `SELECT  emf.appno_doc_num, event_code FROM db_patent_maintainence_fee.event_maintainence_fees AS emf WHERE emf.appno_doc_num IN ( :list )  `

@@ -1288,7 +1288,7 @@ route.get("/:layout/assets", [authJWT.verifyToken, clientDBConnection.connect], 
             const countReplace = ` CASE WHEN assets.grant_doc_num = '' OR assets.grant_doc_num IS NULL THEN assets.appno_doc_num ELSE assets.grant_doc_num END AS asset `
     
     
-            const countquery = `SELECT COUNT(*) as total_records FROM (${query.replace('STRING_COLUMNS', countReplace)} WHERE organisation_id = :organisationID AND type = :type GROUP BY asset ) AS temp `
+            const countquery = `SELECT COUNT(*) as total_records FROM (${query.replace('STRING_COLUMNS', countReplace)} WHERE organisation_id = :organisationID AND type = :type GROUP BY appno_doc_num ) AS temp `
             
             replacements.type = parseInt(other_mode) == 1 ? 2 : parseInt(other_mode) == 3 ? 4 : 0
            
@@ -1570,7 +1570,16 @@ route.get("/:layout/assets", [authJWT.verifyToken, clientDBConnection.connect], 
                             query += ` AND activity_parties_transactions.assignor_and_assignee_id IN (:customers)   GROUP BY activity_parties_transactions.rf_id ) GROUP BY documentid.appno_doc_num) `;
                         } */
                     } else {
-                        query += ` WHERE assets.layout_id = 15 AND assets.organisation_id = :organisationID `
+
+                        query = `SELECT * FROM (SELECT  CASE WHEN patent = '' OR patent IS NULL THEN CONCAT(SUBSTRING(application, 1, 2), '/', FORMAT(SUBSTRING(application, 3), 0)) ELSE FORMAT(patent, 0) END AS format_asset,
+                        CASE WHEN patent = '' OR patent IS NULL THEN application ELSE patent END AS asset, 
+                        CASE WHEN patent = '' OR patent IS NULL THEN 1 ELSE 0 END AS asset_type, application AS appno_doc_num, patent AS grant_doc_num, 0 AS child_count, '' AS channel  FROM db_new_application.dashboard_items WHERE organisation_id = :organisationID AND type = :layoutID `;
+
+                        if(typeof replacements.companies != 'undefined' && Array.isArray(replacements.companies) && replacements.companies.length > 0) {
+                            query += ` AND representative_id IN (:companies) `
+                        }
+
+                        /* query += ` WHERE assets.layout_id = 15 AND assets.organisation_id = :organisationID `
 
                         if(replacements.layoutID != 24) {
                             query += ` AND date_format(assets.appno_date, '%Y') > :date `
@@ -1578,31 +1587,32 @@ route.get("/:layout/assets", [authJWT.verifyToken, clientDBConnection.connect], 
 
                         if(Array.isArray(companies) && companies.length > 0) {
                             query += ` AND assets.company_id IN (:companies)`
-                        }
+                        } */
                         if (replacements.layoutID == 38) {
                             const getFamilyList = await helpers.getFamilyList(replacements)
                             
                             console.log(getFamilyList);
                             
                             replacements.assetList = getFamilyList
-                            query += ` AND grant_doc_num IN (:assetList) `
+                            query += ` AND patent IN (:assetList) `
                         } else {
                             if(Array.isArray(customers) && customers.length > 0  && (replacements.layoutID == 32 || replacements.layoutID == 33 )) {
-                                query += `  AND appno_doc_num IN (SELECT application COLLATE utf8mb4_0900_ai_ci FROM db_new_application.dashboard_items WHERE organisation_id = :organisationID AND representative_id IN (:companies)  AND type = :layoutID AND application IN (
-                                        SELECT documentid.appno_doc_num FROM db_uspto.documentid 
-                                        WHERE rf_id  IN ( 
-                                        SELECT activity_parties_transactions.rf_id  FROM db_new_application.activity_parties_transactions 
-                                        WHERE activity_parties_transactions.organisation_id = :organisationID 
-                                        AND activity_parties_transactions.company_id IN (:companies)  
-                                        AND activity_parties_transactions.assignor_and_assignee_id IN (:customers) 
-                                        GROUP BY activity_parties_transactions.rf_id
-                                        ) 
-                                        GROUP BY documentid.appno_doc_num
-                                    ) GROUP BY application) `
-                            } else {
-                                query += ` AND appno_doc_num IN (SELECT application COLLATE utf8mb4_0900_ai_ci FROM db_new_application.dashboard_items WHERE organisation_id = :organisationID AND representative_id IN (:companies) ${customers != '' && customers.length > 0 ? ' AND assignor_id IN (:customers) ' : '' } AND type = :layoutID GROUP BY application)`
+                                query += `  application IN (
+                                            SELECT documentid.appno_doc_num FROM db_uspto.documentid 
+                                            WHERE rf_id  IN ( 
+                                                SELECT activity_parties_transactions.rf_id  FROM db_new_application.activity_parties_transactions 
+                                                WHERE activity_parties_transactions.organisation_id = :organisationID 
+                                                AND activity_parties_transactions.company_id IN (:companies)  
+                                                AND activity_parties_transactions.assignor_and_assignee_id IN (:customers) 
+                                                GROUP BY activity_parties_transactions.rf_id
+                                            ) 
+                                            GROUP BY documentid.appno_doc_num
+                                    )  `
+                            } else if(Array.isArray(customers) && customers.length > 0) {
+                                query += `  AND assignor_id IN (:customers) `
                             }
-                        }  
+                        } 
+                        query += `   ) AS queryTemp `
                     }           
                 } else {                
             
@@ -1663,7 +1673,7 @@ route.get("/:layout/assets", [authJWT.verifyToken, clientDBConnection.connect], 
                     }
                 }
                 
-                query += ` GROUP BY asset`;
+                query += ` GROUP BY appno_doc_num`;
 
                 const countReplace = ` CASE WHEN assets.grant_doc_num = '' OR assets.grant_doc_num IS NULL THEN assets.appno_doc_num ELSE assets.grant_doc_num END AS asset `
         

@@ -21,6 +21,8 @@ const applicationNew = new Sequelize(process.env.DATABASE_APPLICATION_NEW, proce
   operatorsAliases: Op, 
 });
 
+applicationNew.dialect.supports.schemas = true; 
+
 const resources = new Sequelize(process.env.DATABASE_RAW, process.env.USER, process.env.PASSWORD, {
     host: '167.172.195.92',
     dialect: 'mysql',
