@@ -3935,6 +3935,7 @@ const findLawFirmName = async (props) => {
 }
 
 const helper = {};
+helper.minMax2DArray = minMax2DArray
 helper.findLawFirmName = findLawFirmName
 helper.getFamilyList = getFamilyList
 helper.findFillingAssets = findFillingAssets
