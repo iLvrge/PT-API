@@ -3327,16 +3327,18 @@ const findMaxMinLifeSpan = async(timelineSpan) => {
             counterWithYear.push(Counter)
             counterWithYear.push('stroke-width:1;stroke-color:#2196f3;fill-color:#1565C0;')
             counterWithYear.push(`Year: ${i}\nNumber of Assets: ${Counter}`)
-            assetsLifeSpan.push(counterWithYear)
+            if(i >= currentYear) { 
+                assetsLifeSpan.push(counterWithYear)
+            }
         }
-        if(currentYear == i) {
+        /* if(currentYear == i) {
             assetsLifeSpan.push([currentYear, 0, null, null])  
             entered = true
-        }
+        } */
     }
-    if(entered === false) {
+   /*  if(entered === false) {
         assetsLifeSpan.push([currentYear, 0, null, null])  
-    }
+    } */
     return assetsLifeSpan
 }
 
@@ -3638,6 +3640,14 @@ const findFilterAssets = async(req) => {
                             if(Array.isArray(companies) && companies.length > 0) {
                                 query += ` AND representative_id IN (:company_id)`
                             }
+
+                            if(customers && customers != '' && where.layoutID == 39) {
+                                customers = JSON.parse( customers )
+                                where.customers = customers
+                                query += ` AND assignor_id IN (:customers)`
+                            }
+
+
                             query += ` GROUP BY application`;
                         } else {
                             if(tabs && tabs != '') {
@@ -3772,7 +3782,7 @@ const findCompanyName = async(DBConnection, selectedCompanies) => {
 
 const findFillingAssets = async (req) => {
     let {companies } = req.query;
-    let {selectedCompanies} = req.body
+    let {selectedCompanies, lawfirm} = req.body
     const replacements = { organisation_id: req.orgId, year: connection.DEFAULT_YEAR }
 
     const allAssets = []
@@ -3822,7 +3832,35 @@ const findFillingAssets = async (req) => {
             findAllAssigneeAssets += `  OR aaa.representative_id IN (:representativeIDs) `
         } 
         
-        findAllAssigneeAssets += ` ) AND appno_doc_num IN (SELECT application FROM dashboard_items WHERE organisation_id = :organisation_id  AND representative_id IN (:companies) AND type = :type GROUP BY application) GROUP BY appno_doc_num`
+        findAllAssigneeAssets += ` ) AND appno_doc_num IN (SELECT application FROM dashboard_items WHERE organisation_id = :organisation_id  AND representative_id IN (:companies) AND type = :type `
+
+        if(typeof lawfirm != 'undefined' && lawfirm > 0) {
+
+            if(lawfirm > 0) { 
+                const findLawFirm = `SELECT  lf.law_firm_id  FROM db_uspto.correspondent AS c LEFT JOIN db_uspto.law_firm  as lf ON c.cname = lf.name
+                LEFT JOIN db_uspto.representative_law_firm AS rlf ON rlf.representative_id = lf.representative_id WHERE c.rf_id = :rfID`
+
+                const getLawFirmData = await connection.applicationNew.query(findLawFirm, {
+                    type: connection.Sequelize.QueryTypes.SELECT,
+                    raw: true,
+                    plain: true,
+                    logging: console.log,
+                    replacements: {rfID: lawfirm},
+                }) 
+
+                if(getLawFirmData.length > 0) {
+                    const allLawfirms = []
+                    const promise = getLawFirmData.map( row => {
+                        allLawfirms.push(row.law_firm_id)
+                    })
+                    await Promise.all(promise)
+                    replacements.lawfirms = allLawfirms
+                    findAllAssigneeAssets += ` AND lawfirm_id IN (:lawfirms) `;
+                } 
+            } 
+        }
+        
+        findAllAssigneeAssets += `  GROUP BY application) GROUP BY appno_doc_num`
 
         replacements.companyNames = allCompanyNames
         replacements.companies = companies

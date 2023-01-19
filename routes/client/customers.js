@@ -866,7 +866,7 @@ route.post("/asset_types/assets/agents", [authJWT.verifyToken, clientDBConnectio
     try {
         let result = [['Year', 'Agent', 'filling']], getList = []
 
-        let { list, total, type, selectedCompanies, tabs, customers, assignments, data_type, format_type } = req.body
+        let { list, total, type, selectedCompanies, tabs, customers, assignments, lawfirm, data_type, format_type } = req.body
         
         const where = { year: 1999, organisationID: req.orgId,}  
 
@@ -895,7 +895,34 @@ route.post("/asset_types/assets/agents", [authJWT.verifyToken, clientDBConnectio
                  */
                 assets =  await helpers.findFillingAssets(req) 
             } else {
-                const ownedAssets = `SELECT application FROM db_new_application.dashboard_items WHERE organisation_id = :organisationID AND representative_id = :company_id AND type = :ownedType GROUP BY application `;
+                let ownedAssets = `SELECT application FROM db_new_application.dashboard_items WHERE organisation_id = :organisationID AND representative_id = :company_id AND type = :ownedType `
+
+
+                if(lawfirm > 0) { 
+                    const findLawFirm = `SELECT  lf.law_firm_id  FROM db_uspto.correspondent AS c LEFT JOIN db_uspto.law_firm  as lf ON c.cname = lf.name
+                    LEFT JOIN db_uspto.representative_law_firm AS rlf ON rlf.representative_id = lf.representative_id WHERE c.rf_id = :rfID`
+
+                    const getLawFirmData = await connection.applicationNew.query(findLawFirm, {
+                        type: connection.Sequelize.QueryTypes.SELECT,
+                        raw: true,
+                        plain: true,
+                        logging: console.log,
+                        replacements: {rfID: lawfirm},
+                    }) 
+
+                    if(getLawFirmData.length > 0) {
+                        const allLawfirms = []
+                        const promise = getLawFirmData.map( row => {
+                            allLawfirms.push(row.law_firm_id)
+                        })
+                        await Promise.all(promise)
+                        where.lawfirms = allLawfirms
+                        ownedAssets += ` AND lawfirm_id IN (:lawfirms) `;
+                    } 
+                }
+
+
+                ownedAssets += ` GROUP BY application `;
 
                 const getAssetsData = await connection.application.query(ownedAssets,{
                         type: connection.Sequelize.QueryTypes.SELECT,
@@ -1134,7 +1161,7 @@ route.post("/asset_types/inventors/location", [authJWT.verifyToken, clientDBConn
         
 
         const list = await helpers.findFilterAssets(req);
-        
+        console.log("OWNWNWNWNWNWNNWNNWNWNWNWN")
         let result = [['Country', 'Assets']]
         if(list != '' && Array.isArray(list) && list.length > 0) {
             /* const query = `SELECT application_country, SUM(country_count) AS number FROM( SELECT  application_number,application_country, COUNT(application_country)  AS country_count FROM db_uspto.assets_family             
