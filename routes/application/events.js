@@ -1695,7 +1695,7 @@ route.post("/events/abandoned/maintainence/assets", [authJWT.verifyToken], async
             where.company_id = companies
         } 
        
-        const assets = `SELECT application FROM db_new_application.dashboard_items AS assets WHERE assets.organisation_id = :organisationID AND representative_id IN (:company_id) AND type = :layoutID GROUP BY application`;
+        const assets = `SELECT application, patent FROM db_new_application.dashboard_items AS assets WHERE assets.organisation_id = :organisationID AND representative_id IN (:company_id) AND type = :layoutID GROUP BY application`;
 
         const appList =  await connection.applicationNew.query(assets,{
             type: connection.Sequelize.QueryTypes.SELECT,
@@ -1703,15 +1703,18 @@ route.post("/events/abandoned/maintainence/assets", [authJWT.verifyToken], async
             logging: console.log,
             replacements: where,
         })
-
+        const applications = []
         if(appList !== null && appList.length > 0) {
             list = [];
             appList.forEach( row => {
                 list.push(`${row.application}`)
+                if(row.patent == '' || row.patent == null) {
+                    applications.push(`${row.application}`)
+                }
             })
             where.list = list
         }
-        const allAssetsSteps = []
+        const allAssetsSteps = [['type', 'count', {type: 'string', role: 'style'}]]
         if(list.length > 0) {
             where.event_code = ['M1552','M2552', 'M3552', 'M1553','M2553', 'M3553', 'M1551','M2551', 'M3551']
             const query = "SELECT  emf.appno_doc_num, event_code FROM db_patent_maintainence_fee.event_maintainence_fees AS emf WHERE emf.appno_doc_num IN ( :list )   AND event_code IN (:event_code) "
@@ -1721,7 +1724,10 @@ route.post("/events/abandoned/maintainence/assets", [authJWT.verifyToken], async
                 replacements: where,
                 raw: true,
                 logging: console.log,
-            })   
+            })  
+            if(applications.length > 0) {
+                allAssetsSteps.push(["Application", applications.length, "stroke-width:1;stroke-color:#2196f3;fill-color:#1565C0;"]) 
+            } 
             if(getList.length > 0) {
                 const FirstYear = [], SecondYear = [], ThirdYear = [], uniqueAssets = [] 
                 const promise = getList.map( asset => { 
@@ -1759,18 +1765,18 @@ route.post("/events/abandoned/maintainence/assets", [authJWT.verifyToken], async
                 })
                 await Promise.all(promiseFind)  
                 if(filterAsset.length > 0) { 
-                    allAssetsSteps.push(["Before First Maintainence", filterAsset.length]) 
+                    allAssetsSteps.push(["4th Year", filterAsset.length, "stroke-width:1;stroke-color:#2196f3;fill-color:#1565C0;"]) 
                 }
 
                 if(abandonedSecondPayments.length > 0) { 
-                    allAssetsSteps.push(["Before Second Maintainence", abandonedSecondPayments.length]) 
+                    allAssetsSteps.push(["8th Year", abandonedSecondPayments.length, "stroke-width:1;stroke-color:#2196f3;fill-color:#1565C0;"]) 
                 }
 
                 if(abandonedThirdPayments.length > 0) { 
-                    allAssetsSteps.push(["Before Third Maintainence", abandonedSecondPayments.length]) 
+                    allAssetsSteps.push(["12th Year", abandonedSecondPayments.length, "stroke-width:1;stroke-color:#2196f3;fill-color:#1565C0;"]) 
                 } 
             } else {
-                allAssetsSteps.push(["Before First Maintainence", asset.length])
+                allAssetsSteps.push(["4th Year", asset.length, "stroke-width:1;stroke-color:#2196f3;fill-color:#1565C0;"])
             }
         }  
         res.status(200).json(allAssetsSteps);
@@ -1815,16 +1821,32 @@ route.post("/events/abandoned/yearly/assets", [authJWT.verifyToken], async(req, 
             })
             where.list = list
         }
-        let getList = []
+        let getList = [['year', 'count', {type: 'string', role: 'style'}]]
         if(list.length > 0) {
-            const query = "SELECT date_format(status_date, '%Y') AS year, COUNT(appno_doc_num) AS counter, status FROM db_uspto.application_status WHERE date_format(status_date, '%Y') > :year AND appno_doc_num IN ( :list ) AND status IN (:status) GROUP BY year "
+            const query = "SELECT date_format(status_date, '%Y') AS year, COUNT(appno_doc_num) AS count FROM db_uspto.application_status WHERE date_format(status_date, '%Y') > :year AND appno_doc_num IN ( :list ) AND status IN (:status) GROUP BY year "
 
-            getList = await connection.applicationNew.query(query, {
+            const abandonedList = await connection.applicationNew.query(query, {
                 type: connection.Sequelize.QueryTypes.SELECT,
                 replacements: where,
                 raw: true,
                 logging: console.log,
             }) 
+
+            if(abandonedList.length > 0) {
+                const {max, min} = await helpers.minMax2DArray(abandonedList, 'year');
+                for(let i = min; i < max; i++) {
+                    let filterList = await abandonedList.filter( item => {
+                        return i == parseInt(item.year) ? item : undefined;
+                    });
+                    if(filterList != undefined && filterList.length > 0) {
+            
+                        let Counter = await filterList.reduce((a, b) => +a + +b.count, 0);
+                        getList.push([ i, Counter, "stroke-width:1;stroke-color:#2196f3;fill-color:#1565C0;" ]);
+                    } else {
+                        getList.push([ i, 0, "stroke-width:1;stroke-color:#2196f3;fill-color:#1565C0;" ]);
+                    }
+                }
+            }
         } 
         res.status(200).json(getList);
     } catch (err) {
@@ -1964,12 +1986,55 @@ route.post("/events/assets", [authJWT.verifyToken], async(req, res, next) => {
                 })
 
                 const ASSETS_LIFE_SPAN_DATE_FORMAT = 'YYYY';
-                if(getList.length > 0) {                
+                if(getList.length > 0) {          
+                    /**
+                     * Get Extension Data
+                     */      
+                    const extensionQuery = `Select appno_doc_num, extension FROM db_patent_application_bibliographic.grant_extension WHERE appno_doc_num IN (:list)`
+
+                    const getExtensionList = await connection.applicationNew.query(extensionQuery, {
+                        type: connection.Sequelize.QueryTypes.SELECT,
+                        replacements: replacements,
+                        raw: true,
+                        logging: console.log,
+                    })
+
+                    const extensionAssets = [], allExtensionData = []
+
+                    if(getExtensionList.length > 0) {
+                        const promise = getExtensionList.map( extension => {
+                            if(!extensionAssets.includes(extension.appno_doc_num)){
+                                extensionAssets.push(`${extension.appno_doc_num}`)
+                                allExtensionData.push(extension)
+                            }
+                        })
+
+                        await Promise.all(promise)
+                    }
+                    
                     const timelineSpan = [], applicationNumberAdded = [], dateAdded = [];
                     const promises = getList.map( async item => {
                         if(!applicationNumberAdded.includes(item.application)){
                             const startYear = moment(new Date(item.appno_date)).format(ASSETS_LIFE_SPAN_DATE_FORMAT);
-                            let endYear = moment(new Date(item.appno_date)).add(20, 'years').format(ASSETS_LIFE_SPAN_DATE_FORMAT);
+                            let addYear = 20
+
+                            if(item.patent.indexOf('D') !== -1) {
+                                addYear = 15
+                            }
+
+                            let endYear = moment(new Date(item.appno_date)).add(addYear, 'years')
+                            
+                            if(extensionAssets.includes(`${item.application}`)) { 
+                                const findIndex = allExtensionData.findIndex( row => `${row.appno_doc_num}` == `${item.application}`) 
+                                if(findIndex !== -1) { 
+                                    if(allExtensionData[findIndex].extension > 0) {
+                                        endYear = endYear.add(allExtensionData[findIndex].extension, 'days')
+                                    }
+                                }
+                            }
+                            
+                            endYear = endYear.format(ASSETS_LIFE_SPAN_DATE_FORMAT);
+
                             for(let i = parseInt(startYear); i <= parseInt(endYear); i++) {
                                 timelineSpan.push({year: i, count: 1, application: item.application});
                             }
