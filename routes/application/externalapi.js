@@ -387,7 +387,7 @@ route.post("/citation", [authJWT.verifyToken], async (req, res) => {
                 if(start != '' && end != '') {
                     replacements.start = start
                     replacements.end = end
-                    queryCitedLogo = " AND cpwa.app_date BETWEEM :start AND :end "
+                    queryCitedLogo += " AND cpwa.app_date BETWEEN :start AND :end "
                 }
 
 
