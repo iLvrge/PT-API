@@ -391,7 +391,7 @@ route.post("/citation", [authJWT.verifyToken], async (req, res) => {
                 }
 
 
-                queryCitedLogo += " GROUP BY cp.patent_number, cpwa.citing_patent_number "
+                queryCitedLogo += " GROUP BY cp.patent_number, cpwa.citing_patent_number ORDER BY cpwa.app_date DESC"
 
                 if(typeof counter == 'undefined' ) { 
                     queryCitedLogo += " LIMIT 0, 500";
