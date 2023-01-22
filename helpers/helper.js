@@ -875,6 +875,15 @@ let getAddressListByCompanyID = async( ID, type ) => {
     return addresses;
 }
 
+const removeSpaces = (str) => {
+    str = str.replace(/,/g, " ").trim();
+    str = str.replace(/\s/g, " ").trim();
+    str = str.replace(/ {2,}/g, ' ').trim();
+    str = str.replace(/\./g, "").trim();
+    str = str.replace(/!/g, " ").trim();
+    return str
+}
+
 
 let getAddressListByLawfirmID = async( ID ) => {
     let addresses = [];
@@ -893,6 +902,8 @@ let getAddressListByLawfirmID = async( ID ) => {
         let allLawFirms = []
         if(representative !== null){
             allLawFirms.push(representative.name)
+            const name = removeSpaces(representative.name)
+            allLawFirms.push(name)
             if(representative.representative_id > 0) {
                 const representativeNameQuery =  `SELECT name FROM  law_firm WHERE
                 representative_id IN (SELECT representative_id FROM representative_law_firm WHERE representative_name = :name) GROUP BY name`;
@@ -903,7 +914,13 @@ let getAddressListByLawfirmID = async( ID ) => {
                     logging: console.log, 
                 });
                 if(allNames.length > 0) {
-                    const promise = allNames.map( item => !allLawFirms.includes(item.name))
+                    const promise = allNames.map(item => {
+                        if(!allLawFirms.includes(item.name)) {
+                            allLawFirms.includes(item.name)
+                            const name = removeSpaces(item.name)
+                            allLawFirms.push(name)
+                        }
+                    })
                     await Promise.all(promise)
                 }
             }
@@ -939,6 +956,11 @@ let getAddressListByLawfirmID = async( ID ) => {
             SELECT cor.caddress_2 as address, ass.rf_id FROM correspondent  AS cor
             INNER JOIN assignment AS ass ON ass.rf_id = cor.rf_id
             WHERE  date_format(ass.record_dt, '%Y') >= :year AND (ass.cname IN (:names) OR ass.caddress_1 IN (:names))   AND cor.caddress_2 <> '' 
+            GROUP BY address
+            UNION
+            SELECT cor.caddress_1 as address, ass.rf_id FROM correspondent  AS cor
+            INNER JOIN assignment AS ass ON ass.rf_id = cor.rf_id
+            WHERE  date_format(ass.record_dt, '%Y') >= :year AND (ass.cname IN (:names) OR ass.caddress_1 IN (:names))   AND cor.caddress_1 <> '' 
             GROUP BY address
         ) as temp GROUP BY address  ORDER BY address ASC`;
 

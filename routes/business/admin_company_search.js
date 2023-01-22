@@ -1164,7 +1164,7 @@ route.get("/company/:companyID/law_firms", [authJWT.verifyToken, authJWT.isAdmin
             allIDs.push(req.params.companyID)
         }
         
-        const query = `SELECT law_firms.law_firm_id, law_firms.name AS name,  COUNT(cor.rf_id) AS counter, law_firms.instances AS total_occurences, representative_law_firm.representative_id, representative_law_firm.representative_name 
+        const query = `SELECT law_firms.law_firm_id, law_firms.name AS name,  COUNT(DISTINCT cor.rf_id) AS counter, law_firms.instances AS total_occurences, representative_law_firm.representative_id, representative_law_firm.representative_name 
         FROM db_uspto.law_firm AS law_firms 
         LEFT JOIN db_uspto.representative_law_firm AS representative_law_firm ON representative_law_firm.representative_id =  law_firms.representative_id 
                 INNER JOIN correspondent AS cor ON cor.cname = law_firms.name 
