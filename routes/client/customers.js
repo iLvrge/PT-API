@@ -245,29 +245,29 @@ route.get("/timeline", [authJWT.verifyToken], async(req, res, next) => {
                 query += " GROUP BY di.application ORDER BY exec_dt DESC  LIMIT 0, 500 "
             } else if (replacements.layout == 41) {
                 replacements.activity_id = [5, 12];
-                query = "SELECT assignment.rf_id as id, (SELECT exec_dt FROM db_uspto.assignor WHERE rf_id = assignment.rf_id LIMIT 1) AS exec_dt, release_rf_id, release_exec_dt, full_match AS partial_transaction, all_release_ids, total_assets AS releaseAssets, IF(representative.representative_name <> '', representative.representative_name, assignor_and_assignee.name)  AS customerName, assignor_and_assignee.assignor_and_assignee_id AS name_id,representative.representative_id as repID, apt.activity_id AS tab_id, '' AS `group`, '' AS `company`, (SELECT count(asset) FROM ( SELECT IF(dd.grant_doc_num <> '', dd.grant_doc_num, dd.appno_doc_num) AS asset FROM db_uspto.documentid AS dd WHERE dd.rf_id = assignment.rf_id GROUP BY asset ) AS temp) AS totalAssets FROM db_uspto.assignment INNER JOIN activity_parties_transactions AS apt ON apt.rf_id = assignment.rf_id INNER JOIN dashboard_items AS di ON assignment.rf_id = di.rf_id INNER JOIN db_uspto.assignor_and_assignee AS assignor_and_assignee ON assignor_and_assignee.assignor_and_assignee_id = di.assignor_id LEFT JOIN db_uspto.representative AS representative ON representative.representative_id = assignor_and_assignee.representative_id WHERE apt.activity_id IN (:activity_id) AND di.organisation_id = :organisation_id AND di.representative_id IN (:companies) AND di.type = :layout " 
+                query = "SELECT assignment.rf_id as id, MAX(apt.exec_dt) AS exec_dt, release_rf_id, release_exec_dt, full_match AS partial_transaction, all_release_ids, total_assets AS releaseAssets, IF(representative.representative_name <> '', representative.representative_name, assignor_and_assignee.name)  AS customerName, assignor_and_assignee.assignor_and_assignee_id AS name_id,representative.representative_id as repID, apt.activity_id AS tab_id, '' AS `group`, '' AS `company`, (SELECT count(asset) FROM ( SELECT IF(dd.grant_doc_num <> '', dd.grant_doc_num, dd.appno_doc_num) AS asset FROM db_uspto.documentid AS dd WHERE dd.rf_id = assignment.rf_id GROUP BY asset ) AS temp) AS totalAssets FROM db_uspto.assignment INNER JOIN activity_parties_transactions AS apt ON apt.rf_id = assignment.rf_id INNER JOIN dashboard_items AS di ON assignment.rf_id = di.rf_id INNER JOIN db_uspto.assignor_and_assignee AS assignor_and_assignee ON assignor_and_assignee.assignor_and_assignee_id = di.assignor_id LEFT JOIN db_uspto.representative AS representative ON representative.representative_id = assignor_and_assignee.representative_id WHERE apt.activity_id IN (:activity_id) AND di.organisation_id = :organisation_id AND di.representative_id IN (:companies) AND di.type = :layout " 
                 
                 if(typeof start != 'undefined' && start != '' && typeof end != 'undefined' && end != '') {
                     replacements.start = start
                     replacements.end = end
-                    query += " AND  exec_dt BETWEEN :start AND :end "
+                    query += " AND  apt.exec_dt BETWEEN :start AND :end "
                 } else {
-                    query += " AND date_format(exec_dt, '%Y') > :year "
+                    query += " AND date_format(apt.exec_dt, '%Y') > :year "
                 }
                 
-                query += " GROUP BY assignment.rf_id ORDER BY exec_dt DESC  LIMIT 0, 500"  
+                query += " GROUP BY assignment.rf_id ORDER BY apt.exec_dt DESC  LIMIT 0, 500"  
             } else {
                 query = "SELECT assignment.rf_id as id, CASE WHEN representative_law_firm.representative_name <> null THEN representative_law_firm.representative_name WHEN law_firm.name <> null THEN law_firm.name ELSE correspondent.cname END AS recorded_by, assignment.record_dt, MAX(aor.exec_dt) AS exec_dt, release_rf_id, release_exec_dt, full_match AS partial_transaction, all_release_ids, total_assets AS releaseAssets, IF(representative.representative_name <> '', representative.representative_name, assignor_and_assignee.name)  AS customerName, GROUP_CONCAT(DISTINCT aor.or_name) AS assignors, assignor_and_assignee.assignor_and_assignee_id AS name_id,representative.representative_id as repID, apt.activity_id AS tab_id, '' AS `group`, '' AS `company`, (SELECT count(asset) FROM ( SELECT IF(dd.grant_doc_num <> '', dd.grant_doc_num, dd.appno_doc_num) AS asset FROM db_uspto.documentid AS dd WHERE dd.rf_id = assignment.rf_id GROUP BY asset ) AS temp) AS totalAssets FROM db_uspto.assignment INNER JOIN activity_parties_transactions AS apt ON apt.rf_id = assignment.rf_id INNER JOIN db_uspto.correspondent AS correspondent ON correspondent.rf_id = assignment.rf_id LEFT JOIN db_uspto.law_firm AS law_firm ON law_firm.name = correspondent.cname LEFT JOIN db_uspto.representative_law_firm AS representative_law_firm ON representative_law_firm.representative_id = law_firm.representative_id INNER JOIN db_uspto.assignee AS ass ON ass.rf_id = assignment.rf_id INNER JOIN db_uspto.assignor AS aor ON aor.rf_id = assignment.rf_id INNER JOIN db_uspto.assignor_and_assignee AS assignor_and_assignee ON assignor_and_assignee.assignor_and_assignee_id = ass.assignor_and_assignee_id LEFT JOIN db_uspto.representative AS representative ON representative.representative_id = assignor_and_assignee.representative_id WHERE assignment.rf_id IN (SELECT rf_id FROM dashboard_items WHERE organisation_id = :organisation_id  AND representative_id IN (:companies) AND type = :layout) "
 
                 if(typeof start != 'undefined' && start != '' && typeof end != 'undefined' && end != '') {
                     replacements.start = start
                     replacements.end = end
-                    query += " AND  exec_dt BETWEEN :start AND :end "
+                    query += " AND  aor.exec_dt BETWEEN :start AND :end "
                 } else {
                     query += " AND date_format(aor.exec_dt, '%Y') > :year "
                 }
                 
-                query += " GROUP BY assignment.rf_id ORDER BY exec_dt DESC  LIMIT 0, 500"  
+                query += " GROUP BY assignment.rf_id ORDER BY aor.exec_dt DESC  LIMIT 0, 500"  
             }
         } else {
             let groupQuery = "SELECT activity_id AS `group` FROM activity_parties_transactions WHERE activity_parties_transactions.organisation_id = :organisation_id "               
@@ -898,29 +898,6 @@ route.post("/asset_types/assets/agents", [authJWT.verifyToken, clientDBConnectio
                 let ownedAssets = `SELECT application FROM db_new_application.dashboard_items WHERE organisation_id = :organisationID AND representative_id = :company_id AND type = :ownedType `
 
 
-                if(lawfirm > 0) { 
-                    const findLawFirm = `SELECT  lf.law_firm_id  FROM db_uspto.correspondent AS c LEFT JOIN db_uspto.law_firm  as lf ON c.cname = lf.name
-                    LEFT JOIN db_uspto.representative_law_firm AS rlf ON rlf.representative_id = lf.representative_id WHERE c.rf_id = :rfID`
-
-                    const getLawFirmData = await connection.applicationNew.query(findLawFirm, {
-                        type: connection.Sequelize.QueryTypes.SELECT,
-                        raw: true,
-                        plain: true,
-                        logging: console.log,
-                        replacements: {rfID: lawfirm},
-                    }) 
-
-                    if(getLawFirmData.length > 0) {
-                        const allLawfirms = []
-                        const promise = getLawFirmData.map( row => {
-                            allLawfirms.push(row.law_firm_id)
-                        })
-                        await Promise.all(promise)
-                        where.lawfirms = allLawfirms
-                        ownedAssets += ` AND lawfirm_id IN (:lawfirms) `;
-                    } 
-                }
-
 
                 ownedAssets += ` GROUP BY application `;
 
@@ -954,15 +931,23 @@ route.post("/asset_types/assets/agents", [authJWT.verifyToken, clientDBConnectio
                     /* query = `SELECT name, year, COUNT(appno_doc_num) AS counter FROM (  SELECT l.name, l.appno_doc_num, date_format(ag.appno_date, '%Y') AS year  FROM db_patent_examiner_data.application_correspondence AS l INNER JOIN  db_patent_examiner_data.application_publication_grant AS ag ON ag.appno_doc_num = l.appno_doc_num WHERE l.name IN (SELECT lawfirm FROM db_new_application.dashboard_items WHERE organisation_id = :organisationID AND representative_id = :company_id AND type = :lawfirmType GROUP BY lawfirm) ` */
 
 
-                    if( assignments.length > 0 ) {
-                        const findLawFirm = `SELECT cname, lf.name, rlf.representative_id, rlf.representative_name FROM db_uspto.correspondent AS c LEFT JOIN db_uspto.law_firm  as lf ON c.cname = lf.name
-                        LEFT JOIN db_uspto.representative_law_firm AS rlf ON rlf.representative_id = lf.representative_id WHERE c.rf_id IN (:assignments)`
+                    if( assignments.length > 0  || lawfirm > 0) {
+                        let findLawFirm = `SELECT cname, lf.name, rlf.representative_id, rlf.representative_name FROM db_uspto.correspondent AS c LEFT JOIN db_uspto.law_firm  as lf ON c.cname = lf.name
+                        LEFT JOIN db_uspto.representative_law_firm AS rlf ON rlf.representative_id = lf.representative_id WHERE `
+                        
+                        if( assignments.length > 0) {
+                            findLawFirm += ` c.rf_id IN (:assignments)`
+                        } else {
+                            findLawFirm += ` c.rf_id IN (:lawfirm)`
+                        }
+                        
+                        
 
                         const getLawFirmData = await connection.applicationNew.query(findLawFirm, {
                             type: connection.Sequelize.QueryTypes.SELECT,
                             raw: true,
                             logging: console.log,
-                            replacements: {assignments: where.assignments},
+                            replacements: {assignments: where.assignments,lawfirm },
                         })  
                          
                         if(getLawFirmData.length > 0) {
@@ -1024,8 +1009,32 @@ route.post("/asset_types/assets/agents", [authJWT.verifyToken, clientDBConnectio
                             INNER JOIN db_uspto.correspondent as cor ON cor.rf_id = apt.rf_id 
                             INNER JOIN db_uspto.law_firm AS l ON l.name = cor.cname
                             LEFT JOIN db_uspto.representative_law_firm AS rlf ON rlf.representative_id = l.representative_id
-                            Where apt.organisation_id = :organisationID AND apt.company_id = :company_id AND di.organisation_id = :organisationID  AND di.representative_id IN(:company_id) AND di.type = 40 AND date_format(apt.exec_dt, '%Y') > :year
-                            GROUP BY di.rf_id
+                            Where apt.organisation_id = :organisationID AND apt.company_id = :company_id AND di.organisation_id = :organisationID  AND di.representative_id IN(:company_id) AND di.type = 40 AND date_format(apt.exec_dt, '%Y') > :year `
+
+                        
+
+                        if(lawfirm > 0) { 
+                            const findLawFirm = `SELECT  lf.law_firm_id  FROM db_uspto.correspondent AS c LEFT JOIN db_uspto.law_firm  as lf ON c.cname = lf.name
+                            LEFT JOIN db_uspto.representative_law_firm AS rlf ON rlf.representative_id = lf.representative_id WHERE c.rf_id = :rfID`
+
+                            const getLawFirmData = await connection.applicationNew.query(findLawFirm, {
+                                type: connection.Sequelize.QueryTypes.SELECT,
+                                raw: true,
+                                logging: console.log,
+                                replacements: {rfID: lawfirm},
+                            }) 
+
+                            if(getLawFirmData.length > 0) {
+                                const allLawfirms = []
+                                const promise = getLawFirmData.map( row => {
+                                    allLawfirms.push(row.law_firm_id)
+                                })
+                                await Promise.all(promise)
+                                where.lawfirms = allLawfirms
+                                query += ` AND di.lawfirm_id IN (:lawfirms) `; 
+                            } 
+                        } 
+                        query += `   GROUP BY di.rf_id
                         ) AS temp
                         GROUP BY name, year`
                         where.type = 40
