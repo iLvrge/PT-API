@@ -147,11 +147,17 @@ route.put("/:companyID", [authJWT.verifyToken, clientDBConnection.connect], asyn
                     if(parent_id == 0 && company.child == 1) {
                         item.child = 0
                     } else if (parent_id > 0 && company.child == 0) {
-                        item.child = 1
+                        item.child = 1 
                     }
                     updateRecord = true; 
                 } 
                 if(updateRecord === true) {
+                    console.log('item', item)
+                    await Representative.update(item, {
+                        where: {
+                            representative_id: companyID
+                        }
+                    })
                     const getCompaniesList = await helpers.getCompaniesWithChildren(req.connection_db, req.orgId);
                     res.status(200).json(getCompaniesList); 
                 }
