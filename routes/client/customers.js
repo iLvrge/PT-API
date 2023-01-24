@@ -867,8 +867,10 @@ route.post("/asset_types/assets/agents", [authJWT.verifyToken, clientDBConnectio
         let result = [['Year', 'Agent', 'filling']], getList = []
 
         let { list, total, type, selectedCompanies, tabs, customers, assignments, lawfirm, data_type, format_type } = req.body
+ 
+        const startDate = moment(new Date()).subtract(11, 'year').format('YYYY')
         
-        const where = { year: 1999, organisationID: req.orgId,}  
+        const where = { year: startDate, organisationID: req.orgId,}  
 
         const companies = JSON.parse(selectedCompanies)
         if(companies.length > 0) {
@@ -968,7 +970,7 @@ route.post("/asset_types/assets/agents", [authJWT.verifyToken, clientDBConnectio
                             where.lawfirms = lawfirmNames
                         }
                     }
-                    query += ` AND l.appno_doc_num IN (:assets)) AS tempData
+                    query += ` AND l.appno_doc_num IN (:assets) AND date_format(ap.appno_date, '%Y') > :year) AS tempData
                     ) AS temp GROUP BY name, year `
                 } else {
                     /**
@@ -978,7 +980,7 @@ route.post("/asset_types/assets/agents", [authJWT.verifyToken, clientDBConnectio
                         query = `SELECT name,  year, COUNT(rf_id) AS counter FROM (
                             Select CASE WHEN cor.convey_ty = 'assignment' THEN 'Acquisitions' WHEN cor.convey_ty = 'correct' THEN 'Corrections' WHEN cor.convey_ty = 'employee' THEN 'Employees' ELSE cor.convey_ty END AS name, date_format(apt.exec_dt, '%Y') AS year, apt.rf_id from db_new_application.activity_parties_transactions AS apt
                             INNER JOIN db_uspto.representative_assignment_conveyance as cor ON cor.rf_id = apt.rf_id
-                            Where cor.rf_id IN (:assignments) AND apt.organisation_id = :organisationID AND apt.company_id = :company_id
+                            Where cor.rf_id IN (:assignments) AND apt.organisation_id = :organisationID AND apt.company_id = :company_id AND date_format(apt.exec_dt, '%Y') > :year
                             GROUP BY cor.convey_ty, apt.rf_id
                         ) AS temp
                         GROUP BY name, year `
@@ -1603,7 +1605,10 @@ route.get("/:layout/assets", [authJWT.verifyToken, clientDBConnection.connect], 
                             console.log(getFamilyList);
                             
                             replacements.assetList = getFamilyList
-                            query += ` AND patent IN (:assetList) `
+
+                            query = `SELECT * FROM (SELECT  CASE WHEN grant_doc_num = '' OR grant_doc_num IS NULL THEN CONCAT(SUBSTRING(appno_doc_num, 1, 2), '/', FORMAT(SUBSTRING(grant_doc_num, 3), 0)) ELSE FORMAT(grant_doc_num, 0) END AS format_asset,
+                                CASE WHEN grant_doc_num = '' OR grant_doc_num IS NULL THEN grant_doc_num ELSE grant_doc_num END AS asset, 
+                                CASE WHEN grant_doc_num = '' OR grant_doc_num IS NULL THEN 1 ELSE 0 END AS asset_type, appno_doc_num,  grant_doc_num, 0 AS child_count, '' AS channel  FROM db_patent_application_bibliographic.application_grant WHERE grant_doc_num IN (:assetList) GROUP BY grant_doc_num`
                         } else {
                             if(Array.isArray(customers) && customers.length > 0  && (replacements.layoutID == 32 || replacements.layoutID == 33 )) {
                                 query += `  application IN (
