@@ -1054,6 +1054,7 @@ route.post("/asset_types/assets/agents", [authJWT.verifyToken, clientDBConnectio
                         } 
                         query += `   GROUP BY di.rf_id
                         ) AS temp
+                        where name IS NOT NULL
                         GROUP BY name, year`
                         
                     } 
