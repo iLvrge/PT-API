@@ -146,18 +146,24 @@ route.get("/timeline", [authJWT.verifyToken], async(req, res, next) => {
                 const findList = await findCollateralizedAssets(replacements)
                 replacements.activity_id = [5, 12];
                 replacements.assets = findList;
-                query = "SELECT assignment.rf_id as id, apt.exec_dt, release_rf_id, release_exec_dt, full_match AS partial_transaction, all_release_ids, total_assets AS releaseAssets, IF(representative.representative_name <> '', representative.representative_name, assignor_and_assignee.name)  AS customerName,  assignor_and_assignee.assignor_and_assignee_id AS name_id, representative.representative_id as repID, apt.activity_id AS tab_id, '' AS `group`, '' AS `company`, COUNT(DISTINCT doc.appno_doc_num) AS totalAssets FROM db_uspto.assignment INNER JOIN db_new_application.activity_parties_transactions AS apt ON apt.rf_id = assignment.rf_id INNER JOIN db_uspto.documentid AS doc ON doc.rf_id = apt.rf_id INNER JOIN db_uspto.assignor_and_assignee AS assignor_and_assignee ON assignor_and_assignee.assignor_and_assignee_id = apt.assignor_and_assignee_id LEFT JOIN db_uspto.representative AS representative ON representative.representative_id = assignor_and_assignee.representative_id WHERE apt.activity_id IN (:activity_id) AND apt.organisation_id = :organisation_id AND apt.company_id IN (:companies) AND (release_exec_dt IS NULL OR full_match = 0) AND doc.appno_doc_num IN(:assets) "
-                
-                
-                if(typeof start != 'undefined' && start != '' && typeof end != 'undefined' && end != '') {
-                    replacements.start = start
-                    replacements.end = end
-                    query += " AND  apt.exec_dt BETWEEN :start AND :end "
+
+                if(findList.length > 0) {
+
+                    query = "SELECT assignment.rf_id as id, apt.exec_dt, release_rf_id, release_exec_dt, full_match AS partial_transaction, all_release_ids, total_assets AS releaseAssets, IF(representative.representative_name <> '', representative.representative_name, assignor_and_assignee.name)  AS customerName,  assignor_and_assignee.assignor_and_assignee_id AS name_id, representative.representative_id as repID, apt.activity_id AS tab_id, '' AS `group`, '' AS `company`, COUNT(DISTINCT doc.appno_doc_num) AS totalAssets FROM db_uspto.assignment INNER JOIN db_new_application.activity_parties_transactions AS apt ON apt.rf_id = assignment.rf_id INNER JOIN db_uspto.documentid AS doc ON doc.rf_id = apt.rf_id INNER JOIN db_uspto.assignor_and_assignee AS assignor_and_assignee ON assignor_and_assignee.assignor_and_assignee_id = apt.assignor_and_assignee_id LEFT JOIN db_uspto.representative AS representative ON representative.representative_id = assignor_and_assignee.representative_id WHERE apt.activity_id IN (:activity_id) AND apt.organisation_id = :organisation_id AND apt.company_id IN (:companies) AND (release_exec_dt IS NULL OR full_match = 0) AND doc.appno_doc_num IN(:assets) "
+                    
+                    
+                    if(typeof start != 'undefined' && start != '' && typeof end != 'undefined' && end != '') {
+                        replacements.start = start
+                        replacements.end = end
+                        query += " AND  apt.exec_dt BETWEEN :start AND :end "
+                    } else {
+                        query += " AND date_format(apt.exec_dt, '%Y') > :year "
+                    }
+                    
+                    query += " GROUP BY assignment.rf_id ORDER BY apt.exec_dt DESC  LIMIT 0, 500" 
                 } else {
-                    query += " AND date_format(apt.exec_dt, '%Y') > :year "
+                    query = ''
                 }
-                
-                query += " GROUP BY assignment.rf_id ORDER BY exec_dt DESC  LIMIT 0, 500" 
 
             } else if(replacements.layout == 40) {
                 /**LawFirm */
@@ -334,14 +340,16 @@ route.get("/timeline", [authJWT.verifyToken], async(req, res, next) => {
             query += " GROUP BY activity_parties_transactions.rf_id ORDER BY exec_dt DESC  LIMIT 0, 500"   
         }
  
+        if(query != '') {
 
-        list =  await connection.applicationNew.query(query, {
-                type: connection.Sequelize.QueryTypes.SELECT,
-                raw: true,
-                logging: console.log,
-                replacements: replacements,
-            }
-        ); 
+            list =  await connection.applicationNew.query(query, {
+                    type: connection.Sequelize.QueryTypes.SELECT,
+                    raw: true,
+                    logging: console.log,
+                    replacements: replacements,
+                }
+            ); 
+        }
 
         
 
@@ -1005,16 +1013,24 @@ route.post("/asset_types/assets/agents", [authJWT.verifyToken, clientDBConnectio
                             Where apt.organisation_id = :organisationID and apt.company_id = :company_id and doc.appno_doc_num IN (:assets)
                         ) AS temp
                         GROUP BY name, year` */
+
+                        
+
                         query = `SELECT name, year, COUNT(DISTINCT rf_id) AS counter FROM (
                             Select IF(MAX(rlf.representative_name) <> '' , MAX(rlf.representative_name), di.lawfirm) AS name, di.rf_id, date_format(apt.exec_dt, '%Y') AS year from db_new_application.activity_parties_transactions AS apt
                             INNER JOIN db_new_application.dashboard_items AS di ON di.rf_id = apt.rf_id
                             INNER JOIN db_uspto.correspondent as cor ON cor.rf_id = apt.rf_id 
                             INNER JOIN db_uspto.law_firm AS l ON l.name = cor.cname
                             LEFT JOIN db_uspto.representative_law_firm AS rlf ON rlf.representative_id = l.representative_id
-                            Where apt.organisation_id = :organisationID AND apt.company_id = :company_id AND di.organisation_id = :organisationID  AND di.representative_id IN(:company_id) AND di.type = 40 AND date_format(apt.exec_dt, '%Y') > :year `
+                            Where apt.organisation_id = :organisationID AND apt.company_id = :company_id AND di.organisation_id = :organisationID  AND di.representative_id IN(:company_id) AND date_format(apt.exec_dt, '%Y') > :year `
+
+                            if(where.ownedType == 25) {
+                                query += ` AND di.type = :ownedType `
+                            } else {
+                                query += ` AND di.type = :lawfirmType `
+                            }
 
                         
-
                         if(lawfirm > 0) { 
                             const findLawFirm = `SELECT  lf.law_firm_id  FROM db_uspto.correspondent AS c LEFT JOIN db_uspto.law_firm  as lf ON c.cname = lf.name
                             LEFT JOIN db_uspto.representative_law_firm AS rlf ON rlf.representative_id = lf.representative_id WHERE c.rf_id = :rfID`
@@ -1039,7 +1055,7 @@ route.post("/asset_types/assets/agents", [authJWT.verifyToken, clientDBConnectio
                         query += `   GROUP BY di.rf_id
                         ) AS temp
                         GROUP BY name, year`
-                        where.type = 40
+                        
                     } 
                 } 
 
