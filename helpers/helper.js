@@ -3665,8 +3665,10 @@ const findFilterAssets = async(req) => {
 
                             if(customers && customers != '' && where.layoutID == 39) {
                                 customers = JSON.parse( customers )
-                                where.customers = customers
-                                query += ` AND assignor_id IN (:customers)`
+                                if(customers.length > 0) {
+                                    where.customers = customers
+                                    query += ` AND assignor_id IN (:customers)`
+                                }
                             }
 
 
