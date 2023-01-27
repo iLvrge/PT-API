@@ -2336,6 +2336,45 @@ route.get("/lawfirm", [authJWT.verifyToken, clientDBConnection.connect], async(r
     }
 })
 
+
+route.get("/lenders", [authJWT.verifyToken, clientDBConnection.connect], async(req, res, next) => {
+    try {
+        let { companies, rfID  } = req.query;
+
+        let replacements =  { 
+            companies: '', 
+            year: 1999,
+            organisationID: req.orgId,
+            type: 41
+        }
+
+        if(companies && companies != '') {
+            companies = JSON.parse( companies )
+            replacements.companies = companies.join(',')
+        }
+
+        let tempQuery = `SELECT IF(r.representative_name <> '', r.representative_name, aaa.name) AS name, assignor_id AS id, count(rf_id) AS counter FROM db_new_application.dashboard_items AS di INNER JOIN db_uspto.assignor_and_assignee AS aaa ON aaa.assignor_and_assignee_id = di.assignor_id LEFT JOIN db_uspto.representative AS r ON r.representative_id = aaa.representative_id WHERE  organisation_id = :organisationID AND type = :type`
+
+        if(companies.length > 0) {
+            tempQuery += ` AND di.representative_id IN (:companies)`;
+        }
+
+        tempQuery += ` GROUP BY assignor_id `;  
+        
+        const getList = await connection.applicationNew.query(tempQuery, {
+            type: connection.Sequelize.QueryTypes.SELECT,
+            raw: true,
+            logging: console.log,
+            replacements: replacements,
+        })
+
+        res.status(200).json(getList);
+    } catch(err) {
+        console.log("/customers/lawfirm", err)
+        res.status(500).send("Internal server error.")
+    }
+})
+
 route.get("/:layout/parties", [authJWT.verifyToken, clientDBConnection.connect], async(req, res, next) => {
     try {
         let {companies, tabs, t, limit, offset } = req.query,
