@@ -981,83 +981,115 @@ route.post("/asset_types/assets/agents", [authJWT.verifyToken, clientDBConnectio
                     query += ` AND l.appno_doc_num IN (:assets) AND date_format(ap.appno_date, '%Y') > :year) AS tempData
                     ) AS temp GROUP BY name, year `
                 } else {
-                    /**
-                     * Assignments
-                     */ 
-                    if( assignments.length > 0 ) {
-                        query = `SELECT name,  year, COUNT(rf_id) AS counter FROM (
-                            Select CASE WHEN cor.convey_ty = 'assignment' THEN 'Acquisitions' WHEN cor.convey_ty = 'correct' THEN 'Corrections' WHEN cor.convey_ty = 'employee' THEN 'Employees' ELSE cor.convey_ty END AS name, date_format(apt.exec_dt, '%Y') AS year, apt.rf_id from db_new_application.activity_parties_transactions AS apt
+
+                    if(data_type == 3) {
+                        /**
+                         * Lenders
+                         */
+                        query = `SELECT name, year, COUNT(rf_id) AS counter FROM (
+                            Select IF(r.representative_name <> '', r.representative_name, aaa.name) AS name, date_format(apt.exec_dt, '%Y') AS year, apt.rf_id from db_new_application.activity_parties_transactions AS apt
                             INNER JOIN db_uspto.representative_assignment_conveyance as cor ON cor.rf_id = apt.rf_id
-                            Where cor.rf_id IN (:assignments) AND apt.organisation_id = :organisationID AND apt.company_id = :company_id AND date_format(apt.exec_dt, '%Y') > :year
+                            INNER JOIN db_new_application.dashboard_items AS di ON di.rf_id = apt.rf_id
+                            INNER JOIN db_uspto.assignor_and_assignee AS aaa ON aaa.assignor_and_assignee_id = di.assignor_id
+                            LEFT JOIN db_uspto.representative AS r ON r.representative_id = aaa.representative_id
+                            Where apt.organisation_id = :organisationID AND apt.company_id = :company_id AND date_format(apt.exec_dt, '%Y') > :year
+                            AND di.organisation_id = :organisationID AND di.representative_id = :company_id AND di.type = :ownedType AND apt.activity_id IN (:activity_id) `
+
+                        if(customers && customers != '') {
+                            customers = JSON.parse( customers ) 
+                        } else {
+                            customers = []
+                        }
+                
+                        if( customers.length > 0 ) {
+                            where.customers = customers
+                            query += `  AND assignor_id IN (:customers) `
+                        }
+                        query += `    
                             GROUP BY cor.convey_ty, apt.rf_id
                         ) AS temp
                         GROUP BY name, year `
-                    } else {
-                        /* query = `SELECT name, year, COUNT(rf_id) AS counter FROM (
-                            Select rac.convey_ty AS name, date_format(apt.exec_dt, '%Y') AS year, apt.rf_id  from db_new_application.activity_parties_transactions AS apt
-                            INNER JOIN db_uspto.correspondent as cor ON cor.rf_id = apt.rf_id
-                            INNER JOIN db_uspto.representative_assignment_conveyance as rac ON rac.rf_id = apt.rf_id
-                            INNER JOIN db_uspto.documentid AS doc ON doc.rf_id = apt.rf_id
-                            INNER JOIN db_uspto.law_firm AS l ON l.name = cor.cname
-                            LEFT JOIN db_uspto.representative_law_firm AS rlf ON rlf.representative_id = l.representative_id
-                            Where apt.organisation_id = :organisationID and apt.company_id = :company_id and doc.appno_doc_num IN (:assets)
-                            GROUP BY rac.convey_ty, apt.rf_id
-                        ) AS temp
-                        GROUP BY name, year` */
-                        /* query = `SELECT name, year, COUNT(appno_doc_num) AS counter FROM (
-                            Select IF(rlf.representative_name <> '' , rlf.representative_name, l.name) AS name, doc.appno_doc_num, date_format(doc.appno_date, '%Y') AS year from db_new_application.activity_parties_transactions AS apt
-                            INNER JOIN db_uspto.correspondent as cor ON cor.rf_id = apt.rf_id
-                            INNER JOIN db_uspto.documentid AS doc ON doc.rf_id = apt.rf_id
-                            INNER JOIN db_uspto.law_firm AS l ON l.name = cor.cname
-                            LEFT JOIN db_uspto.representative_law_firm AS rlf ON rlf.representative_id = l.representative_id
-                            Where apt.organisation_id = :organisationID and apt.company_id = :company_id and doc.appno_doc_num IN (:assets)
-                        ) AS temp
-                        GROUP BY name, year` */
 
-                        
-
-                        query = `SELECT name, year, COUNT(DISTINCT rf_id) AS counter FROM (
-                            Select IF(MAX(rlf.representative_name) <> '' , MAX(rlf.representative_name), di.lawfirm) AS name, di.rf_id, date_format(apt.exec_dt, '%Y') AS year from db_new_application.activity_parties_transactions AS apt
-                            INNER JOIN db_new_application.dashboard_items AS di ON di.rf_id = apt.rf_id
-                            INNER JOIN db_uspto.correspondent as cor ON cor.rf_id = apt.rf_id 
-                            INNER JOIN db_uspto.law_firm AS l ON l.name = cor.cname
-                            LEFT JOIN db_uspto.representative_law_firm AS rlf ON rlf.representative_id = l.representative_id
-                            Where apt.organisation_id = :organisationID AND apt.company_id = :company_id AND di.organisation_id = :organisationID  AND di.representative_id IN(:company_id) AND date_format(apt.exec_dt, '%Y') > :year `
-
-                            if(where.ownedType == 25) {
-                                query += ` AND di.type = :ownedType `
-                            } else {
-                                query += ` AND di.type = :lawfirmType `
-                            }
-
-                        
-                        if(lawfirm > 0) { 
-                            const findLawFirm = `SELECT  lf.law_firm_id  FROM db_uspto.correspondent AS c LEFT JOIN db_uspto.law_firm  as lf ON c.cname = lf.name
-                            LEFT JOIN db_uspto.representative_law_firm AS rlf ON rlf.representative_id = lf.representative_id WHERE c.rf_id = :rfID`
-
-                            const getLawFirmData = await connection.applicationNew.query(findLawFirm, {
-                                type: connection.Sequelize.QueryTypes.SELECT,
-                                raw: true,
-                                logging: console.log,
-                                replacements: {rfID: lawfirm},
-                            }) 
-
-                            if(getLawFirmData.length > 0) {
-                                const allLawfirms = []
-                                const promise = getLawFirmData.map( row => {
-                                    allLawfirms.push(row.law_firm_id)
-                                })
-                                await Promise.all(promise)
-                                where.lawfirms = allLawfirms
-                                query += ` AND di.lawfirm_id IN (:lawfirms) `; 
+                        where.activity_id = [5, 12, 11, 13]
+                    }  else {
+                        /**
+                         * Assignments
+                         */ 
+                        if( assignments.length > 0 ) {
+                            query = `SELECT name,  year, COUNT(rf_id) AS counter FROM (
+                                Select CASE WHEN cor.convey_ty = 'assignment' THEN 'Acquisitions' WHEN cor.convey_ty = 'correct' THEN 'Corrections' WHEN cor.convey_ty = 'employee' THEN 'Employees' ELSE cor.convey_ty END AS name, date_format(apt.exec_dt, '%Y') AS year, apt.rf_id from db_new_application.activity_parties_transactions AS apt
+                                INNER JOIN db_uspto.representative_assignment_conveyance as cor ON cor.rf_id = apt.rf_id
+                                Where cor.rf_id IN (:assignments) AND apt.organisation_id = :organisationID AND apt.company_id = :company_id AND date_format(apt.exec_dt, '%Y') > :year
+                                GROUP BY cor.convey_ty, apt.rf_id
+                            ) AS temp
+                            GROUP BY name, year `
+                        } else {
+                            /* query = `SELECT name, year, COUNT(rf_id) AS counter FROM (
+                                Select rac.convey_ty AS name, date_format(apt.exec_dt, '%Y') AS year, apt.rf_id  from db_new_application.activity_parties_transactions AS apt
+                                INNER JOIN db_uspto.correspondent as cor ON cor.rf_id = apt.rf_id
+                                INNER JOIN db_uspto.representative_assignment_conveyance as rac ON rac.rf_id = apt.rf_id
+                                INNER JOIN db_uspto.documentid AS doc ON doc.rf_id = apt.rf_id
+                                INNER JOIN db_uspto.law_firm AS l ON l.name = cor.cname
+                                LEFT JOIN db_uspto.representative_law_firm AS rlf ON rlf.representative_id = l.representative_id
+                                Where apt.organisation_id = :organisationID and apt.company_id = :company_id and doc.appno_doc_num IN (:assets)
+                                GROUP BY rac.convey_ty, apt.rf_id
+                            ) AS temp
+                            GROUP BY name, year` */
+                            /* query = `SELECT name, year, COUNT(appno_doc_num) AS counter FROM (
+                                Select IF(rlf.representative_name <> '' , rlf.representative_name, l.name) AS name, doc.appno_doc_num, date_format(doc.appno_date, '%Y') AS year from db_new_application.activity_parties_transactions AS apt
+                                INNER JOIN db_uspto.correspondent as cor ON cor.rf_id = apt.rf_id
+                                INNER JOIN db_uspto.documentid AS doc ON doc.rf_id = apt.rf_id
+                                INNER JOIN db_uspto.law_firm AS l ON l.name = cor.cname
+                                LEFT JOIN db_uspto.representative_law_firm AS rlf ON rlf.representative_id = l.representative_id
+                                Where apt.organisation_id = :organisationID and apt.company_id = :company_id and doc.appno_doc_num IN (:assets)
+                            ) AS temp
+                            GROUP BY name, year` */
+    
+                            
+    
+                            query = `SELECT name, year, COUNT(DISTINCT rf_id) AS counter FROM (
+                                Select IF(MAX(rlf.representative_name) <> '' , MAX(rlf.representative_name), l.name) AS name, di.rf_id, date_format(apt.exec_dt, '%Y') AS year from db_new_application.activity_parties_transactions AS apt
+                                INNER JOIN db_new_application.dashboard_items AS di ON di.rf_id = apt.rf_id
+                                INNER JOIN db_uspto.correspondent as cor ON cor.rf_id = apt.rf_id 
+                                INNER JOIN db_uspto.law_firm AS l ON l.name = cor.cname
+                                LEFT JOIN db_uspto.representative_law_firm AS rlf ON rlf.representative_id = l.representative_id
+                                Where apt.organisation_id = :organisationID AND apt.company_id = :company_id AND di.organisation_id = :organisationID  AND di.representative_id IN(:company_id) AND date_format(apt.exec_dt, '%Y') > :year `
+    
+                                if(where.ownedType == 25) {
+                                    query += ` AND di.type = :ownedType `
+                                } else {
+                                    query += ` AND di.type = :lawfirmType `
+                                }
+    
+                            
+                            if(lawfirm > 0) { 
+                                const findLawFirm = `SELECT  lf.law_firm_id  FROM db_uspto.correspondent AS c LEFT JOIN db_uspto.law_firm  as lf ON c.cname = lf.name
+                                LEFT JOIN db_uspto.representative_law_firm AS rlf ON rlf.representative_id = lf.representative_id WHERE c.rf_id = :rfID`
+    
+                                const getLawFirmData = await connection.applicationNew.query(findLawFirm, {
+                                    type: connection.Sequelize.QueryTypes.SELECT,
+                                    raw: true,
+                                    logging: console.log,
+                                    replacements: {rfID: lawfirm},
+                                }) 
+    
+                                if(getLawFirmData.length > 0) {
+                                    const allLawfirms = []
+                                    const promise = getLawFirmData.map( row => {
+                                        allLawfirms.push(row.law_firm_id)
+                                    })
+                                    await Promise.all(promise)
+                                    where.lawfirms = allLawfirms
+                                    query += ` AND di.lawfirm_id IN (:lawfirms) `; 
+                                } 
                             } 
+                            query += `   GROUP BY di.rf_id
+                            ) AS temp
+                            where name IS NOT NULL
+                            GROUP BY name, year`
+                            
                         } 
-                        query += `   GROUP BY di.rf_id
-                        ) AS temp
-                        where name IS NOT NULL
-                        GROUP BY name, year`
-                        
-                    } 
+                    }
                 } 
 
                 getList = await connection.application.query(query,{
