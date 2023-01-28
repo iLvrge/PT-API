@@ -9,6 +9,10 @@ const FtsQuery = require("full-text-search-query");
 
 const levenshtein = require('fast-levenshtein');
 
+const natural = require("natural");
+
+const levenshteinNatural = natural.LevenshteinDistance;
+
 const { v4: uuidv4  } = require('uuid');
 
 const Organisations = require("../model/business/Organisations");
@@ -2160,7 +2164,11 @@ let findCompanyEntitiesByAccountID = async(orgID, type, DBConnection, suggestion
                 entitiesList = await findAssignorAndAssigneeListFromRFIDs(rfIDs, type);
                 console.log('suggestions', suggestions)
                 if(typeof suggestions != 'undefined' && suggestions == 1) {
-                    entitiesList = groupSuggestions(entitiesList)
+                    if(type == 1) {
+                        entitiesList = groupSuggestions(entitiesList)
+                    } else {
+                        entitiesList = groupSuggestions(entitiesList)
+                    }
                 }
             }
         }
@@ -2212,8 +2220,59 @@ const groupSuggestions = (entitiesList) => {
             newSuggestedSet.push(rowData)
         } 
     }
-    return newSuggestedSet;
+    return newSuggestedSet; 
+}
+
+const groupOrganisationSuggestions = (entitiesList) => {
+    // sample subset array of organizations with names and occurrences
+    const orgs =  [...entitiesList]
+    // function to group similar names and suggest correct name 
+    // create an empty object to store groups of similar names
+    const groups = {}, allNames = [];
+
+    orgs.forEach((org) => {
+        let added = false; 
+        allNames.push(org.name)
+        // check if there is already a group for the current name
+        for (let group in groups) {
+            if (levenshteinNatural(org.name, group) <= 2) {
+                // if the levenshtein distance is less than or equal to 2, add the name to the existing group
+                groups[group].push(org);
+                added = true;
+                break;
+            }
+        } 
+        if (!added) {
+            // if no group found, create a new group with the current name
+            groups[org.name] = [org];
+        }
+    });
+
+    let newSuggestedSet = [];
+    const spellcheck = new natural.Spellcheck(allNames);
+    // loop through the groups and suggest the correct name
+    for (let group in groups) {
+        // array to store names with the least number of typos
+        let correctNames = '', highestOccurrences = 0;
+        let minDistance = Number.MAX_SAFE_INTEGER;
     
+        groups[group].forEach((org) => {
+            // use spell checker to check for typos 
+            let distance = spellcheck.getCorrections(org.name, 1);
+            if(distance.length > 0 && org.name != group) {
+                correctNames = [org.name];
+                highestOccurrences = org.counter
+            }
+        });
+        const findIndex = orgs.findIndex( row => row.name == group)
+        if(findIndex !== -1) {
+            const similarNames = [];
+            groups[group].map((org) => similarNames.push(org.name))
+            const rowData = {...orgs[findIndex], group: similarNames, correctName: correctNames, highestOccurrences} 
+            newSuggestedSet.push(rowData)
+        } 
+    } 
+    return newSuggestedSet;  
 }
 
 let findCompanyEntitiesByAccountIDByRepresentativeIDs = async(orgID, representativeIDs, type, DBConnection, suggestions) => {
@@ -2237,7 +2296,11 @@ let findCompanyEntitiesByAccountIDByRepresentativeIDs = async(orgID, representat
 
             console.log('suggestions', suggestions)
             if(typeof suggestions != 'undefined' && suggestions == 1) {
-                entitiesList = groupSuggestions(entitiesList)
+                if(type == 1) {
+                    entitiesList = groupSuggestions(entitiesList)
+                } else {
+                    entitiesList = groupOrganisationSuggestions(entitiesList)
+                }
             }
         }
     }
@@ -2355,9 +2418,9 @@ let findAssignorAndAssigneeListFromRFIDs = async(rfIDs, type) => {
             }
         ); */
 
-        let queryAssignor = `SELECT a.assignor_and_assignee_id, a.or_name as name, count(a.or_name) as counter, r.representative_name as normalize_name, (select rr.representative_name FROM representative as rr WHERE rr.representative_name = aaa.name GROUP BY rr.representative_name) as representativeCompany, (SELECT aa.instances FROM assignor_and_assignee as aa WHERE aa.assignor_and_assignee_id = a.assignor_and_assignee_id  GROUP BY aa.assignor_and_assignee_id) as total_occurences, a.rf_id, 1 AS flag FROM assignor as a INNER JOIN assignor_and_assignee as aaa ON aaa.assignor_and_assignee_id = a.assignor_and_assignee_id INNER JOIN representative_assignment_conveyance as rac ON rac.rf_id = a.rf_id LEFT JOIN representative as r ON r.representative_id = aaa.representative_id WHERE aaa.assignor_and_assignee_id NOT IN (SELECT inventors.assignor_and_assignee_id FROM inventors) AND a.rf_id IN (SELECT rf_id FROM documentid WHERE appno_doc_num IN (SELECT appno_doc_num FROM documentid WHERE rf_id IN (:rfIDs)) GROUP BY rf_id) AND rac.employer_assign = 0  AND date_format(a.exec_dt, '%Y') > :year GROUP BY a.or_name
-        UNION 
-        SELECT a.assignor_and_assignee_id, a.ee_name as name, count(a.ee_name) as counter, r.representative_name as normalize_name, (select rr.representative_name FROM representative as rr WHERE rr.representative_name = aaa.name GROUP BY rr.representative_name) as representativeCompany, (SELECT aa.instances FROM assignor_and_assignee as aa WHERE aa.assignor_and_assignee_id = a.assignor_and_assignee_id  GROUP BY aa.assignor_and_assignee_id) as total_occurences, a.rf_id, 1 AS flag  FROM assignee as a INNER JOIN representative_assignment_conveyance as ac ON ac.rf_id = a.rf_id INNER JOIN assignor_and_assignee as aaa ON aaa.assignor_and_assignee_id = a.assignor_and_assignee_id LEFT JOIN representative as r ON r.representative_id = aaa.representative_id INNER JOIN assignor as aor ON aor.rf_id = a.rf_id WHERE date_format(aor.exec_dt, '%Y') > :year AND a.rf_id IN (SELECT rf_id FROM documentid WHERE appno_doc_num IN (SELECT appno_doc_num FROM documentid WHERE rf_id IN (:rfIDs)) GROUP BY rf_id) GROUP BY a.ee_name`;
+        let queryAssignor = `SELECT assignor_and_assignee_id, name, SUM(counter) AS counter, normalize_name, representativeCompany, total_occurences, rf_id, flag FROM (SELECT a.assignor_and_assignee_id, a.or_name as name, count(a.or_name) as counter, r.representative_name as normalize_name, (select rr.representative_name FROM representative as rr WHERE rr.representative_name = aaa.name GROUP BY rr.representative_name) as representativeCompany, (SELECT aa.instances FROM assignor_and_assignee as aa WHERE aa.assignor_and_assignee_id = a.assignor_and_assignee_id  GROUP BY aa.assignor_and_assignee_id) as total_occurences, a.rf_id, 1 AS flag FROM assignor as a INNER JOIN assignor_and_assignee as aaa ON aaa.assignor_and_assignee_id = a.assignor_and_assignee_id INNER JOIN representative_assignment_conveyance as rac ON rac.rf_id = a.rf_id LEFT JOIN representative as r ON r.representative_id = aaa.representative_id WHERE aaa.assignor_and_assignee_id NOT IN (SELECT inventors.assignor_and_assignee_id FROM inventors) AND a.rf_id IN (SELECT rf_id FROM documentid WHERE appno_doc_num IN (SELECT appno_doc_num FROM documentid WHERE rf_id IN (:rfIDs)) GROUP BY rf_id) AND rac.employer_assign = 0  AND date_format(a.exec_dt, '%Y') > :year GROUP BY a.or_name
+        UNION ALL
+        SELECT a.assignor_and_assignee_id, a.ee_name as name, count(a.ee_name) as counter, r.representative_name as normalize_name, (select rr.representative_name FROM representative as rr WHERE rr.representative_name = aaa.name GROUP BY rr.representative_name) as representativeCompany, (SELECT aa.instances FROM assignor_and_assignee as aa WHERE aa.assignor_and_assignee_id = a.assignor_and_assignee_id  GROUP BY aa.assignor_and_assignee_id) as total_occurences, a.rf_id, 1 AS flag  FROM assignee as a INNER JOIN representative_assignment_conveyance as ac ON ac.rf_id = a.rf_id INNER JOIN assignor_and_assignee as aaa ON aaa.assignor_and_assignee_id = a.assignor_and_assignee_id LEFT JOIN representative as r ON r.representative_id = aaa.representative_id INNER JOIN assignor as aor ON aor.rf_id = a.rf_id WHERE date_format(aor.exec_dt, '%Y') > :year AND a.rf_id IN (SELECT rf_id FROM documentid WHERE appno_doc_num IN (SELECT appno_doc_num FROM documentid WHERE rf_id IN (:rfIDs)) GROUP BY rf_id) GROUP BY a.ee_name) AS temp GROUP BY name`;
 
        
         assignors = await connection.resources.query(queryAssignor,{
@@ -2385,21 +2448,15 @@ let findAssignorAndAssigneeListFromRFIDs = async(rfIDs, type) => {
                 await names.push(n);
             }
         })
-
         for(let i = 0; i < names.length; i++) {
             let nam = names[i];
             let getList = await customer_list.filter(n => {
-                /*let name = n.normalize_name;
-                if(name == "" || name == null || name == undefined) {
-                    name = n.name;
-                }*/
                 let name = n.name;
                 name = name.trim().toLowerCase();
                 return (name == nam.trim().toLowerCase())? n : undefined;
-            })/*(n.normalize_name.toLowerCase() == nam || n.name.trim().toLowerCase() == nam )? n : undefined);*/
+            })
             if(getList != undefined && getList.length > 0){
-                let getCounter = await getList.reduce((a, b) => +a + +b.counter, 0);
-                //let getOccurences = await getList.reduce((a, b) => +a + +b.total_occurences, 0);
+                let getCounter = await getList.reduce((partialSum, a) => parseInt(partialSum) + parseInt(a.counter), 0);
                 await list.push({id: getList[0].assignor_and_assignee_id, name: getList[0].name, normalize_name: getList[0].normalize_name, counter: getCounter, total_occurences: getList[0].total_occurences, representative_company: getList[0].representativeCompany, rf_id: getList[0].rf_id, flag: getList[0].flag});
             }
         }
@@ -2407,7 +2464,6 @@ let findAssignorAndAssigneeListFromRFIDs = async(rfIDs, type) => {
     if(list.length > 0){
         list.sort((a,b) => (a.name > b.name) ? 1 : ((b.name > a.name) ? -1 : 0)); 
     }
-    console.log(list.length);
     return list;
 }
 
