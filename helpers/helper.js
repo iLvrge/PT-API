@@ -2268,7 +2268,7 @@ const groupOrganisationSuggestions = (entitiesList) => {
         if(findIndex !== -1) {
             const similarNames = [];
             groups[group].map((org) => similarNames.push(org.name))
-            const rowData = {...orgs[findIndex], group: similarNames, correctName: correctNames, highestOccurrences} 
+            const rowData = {...orgs[findIndex], group: similarNames.length == 1 && similarNames[0] == org.name ? [] : similarNames, correctName: correctNames, highestOccurrences} 
             newSuggestedSet.push(rowData)
         } 
     } 
