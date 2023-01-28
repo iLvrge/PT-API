@@ -2272,7 +2272,7 @@ const groupOrganisationSuggestions = (entitiesList) => {
             newSuggestedSet.push(rowData)
         } 
     } 
-    return newSuggestedSet;  
+    return newSuggestedSet;   
 }
 
 let findCompanyEntitiesByAccountIDByRepresentativeIDs = async(orgID, representativeIDs, type, DBConnection, suggestions) => {
