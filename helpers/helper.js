@@ -7,6 +7,8 @@ const rp = require('request-promise');
 
 const FtsQuery = require("full-text-search-query");
 
+const levenshtein = require('fast-levenshtein');
+
 const { v4: uuidv4  } = require('uuid');
 
 const Organisations = require("../model/business/Organisations");
@@ -2134,7 +2136,7 @@ let updateAllCustomerInventor = async(organisationID, inventors, flag, DBConnect
 }
 */
 
-let findCompanyEntitiesByAccountID = async(orgID, type, DBConnection) => {
+let findCompanyEntitiesByAccountID = async(orgID, type, DBConnection, suggestions) => {
     const list = await getCompaniesList(DBConnection);
     let entitiesList = [];
     if(list.length > 0) {
@@ -2154,15 +2156,67 @@ let findCompanyEntitiesByAccountID = async(orgID, type, DBConnection) => {
 
             if(listIDs.length > 0) {
                 const rfIDs = [];
-                    listIDs.map( r => rfIDs.push(r.rf_id));
-                    entitiesList = await findAssignorAndAssigneeListFromRFIDs(rfIDs, type);
+                listIDs.map( r => rfIDs.push(r.rf_id));
+                entitiesList = await findAssignorAndAssigneeListFromRFIDs(rfIDs, type);
+                console.log('suggestions', suggestions)
+                if(typeof suggestions != 'undefined' && suggestions == 1) {
+                    entitiesList = groupSuggestions(entitiesList)
+                }
             }
         }
     }
     return entitiesList;
 }
 
-let findCompanyEntitiesByAccountIDByRepresentativeIDs = async(orgID, representativeIDs, type, DBConnection) => {
+const groupSuggestions = (entitiesList) => {
+    const names = [...entitiesList] ; 
+
+    const suggestedGroups = {}; 
+    // Check for similar names and group them
+    let otherSuggested = []
+    for (let i = 0; i < names.length; i++) {
+        for (let j = i + 1; j < names.length; j++) {
+            if (levenshtein.get(names[i].name, names[j].name) < 5) {
+                if (suggestedGroups[names[i].name]) {
+                    suggestedGroups[names[i].name].push(names[j].name);
+                    otherSuggested.push(names[j].name)
+                } else {
+                    if(!otherSuggested.includes(names[i].name)) {
+                        suggestedGroups[names[i].name] = [names[j].name];
+                        otherSuggested.push(names[j].name)
+                    }
+                }
+            }
+        }
+    } 
+    let newSuggestedSet = []
+    // Print suggested groups with correct name
+    for (const name in suggestedGroups) {
+        const group = suggestedGroups[name];
+        group.push(name);
+
+        // Find the name with the highest occurrences that doesn't have a middle name
+        let correctName = "";
+        let highestOccurrences = 0;
+        for (let i = 0; i < group.length; i++) {
+            const parts = group[i].split(" ");
+            if (parts.length === 2 && names.find(n => n.name === group[i]).counter > highestOccurrences) {
+                correctName = group[i];
+                highestOccurrences = names.find(n => n.name === group[i]).counter;
+            }
+        } 
+
+        const findIndex = names.findIndex( row => row.name == name)
+        if(findIndex !== -1) {
+            const rowData = {...names[findIndex], group, correctName, highestOccurrences} 
+            newSuggestedSet.push(rowData)
+        } 
+    }
+    return newSuggestedSet;
+    
+}
+
+let findCompanyEntitiesByAccountIDByRepresentativeIDs = async(orgID, representativeIDs, type, DBConnection, suggestions) => {
    
     let entitiesList = [];
     if(representativeIDs.length > 0) {        
@@ -2180,6 +2234,11 @@ let findCompanyEntitiesByAccountIDByRepresentativeIDs = async(orgID, representat
             const rfIDs = [];
                 listIDs.map( r => rfIDs.push(r.rf_id));
                 entitiesList = await findAssignorAndAssigneeListFromRFIDs(rfIDs, type);
+
+            console.log('suggestions', suggestions)
+            if(typeof suggestions != 'undefined' && suggestions == 1) {
+                entitiesList = groupSuggestions(entitiesList)
+            }
         }
     }
     return entitiesList;

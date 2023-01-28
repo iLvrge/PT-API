@@ -580,13 +580,14 @@ route.get("/customers/customers/:id/:type", [authJWT.verifyToken, authJWT.isAdmi
     try{            
         /*const companyName = req.params.company_name, type = req.params.type;*/
         const organisationID = req.params.id, type = req.params.type;
-
+        const {suggestions} = req.query
+        console.log(req.query)
         let list = [];
 
         if(typeof req.connection_db != "undefined" && req.connection_db != null ) {
-            list = await helpers.findCompanyEntitiesByAccountID(organisationID, type, req.connection_db);
+            list = await helpers.findCompanyEntitiesByAccountID(organisationID, type, req.connection_db, suggestions);
         }
-        res.status(200).json(list);
+        res.status(200).json(list); 
     } catch (e){
         console.log(e);
         res.status(402).send("No customers found");
@@ -601,11 +602,12 @@ route.get("/customers/customers/:id/:representativeID/:type", [authJWT.verifyTok
     try{            
         /*const companyName = req.params.company_name, type = req.params.type;*/
         const organisationID = req.params.id, type = req.params.type, representativeIDs = JSON.parse(req.params.representativeID);
-
+        const {suggestions} = req.query
+        console.log(req.query)
         let list = [];
 
         if(typeof req.connection_db != "undefined" && req.connection_db != null ) {
-            list = await helpers.findCompanyEntitiesByAccountIDByRepresentativeIDs(organisationID, representativeIDs, type, req.connection_db);
+            list = await helpers.findCompanyEntitiesByAccountIDByRepresentativeIDs(organisationID, representativeIDs, type, req.connection_db, suggestions);
         }
         res.status(200).json(list);
     } catch (e){
