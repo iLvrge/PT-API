@@ -2201,7 +2201,7 @@ const groupSuggestions = (entitiesList) => {
     // Print suggested groups with correct name
     for (const name in suggestedGroups) {
         const group = suggestedGroups[name];
-        group.push(name);
+        //group.push(name);
 
         // Find the name with the highest occurrences that doesn't have a middle name
         let correctName = "";
@@ -2213,11 +2213,18 @@ const groupSuggestions = (entitiesList) => {
                 highestOccurrences = names.find(n => n.name === group[i]).counter;
             }
         } 
-
-        const findIndex = names.findIndex( row => row.name == name)
-        if(findIndex !== -1) {
-            const rowData = {...names[findIndex], group, correctName, highestOccurrences} 
-            newSuggestedSet.push(rowData)
+        if(group.length > 0) {
+            const findIndex = names.findIndex( row => row.name == name)
+            if(findIndex !== -1) {
+                const rowData = {...names[findIndex], correctName, highestOccurrences} 
+                newSuggestedSet.push(rowData) 
+                group.map( grp => {
+                    const grpIndex = names.findIndex( row => row.name == grp)
+                    if(grpIndex !== -1) {
+                        newSuggestedSet.push(names[grpIndex]) 
+                    }
+                })
+            }
         } 
     }
     return newSuggestedSet; 
@@ -2268,8 +2275,14 @@ const groupOrganisationSuggestions = (entitiesList) => {
         if(findIndex !== -1) {
             const similarNames = [];
             groups[group].map((org) => similarNames.push(org.name))
-            const rowData = {...orgs[findIndex], group: similarNames.length == 1 && similarNames[0] == group ? [] : similarNames, correctName: correctNames, highestOccurrences} 
-            newSuggestedSet.push(rowData)
+            
+            if(groups[group].length > 0) {
+                const rowData = {...orgs[findIndex], correctName: correctNames, highestOccurrences} 
+                newSuggestedSet.push(rowData)
+                groups[group].map((org) => {
+                    newSuggestedSet.push(org)
+                })
+            }
         } 
     } 
     return newSuggestedSet;   
