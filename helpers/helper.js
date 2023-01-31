@@ -2167,7 +2167,7 @@ let findCompanyEntitiesByAccountID = async(orgID, type, DBConnection, suggestion
                     if(type == 1) {
                         entitiesList = groupSuggestions(entitiesList)
                     } else {
-                        entitiesList = groupSuggestions(entitiesList)
+                        entitiesList = groupOrganisationSuggestions(entitiesList)
                     }
                 }
             }
@@ -2184,7 +2184,9 @@ const groupSuggestions = (entitiesList) => {
     let otherSuggested = []
     for (let i = 0; i < names.length; i++) {
         for (let j = i + 1; j < names.length; j++) {
-            if (levenshtein.get(names[i].name, names[j].name) < 5) {
+            const distance = levenshtein.get(names[i].name.toLowerCase(), names[j].name.toLowerCase())
+            //console.log(`INVENTOR: ${distance} - ${names[i].name} - ${names[j].name}`)
+            if (distance < 3) {
                 if (suggestedGroups[names[i].name]) {
                     suggestedGroups[names[i].name].push(names[j].name);
                     otherSuggested.push(names[j].name)
@@ -2196,30 +2198,39 @@ const groupSuggestions = (entitiesList) => {
                 }
             }
         }
-    } 
+    }  
     let newSuggestedSet = []
     // Print suggested groups with correct name
     for (const name in suggestedGroups) {
         const group = suggestedGroups[name];
-        group.push(name);
-
-        // Find the name with the highest occurrences that doesn't have a middle name
-        let correctName = "";
-        let highestOccurrences = 0;
-        for (let i = 0; i < group.length; i++) {
-            const parts = group[i].split(" ");
-            if (parts.length === 2 && names.find(n => n.name === group[i]).counter > highestOccurrences) {
-                correctName = group[i];
-                highestOccurrences = names.find(n => n.name === group[i]).counter;
+        //group.push(name); 
+        //console.log(`${name} - ${group.length}`)
+        if(group.length > 1) {
+            // Find the name with the highest occurrences that doesn't have a middle name
+            let correctName = "";
+            let highestOccurrences = 0;
+            for (let i = 0; i < group.length; i++) {
+                const parts = group[i].split(" ");
+                if (parts.length === 2 && names.find(n => n.name === group[i]).counter > highestOccurrences) {
+                    correctName = group[i];
+                    highestOccurrences = names.find(n => n.name === group[i]).counter;
+                }
+            } 
+            const findIndex = names.findIndex( row => row.name == name)
+            if(findIndex !== -1) {
+                const rowData = {...names[findIndex], correctName, highestOccurrences} 
+                newSuggestedSet.push(rowData) 
+                group.map( grp => {
+                    const grpIndex = names.findIndex( row => row.name == grp)
+                    if(grpIndex !== -1) {
+                        newSuggestedSet.push(names[grpIndex]) 
+                    }
+                })
             }
         } 
-
-        const findIndex = names.findIndex( row => row.name == name)
-        if(findIndex !== -1) {
-            const rowData = {...names[findIndex], group, correctName, highestOccurrences} 
-            newSuggestedSet.push(rowData)
-        } 
     }
+
+    //console.log('newSuggestedSet', newSuggestedSet)
     return newSuggestedSet; 
 }
 
@@ -2268,11 +2279,17 @@ const groupOrganisationSuggestions = (entitiesList) => {
         if(findIndex !== -1) {
             const similarNames = [];
             groups[group].map((org) => similarNames.push(org.name))
-            const rowData = {...orgs[findIndex], group: similarNames, correctName: correctNames, highestOccurrences} 
-            newSuggestedSet.push(rowData)
+            
+            if(groups[group].length > 0) {
+                const rowData = {...orgs[findIndex], correctName: correctNames, highestOccurrences} 
+                newSuggestedSet.push(rowData)
+                groups[group].map((org) => {
+                    newSuggestedSet.push(org)
+                })
+            }
         } 
     } 
-    return newSuggestedSet;  
+    return newSuggestedSet;   
 }
 
 let findCompanyEntitiesByAccountIDByRepresentativeIDs = async(orgID, representativeIDs, type, DBConnection, suggestions) => {
@@ -2328,7 +2345,7 @@ let findAssignorAndAssigneeListFromRFIDs = async(rfIDs, type) => {
         if(parseInt(type) > 0) { 
             if(parseInt(type) == 1) {
 
-                const queryAssets = "SELECT appno_doc_num FROM documentid WHERE rf_id IN (SELECT rf_id FROM documentid WHERE appno_doc_num IN (SELECT appno_doc_num FROM documentid WHERE rf_id IN (:IDs)) GROUP BY rf_id) AND date_format(appno_date, '%Y') > :year GROUP BY appno_doc_num"
+                const queryAssets = "SELECT appno_doc_num FROM documentid WHERE rf_id IN (:IDs) AND date_format(appno_date, '%Y') > :year GROUP BY appno_doc_num"
 
                 const assetsList = await connection.resources.query(queryAssets,{
                     type: connection.Sequelize.QueryTypes.SELECT,
@@ -2345,7 +2362,7 @@ let findAssignorAndAssigneeListFromRFIDs = async(rfIDs, type) => {
                 })
                 console.log('assetsList', allAssets.length)
                 if(allAssets.length > 0) {
-                    const grantInventorsQuery = "SELECT * FROM (SELECT appInv.assignor_and_assignee_id, CONCAT(appInv.family_name, ' ', appInv.given_name) AS name, aaa.name AS aName, count(aaa.name) as counter, r.representative_name as normalize_name, (select rr.representative_name FROM representative as rr WHERE rr.representative_name = aaa.name GROUP BY rr.representative_name) as representativeCompany, aaa.instances as total_occurences, 0 AS rf_id, 4 AS flag FROM db_patent_application_bibliographic.inventor AS appInv INNER JOIN  db_patent_application_bibliographic.assignor_and_assignee AS aaa ON aaa.assignor_and_assignee_id = appInv.assignor_and_assignee_id LEFT JOIN representative as r ON r.representative_id = aaa.representative_id WHERE appInv.appno_doc_num IN (:allAssets)  GROUP BY aaa.name UNION SELECT appInv.assignor_and_assignee_id, CONCAT(appInv.family_name, ' ', appInv.given_name) AS name, aaa.name AS aName, count(aaa.name) as counter, r.representative_name as normalize_name, (select rr.representative_name FROM representative as rr WHERE rr.representative_name = aaa.name GROUP BY rr.representative_name) as representativeCompany, aaa.instances as total_occurences, 0 AS rf_id, 4 AS flag FROM db_patent_grant_bibliographic.inventor_new AS appInv INNER JOIN  db_patent_application_bibliographic.assignor_and_assignee AS aaa ON aaa.assignor_and_assignee_id = appInv.assignor_and_assignee_id LEFT JOIN representative as r ON r.representative_id = aaa.representative_id WHERE appInv.appno_doc_num IN (:allAssets) GROUP BY aaa.name) AS temp";
+                    const grantInventorsQuery = "SELECT * FROM (SELECT appInv.assignor_and_assignee_id, CONCAT(appInv.family_name, ' ', appInv.given_name) AS aName, aaa.name AS name, count(aaa.name) as counter, r.representative_name as normalize_name, (select rr.representative_name FROM representative as rr WHERE rr.representative_name = aaa.name GROUP BY rr.representative_name) as representativeCompany, aaa.instances as total_occurences, 0 AS rf_id, 4 AS flag FROM db_patent_application_bibliographic.inventor AS appInv INNER JOIN  db_patent_application_bibliographic.assignor_and_assignee AS aaa ON aaa.assignor_and_assignee_id = appInv.assignor_and_assignee_id LEFT JOIN representative as r ON r.representative_id = aaa.representative_id WHERE appInv.appno_doc_num IN (:allAssets)  GROUP BY aaa.name UNION SELECT appInv.assignor_and_assignee_id, CONCAT(appInv.family_name, ' ', appInv.given_name) AS aName, aaa.name AS name, count(aaa.name) as counter, r.representative_name as normalize_name, (select rr.representative_name FROM representative as rr WHERE rr.representative_name = aaa.name GROUP BY rr.representative_name) as representativeCompany, aaa.instances as total_occurences, 0 AS rf_id, 4 AS flag FROM db_patent_grant_bibliographic.inventor_new AS appInv INNER JOIN  db_patent_application_bibliographic.assignor_and_assignee AS aaa ON aaa.assignor_and_assignee_id = appInv.assignor_and_assignee_id LEFT JOIN representative as r ON r.representative_id = aaa.representative_id WHERE appInv.appno_doc_num IN (:allAssets) GROUP BY aaa.name) AS temp";
 
                     inventors = await connection.resources.query(grantInventorsQuery,{
                         type: connection.Sequelize.QueryTypes.SELECT,

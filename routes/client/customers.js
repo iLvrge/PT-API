@@ -1632,8 +1632,8 @@ route.get("/:layout/assets", [authJWT.verifyToken, clientDBConnection.connect], 
                     } else {
 
                         query = `SELECT * FROM (SELECT  CASE WHEN patent = '' OR patent IS NULL THEN CONCAT(SUBSTRING(application, 1, 2), '/', FORMAT(SUBSTRING(application, 3), 0)) ELSE FORMAT(patent, 0) END AS format_asset,
-                        CASE WHEN patent = '' OR patent IS NULL THEN application ELSE patent END AS asset, 
-                        CASE WHEN patent = '' OR patent IS NULL THEN 1 ELSE 0 END AS asset_type, application AS appno_doc_num, patent AS grant_doc_num, 0 AS child_count, '' AS channel  FROM db_new_application.dashboard_items WHERE organisation_id = :organisationID AND type = :layoutID `;
+                        CASE WHEN patent = '' OR patent IS NULL THEN application ELSE TRIM(LEADING '0' FROM patent) END AS asset, 
+                        CASE WHEN patent = '' OR patent IS NULL THEN 1 ELSE 0 END AS asset_type, application AS appno_doc_num, TRIM(LEADING '0' FROM patent)  AS grant_doc_num, 0 AS child_count, '' AS channel  FROM db_new_application.dashboard_items WHERE organisation_id = :organisationID AND type = :layoutID `;
 
                         if(typeof replacements.companies != 'undefined' && Array.isArray(replacements.companies) && replacements.companies.length > 0) {
                             query += ` AND representative_id IN (:companies) `
