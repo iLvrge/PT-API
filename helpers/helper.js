@@ -2186,7 +2186,7 @@ const groupSuggestions = (entitiesList) => {
         for (let j = i + 1; j < names.length; j++) {
             const distance = levenshtein.get(names[i].name.toLowerCase(), names[j].name.toLowerCase())
             //console.log(`INVENTOR: ${distance} - ${names[i].name} - ${names[j].name}`)
-            if (distance < 5) {
+            if (distance < 3) {
                 if (suggestedGroups[names[i].name]) {
                     suggestedGroups[names[i].name].push(names[j].name);
                     otherSuggested.push(names[j].name)
