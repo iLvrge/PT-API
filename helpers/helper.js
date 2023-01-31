@@ -2167,7 +2167,7 @@ let findCompanyEntitiesByAccountID = async(orgID, type, DBConnection, suggestion
                     if(type == 1) {
                         entitiesList = groupSuggestions(entitiesList)
                     } else {
-                        entitiesList = groupSuggestions(entitiesList)
+                        entitiesList = groupOrganisationSuggestions(entitiesList)
                     }
                 }
             }
@@ -2341,7 +2341,7 @@ let findAssignorAndAssigneeListFromRFIDs = async(rfIDs, type) => {
         if(parseInt(type) > 0) { 
             if(parseInt(type) == 1) {
 
-                const queryAssets = "SELECT appno_doc_num FROM documentid WHERE rf_id IN (SELECT rf_id FROM documentid WHERE appno_doc_num IN (SELECT appno_doc_num FROM documentid WHERE rf_id IN (:IDs)) GROUP BY rf_id) AND date_format(appno_date, '%Y') > :year GROUP BY appno_doc_num"
+                const queryAssets = "SELECT appno_doc_num FROM documentid WHERE rf_id IN (:IDs) AND date_format(appno_date, '%Y') > :year GROUP BY appno_doc_num"
 
                 const assetsList = await connection.resources.query(queryAssets,{
                     type: connection.Sequelize.QueryTypes.SELECT,
