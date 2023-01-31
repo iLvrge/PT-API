@@ -698,8 +698,38 @@ route.put("/company/search/all/", [authJWT.verifyToken, authJWT.isAdmin], async 
                     }
                 }
                 
-               
+                let findAssignorWithSameRepresentativeName = await AssignorAndAssignee.findAll({
+                    attributes:['assignor_and_assignee_id'],
+                    where: { name: representativeCompany.representative_name}
+                })
+                let repNameIDS = '';
+                if(findAssignorWithSameRepresentativeName.length == 0) {
+                    repNameIDS = await AssignorAndAssignee.findAll({
+                        attributes:['assignor_and_assignee_id'],
+                        where: { name: representativeCompany.representative_name}
+                    })
+
+                    if(repNameIDS.length > 0) {
+                        repNameIDS.map( r => IDs.push(r.assignor_and_assignee_id))
+                    }
+                }
                 
+                findAssignorWithSameRepresentativeName = await ApplicantAssignorAndAssignee.findAll({
+                    attributes:['assignor_and_assignee_id'],
+                    where: { name: representativeCompany.representative_name, representative_id: representativeCompany.representative_id}
+                })
+
+                if(findAssignorWithSameRepresentativeName.length == 0) { 
+
+                    repNameIDS = await ApplicantAssignorAndAssignee.findAll({
+                        attributes:['assignor_and_assignee_id'],
+                        where: { name: representativeCompany.representative_name}
+                    })
+
+                    if(repNameIDS.length > 0) {
+                        repNameIDS.map( r => applicantAssignorAndAssigneeIDs.push(r.assignor_and_assignee_id))
+                    }
+                }
                  
               
                 console.log("RepresentativeID->", representativeCompany.representative_id)
