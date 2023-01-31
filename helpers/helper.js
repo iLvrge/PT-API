@@ -2184,7 +2184,9 @@ const groupSuggestions = (entitiesList) => {
     let otherSuggested = []
     for (let i = 0; i < names.length; i++) {
         for (let j = i + 1; j < names.length; j++) {
-            if (levenshtein.get(names[i].name, names[j].name) < 5) {
+            const distance = levenshtein.get(names[i].name.toLowerCase(), names[j].name.toLowerCase())
+            //console.log(`INVENTOR: ${distance} - ${names[i].name} - ${names[j].name}`)
+            if (distance < 5) {
                 if (suggestedGroups[names[i].name]) {
                     suggestedGroups[names[i].name].push(names[j].name);
                     otherSuggested.push(names[j].name)
@@ -2196,24 +2198,24 @@ const groupSuggestions = (entitiesList) => {
                 }
             }
         }
-    } 
+    }  
     let newSuggestedSet = []
     // Print suggested groups with correct name
     for (const name in suggestedGroups) {
         const group = suggestedGroups[name];
-        //group.push(name);
-
-        // Find the name with the highest occurrences that doesn't have a middle name
-        let correctName = "";
-        let highestOccurrences = 0;
-        for (let i = 0; i < group.length; i++) {
-            const parts = group[i].split(" ");
-            if (parts.length === 2 && names.find(n => n.name === group[i]).counter > highestOccurrences) {
-                correctName = group[i];
-                highestOccurrences = names.find(n => n.name === group[i]).counter;
-            }
-        } 
-        if(group.length > 0) {
+        //group.push(name); 
+        //console.log(`${name} - ${group.length}`)
+        if(group.length > 1) {
+            // Find the name with the highest occurrences that doesn't have a middle name
+            let correctName = "";
+            let highestOccurrences = 0;
+            for (let i = 0; i < group.length; i++) {
+                const parts = group[i].split(" ");
+                if (parts.length === 2 && names.find(n => n.name === group[i]).counter > highestOccurrences) {
+                    correctName = group[i];
+                    highestOccurrences = names.find(n => n.name === group[i]).counter;
+                }
+            } 
             const findIndex = names.findIndex( row => row.name == name)
             if(findIndex !== -1) {
                 const rowData = {...names[findIndex], correctName, highestOccurrences} 
@@ -2227,6 +2229,8 @@ const groupSuggestions = (entitiesList) => {
             }
         } 
     }
+
+    //console.log('newSuggestedSet', newSuggestedSet)
     return newSuggestedSet; 
 }
 
