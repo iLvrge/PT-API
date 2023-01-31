@@ -2529,7 +2529,7 @@ route.get("/events/assets/status/:applicationNumber", [authJWT.verifyToken], asy
     try{
         let { applicationNumber } = req.params;
         const {counter} = req.query; 
-        let getList = []
+        let getList = [], deleteFromCounter = 0
         if(applicationNumber != undefined && applicationNumber != null) {
 
             let queryDates = `SELECT  ap.appno_date  AS filling_date, ap.pgpub_date  FROM db_patent_grant_bibliographic.application_publication AS ap WHERE ap.appno_doc_num = :applicationNumber`
@@ -2603,6 +2603,7 @@ route.get("/events/assets/status/:applicationNumber", [authJWT.verifyToken], asy
  
             if(getDatesData != null || getGrantDatesData != null || docDates != null) {
                 if(dates.filling_date != '' && dates.grant_date != null && dates.grant_date != '' && dates.grant_date != '0000-00-00' && dates.filling_date != null ) {
+                    deleteFromCounter++;
                     getList.push({
                         id: 'A',
                         start_date: dates.filling_date,
@@ -2628,6 +2629,7 @@ route.get("/events/assets/status/:applicationNumber", [authJWT.verifyToken], asy
                             enddate = getStatusData[0].status_date
                         }
                     } 
+                    deleteFromCounter++;
                     getList.push({
                         id: 'A',
                         start_date: dates.filling_date,
@@ -2685,6 +2687,7 @@ route.get("/events/assets/status/:applicationNumber", [authJWT.verifyToken], asy
                     if( getExtensionData !== null && getExtensionData.extension > 0) { 
                         grantDate = moment(new Date(grantDate)).add(getExtensionData.extension, 'days').format('YYYY-MM-DD');
                     }
+                    deleteFromCounter++;
                     getList.push({
                         id: 'B',
                         start_date: dates.grant_date,
@@ -2708,6 +2711,7 @@ route.get("/events/assets/status/:applicationNumber", [authJWT.verifyToken], asy
                     const endDate = moment(new Date(dates.filling_date)).add(expiryYear, 'years').format('YYYY-MM-DD')
                     const extenstionStartDate = moment(new Date(endDate)).add(1, 'days').format('YYYY-MM-DD'),
                     extensiontEndDate = moment(new Date(extenstionStartDate)).add(getExtensionData.extension, 'days').format('YYYY-MM-DD')
+                    deleteFromCounter++;
                     getList.push({
                         id: 4,
                         start_date: extensiontEndDate,
@@ -2722,6 +2726,7 @@ route.get("/events/assets/status/:applicationNumber", [authJWT.verifyToken], asy
                     
                     if(dates.grant_date != null && dates.grant_date != '' && dates.grant_date != '0000-00-00' && grantDesign === false) { 
                         const endDate = moment(new Date(dates.filling_date)).add(expiryYear, 'years').format('YYYY-MM-DD')
+                        deleteFromCounter++;
                         getList.push({
                             id: 4,
                             start_date: endDate,
@@ -2734,6 +2739,7 @@ route.get("/events/assets/status/:applicationNumber", [authJWT.verifyToken], asy
                         })
                     } else if(grantDesign === true ) {
                         const endDate = moment(new Date(grantDate)).add( expiryYear, 'days').format('YYYY-MM-DD');
+                        deleteFromCounter++;
                         getList.push({
                             id: 4,
                             start_date: endDate,
@@ -2765,7 +2771,7 @@ route.get("/events/assets/status/:applicationNumber", [authJWT.verifyToken], asy
             }  
         }
         if(typeof counter !== 'undefined') {
-            res.status(200).send(`${getList.length}`);
+            res.status(200).send(`${getList.length - deleteFromCounter}`);
         } else {
             res.status(200).json({main: getList, icons: {0: SvgIconsContent[9], 1: SvgIconsContent[25]}});
         }
