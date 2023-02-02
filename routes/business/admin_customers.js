@@ -513,10 +513,10 @@ route.put("/users/:user_id", [authJWT.verifyToken, authJWT.isAdmin], async (req,
  * Delete admin user
  */
 
-route.delete("/users/:user_id", [authJWT.verifyToken, authJWT.isAdmin], async (req, res, next) =>{
+route.delete("/users/:orgId/:user_id", [authJWT.verifyToken, authJWT.isAdmin], async (req, res, next) =>{
     try{
         const user = await Users.findOne({
-            where: {user_id: req.params.user_id, organisation_id: 3, type: '9'}
+            where: {user_id: req.params.user_id, organisation_id: req.params.orgId}
         })
 
         if( user != null && user.user_id > 0){

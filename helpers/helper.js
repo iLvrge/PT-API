@@ -3024,7 +3024,7 @@ let getShareList = async (code, type) => {
                 
             }
         }
-        let query = "SELECT  `share_lists`.`asset` AS asset, `share_lists`.`type` FROM `share` AS `share` INNER JOIN `share_list` AS `share_lists` ON `share`.`share_id` = `share_lists`.`share_id` WHERE `share`.`code` = :code  AND share.type = :type"
+        let query = "SELECT  `share_lists`.`asset` AS asset, `share_lists`.`type`, `share`.`organisation_id` FROM `share` AS `share` INNER JOIN `share_list` AS `share_lists` ON `share`.`share_id` = `share_lists`.`share_id` WHERE `share`.`code` = :code  AND share.type = :type"
         
         /* if(type !== 'undefined' && type !== undefined && parseInt(type) === 2) {
             query += " AND share.type = :type"
@@ -3042,8 +3042,13 @@ let getShareList = async (code, type) => {
 
         if( shareList.length > 0 ) {
             const grant = [], app = []
+
+            let organisation_id = 0
             
             shareList.forEach( row => {
+                if(organisation_id == 0) {
+                    organisation_id = row.organisation_id
+                }
                 if(row.type === 4) {
                     grant.push(row.asset)
                 } else {
@@ -3051,14 +3056,28 @@ let getShareList = async (code, type) => {
                 }
             })
 
-            if(grant.length > 0) {
-                const queryGrant = "SELECT appno_doc_num, grant_doc_num, CASE WHEN grant_doc_num = '' THEN appno_doc_num ELSE grant_doc_num END AS asset, CASE WHEN grant_doc_num = '' THEN 1 ELSE 0 END AS asset_type, '' AS channel, 0 AS child_count  FROM db_uspto.documentid WHERE grant_doc_num IN (:grant) GROUP BY appno_doc_num"
+            if((grant.length > 0 || app.length > 0) && organisation_id > 0) { 
+                let queryAssets = `SELECT application AS appno_doc_num, patent AS grant_doc_num, CASE WHEN patent = '' THEN application ELSE patent END AS asset, CASE WHEN patent = '' THEN 1 ELSE 0 END AS asset_type, '' AS channel, 0 AS child_count  FROM db_new_application.dashboard_items WHERE  organisation_id = :organisation_id AND ( ` 
 
-                const grantData = await connection.applicationNew.query(queryGrant,{
+                if(grant.length > 0) {
+                    queryAssets += `  patent IN (:grant)  `
+                } 
+
+                
+                if(app.length > 0) {
+                    if(grant.length > 0) {
+                        queryAssets += ` OR ` 
+                    }
+                    queryAssets += `application IN (:app) `
+                }
+                
+                queryAssets += ` ) GROUP BY application`
+
+                const grantData = await connection.applicationNew.query(queryAssets,{
                     type: connection.Sequelize.QueryTypes.SELECT,
                     raw: true,
                     logging: console.log,
-                    replacements: {grant},
+                    replacements: {grant, app, organisation_id},
                     }
                 );
 
@@ -3067,25 +3086,7 @@ let getShareList = async (code, type) => {
                         assetsList.push(row)
                     })
                 }
-            }
-
-            if(app.length > 0) {
-                const queryApp = "SELECT appno_doc_num, grant_doc_num, CASE WHEN grant_doc_num = '' THEN appno_doc_num ELSE grant_doc_num END AS asset, CASE WHEN grant_doc_num = '' THEN 1 ELSE 0 END AS asset_type, '' AS channel, 0 AS child_count  FROM db_uspto.documentid WHERE appno_doc_num IN (:app) GROUP BY appno_doc_num"
-
-                const appData = await connection.applicationNew.query(queryApp,{
-                    type: connection.Sequelize.QueryTypes.SELECT,
-                    raw: true,
-                    logging: console.log,
-                    replacements: {app},
-                    }
-                );
-
-                if(appData.length > 0) {
-                    appData.forEach( row => {
-                        assetsList.push(row)
-                    })
-                }
-            }
+            } 
             return assetsList;
         }
     }
