@@ -381,21 +381,22 @@ route.post("/citation", [authJWT.verifyToken], async (req, res) => {
                 })
             }
             if( list.length > 0 ) {
-                const replacements =  {list}
-                let queryCitedLogo = "SELECT cpwa.citing_id AS id, cpwa.citing_patent_number AS number, MAX(o.organisation_name) AS assignee, MAX(o.logo_optimize) AS logo, COUNT(cpwa.citing_patent_number) AS combined, GROUP_CONCAT(o.organisation_name) AS all_assignee, cpwa.app_date AS start, cpwa.app_date AS end FROM cited_patents AS cp INNER JOIN assignee_organizations AS ao ON ao.assignee_id = cp.assignee_id LEFT JOIN citing_patents_with_assignee AS cpwa ON cpwa.assignee_id = ao.assignee_id AND cpwa.patent_number = cp.patent_number LEFT JOIN organisations AS o ON o.organisation_id = ao.organisation_id WHERE cpwa.citing_id IS NOT NULL AND cp.patent_number IN (:list) ";
+                const replacements =  {list} 
+
+                let queryCitedLogo = "SELECT id, patent_number, number, assignee, logo, COUNT(number) AS combined, start, end, GROUP_CONCAT(assignee) AS all_assignee  FROM ( SELECT cpwa.citing_id AS id, cp.patent_number, cpwa.citing_patent_number AS number, IF(o.organisation_name <> '', o.organisation_name, ao.assignee_organization) AS assignee, o.logo_optimize AS logo, cpwa.app_date AS start, cpwa.app_date AS end FROM cited_patents AS cp INNER JOIN assignee_organizations AS ao ON ao.assignee_id = cp.assignee_id LEFT JOIN citing_patents_with_assignee AS cpwa ON cpwa.assignee_id = ao.assignee_id AND cpwa.patent_number = cp.patent_number LEFT JOIN organisations AS o ON o.organisation_id = ao.organisation_id WHERE cpwa.citing_id IS NOT NULL AND cp.patent_number IN (:list) ";
 
                 if(start != '' && end != '') {
                     replacements.start = start
                     replacements.end = end
                     queryCitedLogo += " AND cpwa.app_date BETWEEN :start AND :end "
-                }
+                } 
 
-
-                queryCitedLogo += " GROUP BY cp.patent_number, cpwa.citing_patent_number ORDER BY cpwa.app_date DESC"
+                queryCitedLogo += " ) AS temp GROUP BY patent_number, number ORDER BY start DESC "
 
                 if(typeof counter == 'undefined' ) { 
                     queryCitedLogo += " LIMIT 0, 500";
                 }
+
                 citedCompanies =  await connection.applicationNew.query(queryCitedLogo,{
                     type: connection.Sequelize.QueryTypes.SELECT,
                     raw: true,

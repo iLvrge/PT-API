@@ -312,12 +312,16 @@ route.get('/parties/inventor/:inventorID' , [authJWT.verifyToken], async(req, re
 
 route.post('/parties', [authJWT.verifyToken, clientDBConnection.connect], async(req, res, next) => {
     try{
-        let {selectedCompanies, search, layout, type} = req.body, getList = [];
+        let {selectedCompanies, search, layout, type, list, total} = req.body, getList = [];
         /**
          * Activity acquisition, mergerIn, employees
          */
         if(selectedCompanies != '' && typeof selectedCompanies != 'undefined' && selectedCompanies != null) {
             selectedCompanies = JSON.parse(selectedCompanies)
+        }
+
+        if(list != '' && typeof list != 'undefined' && list != null) {
+            list = JSON.parse(list)
         }
         /**
          * Find company name
@@ -334,28 +338,59 @@ route.post('/parties', [authJWT.verifyToken, clientDBConnection.connect], async(
 
         console.log("layoutID", layoutID)
        
-        const getRepresentativeName = await helpers.findCompanyName(req.connection_db, selectedCompanies)
+        let getRepresentativeName = await helpers.findCompanyName(req.connection_db, selectedCompanies)
 
-        if( getRepresentativeName != null) {
+        let where = {
+            organisationID: req.orgId,
+            selectedCompanies,
+            layoutID,
+            /* acitivityID: [1, 6, 10], */
+            acitivityID: [1, 6],
+            year: connection.DEFAULT_YEAR
+        }
+
+        if( getRepresentativeName != null || (layoutID == 15 && total == list.length)) {
 
             let subQuery = `SELECT application COLLATE utf8mb4_0900_ai_ci FROM dashboard_items WHERE organisation_id = :organisationID AND representative_id IN (:selectedCompanies) AND type = :layoutID` 
-             
-            if(typeof search != 'undefined' && search == 'all') {
+            if(layoutID == 15 && total == list.length) {    
+                subQuery = `:list`;
+                where.list = list;
+
+
+                const findCompanyQuery = `SELECT representative_id, COUNT(representative_id) AS counter FROM dashboard_items WHERE organisation_id = :organisationID AND application IN (:list) ORDER BY counter desc limit 1`
+                const companyData = await connection.applicationNew.query(findCompanyQuery,{
+                    type: connection.Sequelize.QueryTypes.SELECT,
+                    raw: true,
+                    plain: true,
+                    logging: console.log,
+                    replacements: where
+                })
+
+                if(companyData != null) {
+                    getRepresentativeName = await helpers.findCompanyName(req.connection_db, [companyData.representative_id])
+                }
+
+            } else if(typeof search != 'undefined' && search == 'all') {
                 subQuery = `SELECT appno_doc_num FROM assets WHERE organisation_id = :organisationID AND company_id IN (:selectedCompanies) AND layout_id = :layoutID`;
             }
 
-            let query = ''
-
+            let query = '' 
             if(typeof type != 'undefined' && type == 'filled') {
                 query += `SELECT assignor_and_assignee_id AS id, name, assignee, SUM(app_count) as number FROM ( SELECT aaa.assignor_and_assignee_id, aaa.representative_id, IF(r.representative_name <> "" , r.representative_name, aaa.name) AS name,  COUNT(DISTINCT appno_doc_num) AS app_count, "${getRepresentativeName.representative_name}" as assignee  FROM db_patent_grant_bibliographic.inventor_new  AS apt INNER JOIN db_patent_application_bibliographic.assignor_and_assignee AS aaa ON aaa.assignor_and_assignee_id = apt.assignor_and_assignee_id
                 LEFT JOIN db_uspto.representative As r ON r.representative_id = aaa.representative_id WHERE appno_doc_num IN (${subQuery}) GROUP BY aaa.assignor_and_assignee_id ) AS temp GROUP BY name HAVING assignee <> name ORDER BY number DESC, name ASC `
             } else {
+
                 query += `SELECT assignor_and_assignee_id AS id, name, assignee, SUM(app_count) as number FROM (SELECT aaa.assignor_and_assignee_id, aaa.representative_id, (CASE  WHEN apt.activity_id = 10 THEN "Employees" WHEN r.representative_name <> "" THEN r.representative_name ELSE aaa.name END) AS name, COUNT(DISTINCT appno_doc_num) AS app_count, "${getRepresentativeName.representative_name}" as assignee  FROM db_new_application.activity_parties_transactions AS apt
                 INNER JOIN db_uspto.documentid AS doc ON doc.rf_id = apt.rf_id
                 INNER JOIN db_uspto.assignor_and_assignee AS aaa ON aaa.assignor_and_assignee_id = apt.assignor_and_assignee_id
                 LEFT JOIN db_uspto.representative As r ON r.representative_id = aaa.representative_id
-                WHERE apt.organisation_id = :organisationID and apt.company_id IN (:selectedCompanies)
-                AND activity_id IN (:acitivityID) AND date_format(doc.appno_date, '%Y') > :year AND appno_doc_num IN (${subQuery})
+                WHERE apt.organisation_id = :organisationID ` 
+
+                if(selectedCompanies.length > 0) {
+                    query += ` AND apt.company_id IN (:selectedCompanies) `
+                }
+
+                query += ` AND activity_id IN (:acitivityID) AND date_format(doc.appno_date, '%Y') > :year AND appno_doc_num IN (${subQuery})
                 GROUP BY aaa.assignor_and_assignee_id) AS temp GROUP BY name HAVING assignee <> name ORDER BY number DESC, name ASC ` 
             } 
 
@@ -363,14 +398,7 @@ route.post('/parties', [authJWT.verifyToken, clientDBConnection.connect], async(
                 type: connection.Sequelize.QueryTypes.SELECT,
                 raw: true,
                 logging: console.log,
-                replacements: {
-                    organisationID: req.orgId,
-                    selectedCompanies,
-                    layoutID,
-                    /* acitivityID: [1, 6, 10], */
-                    acitivityID: [1, 6],
-                    year: connection.DEFAULT_YEAR
-                }
+                replacements: where
             })
         }
         
