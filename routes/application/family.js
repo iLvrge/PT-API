@@ -414,6 +414,7 @@ let getFileContent = async (filePath, type) => {
                 }
             } else {
                 console.log(`Error while reading - ${err}`)
+                reject('')
             }
         })
     })
