@@ -2361,7 +2361,7 @@ let findAssignorAndAssigneeListFromRFIDs = async(rfIDs, type) => {
         if(parseInt(type) > 0) { 
             if(parseInt(type) == 1) {
 
-                const queryAssets = "SELECT appno_doc_num FROM documentid WHERE rf_id IN (:IDs) AND date_format(appno_date, '%Y') > :year GROUP BY appno_doc_num"
+                const queryAssets = "SELECT appno_doc_num FROM documentid WHERE rf_id IN (:IDs) AND date_format(appno_date, '%Y') > :year GROUP BY appno_doc_num"  
 
                 const assetsList = await connection.resources.query(queryAssets,{
                     type: connection.Sequelize.QueryTypes.SELECT,
