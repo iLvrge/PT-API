@@ -3327,7 +3327,7 @@ route.post("/company/cited/:id/export", [authJWT.verifyToken, authJWT.isAdmin, a
                     where.companiesIDs = companies
                 }
             }    
-            where.type = [30, 21, 33]
+            where.type = [30, 21, 36]
 
             let queryOwnedAssets = `SELECT application FROM db_new_application.dashboard_items WHERE type IN (:type) AND organisation_id = :organisationID `
 
