@@ -4091,7 +4091,39 @@ const findLawFirmName = async (props) => {
     return lawFirm;
 }
 
+
+const getOwnedAssets = async( req ) => {
+    try {
+        let {selectedCompanies} = req.body, getList = [];
+        if(selectedCompanies != '' && typeof selectedCompanies != 'undefined' && selectedCompanies != null) {
+            selectedCompanies = JSON.parse(selectedCompanies)
+        }
+        /* const query = `SELECT appno_doc_num FROM owned_assets WHERE organisation_id = :organisationID AND company_id IN (:selectedCompanies)` */
+        const query = `SELECT application FROM dashboard_items WHERE organisation_id = :organisationID AND representative_id IN (:selectedCompanies) AND type = :type AND application <> '' GROUP BY application`
+
+        const list =  await connection.applicationNew.query(query,{
+            type: connection.Sequelize.QueryTypes.SELECT,
+            raw: true,
+            logging: console.log,
+            replacements: {
+                organisationID: req.orgId,
+                selectedCompanies,
+                type: 30
+            }
+        })
+
+        if(list !== null && list.length > 0) {
+            list.forEach( row => {
+                getList.push(`${row.application}`)
+            })
+        }
+        return getList
+    } catch (err) {
+    }
+}
+
 const helper = {};
+helper.getOwnedAssets = getOwnedAssets
 helper.minMax2DArray = minMax2DArray
 helper.findLawFirmName = findLawFirmName
 helper.getFamilyList = getFamilyList

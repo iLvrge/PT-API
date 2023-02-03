@@ -878,49 +878,57 @@ route.post("/", [authJWT.verifyToken], async(req, res, next) => {
             })
             res.status(200).json(getData);
         } else if(parseInt(qType) === 37 && (typeof format_type == 'undefined' || format_type.toLowerCase() != 'bank')) {
-            const url = `https://developer.uspto.gov/ptab-api/proceedings?patentOwnerName=%22${company.replace(/ /g,'%20')}%22`
+            let ownedAssets = await getOwnedAssets(req)
+            if(ownedAssets.length > 0) {
 
-            const firstRequest = url + `&recordTotalQuantity=1`
-            //require('https').globalAgent.options.ca = require('ssl-root-cas').create();
-            const option = {
-                method: 'GET',
-                uri: firstRequest,
-                strictSSL: false
-             }
-            rp(option)
-            .then( body => {
-                let responseBody = JSON.parse(body);
-                console.log(responseBody)
-                const {results, recordTotalQuantity} = responseBody
-                if(recordTotalQuantity != undefined && parseInt(recordTotalQuantity) > 0) {
-                    if( parseInt(recordTotalQuantity) > 1 ) {
-                        const secondRequest = url + `&recordTotalQuantity=${responseBody.recordTotalQuantity}`
-                        option.uri = secondRequest
-                        rp(option)
-                        .then( body => {
-                            responseBody = JSON.parse(body);
-                            const number = [], other_number = []
-                            const {results} = responseBody
-                            results.forEach(item => {
-                                const {appellantApplicationNumberText, appellantPatentNumber} = item
-                                if(appellantPatentNumber != undefined && !number.includes(appellantPatentNumber)) {
-                                    number.push(appellantPatentNumber)
-                                } else if (appellantApplicationNumberText != undefined && !other_number.includes(appellantApplicationNumberText)) {
-                                    other_number.push(appellantApplicationNumberText)
-                                }
+                const url = `https://developer.uspto.gov/ptab-api/proceedings?patentOwnerName=%22${company.replace(/ /g,'%20')}%22`
+    
+                const firstRequest = url + `&recordTotalQuantity=1`
+                //require('https').globalAgent.options.ca = require('ssl-root-cas').create();
+                const option = {
+                    method: 'GET',
+                    uri: firstRequest,
+                    strictSSL: false
+                 }
+                rp(option)
+                .then( body => {
+                    let responseBody = JSON.parse(body);
+                    console.log(responseBody)
+                    const {results, recordTotalQuantity} = responseBody
+                    if(recordTotalQuantity != undefined && parseInt(recordTotalQuantity) > 0) {
+                        if( parseInt(recordTotalQuantity) > 1 ) {
+                            const secondRequest = url + `&recordTotalQuantity=${responseBody.recordTotalQuantity}`
+                            option.uri = secondRequest
+                            rp(option)
+                            .then( body => {
+                                responseBody = JSON.parse(body);
+                                const number = [], other_number = []
+                                const {results} = responseBody
+                                results.forEach(item => {
+                                    const {appellantApplicationNumberText, appellantPatentNumber} = item
+                                    if(appellantPatentNumber != undefined && !number.includes(appellantPatentNumber) && ownedAssets.includes(appellantPatentNumber)) {
+                                        number.push(appellantPatentNumber)
+                                    } else if (appellantApplicationNumberText != undefined && !other_number.includes(appellantApplicationNumberText) && ownedAssets.includes(appellantApplicationNumberText)) {
+                                        other_number.push(appellantApplicationNumberText)
+                                    }
+                                })
+                                getData = {number: number.length, other_number: other_number.length, patent: number.length > 0 ? number[0] : '', application: other_number.length > 0 ? other_number[0] : '', rf_id: '', total: number.length + other_number.length}
+                                res.status(200).json(getData);
                             })
-                            getData = {number: number.length, other_number: other_number.length, patent: number.length > 0 ? number[0] : '', application: other_number.length > 0 ? other_number[0] : '', rf_id: '', total: number.length + other_number.length}
+                        } else {
+                            const {appellantApplicationNumberText, appellantPatentNumber} = responseBody.results[0]
+                            if(ownedAssets.includes(appellantApplicationNumberText) || ownedAssets.includes(appellantPatentNumber)) { 
+                                getData = {number: appellantPatentNumber != undefined ? 1 : 0, other_number: appellantPatentNumber == undefined && appellantApplicationNumberText != undefined ? 1 : 0, patent: appellantPatentNumber != undefined ? appellantPatentNumber : '', application: appellantPatentNumber == undefined && appellantApplicationNumberText != undefined ? appellantApplicationNumberText : '', rf_id: '', total: 1}
+                            }
                             res.status(200).json(getData);
-                        })
+                        }
                     } else {
-                        const {appellantApplicationNumberText, appellantPatentNumber} = responseBody.results[0]
-                        getData = {number: appellantPatentNumber != undefined ? 1 : 0, other_number: appellantPatentNumber == undefined && appellantApplicationNumberText != undefined ? 1 : 0, patent: appellantPatentNumber != undefined ? appellantPatentNumber : '', application: appellantPatentNumber == undefined && appellantApplicationNumberText != undefined ? appellantApplicationNumberText : '', rf_id: '', total: 1}
                         res.status(200).json(getData);
                     }
-                } else {
-                    res.status(200).json(getData);
-                }
-            }) 
+                }) 
+            } else {
+                res.status(200).json(getData);
+            }
         } else {
             res.status(200).json(getData);
         }
