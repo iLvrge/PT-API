@@ -1009,7 +1009,7 @@ route.get("/family/claims/:applicationNumber", [authJWT.verifyToken], async (req
         }        
     } catch( err ) {
         console.log('ERROR IN Claims', err);
-        res.status(500).send("Internal server error.");
+        res.status(200).json([]);
     }
 })
 

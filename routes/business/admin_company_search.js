@@ -3327,8 +3327,9 @@ route.post("/company/cited/:id/export", [authJWT.verifyToken, authJWT.isAdmin, a
                     where.companiesIDs = companies
                 }
             }    
+            where.type = [30, 21, 33]
 
-            let queryOwnedAssets = `SELECT application FROM db_new_application.dashboard_items WHERE type = 30 AND organisation_id = :organisationID `
+            let queryOwnedAssets = `SELECT application FROM db_new_application.dashboard_items WHERE type IN (:type) AND organisation_id = :organisationID `
 
             if(typeof where.companiesIDs !== 'undefined') {
                 queryOwnedAssets += ` AND representative_id IN (:companiesIDs) `
@@ -3356,14 +3357,14 @@ route.post("/company/cited/:id/export", [authJWT.verifyToken, authJWT.isAdmin, a
                 if(allOwnedAssets.length > 0) {
                     let queryCitedPatentsAssignee = `SELECT ao.assignee_id, COUNT(ao.assignee_id) AS occurences, ao.assignee_organization, ao.assignee_query, ao.domain, ao.domain2, ao.domain3, IF(ao.api_logo <> "null", ao.api_logo, "") AS api_logo, IF(ao.api_logo1 <> "null", ao.api_logo1, "") AS api_logo1, IF(ao.api_logo2 <> "null", ao.api_logo2, "") AS api_logo2, IF(ao.api_logo3 <> "null", ao.api_logo3, "") AS api_logo3, IF(ao.api_logo4 <> "null", ao.api_logo4, "") AS api_logo4, IF(ao.api_logo5 <> "null", ao.api_logo5, "") AS api_logo5, IF(ao.api_logo6 <> "null", ao.api_logo6, "") AS api_logo6, IF(ao.api_logo7 <> "null", ao.api_logo7, "") AS api_logo7, IF(ao.api_logo8 <> "null", ao.api_logo8, "") AS api_logo8, IF(ao.api_logo9 <> "null", ao.api_logo9, "") AS api_logo9, without_square, image_url, '' AS img FROM assignee_organizations AS ao 
                     INNER JOIN cited_patents AS cp ON cp.assignee_id = ao.assignee_id
-                    INNER JOIN assets AS a ON a.grant_doc_num  COLLATE utf8mb4_general_ci  = cp.patent_number  COLLATE utf8mb4_general_ci 
-                    WHERE a.layout_id = :layout_id AND a.organisation_id = :organisationID ` 
+                    INNER JOIN dashboard_items AS a ON a.patent  COLLATE utf8mb4_general_ci  = cp.patent_number  COLLATE utf8mb4_general_ci 
+                    WHERE a.organisation_id = :organisationID ` 
 
-                    queryCitedPatentsAssignee +=   `AND a.appno_doc_num IN (:application)  `
+                    queryCitedPatentsAssignee +=   `AND a.application IN (:application)  `
                     where.application = allOwnedAssets
                     
                     if(typeof where.companiesIDs !== 'undefined') {
-                        queryCitedPatentsAssignee +=   `AND a.company_id IN (:companiesIDs) AND ao.organisation_id = 0`
+                        queryCitedPatentsAssignee +=   `AND a.representative_id IN (:companiesIDs) AND ao.organisation_id = 0`
                     }                       
 
                     if(assignee_id != undefined) {
