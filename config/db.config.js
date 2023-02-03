@@ -124,4 +124,4 @@ const DEFAULT_YEAR = moment(new Date()).subtract(21, 'year').format('YYYY')
 
 const db = { Sequelize, Op, application, applicationNew, resources, business, maintainence, biblioGrant, biblioApplication, config, bucketConfig, slackConfig, DEFAULT_LIMIT, DEFAULT_YEAR };
  
-module.exports = db;
+module.exports = db;  
