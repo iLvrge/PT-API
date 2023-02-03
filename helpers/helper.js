@@ -2259,7 +2259,7 @@ const groupOrganisationSuggestions = (entitiesList) => {
         }
     });
 
-    let newSuggestedSet = [];
+    let newSuggestedSet = [], allOrgID = [];
     const spellcheck = new natural.Spellcheck(allNames);
     // loop through the groups and suggest the correct name
     for (let group in groups) {
@@ -2277,15 +2277,24 @@ const groupOrganisationSuggestions = (entitiesList) => {
         });
         const findIndex = orgs.findIndex( row => row.name == group)
         if(findIndex !== -1) {
-            const similarNames = [];
-            groups[group].map((org) => similarNames.push(org.name))
+            /* const similarNames = [];
+            groups[group].map((org) => similarNames.push(org.name)) */
             
             if(groups[group].length > 0) {
-                const rowData = {...orgs[findIndex], correctName: correctNames, highestOccurrences} 
-                newSuggestedSet.push(rowData)
+                allOrgID.push(orgs[findIndex].id)
+                let added = false, newGroup = []
                 groups[group].map((org) => {
-                    newSuggestedSet.push(org)
+                    if(!allOrgID.includes(org.id)) {
+                        added = true
+                        newGroup.push(org)
+                        allOrgID.push(org.id)
+                    }
                 })
+                if(newGroup.length > 0) {
+                    const rowData = {...orgs[findIndex], correctName: correctNames, highestOccurrences} 
+                    newSuggestedSet.push(rowData)
+                    newSuggestedSet = [...newSuggestedSet, ...newGroup]
+                }
             }
         } 
     } 
