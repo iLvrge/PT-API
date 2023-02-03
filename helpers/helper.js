@@ -2199,7 +2199,7 @@ const groupSuggestions = (entitiesList) => {
             }
         }
     }  
-    let newSuggestedSet = []
+    let newSuggestedSet = [], allNamesID = [];
     // Print suggested groups with correct name
     for (const name in suggestedGroups) {
         const group = suggestedGroups[name];
@@ -2217,15 +2217,23 @@ const groupSuggestions = (entitiesList) => {
                 }
             } 
             const findIndex = names.findIndex( row => row.name == name)
-            if(findIndex !== -1) {
-                const rowData = {...names[findIndex], correctName, highestOccurrences} 
-                newSuggestedSet.push(rowData) 
+            if(findIndex !== -1) { 
+                let newGroup = []
+                allNamesID.push(names[findIndex].id)
                 group.map( grp => {
                     const grpIndex = names.findIndex( row => row.name == grp)
                     if(grpIndex !== -1) {
-                        newSuggestedSet.push(names[grpIndex]) 
+                        if(!allNamesID.includes(names[grpIndex].id)) {  
+                            newGroup.push(names[grpIndex]) 
+                            allNamesID.push(names[grpIndex].id)
+                        }
                     }
                 })
+                if(newGroup.length > 0) {
+                    const rowData = {...names[findIndex], correctName, highestOccurrences} 
+                    newSuggestedSet.push(rowData) 
+                    newSuggestedSet = [...newSuggestedSet, ...newGroup]
+                }
             }
         } 
     }
@@ -2282,10 +2290,9 @@ const groupOrganisationSuggestions = (entitiesList) => {
             
             if(groups[group].length > 0) {
                 allOrgID.push(orgs[findIndex].id)
-                let added = false, newGroup = []
+                let newGroup = []
                 groups[group].map((org) => {
-                    if(!allOrgID.includes(org.id)) {
-                        added = true
+                    if(!allOrgID.includes(org.id)) { 
                         newGroup.push(org)
                         allOrgID.push(org.id)
                     }
