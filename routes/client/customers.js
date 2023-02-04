@@ -1483,6 +1483,7 @@ route.get("/:layout/assets", [authJWT.verifyToken, clientDBConnection.connect], 
                                 })
                                 await Promise.all(promises)
                             } else {
+                                console.log(ownedAssets)
                                 listData = [...responseBody.results]
                                 const {appellantApplicationNumberText, appellantPatentNumber} = listData[0]
                                 if(appellantPatentNumber != undefined && ownedAssets.includes('appellantPatentNumber')) {
