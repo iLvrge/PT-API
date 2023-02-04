@@ -4108,9 +4108,15 @@ const findLawFirmName = async (props) => {
 }
 
 
-const getOwnedAssets = async( req ) => {
+const getOwnedAssets = async( req, t = 0 ) => {
     try {
-        let {selectedCompanies} = req.body, getList = [];
+        let getList = [], selectedCompanies = [];
+        if( t == 1) {
+            selectedCompanies = req.params.companies
+        } else {
+            selectedCompanies = req.body.selectedCompanies;
+        }
+
         if(selectedCompanies != '' && typeof selectedCompanies != 'undefined' && selectedCompanies != null) {
             selectedCompanies = JSON.parse(selectedCompanies)
         }
@@ -4135,6 +4141,7 @@ const getOwnedAssets = async( req ) => {
         }
         return getList
     } catch (err) {
+
     }
 }
 

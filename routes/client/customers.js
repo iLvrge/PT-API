@@ -1438,12 +1438,13 @@ route.get("/:layout/assets", [authJWT.verifyToken, clientDBConnection.connect], 
                 assets.total_records = assets.list.length;
                 res.status(200).json(assets);
             } else if(replacements.layoutID == 37) { 
+
                 /**
                  * Send api request for PTAB data
                  */
                 const getRepresentativeName = await helpers.findCompanyName(req.connection_db, replacements.companies)
                 if( getRepresentativeName != null) {
-
+                    let ownedAssets = helpers.getOwnedAssets(req, 1)
                     const company = getRepresentativeName.get('representative_name')
                     const url = `https://developer.uspto.gov/ptab-api/proceedings?patentOwnerName=%22${company.replace(/ /g,'%20')}%22`
 
@@ -1471,10 +1472,10 @@ route.get("/:layout/assets", [authJWT.verifyToken, clientDBConnection.connect], 
                                 const {results} = responseBody
                                 const promises =  results.map(item => {
                                     const {appellantApplicationNumberText, appellantPatentNumber} = item
-                                    if(appellantPatentNumber != undefined && !number.includes(appellantPatentNumber)) {
+                                    if(appellantPatentNumber != undefined && !number.includes(appellantPatentNumber) && ownedAssets.includes('appellantPatentNumber')) {
                                         number.push(appellantPatentNumber)
                                         listData.push(item)
-                                    } else if (appellantApplicationNumberText != undefined && !other_number.includes(appellantApplicationNumberText)) {
+                                    } else if (appellantApplicationNumberText != undefined && !other_number.includes(appellantApplicationNumberText) && ownedAssets.includes('appellantApplicationNumberText')) {
                                         other_number.push(appellantApplicationNumberText)
                                         listData.push(item)
                                     }
@@ -1484,51 +1485,56 @@ route.get("/:layout/assets", [authJWT.verifyToken, clientDBConnection.connect], 
                             } else {
                                 listData = [...responseBody.results]
                                 const {appellantApplicationNumberText, appellantPatentNumber} = listData[0]
-                                if(appellantPatentNumber != undefined) {
+                                if(appellantPatentNumber != undefined && ownedAssets.includes('appellantPatentNumber')) {
                                     number.push(appellantPatentNumber)
                                 }
-                                if(appellantApplicationNumberText != undefined) {
+                                if(appellantApplicationNumberText != undefined && ownedAssets.includes('appellantApplicationNumberText')) {
                                     other_number.push(appellantApplicationNumberText)
                                 }
                             }
-                            
-                            query = `SELECT ${req.orgId} AS organisation_id, CASE WHEN assets.grant_doc_num = '' OR assets.grant_doc_num IS NULL THEN CONCAT(SUBSTRING(assets.appno_doc_num, 1, 2), '/', FORMAT(SUBSTRING(assets.appno_doc_num, 3), 0)) ELSE FORMAT(assets.grant_doc_num, 0) END AS format_asset,
-                            CASE WHEN assets.grant_doc_num = '' OR assets.grant_doc_num IS NULL THEN assets.appno_doc_num ELSE assets.grant_doc_num END AS asset, 
-                            CASE WHEN assets.grant_doc_num = '' OR assets.grant_doc_num IS NULL THEN 1 ELSE 0 END AS asset_type, assets.appno_doc_num, assets.grant_doc_num, 0 AS child_count, '' AS channel FROM db_uspto.documentid AS assets WHERE `;
 
-                            if(number.length > 0) {
-                                query +=` assets.grant_doc_num IN (:number)`
-                            }
-                            if(other_number.length > 0) {
+                            if(number.length > 0 || other_number.length > 0) {
+                                query = `SELECT ${req.orgId} AS organisation_id, CASE WHEN assets.grant_doc_num = '' OR assets.grant_doc_num IS NULL THEN CONCAT(SUBSTRING(assets.appno_doc_num, 1, 2), '/', FORMAT(SUBSTRING(assets.appno_doc_num, 3), 0)) ELSE FORMAT(assets.grant_doc_num, 0) END AS format_asset,
+                                CASE WHEN assets.grant_doc_num = '' OR assets.grant_doc_num IS NULL THEN assets.appno_doc_num ELSE assets.grant_doc_num END AS asset, 
+                                CASE WHEN assets.grant_doc_num = '' OR assets.grant_doc_num IS NULL THEN 1 ELSE 0 END AS asset_type, assets.appno_doc_num, assets.grant_doc_num, 0 AS child_count, '' AS channel FROM db_uspto.documentid AS assets WHERE `;
+    
                                 if(number.length > 0) {
-                                    query +=` OR `;
+                                    query +=` assets.grant_doc_num IN (:number)`
                                 }
-                                query +=` assets.appno_doc_num IN (:other_number)`
-                            }
-                            query +=` GROUP BY assets.appno_doc_num `;
-
-                            if(typeof column === 'undefined' || column === 'undefined') {
-                                column = 'asset'
-                            }
-                            if(typeof direction === 'undefined' || direction === 'undefined') {
-                                direction = 'DESC'
-                            }
-                
-                            if(column == 'asset') {
-                                query += `   ORDER BY asset_type ASC, ABS(${column}) ${direction} `
+                                if(other_number.length > 0) {
+                                    if(number.length > 0) {
+                                        query +=` OR `;
+                                    }
+                                    query +=` assets.appno_doc_num IN (:other_number)`
+                                }
+                                query +=` GROUP BY assets.appno_doc_num `;
+    
+                                if(typeof column === 'undefined' || column === 'undefined') {
+                                    column = 'asset'
+                                }
+                                if(typeof direction === 'undefined' || direction === 'undefined') {
+                                    direction = 'DESC'
+                                }
+                    
+                                if(column == 'asset') {
+                                    query += `   ORDER BY asset_type ASC, ABS(${column}) ${direction} `
+                                } else {
+                                    query += `   ORDER BY asset_type ASC, ${column} ${direction} `;
+                                }
+    
+                                assets.list = await connection.applicationNew.query(query,{
+                                    type: connection.Sequelize.QueryTypes.SELECT,
+                                    raw: true,
+                                    logging: console.log,
+                                    replacements: {number, other_number},
+                                })
+                                assets.total_records = assets.list.length
+                                assets.other_data = listData
+                                res.status(200).json(assets);
                             } else {
-                                query += `   ORDER BY asset_type ASC, ${column} ${direction} `;
+                                res.status(200).json(assets);
                             }
-
-
-                            assets.list = await connection.applicationNew.query(query,{
-                                type: connection.Sequelize.QueryTypes.SELECT,
-                                raw: true,
-                                logging: console.log,
-                                replacements: {number, other_number},
-                            })
-                            assets.total_records = assets.list.length
-                            assets.other_data = listData
+                        } else {
                             res.status(200).json(assets);
                         }
                     })
