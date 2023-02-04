@@ -4109,7 +4109,7 @@ const findLawFirmName = async (props) => {
 
 
 const getOwnedAssets = async( req, t = 0 ) => {
-    console.log(t)
+    console.log('getOwnedAssets', t)
     try {
         let getList = [], selectedCompanies = [];
         if( t == 1) {
@@ -4143,6 +4143,7 @@ const getOwnedAssets = async( req, t = 0 ) => {
         }
         return getList
     } catch (err) {
+        console.log('errrrrrr', err)
         return []
     }
 }
