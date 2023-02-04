@@ -4109,6 +4109,7 @@ const findLawFirmName = async (props) => {
 
 
 const getOwnedAssets = async( req, t = 0 ) => {
+    console.log(t)
     try {
         let getList = [], selectedCompanies = [];
         if( t == 1) {
@@ -4133,15 +4134,16 @@ const getOwnedAssets = async( req, t = 0 ) => {
                 type: 30
             }
         })
-
+        console.log('query', query)
         if(list !== null && list.length > 0) {
-            list.forEach( row => {
+            const promise = list.forEach( row => {
                 getList.push(`${row.application}`)
             })
+            Promise.all(promise)
         }
         return getList
     } catch (err) {
-
+        return []
     }
 }
 
