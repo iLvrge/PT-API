@@ -4109,12 +4109,10 @@ const findLawFirmName = async (props) => {
 
 
 const getOwnedAssets = async( req, t = 0 ) => {
-    console.log('getOwnedAssets', t)
     try {
         let getList = [], selectedCompanies = [];
-        if( t == 1) {
-            console.log('companies', req, req.params)
-            selectedCompanies = req.params.companies
+        if( t == 1) { 
+            selectedCompanies = req.query.companies
         } else {
             selectedCompanies = req.body.selectedCompanies;
         }
@@ -4134,8 +4132,7 @@ const getOwnedAssets = async( req, t = 0 ) => {
                 selectedCompanies,
                 type: 30
             }
-        })
-        console.log('query', query)
+        }) 
         if(list !== null && list.length > 0) {
             const promise = list.forEach( row => {
                 getList.push(`${row.application}`)
