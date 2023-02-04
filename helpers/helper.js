@@ -4134,10 +4134,9 @@ const getOwnedAssets = async( req, t = 0 ) => {
             }
         }) 
         if(list !== null && list.length > 0) {
-            const promise = list.forEach( row => {
+            list.forEach( row => {
                 getList.push(`${row.application}`)
             })
-            Promise.all(promise)
         }
         return getList
     } catch (err) {
