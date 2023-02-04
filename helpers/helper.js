@@ -2199,7 +2199,7 @@ const groupSuggestions = (entitiesList) => {
             }
         }
     }  
-    let newSuggestedSet = []
+    let newSuggestedSet = [], allNamesID = [];
     // Print suggested groups with correct name
     for (const name in suggestedGroups) {
         const group = suggestedGroups[name];
@@ -2217,15 +2217,23 @@ const groupSuggestions = (entitiesList) => {
                 }
             } 
             const findIndex = names.findIndex( row => row.name == name)
-            if(findIndex !== -1) {
-                const rowData = {...names[findIndex], correctName, highestOccurrences} 
-                newSuggestedSet.push(rowData) 
+            if(findIndex !== -1) { 
+                let newGroup = []
+                allNamesID.push(names[findIndex].id)
                 group.map( grp => {
                     const grpIndex = names.findIndex( row => row.name == grp)
                     if(grpIndex !== -1) {
-                        newSuggestedSet.push(names[grpIndex]) 
+                        if(!allNamesID.includes(names[grpIndex].id)) {  
+                            newGroup.push(names[grpIndex]) 
+                            allNamesID.push(names[grpIndex].id)
+                        }
                     }
                 })
+                if(newGroup.length > 0) {
+                    const rowData = {...names[findIndex], correctName, highestOccurrences} 
+                    newSuggestedSet.push(rowData) 
+                    newSuggestedSet = [...newSuggestedSet, ...newGroup]
+                }
             }
         } 
     }
@@ -2259,7 +2267,7 @@ const groupOrganisationSuggestions = (entitiesList) => {
         }
     });
 
-    let newSuggestedSet = [];
+    let newSuggestedSet = [], allOrgID = [];
     const spellcheck = new natural.Spellcheck(allNames);
     // loop through the groups and suggest the correct name
     for (let group in groups) {
@@ -2277,15 +2285,23 @@ const groupOrganisationSuggestions = (entitiesList) => {
         });
         const findIndex = orgs.findIndex( row => row.name == group)
         if(findIndex !== -1) {
-            const similarNames = [];
-            groups[group].map((org) => similarNames.push(org.name))
+            /* const similarNames = [];
+            groups[group].map((org) => similarNames.push(org.name)) */
             
             if(groups[group].length > 0) {
-                const rowData = {...orgs[findIndex], correctName: correctNames, highestOccurrences} 
-                newSuggestedSet.push(rowData)
+                allOrgID.push(orgs[findIndex].id)
+                let newGroup = []
                 groups[group].map((org) => {
-                    newSuggestedSet.push(org)
+                    if(!allOrgID.includes(org.id)) { 
+                        newGroup.push(org)
+                        allOrgID.push(org.id)
+                    }
                 })
+                if(newGroup.length > 0) {
+                    const rowData = {...orgs[findIndex], correctName: correctNames, highestOccurrences} 
+                    newSuggestedSet.push(rowData)
+                    newSuggestedSet = [...newSuggestedSet, ...newGroup]
+                }
             }
         } 
     } 
@@ -2331,7 +2347,7 @@ let findAssignorAndAssigneeListFromRFIDs = async(rfIDs, type) => {
     if(typeof type != 'undefined' &&  parseInt(type) < 3) {
         /* let queryAssignor = "SELECT a.assignor_and_assignee_id, a.or_name as name, count(a.or_name) as counter, r.representative_name as normalize_name, (select rr.representative_name FROM representative as rr WHERE rr.representative_name = aaa.name GROUP BY rr.representative_name) as representativeCompany, (SELECT aa.instances FROM assignor_and_assignee as aa WHERE aa.assignor_and_assignee_id = a.assignor_and_assignee_id GROUP BY aa.assignor_and_assignee_id) as total_occurences, a.rf_id FROM db_uspto.assignor as a LEFT JOIN assignor_and_assignee as aaa ON aaa.assignor_and_assignee_id = a.assignor_and_assignee_id LEFT JOIN db_uspto.representative_assignment_conveyance as rac ON rac.rf_id = a.rf_id LEFT JOIN representative as r ON r.representative_id = aaa.representative_id WHERE a.rf_id IN (:IDs) "; */
 
-        let queryAssignor = "SELECT a.assignor_and_assignee_id, a.or_name as name, count(a.or_name) as counter, r.representative_name as normalize_name, (select rr.representative_name FROM representative as rr WHERE rr.representative_name = aaa.name GROUP BY rr.representative_name) as representativeCompany, (SELECT aa.instances FROM assignor_and_assignee as aa WHERE aa.assignor_and_assignee_id = a.assignor_and_assignee_id GROUP BY aa.assignor_and_assignee_id) as total_occurences, a.rf_id, 1 AS flag FROM db_uspto.assignor as a LEFT JOIN assignor_and_assignee as aaa ON aaa.assignor_and_assignee_id = a.assignor_and_assignee_id LEFT JOIN db_uspto.representative_assignment_conveyance as rac ON rac.rf_id = a.rf_id LEFT JOIN representative as r ON r.representative_id = aaa.representative_id WHERE a.rf_id IN (SELECT rf_id FROM documentid WHERE appno_doc_num IN (SELECT appno_doc_num FROM documentid WHERE rf_id IN (:IDs)) GROUP BY rf_id) "; 
+        let queryAssignor = "SELECT a.assignor_and_assignee_id, a.or_name as name, count(a.or_name) as counter, r.representative_name as normalize_name, (select rr.representative_name FROM representative as rr WHERE rr.representative_name = aaa.name GROUP BY rr.representative_name) as representativeCompany, (SELECT aa.instances FROM assignor_and_assignee as aa WHERE aa.assignor_and_assignee_id = a.assignor_and_assignee_id GROUP BY aa.assignor_and_assignee_id) as total_occurences, a.rf_id, 1 AS flag FROM db_uspto.assignor as a LEFT JOIN assignor_and_assignee as aaa ON aaa.assignor_and_assignee_id = a.assignor_and_assignee_id LEFT JOIN db_uspto.representative_assignment_conveyance as rac ON rac.rf_id = a.rf_id LEFT JOIN representative as r ON r.representative_id = aaa.representative_id WHERE date_format(a.exec_dt, '%Y') > :year AND a.rf_id IN (SELECT rf_id FROM documentid WHERE appno_doc_num IN (SELECT appno_doc_num FROM documentid WHERE rf_id IN (:IDs)) GROUP BY rf_id) "; 
         if(parseInt(type) > 0) { 
             if(parseInt(type) == 1) {
                 queryAssignor += " AND (rac.employer_assign = 1) ";
@@ -2345,7 +2361,7 @@ let findAssignorAndAssigneeListFromRFIDs = async(rfIDs, type) => {
         if(parseInt(type) > 0) { 
             if(parseInt(type) == 1) {
 
-                const queryAssets = "SELECT appno_doc_num FROM documentid WHERE rf_id IN (:IDs) AND date_format(appno_date, '%Y') > :year GROUP BY appno_doc_num"
+                const queryAssets = "SELECT appno_doc_num FROM documentid WHERE rf_id IN (:IDs) AND date_format(appno_date, '%Y') > :year GROUP BY appno_doc_num"  
 
                 const assetsList = await connection.resources.query(queryAssets,{
                     type: connection.Sequelize.QueryTypes.SELECT,
@@ -2387,7 +2403,7 @@ let findAssignorAndAssigneeListFromRFIDs = async(rfIDs, type) => {
         
         assignors = await connection.resources.query(queryAssignor,{
             type: connection.Sequelize.QueryTypes.SELECT,
-            replacements: { IDs: rfIDs },
+            replacements: { IDs: rfIDs , year: connection.DEFAULT_YEAR },
             raw: true,
             logging: console.log,
             }
@@ -4092,9 +4108,15 @@ const findLawFirmName = async (props) => {
 }
 
 
-const getOwnedAssets = async( req ) => {
+const getOwnedAssets = async( req, t = 0 ) => {
     try {
-        let {selectedCompanies} = req.body, getList = [];
+        let getList = [], selectedCompanies = [];
+        if( t == 1) {
+            selectedCompanies = req.params.companies
+        } else {
+            selectedCompanies = req.body.selectedCompanies;
+        }
+
         if(selectedCompanies != '' && typeof selectedCompanies != 'undefined' && selectedCompanies != null) {
             selectedCompanies = JSON.parse(selectedCompanies)
         }
@@ -4119,6 +4141,7 @@ const getOwnedAssets = async( req ) => {
         }
         return getList
     } catch (err) {
+
     }
 }
 

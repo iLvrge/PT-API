@@ -1,5 +1,7 @@
 const Sequelize = require('sequelize');
 
+const moment = require('moment');
+
 const Op = Sequelize.Op;
 
 const application = new Sequelize(process.env.DATABASE_APPLICATION, process.env.USER, process.env.PASSWORD, {
@@ -118,8 +120,8 @@ const slackConfig = {
 
 const DEFAULT_LIMIT = 100 
 
-const DEFAULT_YEAR = 1999
+const DEFAULT_YEAR = moment(new Date()).subtract(21, 'year').format('YYYY')
 
 const db = { Sequelize, Op, application, applicationNew, resources, business, maintainence, biblioGrant, biblioApplication, config, bucketConfig, slackConfig, DEFAULT_LIMIT, DEFAULT_YEAR };
  
-module.exports = db;
+module.exports = db;  
