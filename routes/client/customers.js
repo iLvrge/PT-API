@@ -1445,6 +1445,7 @@ route.get("/:layout/assets", [authJWT.verifyToken, clientDBConnection.connect], 
                 const getRepresentativeName = await helpers.findCompanyName(req.connection_db, replacements.companies)
                 if( getRepresentativeName != null) {
                     let ownedAssets = await helpers.getOwnedAssets(req, 1)
+                    console.log(ownedAssets)
                     const company = getRepresentativeName.get('representative_name')
                     const url = `https://developer.uspto.gov/ptab-api/proceedings?patentOwnerName=%22${company.replace(/ /g,'%20')}%22`
 
