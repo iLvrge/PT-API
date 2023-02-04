@@ -1487,10 +1487,10 @@ route.get("/:layout/assets", [authJWT.verifyToken, clientDBConnection.connect], 
                                 console.log(ownedAssets)
                                 listData = [...responseBody.results]
                                 const {appellantApplicationNumberText, appellantPatentNumber} = listData[0]
-                                if(appellantPatentNumber != undefined && ownedAssets.includes('appellantPatentNumber')) {
+                                if(appellantPatentNumber != undefined && ownedAssets.includes(appellantPatentNumber)) {
                                     number.push(appellantPatentNumber)
                                 }
-                                if(appellantApplicationNumberText != undefined && ownedAssets.includes('appellantApplicationNumberText')) {
+                                if(appellantApplicationNumberText != undefined && ownedAssets.includes(appellantApplicationNumberText)) {
                                     other_number.push(appellantApplicationNumberText)
                                 }
                             }
