@@ -4113,6 +4113,7 @@ const getOwnedAssets = async( req, t = 0 ) => {
     try {
         let getList = [], selectedCompanies = [];
         if( t == 1) {
+            console.log('companies', req.params.companies)
             selectedCompanies = req.params.companies
         } else {
             selectedCompanies = req.body.selectedCompanies;
