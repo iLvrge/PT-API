@@ -328,6 +328,7 @@ route.put("/:user_id", [authJWT.verifyToken, clientDBConnection.connect], async(
                         if(req.body.status != undefined && (req.body.status == 0 || req.body.status == 1)){
                             const loginStatusUpdate = await LoginUsers.update({status:req.body.status},{where:{user_id: findUser.user_id}});
                         } 
+                        let updateUserType = null;
                         let user = findUser.toJSON();
                         user.first_name = req.body.first_name;
                         user.last_name = req.body.last_name;
@@ -339,7 +340,9 @@ route.put("/:user_id", [authJWT.verifyToken, clientDBConnection.connect], async(
                         if(req.body.status != undefined && (req.body.status == 0 || req.body.status == 1)){
                             user.status = req.body.status;
                         }
-                        let updateUserType = null;
+                        
+
+
                         if(req.body.type != undefined ) {
                             if(req.body.type == 'Admin') {
                                 updateUserType = {type: '0'};
@@ -354,10 +357,62 @@ route.put("/:user_id", [authJWT.verifyToken, clientDBConnection.connect], async(
                             updateUserType = {type : req.body.role == 1 ? '0' : '1'};
                             user.role_id = req.body.role;
                         }
+
+                        let upload_file = ''
+                        if(req.files != null && req.files != undefined && req.files.file != undefined) {
+                            const mimeType = req.files.file.mimetype                                    
+                            if(mimeType != null && mimeType != '' && mimeType.toLowerCase().indexOf('.exe') < 0){
+                                let fileObject = req.files.file;
+                                const name = fileObject.name.replace(/\s+/g, '-');
+                                upload_file = `https://s3-${bucketConfig.region}.amazonaws.com/${bucketConfig.bucketName}/${bucketConfig.dirName}/${name}`
+                                const bucketConfig = connection.bucketConfig;  
+                                let s3 = new AWS.S3({
+                                    credentials: {
+                                        accessKeyId: bucketConfig.accessKeyId,
+                                        secretAccessKey: bucketConfig.secretAccessKey,
+                                    },
+                                    region: bucketConfig.region
+                                })
+                                const extension = name.toString().split('.').pop().toLowerCase();
+                                let contentType = "";
+                                if(extension.indexOf('jpg') >= 0){
+                                    contentType = "image/jpeg";
+                                } else if(extension.indexOf('svg') >= 0) {
+                                    contentType = "image/svg+xml";
+                                } else if(extension.indexOf('bmp') >= 0){
+                                    contentType = "image/bmp";
+                                } else {
+                                    contentType = "image/png";
+                                }
+                                const params = {
+                                    Key: `${bucketConfig.dirName}/${name}`,
+                                    Bucket: bucketConfig.bucketName,
+                                    Body: fileObject.data,
+                                    ACL: 'public-read',
+                                    ContentType: contentType,
+                                    ContentDisposition: 'inline'
+                                }
+                                s3.putObject(params, async function(err, data) {
+                                    console.log(err, data)
+                                    if(err == null) {
+                                        user.logo = upload_file 
+                                        updateUserType.logo = upload_file 
+                                    }
+                                });
+                            }
+                        }
+
+
+
                         
                         const u = await User.update(user,{where: {user_id: findUser.user_id}});
                         if(u) {
                             if(updateUserType != null) {
+                                updateUserType.first_name = req.body.first_name;
+                                updateUserType.last_name = req.body.last_name;
+                                if(req.body.email_address != findUser.email_address) { 
+                                    updateUserType.email_address = req.body.email_address;
+                                }
                                 await LoginUsers.update(updateUserType,{where:{user_id: findUser.user_id}});
                                 res.status(200).send("Updated successfully");
                             } else {
