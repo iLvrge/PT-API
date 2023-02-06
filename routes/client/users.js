@@ -184,8 +184,8 @@ route.post("/", [authJWT.verifyToken, clientDBConnection.connect], async(req, re
                                     if(mimeType != null && mimeType != '' && mimeType.toLowerCase().indexOf('.exe') < 0){
                                         let fileObject = req.files.file;
                                         const name = fileObject.name.replace(/\s+/g, '-');
-                                        upload_file = `https://s3-${bucketConfig.region}.amazonaws.com/${bucketConfig.bucketName}/${bucketConfig.dirName}/${name}`
                                         const bucketConfig = connection.bucketConfig;  
+                                        upload_file = `https://s3-${bucketConfig.region}.amazonaws.com/${bucketConfig.bucketName}/${bucketConfig.dirName}/${name}`
                                         let s3 = new AWS.S3({
                                             credentials: {
                                                 accessKeyId: bucketConfig.accessKeyId,
@@ -364,8 +364,8 @@ route.put("/:user_id", [authJWT.verifyToken, clientDBConnection.connect], async(
                             if(mimeType != null && mimeType != '' && mimeType.toLowerCase().indexOf('.exe') < 0){
                                 let fileObject = req.files.file;
                                 const name = fileObject.name.replace(/\s+/g, '-');
-                                upload_file = `https://s3-${bucketConfig.region}.amazonaws.com/${bucketConfig.bucketName}/${bucketConfig.dirName}/${name}`
                                 const bucketConfig = connection.bucketConfig;  
+                                upload_file = `https://s3-${bucketConfig.region}.amazonaws.com/${bucketConfig.bucketName}/${bucketConfig.dirName}/${name}`
                                 let s3 = new AWS.S3({
                                     credentials: {
                                         accessKeyId: bucketConfig.accessKeyId,
