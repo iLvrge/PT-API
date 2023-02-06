@@ -395,8 +395,8 @@ route.put("/:user_id", [authJWT.verifyToken, clientDBConnection.connect], async(
                                 s3.putObject(params, async function(err, data) {
                                     console.log(err, data)
                                     if(err == null) {
-                                        user.logo = upload_file 
-                                        updateUserType.logo = upload_file 
+                                        await User.update({logo: upload_file}, {where: {user_id: findUser.user_id}})
+                                        await LoginUsers.update({logo: upload_file}, {where: {user_id: findUser.user_id}}) 
                                     }
                                 });
                             }
