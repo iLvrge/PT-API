@@ -404,7 +404,8 @@ route.put("/:user_id", [authJWT.verifyToken, clientDBConnection.connect], async(
 
 
 
-                        
+                        console.log(updateUserType)
+                        console.log(user)
                         const u = await User.update(user,{where: {user_id: findUser.user_id}});
                         if(u) {
                             if(updateUserType != null) {
