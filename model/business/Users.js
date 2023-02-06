@@ -47,6 +47,10 @@ const Users = connection.business.define('user',{
             key: 'organisation_id',
         }
     },
+    logo:{
+        type: Sequelize.STRING,
+        allowNull: true,
+    },
     role_id:{
         type: Sequelize.INTEGER,
         allowNull: false,
