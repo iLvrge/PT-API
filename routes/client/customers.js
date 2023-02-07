@@ -1668,7 +1668,7 @@ route.get("/:layout/assets", [authJWT.verifyToken, clientDBConnection.connect], 
                                 CASE WHEN grant_doc_num = '' OR grant_doc_num IS NULL THEN 1 ELSE 0 END AS asset_type, appno_doc_num,  grant_doc_num, 0 AS child_count, '' AS channel  FROM db_patent_application_bibliographic.application_grant WHERE grant_doc_num IN (:assetList) GROUP BY grant_doc_num`
                         } else {
                             if(Array.isArray(customers) && customers.length > 0  && (replacements.layoutID == 32 || replacements.layoutID == 33 )) {
-                                query += `  application IN (
+                                query += ` AND application IN (
                                             SELECT documentid.appno_doc_num FROM db_uspto.documentid 
                                             WHERE rf_id  IN ( 
                                                 SELECT activity_parties_transactions.rf_id  FROM db_new_application.activity_parties_transactions 
