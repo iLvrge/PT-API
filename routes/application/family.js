@@ -36,15 +36,16 @@ route.get('/family/list/:grantNumber', [authJWT.verifyToken], async (req, res) =
             if(grantNumber.indexOf('US') === -1) {
                 grantNumber = `US${grantNumber}`
             }
+            console.log(`${extraDiskPath}FAMILY/${grantNumber}.XML`)
             let getFamilyData = '', fileExist = false
             if (fs.existsSync(`${extraDiskPath}FAMILY/${grantNumber}.XML`)) {
                 //file exists
                 fileExist = true
                 getFamilyData = await fs.promises.readFile(`${extraDiskPath}FAMILY/${grantNumber}.XML`, 'utf8');
             } else {
-                getFamilyData = await epo.runUrl(token,'family','publication','docdb',`${grantNumber}`);
+                getFamilyData = await epo.runUrl(token,'family','publication','docdb',`${grantNumber}/legal`);
                 if( !getFamilyData ) {
-                    getFamilyData = await epo.runUrl(token,'family','publication','epodoc',`${grantNumber}`);
+                    getFamilyData = await epo.runUrl(token,'family','publication','epodoc',`${grantNumber}/legal`);
                 }
             }
                     
@@ -60,7 +61,7 @@ route.get('/family/list/:grantNumber', [authJWT.verifyToken], async (req, res) =
                 
                 if( xmlData.hasOwnProperty('ops:world-patent-data') ){
                     if(fileExist === false) {
-                        fs.writeFileSync(`${extraDiskPath}FAMILY/${grantNumber}.XML`, xmlData);
+                        fs.writeFileSync(`${extraDiskPath}FAMILY/${grantNumber}.XML`, xmlData, {encoding:'utf8',flag:'w'});
                     }
                     console.log('IN ops:world-patent-data')
                     const worldPatentData = xmlData['ops:world-patent-data']
@@ -71,7 +72,8 @@ route.get('/family/list/:grantNumber', [authJWT.verifyToken], async (req, res) =
                             console.log('IN patentFamily')
                             const familyMembers = patentFamily[0]['ops:family-member']
                             console.log('IN patentFamily', familyMembers.length)
-                            if( familyMembers.length > 0 ) {                                
+                            if( familyMembers.length > 0 ) {  
+                                console.log('familyMembers', familyMembers)                              
                                 let familyID = 0
                                 familyMembers.forEach(family => {
                                     let dbTypeData = family['publication-reference'][0]['document-id'][0]
@@ -82,7 +84,8 @@ route.get('/family/list/:grantNumber', [authJWT.verifyToken], async (req, res) =
                                         if((familyID === 0 && dbTypeData['doc-number'] == req.params.grantNumber) || (familyID !== 0 && familyID == family.$['family-id'])) {
                                             if(familyID === 0) {
                                                 familyID = family.$['family-id']
-                                            }                                            
+                                            }                   
+                                            const legal = []                         
                                             familyData.push({
                                                 family_id: familyID,
                                                 patent_number: dbTypeData['doc-number'],
@@ -103,7 +106,8 @@ route.get('/family/list/:grantNumber', [authJWT.verifyToken], async (req, res) =
                                                 inventors: null,
                                                 assignee: null,
                                                 applicants: [],
-                                                title: ''                             
+                                                title: '' ,
+                                                legal: legal                           
                                             })
                                         }
                                     }
@@ -123,7 +127,8 @@ route.get('/family/list/:grantNumber', [authJWT.verifyToken], async (req, res) =
                                     inventors: null,
                                     assignee: null,
                                     applicants: [],
-                                    title: ''
+                                    title: '',
+                                    legal: []
                                 })
                             }
                        }
