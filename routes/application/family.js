@@ -90,9 +90,35 @@ route.get('/family/list/:grantNumber', [authJWT.verifyToken], async (req, res) =
                                             if(family.hasOwnProperty('ops:legal')){
                                                 console.log('IN LEGAL ARRAY')
                                                 if(Array.isArray(family['ops:legal'])){
-                                                    console.log(family['ops:legal'][0])
                                                     family['ops:legal'].forEach( legalItem => {
+                                                        console.log('legalItem', legalItem)
+                                                        const code = legalItem.$['code'];
+                                                        const desc = legalItem.$['desc'];
+                                                        const preLine = []
+                                                        if(legalItem.hasOwnProperty('ops:pre')) {
+                                                            if(Array.isArray(legalItem['ops:pre'])) {
+                                                                legalItem['ops:pre'].forEach( pre => {
+                                                                    preLine.push(pre['_'])
+                                                                })
+                                                            } else {
+                                                                preLine.push(legalItem['ops:pre']['_'])
+                                                            }
+                                                        }
+                                                        const country_code = legalItem['ops:L001EP'][0]['_'];
+                                                        const filling_published_doc = legalItem['ops:L002EP'][0]['_'];
+                                                        const document_number = legalItem['ops:L003EP'][0]['_'];
+                                                        const kind_code = legalItem['ops:L004EP'][0]['_'];
+                                                        const ipr_type = legalItem['ops:L005EP'][0]['_'];
+                                                        const gazette_date = legalItem['ops:L007EP'][0]['_'];
+                                                        const legal_event_code = legalItem['ops:L008EP'][0]['_'];
+                                                        const date_last_exchanged = legalItem['ops:L018EP'][0]['_'];
+                                                        const date_first_exchanged = legalItem['ops:L019EP'][0]['_'];
+                                                        if(legalItem.hasOwnProperty('L500EP')) {
+                                                            console.log('legalItem["L500EP"]', legalItem['L500EP'])
+                                                            if(legalItem['L500EP'].length > 0) {
 
+                                                            }
+                                                        }
                                                     })
                                                 } else {
                                                     console.log('IN LEGAL OBJECT')
