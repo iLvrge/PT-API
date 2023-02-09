@@ -86,6 +86,7 @@ route.get('/family/list/:grantNumber', [authJWT.verifyToken], async (req, res) =
                                                 familyID = family.$['family-id']
                                             }                   
                                             const legal = []   
+                                            console.log('family', family)
                                             if(family.hasOwnProperty('ops:legal')){
                                                 console.log('IN LEGAL ARRAY')
                                                 if(Array.isArray(family['ops:legal'])){
@@ -96,7 +97,9 @@ route.get('/family/list/:grantNumber', [authJWT.verifyToken], async (req, res) =
                                                 } else {
                                                     console.log('IN LEGAL OBJECT')
                                                 }
-                                            }      
+                                            } else {
+console.log('NO LEGAL')
+                                            }     
                                             familyData.push({
                                                 family_id: familyID,
                                                 patent_number: dbTypeData['doc-number'],
