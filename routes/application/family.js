@@ -87,11 +87,10 @@ route.get('/family/list/:grantNumber', [authJWT.verifyToken], async (req, res) =
                                             }                   
                                             const legal = []   
                                             console.log('family', family)
-                                            if(family.hasOwnProperty('ops:legal')){
+                                            if(family.hasOwnProperty('ops:legal')) {
                                                 console.log('IN LEGAL ARRAY')
-                                                if(Array.isArray(family['ops:legal'])){
-                                                    family['ops:legal'].forEach( legalItem => {
-                                                        console.log('legalItem', legalItem)
+                                                if(Array.isArray(family['ops:legal'])) {
+                                                    family['ops:legal'].forEach( legalItem => { 
                                                         const code = legalItem.$['code'];
                                                         const desc = legalItem.$['desc'];
                                                         const preLine = []
@@ -113,18 +112,164 @@ route.get('/family/list/:grantNumber', [authJWT.verifyToken], async (req, res) =
                                                         const legal_event_code = legalItem['ops:L008EP'][0]['_'];
                                                         const date_last_exchanged = legalItem['ops:L018EP'][0]['_'];
                                                         const date_first_exchanged = legalItem['ops:L019EP'][0]['_'];
-                                                        if(legalItem.hasOwnProperty('L500EP')) {
-                                                            console.log('legalItem["L500EP"]', legalItem['L500EP'])
-                                                            if(legalItem['L500EP'].length > 0) {
-
+                                                        const lespList = []
+                                                        if(legalItem.hasOwnProperty('ops:L500EP')) {
+                                                            console.log('legalItem["L500EP"]', legalItem['ops:L500EP'])
+                                                            if(legalItem['ops:L500EP'].length > 0) {
+                                                                legalItem['ops:L500EP'].forEach( lesp => {
+                                                                    if(lesp.hasOwnProperty('ops:L501EP')) {
+                                                                        lespList.push({
+                                                                            desc: lesp['ops:L501EP'][0].$['desc'],
+                                                                            data: lesp['ops:L501EP'][0]['_']
+                                                                        })
+                                                                    }
+                                                                    if(lesp.hasOwnProperty('ops:L502EP')) {
+                                                                        lespList.push({
+                                                                            desc: lesp['ops:L502EP'][0].$['desc'],
+                                                                            data: lesp['ops:L502EP'][0]['_']
+                                                                        })
+                                                                    }
+                                                                    if(lesp.hasOwnProperty('ops:L503EP')) {
+                                                                        lespList.push({
+                                                                            desc: lesp['ops:L503EP'][0].$['desc'],
+                                                                            data: lesp['ops:L503EP'][0]['_']
+                                                                        })
+                                                                    }
+                                                                    if(lesp.hasOwnProperty('ops:L504EP')) {
+                                                                        lespList.push({
+                                                                            desc: lesp['ops:L504EP'][0].$['desc'],
+                                                                            data: lesp['ops:L504EP'][0]['_']
+                                                                        })
+                                                                    }
+                                                                    if(lesp.hasOwnProperty('ops:L505EP')) {
+                                                                        lespList.push({
+                                                                            desc: lesp['ops:L505EP'][0].$['desc'],
+                                                                            data: lesp['ops:L505EP'][0]['_']
+                                                                        })
+                                                                    }
+                                                                    if(lesp.hasOwnProperty('ops:L506EP')) {
+                                                                        lespList.push({
+                                                                            desc: lesp['ops:L506EP'][0].$['desc'],
+                                                                            data: lesp['ops:L506EP'][0]['_']
+                                                                        })
+                                                                    }
+                                                                    if(lesp.hasOwnProperty('ops:L507EP')) {
+                                                                        lespList.push({
+                                                                            desc: lesp['ops:L507EP'][0].$['desc'],
+                                                                            data: lesp['ops:L507EP'][0]['_']
+                                                                        })
+                                                                    }
+                                                                })
                                                             }
                                                         }
+                                                        legal.push({
+                                                            code,
+                                                            desc,
+                                                            preLine,
+                                                            country_code,
+                                                            filling_published_doc,
+                                                            document_number,
+                                                            kind_code,
+                                                            ipr_type,
+                                                            gazette_date,
+                                                            legal_event_code,
+                                                            date_last_exchanged,
+                                                            date_first_exchanged,
+                                                            lespList
+                                                        })
                                                     })
                                                 } else {
-                                                    console.log('IN LEGAL OBJECT')
+                                                    const legalItem =  family['ops:legal']
+                                                    const code = legalItem.$['code'];
+                                                    const desc = legalItem.$['desc'];
+                                                    const preLine = []
+                                                    if(legalItem.hasOwnProperty('ops:pre')) {
+                                                        if(Array.isArray(legalItem['ops:pre'])) {
+                                                            legalItem['ops:pre'].forEach( pre => {
+                                                                preLine.push(pre['_'])
+                                                            })
+                                                        } else {
+                                                            preLine.push(legalItem['ops:pre']['_'])
+                                                        }
+                                                    }
+                                                    const country_code = legalItem['ops:L001EP'][0]['_'];
+                                                    const filling_published_doc = legalItem['ops:L002EP'][0]['_'];
+                                                    const document_number = legalItem['ops:L003EP'][0]['_'];
+                                                    const kind_code = legalItem['ops:L004EP'][0]['_'];
+                                                    const ipr_type = legalItem['ops:L005EP'][0]['_'];
+                                                    const gazette_date = legalItem['ops:L007EP'][0]['_'];
+                                                    const legal_event_code = legalItem['ops:L008EP'][0]['_'];
+                                                    const date_last_exchanged = legalItem['ops:L018EP'][0]['_'];
+                                                    const date_first_exchanged = legalItem['ops:L019EP'][0]['_'];
+                                                    const lespList = []
+                                                    if(legalItem.hasOwnProperty('ops:L500EP')) {
+                                                        console.log('legalItem["L500EP"]', legalItem['ops:L500EP'])
+                                                        if(legalItem['ops:L500EP'].length > 0) {
+                                                            legalItem['ops:L500EP'].forEach( lesp => {
+                                                                if(lesp.hasOwnProperty('ops:L501EP')) {
+                                                                    lespList.push({
+                                                                        desc: lesp['ops:L501EP'][0].$['desc'],
+                                                                        data: lesp['ops:L501EP'][0]['_']
+                                                                    })
+                                                                }
+                                                                if(lesp.hasOwnProperty('ops:L502EP')) {
+                                                                    lespList.push({
+                                                                        desc: lesp['ops:L502EP'][0].$['desc'],
+                                                                        data: lesp['ops:L502EP'][0]['_']
+                                                                    })
+                                                                }
+                                                                if(lesp.hasOwnProperty('ops:L503EP')) {
+                                                                    lespList.push({
+                                                                        desc: lesp['ops:L503EP'][0].$['desc'],
+                                                                        data: lesp['ops:L503EP'][0]['_']
+                                                                    })
+                                                                }
+                                                                if(lesp.hasOwnProperty('ops:L504EP')) {
+                                                                    lespList.push({
+                                                                        desc: lesp['ops:L504EP'][0].$['desc'],
+                                                                        data: lesp['ops:L504EP'][0]['_']
+                                                                    })
+                                                                }
+                                                                if(lesp.hasOwnProperty('ops:L505EP')) {
+                                                                    lespList.push({
+                                                                        desc: lesp['ops:L505EP'][0].$['desc'],
+                                                                        data: lesp['ops:L505EP'][0]['_']
+                                                                    })
+                                                                }
+                                                                if(lesp.hasOwnProperty('ops:L506EP')) {
+                                                                    lespList.push({
+                                                                        desc: lesp['ops:L506EP'][0].$['desc'],
+                                                                        data: lesp['ops:L506EP'][0]['_']
+                                                                    })
+                                                                }
+                                                                if(lesp.hasOwnProperty('ops:L507EP')) {
+                                                                    lespList.push({
+                                                                        desc: lesp['ops:L507EP'][0].$['desc'],
+                                                                        data: lesp['ops:L507EP'][0]['_']
+                                                                    })
+                                                                }
+                                                            })
+                                                        }
+                                                    }
+                                                    legal.push({
+                                                        code,
+                                                        desc,
+                                                        preLine,
+                                                        country_code,
+                                                        filling_published_doc,
+                                                        document_number,
+                                                        kind_code,
+                                                        ipr_type,
+                                                        gazette_date,
+                                                        legal_event_code,
+                                                        date_last_exchanged,
+                                                        date_first_exchanged,
+                                                        lespList
+                                                    })
                                                 }
+                                                console.log('legal', legal)
                                             } else {
-console.log('NO LEGAL')
+                                                console.log('NO LEGAL')
                                             }     
                                             familyData.push({
                                                 family_id: familyID,
