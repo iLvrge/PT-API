@@ -2184,9 +2184,16 @@ const groupSuggestions = (entitiesList) => {
     let otherSuggested = []
     for (let i = 0; i < names.length; i++) {
         for (let j = i + 1; j < names.length; j++) {
-            const distance = levenshtein.get(names[i].name.toLowerCase(), names[j].name.toLowerCase())
-            //console.log(`INVENTOR: ${distance} - ${names[i].name} - ${names[j].name}`)
-            if (distance < 3) {
+            const distance1 = levenshtein.get(names[i].name.toLowerCase(), names[j].name.toLowerCase())
+            const name1 = names[i].name.split(" ").reverse().join(" ")
+            const name2  = names[j].name.split(" ").reverse().join(" ")
+            const distance2 = levenshtein.get(names[i].name.toLowerCase(), name2.toLowerCase())
+            const distance3 = levenshtein.get(name1.toLowerCase(), name2.toLowerCase())
+            const distance4 = levenshtein.get(name1.toLowerCase(), names[j].name.toLowerCase())
+            const distance = Math.min(distance1, distance2, distance3, distance4)
+            console.log(`INVENTOR: ${distance} - ${names[i].name} - ${names[j].name}`)
+            if(distance < 3) {
+                
                 if (suggestedGroups[names[i].name]) {
                     suggestedGroups[names[i].name].push(names[j].name);
                     otherSuggested.push(names[j].name)
@@ -2205,7 +2212,7 @@ const groupSuggestions = (entitiesList) => {
         const group = suggestedGroups[name];
         //group.push(name); 
         //console.log(`${name} - ${group.length}`)
-        if(group.length > 1) {
+        if(group.length > 0) {
             // Find the name with the highest occurrences that doesn't have a middle name
             let correctName = "";
             let highestOccurrences = 0;
@@ -2221,11 +2228,13 @@ const groupSuggestions = (entitiesList) => {
                 let newGroup = []
                 allNamesID.push(names[findIndex].id)
                 group.map( grp => {
-                    const grpIndex = names.findIndex( row => row.name == grp)
-                    if(grpIndex !== -1) {
-                        if(!allNamesID.includes(names[grpIndex].id)) {  
-                            newGroup.push(names[grpIndex]) 
-                            allNamesID.push(names[grpIndex].id)
+                    if(name != grp) {
+                        const grpIndex = names.findIndex( row => row.name == grp)
+                        if(grpIndex !== -1) {
+                            if(!allNamesID.includes(names[grpIndex].id)) {  
+                                newGroup.push(names[grpIndex]) 
+                                allNamesID.push(names[grpIndex].id)
+                            }
                         }
                     }
                 })
