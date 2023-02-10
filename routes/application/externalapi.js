@@ -153,22 +153,21 @@ route.get("/citation/:asset", [authJWT.verifyToken], async (req, res) => {
                         responseBody.patents.forEach(item => {
                             let assignee = "";
                             if(item.assignees.length > 0) {
-                                assignee = item.assignees[item.assignees.length - 1].assignee_organization
-
-                                if(assignee == '') { 
-                                    if(item.assignees[item.assignees.length - 1].assignee_first_name != null) {
+                                assignee = item.assignees[item.assignees.length - 1].assignee_organization 
+                                if(assignee == '' || assignee == 'null' || assignee == null) {  
+                                    if(item.assignees[item.assignees.length - 1].assignee_first_name != null) { 
                                         const name  = `${item.assignees[item.assignees.length - 1].assignee_first_name} ${item.assignees[item.assignees.length - 1].assignee_last_name}`
                                         assignee = name
                                         individualList.push(name)
                                     }
                                 }
 
-                                if(assignee == '' && item.inventors.length > 0) { 
+                                if((assignee == ''  || assignee == 'null' || assignee == null) && item.inventors.length > 0) {  
                                     const name = `${item.inventors[item.inventors.length - 1].inventor_first_name} ${item.inventors[item.inventors.length - 1].inventor_last_name}`
                                     assignee = name
                                     individualList.push(name)
                                 }
-                            }
+                            } 
                             if(assignee !== '') {
                                 allAssignee.push(assignee)
                             } else {
