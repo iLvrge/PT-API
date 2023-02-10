@@ -333,22 +333,26 @@ const getFamilyDataFromXML = async(req) => {
     let getFamily = [];
     let findPatent = await Documentid.findOne({
             attributes: ['rf_id', [connection.Sequelize.fn('MAX', connection.Sequelize.col('grant_doc_num')), 'grant_doc_num'], [connection.Sequelize.fn('MAX', connection.Sequelize.col('appno_doc_num')),'appno_doc_num'], [connection.Sequelize.fn('MAX', connection.Sequelize.col('appno_date')),'appno_date'], 'title', [connection.Sequelize.fn('MAX', connection.Sequelize.col('grant_date')),'grant_date']],
-            where: {
-                    [connection.Op.or]: [
-                    {appno_doc_num: applicationNumber},
-                    {grant_doc_num: applicationNumber}
-            ]},
+            where:{appno_doc_num: applicationNumber},
             group: ['grant_doc_num', 'appno_doc_num', 'pgpub_doc_num'],
             order:[['grant_date', 'desc']]
         })
 
     if(findPatent == null ) {
-        findPatent = await getGrantNumber(applicationNumber)
-        if(findPatent == null){
-            findPatent = await getPublicationNumber(applicationNumber)
+        findPatent = await Documentid.findOne({
+            attributes: ['rf_id', [connection.Sequelize.fn('MAX', connection.Sequelize.col('grant_doc_num')), 'grant_doc_num'], [connection.Sequelize.fn('MAX', connection.Sequelize.col('appno_doc_num')),'appno_doc_num'], [connection.Sequelize.fn('MAX', connection.Sequelize.col('appno_date')),'appno_date'], 'title', [connection.Sequelize.fn('MAX', connection.Sequelize.col('grant_date')),'grant_date']],
+            where: {grant_doc_num: applicationNumber},
+            group: ['grant_doc_num', 'appno_doc_num', 'pgpub_doc_num'],
+            order:[['grant_date', 'desc']]
+        })
+        if(findPatent == null ) {
+            findPatent = await getGrantNumber(applicationNumber)
+            if(findPatent == null){
+                findPatent = await getPublicationNumber(applicationNumber)
+            }
         }
     }
-
+    console.log('findPatent', findPatent)
     /* if(findPatent != null && findPatent.rf_id > 0 && findPatent.grant_doc_num != null && findPatent.grant_doc_num != '') {
        
 
@@ -365,7 +369,7 @@ const getFamilyDataFromXML = async(req) => {
 
     const formatAsset = `US${asset}`
 
-      
+      console.log('formatAsset', formatAsset)
     if(formatAsset !== null && formatAsset !== '') {
                     
         let getFamilyData = '', fileExist = false
