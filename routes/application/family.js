@@ -333,22 +333,26 @@ const getFamilyDataFromXML = async(req) => {
     let getFamily = [];
     let findPatent = await Documentid.findOne({
             attributes: ['rf_id', [connection.Sequelize.fn('MAX', connection.Sequelize.col('grant_doc_num')), 'grant_doc_num'], [connection.Sequelize.fn('MAX', connection.Sequelize.col('appno_doc_num')),'appno_doc_num'], [connection.Sequelize.fn('MAX', connection.Sequelize.col('appno_date')),'appno_date'], 'title', [connection.Sequelize.fn('MAX', connection.Sequelize.col('grant_date')),'grant_date']],
-            where: {
-                    [connection.Op.or]: [
-                    {appno_doc_num: applicationNumber},
-                    {grant_doc_num: applicationNumber}
-            ]},
+            where:{appno_doc_num: applicationNumber},
             group: ['grant_doc_num', 'appno_doc_num', 'pgpub_doc_num'],
             order:[['grant_date', 'desc']]
         })
 
     if(findPatent == null ) {
-        findPatent = await getGrantNumber(applicationNumber)
-        if(findPatent == null){
-            findPatent = await getPublicationNumber(applicationNumber)
+        findPatent = await Documentid.findOne({
+            attributes: ['rf_id', [connection.Sequelize.fn('MAX', connection.Sequelize.col('grant_doc_num')), 'grant_doc_num'], [connection.Sequelize.fn('MAX', connection.Sequelize.col('appno_doc_num')),'appno_doc_num'], [connection.Sequelize.fn('MAX', connection.Sequelize.col('appno_date')),'appno_date'], 'title', [connection.Sequelize.fn('MAX', connection.Sequelize.col('grant_date')),'grant_date']],
+            where: {grant_doc_num: applicationNumber},
+            group: ['grant_doc_num', 'appno_doc_num', 'pgpub_doc_num'],
+            order:[['grant_date', 'desc']]
+        })
+        if(findPatent == null ) {
+            findPatent = await getGrantNumber(applicationNumber)
+            if(findPatent == null){
+                findPatent = await getPublicationNumber(applicationNumber)
+            }
         }
     }
-
+    console.log('findPatent', findPatent)
     /* if(findPatent != null && findPatent.rf_id > 0 && findPatent.grant_doc_num != null && findPatent.grant_doc_num != '') {
        
 
@@ -365,7 +369,7 @@ const getFamilyDataFromXML = async(req) => {
 
     const formatAsset = `US${asset}`
 
-      
+      console.log('formatAsset', formatAsset)
     if(formatAsset !== null && formatAsset !== '') {
                     
         let getFamilyData = '', fileExist = false
@@ -452,6 +456,194 @@ const getFamilyDataFromXML = async(req) => {
                                                 }
                                             }
                                         } 
+
+                                        const legal = []   
+                                        console.log('family', family)
+                                        if(family.hasOwnProperty('ops:legal')) {
+                                            console.log('IN LEGAL ARRAY')
+                                            if(Array.isArray(family['ops:legal'])) {
+                                                family['ops:legal'].forEach( legalItem => { 
+                                                    const code = legalItem.$['code'];
+                                                    const desc = legalItem.$['desc'];
+                                                    const preLine = []
+                                                    if(legalItem.hasOwnProperty('ops:pre')) {
+                                                        if(Array.isArray(legalItem['ops:pre'])) {
+                                                            legalItem['ops:pre'].forEach( pre => {
+                                                                preLine.push(pre['_'])
+                                                            })
+                                                        } else {
+                                                            preLine.push(legalItem['ops:pre']['_'])
+                                                        }
+                                                    }
+                                                    const country_code = legalItem['ops:L001EP'][0]['_'];
+                                                    const filling_published_doc = legalItem['ops:L002EP'][0]['_'];
+                                                    const document_number = legalItem['ops:L003EP'][0]['_'];
+                                                    const kind_code = legalItem['ops:L004EP'][0]['_'];
+                                                    const ipr_type = legalItem['ops:L005EP'][0]['_'];
+                                                    const gazette_date = legalItem['ops:L007EP'][0]['_'];
+                                                    const legal_event_code = legalItem['ops:L008EP'][0]['_'];
+                                                    const date_last_exchanged = legalItem['ops:L018EP'][0]['_'];
+                                                    const date_first_exchanged = legalItem['ops:L019EP'][0]['_'];
+                                                    const lespList = []
+                                                    if(legalItem.hasOwnProperty('ops:L500EP')) {
+                                                        console.log('legalItem["L500EP"]', legalItem['ops:L500EP'])
+                                                        if(legalItem['ops:L500EP'].length > 0) {
+                                                            legalItem['ops:L500EP'].forEach( lesp => {
+                                                                if(lesp.hasOwnProperty('ops:L501EP')) {
+                                                                    lespList.push({
+                                                                        desc: lesp['ops:L501EP'][0].$['desc'],
+                                                                        data: lesp['ops:L501EP'][0]['_']
+                                                                    })
+                                                                }
+                                                                if(lesp.hasOwnProperty('ops:L502EP')) {
+                                                                    lespList.push({
+                                                                        desc: lesp['ops:L502EP'][0].$['desc'],
+                                                                        data: lesp['ops:L502EP'][0]['_']
+                                                                    })
+                                                                }
+                                                                if(lesp.hasOwnProperty('ops:L503EP')) {
+                                                                    lespList.push({
+                                                                        desc: lesp['ops:L503EP'][0].$['desc'],
+                                                                        data: lesp['ops:L503EP'][0]['_']
+                                                                    })
+                                                                }
+                                                                if(lesp.hasOwnProperty('ops:L504EP')) {
+                                                                    lespList.push({
+                                                                        desc: lesp['ops:L504EP'][0].$['desc'],
+                                                                        data: lesp['ops:L504EP'][0]['_']
+                                                                    })
+                                                                }
+                                                                if(lesp.hasOwnProperty('ops:L505EP')) {
+                                                                    lespList.push({
+                                                                        desc: lesp['ops:L505EP'][0].$['desc'],
+                                                                        data: lesp['ops:L505EP'][0]['_']
+                                                                    })
+                                                                }
+                                                                if(lesp.hasOwnProperty('ops:L506EP')) {
+                                                                    lespList.push({
+                                                                        desc: lesp['ops:L506EP'][0].$['desc'],
+                                                                        data: lesp['ops:L506EP'][0]['_']
+                                                                    })
+                                                                }
+                                                                if(lesp.hasOwnProperty('ops:L507EP')) {
+                                                                    lespList.push({
+                                                                        desc: lesp['ops:L507EP'][0].$['desc'],
+                                                                        data: lesp['ops:L507EP'][0]['_']
+                                                                    })
+                                                                }
+                                                            })
+                                                        }
+                                                    }
+                                                    legal.push({
+                                                        code,
+                                                        desc,
+                                                        preLine,
+                                                        country_code,
+                                                        filling_published_doc,
+                                                        document_number,
+                                                        kind_code,
+                                                        ipr_type,
+                                                        gazette_date,
+                                                        legal_event_code,
+                                                        date_last_exchanged,
+                                                        date_first_exchanged,
+                                                        lespList
+                                                    })
+                                                })
+                                            } else {
+                                                const legalItem =  family['ops:legal']
+                                                const code = legalItem.$['code'];
+                                                const desc = legalItem.$['desc'];
+                                                const preLine = []
+                                                if(legalItem.hasOwnProperty('ops:pre')) {
+                                                    if(Array.isArray(legalItem['ops:pre'])) {
+                                                        legalItem['ops:pre'].forEach( pre => {
+                                                            preLine.push(pre['_'])
+                                                        })
+                                                    } else {
+                                                        preLine.push(legalItem['ops:pre']['_'])
+                                                    }
+                                                }
+                                                const country_code = legalItem['ops:L001EP'][0]['_'];
+                                                const filling_published_doc = legalItem['ops:L002EP'][0]['_'];
+                                                const document_number = legalItem['ops:L003EP'][0]['_'];
+                                                const kind_code = legalItem['ops:L004EP'][0]['_'];
+                                                const ipr_type = legalItem['ops:L005EP'][0]['_'];
+                                                const gazette_date = legalItem['ops:L007EP'][0]['_'];
+                                                const legal_event_code = legalItem['ops:L008EP'][0]['_'];
+                                                const date_last_exchanged = legalItem['ops:L018EP'][0]['_'];
+                                                const date_first_exchanged = legalItem['ops:L019EP'][0]['_'];
+                                                const lespList = []
+                                                if(legalItem.hasOwnProperty('ops:L500EP')) {
+                                                    console.log('legalItem["L500EP"]', legalItem['ops:L500EP'])
+                                                    if(legalItem['ops:L500EP'].length > 0) {
+                                                        legalItem['ops:L500EP'].forEach( lesp => {
+                                                            if(lesp.hasOwnProperty('ops:L501EP')) {
+                                                                lespList.push({
+                                                                    desc: lesp['ops:L501EP'][0].$['desc'],
+                                                                    data: lesp['ops:L501EP'][0]['_']
+                                                                })
+                                                            }
+                                                            if(lesp.hasOwnProperty('ops:L502EP')) {
+                                                                lespList.push({
+                                                                    desc: lesp['ops:L502EP'][0].$['desc'],
+                                                                    data: lesp['ops:L502EP'][0]['_']
+                                                                })
+                                                            }
+                                                            if(lesp.hasOwnProperty('ops:L503EP')) {
+                                                                lespList.push({
+                                                                    desc: lesp['ops:L503EP'][0].$['desc'],
+                                                                    data: lesp['ops:L503EP'][0]['_']
+                                                                })
+                                                            }
+                                                            if(lesp.hasOwnProperty('ops:L504EP')) {
+                                                                lespList.push({
+                                                                    desc: lesp['ops:L504EP'][0].$['desc'],
+                                                                    data: lesp['ops:L504EP'][0]['_']
+                                                                })
+                                                            }
+                                                            if(lesp.hasOwnProperty('ops:L505EP')) {
+                                                                lespList.push({
+                                                                    desc: lesp['ops:L505EP'][0].$['desc'],
+                                                                    data: lesp['ops:L505EP'][0]['_']
+                                                                })
+                                                            }
+                                                            if(lesp.hasOwnProperty('ops:L506EP')) {
+                                                                lespList.push({
+                                                                    desc: lesp['ops:L506EP'][0].$['desc'],
+                                                                    data: lesp['ops:L506EP'][0]['_']
+                                                                })
+                                                            }
+                                                            if(lesp.hasOwnProperty('ops:L507EP')) {
+                                                                lespList.push({
+                                                                    desc: lesp['ops:L507EP'][0].$['desc'],
+                                                                    data: lesp['ops:L507EP'][0]['_']
+                                                                })
+                                                            }
+                                                        })
+                                                    }
+                                                }
+                                                legal.push({
+                                                    code,
+                                                    desc,
+                                                    preLine,
+                                                    country_code,
+                                                    filling_published_doc,
+                                                    document_number,
+                                                    kind_code,
+                                                    ipr_type,
+                                                    gazette_date,
+                                                    legal_event_code,
+                                                    date_last_exchanged,
+                                                    date_first_exchanged,
+                                                    lespList
+                                                })
+                                            }
+                                            console.log('legal', legal)
+                                        } else {
+                                            console.log('NO LEGAL')
+                                        } 
+
                                         getFamily.push({
                                             family_id: familyID,
                                             patent_number: dbTypeData['doc-number'].toString(),
@@ -472,7 +664,8 @@ const getFamilyDataFromXML = async(req) => {
                                             inventors: null,
                                             assignee: null,
                                             applicants: [],
-                                            title: findPatent != null ? findPatent.title : ''
+                                            title: findPatent != null ? findPatent.title : '',
+                                            legal
                                         })
                                     }                                        
                                 }) 
@@ -518,7 +711,8 @@ const getFamilyDataFromXML = async(req) => {
                     specification: null,
                     assignee: null,
                     applicants: [],
-                    title: findPatent != null ? findPatent.title : ''
+                    title: findPatent != null ? findPatent.title : '',
+                    legal: []
                 })
             }
         }
@@ -1508,16 +1702,13 @@ route.get("/family/single/:applicationNumber", [authJWT.verifyToken], async (req
 
         let getFamily = [];
     
-        const findPatent = await Documentid.findOne({
+        /* const findPatent = await Documentid.findOne({
             attributes: ['rf_id', 'grant_doc_num'],
             where: {appno_doc_num: applicationNumber}
         })
     
         if(findPatent != null && findPatent.rf_id > 0 && findPatent.grant_doc_num != null && findPatent.grant_doc_num != '') {
-            /**
-            * Custom SubQuery
-            */
-    
+            
             const queryFamily = 'SELECT * FROM patent_family_member WHERE family_id = (SELECT family_id FROM patent_family_member WHERE patent_number = :patentNumber LIMIT 1) AND application_number = :applicationNumber';
     
             getFamily = await connection.resources.query(queryFamily,{
@@ -1530,7 +1721,8 @@ route.get("/family/single/:applicationNumber", [authJWT.verifyToken], async (req
         }
         if(getFamily == null || getFamily.length === 0) {
             getFamily = await getFamilyDataFromXML(req)
-        }
+        } */
+        getFamily = await getFamilyDataFromXML(req)
         res.status(200).json(getFamily);
     } catch( err ) {
         console.log(err);
