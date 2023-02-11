@@ -27,6 +27,8 @@ const RepresentativeAssignmentConveyance = require("../model/resources/Represent
 
 const AssignorAndAssignee = require("../model/resources/AssignorAndAssignee");
 
+const ApplicantAssignorAndAssignee = require('../model/resources/ApplicantAssignorAndAssignee'); 
+
 const RepresentativeApplication = require("../model/resources/Representatives");
 
 const Users = require("../model/business/Users");
@@ -2140,7 +2142,7 @@ let updateAllCustomerInventor = async(organisationID, inventors, flag, DBConnect
 }
 */
 
-let findCompanyEntitiesByAccountID = async(orgID, type, DBConnection, suggestions) => {
+let findCompanyEntitiesByAccountID = async(orgID, type, DBConnection, suggestions, fixed_identicals) => {
     const list = await getCompaniesList(DBConnection);
     let entitiesList = [];
     if(list.length > 0) {
@@ -2170,13 +2172,115 @@ let findCompanyEntitiesByAccountID = async(orgID, type, DBConnection, suggestion
                         entitiesList = groupOrganisationSuggestions(entitiesList)
                     }
                 }
+                if(typeof fixed_identicals != 'undefined' && fixed_identicals == 1) {
+                    if(type == 1) {
+                        entitiesList = groupFixIdentical(entitiesList)
+                    }
+                }
             }
         }
     }
     return entitiesList;
 }
 
-const groupSuggestions = (entitiesList) => {
+const groupFixIdentical = async (entitiesList) => {
+    const getIdenticalList = await groupSuggestions(entitiesList, 1);
+    console.log('getIdenticalList', getIdenticalList.length)
+    if(Object.keys(getIdenticalList).length > 0 ) {
+        let i = 0;
+        for (const name in getIdenticalList) {
+            if(i == 0 ) {
+                const {main, groups} = getIdenticalList[name];
+
+                console.log('main, groups', main, groups);
+
+                if(groups.length > 0) {
+                    let representativeName = '', representativeID = 0;
+                    if(main.representative_company != null) {
+                        representativeName = main.representative_company 
+                    } else {
+                        const allNames = []
+                        allNames.push(main.name)
+                        groups.forEach( item => {
+                            allNames.push(item.name)
+                        })
+                        if(allNames.length > 0) {
+                            const findRepresentative = await Representatives.findOne({
+                                where: {representative_name: allNames}
+                            })
+                            if(findRepresentative != null) {
+                                representativeName = findRepresentative.representative_name
+                                representativeID = findRepresentative.representative_id
+                            } else {
+                                /**
+                                 * Create Representative
+                                 */
+                                let createRepresentativeName = main.name, highestDistance = main.counter
+    
+                                groups.forEach( item => {
+                                    if(item.counter > highestDistance) {
+                                        createRepresentativeName = item.name
+                                        highestDistance = item.counter
+                                    }
+                                })
+    
+                                if(createRepresentativeName != '') {
+                                    const representativeCompany = await Representatives.create({
+                                        representative_name: createRepresentativeName
+                                    });
+                                    if(representativeCompany != null) {
+                                        representativeName = representativeCompany.representative_name
+                                        representativeID = representativeCompany.representative_id
+                                    }
+                                } 
+                            }
+                        }
+                    }
+                    if(representativeName != '' && groups.length > 0) {
+                        if(representativeID == 0) {
+                            const findRepresentative = await Representatives.findOne({
+                                where: {representative_name: representativeName}
+                            })
+                            if(findRepresentative != null) {
+                                representativeID = findRepresentative.representative_id
+                            }
+                        }
+                        const allAssignorAndAssignee = [], allApplicantAssignorAndAssignee = []
+    
+                        if(main.flag == 1) {
+                            allAssignorAndAssignee.push(main.id)
+                        } else {
+                            allApplicantAssignorAndAssignee.push(main.id)
+                        }
+    
+                        groups.forEach( item => {
+                            if(item.flag == 1) {
+                                allAssignorAndAssignee.push(main.id)
+                            } else {
+                                allApplicantAssignorAndAssignee.push(main.id)
+                            }
+                        })
+    
+                        if(representativeID > 0 && (allAssignorAndAssignee.length > 0 || allApplicantAssignorAndAssignee.length > 0)) {
+                            const item = {representative_id: representativeID};
+    
+                            if(allAssignorAndAssignee.length > 0) {
+                                await AssignorAndAssignee.update(item, {where: {assignor_and_assignee_id: allAssignorAndAssignee}}); 
+                            }
+    
+                            if(allApplicantAssignorAndAssignee.length > 0) {
+                                await ApplicantAssignorAndAssignee.update(item, {where: {assignor_and_assignee_id: allApplicantAssignorAndAssignee}}); 
+                            }
+                        } 
+                    }  
+                }
+            } 
+            i++;
+        }
+    } 
+}
+
+const groupSuggestions = async (entitiesList, identical = 0) => {
     const names = [...entitiesList] ; 
 
     const suggestedGroups = {}; 
@@ -2192,59 +2296,88 @@ const groupSuggestions = (entitiesList) => {
             const distance4 = levenshtein.get(name1.toLowerCase(), names[j].name.toLowerCase())
             const distance = Math.min(distance1, distance2, distance3, distance4)
             /* console.log(`INVENTOR: ${distance} - ${names[i].name} - ${names[j].name}`) */
+
             if(distance < 3) {
-                
-                if (suggestedGroups[names[i].name]) {
-                    suggestedGroups[names[i].name].push(names[j].name);
-                    otherSuggested.push(names[j].name)
-                } else {
-                    if(!otherSuggested.includes(names[i].name)) {
-                        suggestedGroups[names[i].name] = [names[j].name];
-                        otherSuggested.push(names[j].name)
+                let nameSimilar = names[j].name, nameChecked = names[i].name;
+                if(identical === 1) {
+                    /* console.log(`INVENTOR: ${distance} - ${distance1} - ${distance2} - ${distance3} - ${distance4} - ${nameChecked} - ${nameSimilar} - ${name1} - ${name2}`)  */
+                    let entered = false
+                    if(distance2 == distance && nameChecked.toLowerCase() == name2.toLowerCase()) {
+                        entered = true
+                    } else if(distance3 == distance && name1.toLowerCase() == name2.toLowerCase()) {
+                        entered = true
+                    } else if(distance4 == distance && name1.toLowerCase() == nameSimilar.toLowerCase()) {
+                        entered = true
+                    } else if(distance1 == distance && nameChecked.toLowerCase() == nameSimilar.toLowerCase()) {
+                        entered = true
                     }
-                }
+                    if(entered === true) {
+                        if (suggestedGroups[nameChecked]) {
+                            suggestedGroups[nameChecked]['groups'].push(names[j]);
+                        } else {
+                            suggestedGroups[nameChecked] = {
+                                main: names[i],
+                                groups: [names[j]]
+                            }
+                        } 
+                    }
+                } else {
+                    if (suggestedGroups[nameChecked]) {
+                        suggestedGroups[nameChecked].push(nameSimilar);
+                        otherSuggested.push(nameSimilar)
+                    } else {
+                        if(!otherSuggested.includes(nameChecked)) {
+                            suggestedGroups[nameChecked] = [nameSimilar];
+                            otherSuggested.push(nameSimilar)
+                        }
+                    }
+                } 
             }
         }
     }  
-    let newSuggestedSet = [], allNamesID = [];
-    // Print suggested groups with correct name
-    for (const name in suggestedGroups) {
-        const group = suggestedGroups[name];
-        //group.push(name); 
-        //console.log(`${name} - ${group.length}`)
-        if(group.length > 0) {
-            // Find the name with the highest occurrences that doesn't have a middle name
-            let correctName = "";
-            let highestOccurrences = 0;
-            for (let i = 0; i < group.length; i++) {
-                const parts = group[i].split(" ");
-                if (parts.length === 2 && names.find(n => n.name === group[i]).counter > highestOccurrences) {
-                    correctName = group[i];
-                    highestOccurrences = names.find(n => n.name === group[i]).counter;
-                }
-            } 
-            const findIndex = names.findIndex( row => row.name == name)
-            if(findIndex !== -1) { 
-                let newGroup = []
-                allNamesID.push(names[findIndex].id)
-                group.map( grp => {
-                    if(name != grp) {
-                        const grpIndex = names.findIndex( row => row.name == grp)
-                        if(grpIndex !== -1) {
-                            if(!allNamesID.includes(names[grpIndex].id)) {  
-                                newGroup.push(names[grpIndex]) 
-                                allNamesID.push(names[grpIndex].id)
+    if(identical === 1) {
+        return suggestedGroups
+    } else {
+        let newSuggestedSet = [], allNamesID = [];
+        // Print suggested groups with correct name
+        for (const name in suggestedGroups) {
+            const group = suggestedGroups[name];
+            //group.push(name); 
+            //console.log(`${name} - ${group.length}`)
+            if(group.length > 0) {
+                // Find the name with the highest occurrences that doesn't have a middle name
+                let correctName = "";
+                let highestOccurrences = 0;
+                for (let i = 0; i < group.length; i++) {
+                    const parts = group[i].split(" ");
+                    if (parts.length === 2 && names.find(n => n.name === group[i]).counter > highestOccurrences) {
+                        correctName = group[i];
+                        highestOccurrences = names.find(n => n.name === group[i]).counter;
+                    }
+                } 
+                const findIndex = names.findIndex( row => row.name == name)
+                if(findIndex !== -1) { 
+                    let newGroup = []
+                    allNamesID.push(names[findIndex].id)
+                    group.map( grp => {
+                        if(name != grp) {
+                            const grpIndex = names.findIndex( row => row.name == grp)
+                            if(grpIndex !== -1) {
+                                if(!allNamesID.includes(names[grpIndex].id)) {  
+                                    newGroup.push(names[grpIndex]) 
+                                    allNamesID.push(names[grpIndex].id)
+                                }
                             }
                         }
+                    })
+                    if(newGroup.length > 0) {
+                        const rowData = {...names[findIndex], correctName, highestOccurrences} 
+                        newSuggestedSet.push(rowData) 
+                        newSuggestedSet = [...newSuggestedSet, ...newGroup]
                     }
-                })
-                if(newGroup.length > 0) {
-                    const rowData = {...names[findIndex], correctName, highestOccurrences} 
-                    newSuggestedSet.push(rowData) 
-                    newSuggestedSet = [...newSuggestedSet, ...newGroup]
                 }
-            }
-        } 
+            } 
+        }
     }
 
     //console.log('newSuggestedSet', newSuggestedSet)
@@ -2317,7 +2450,7 @@ const groupOrganisationSuggestions = (entitiesList) => {
     return newSuggestedSet;   
 }
 
-let findCompanyEntitiesByAccountIDByRepresentativeIDs = async(orgID, representativeIDs, type, DBConnection, suggestions) => {
+let findCompanyEntitiesByAccountIDByRepresentativeIDs = async(orgID, representativeIDs, type, DBConnection, suggestions, fixed_identicals) => {
    
     let entitiesList = [];
     if(representativeIDs.length > 0) {        
@@ -2342,6 +2475,11 @@ let findCompanyEntitiesByAccountIDByRepresentativeIDs = async(orgID, representat
                     entitiesList = groupSuggestions(entitiesList)
                 } else {
                     entitiesList = groupOrganisationSuggestions(entitiesList)
+                }
+            }
+            if(typeof fixed_identicals != 'undefined' && fixed_identicals == 1) {
+                if(type == 1) {
+                    entitiesList = await groupFixIdentical(entitiesList)
                 }
             }
         }
