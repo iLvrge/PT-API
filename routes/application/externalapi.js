@@ -133,7 +133,7 @@ route.get("/ptab/document/:identifier",  async (req, res) => {
         console.log('ERROR => /ptab/', e)
         res.status(500).send('Unable to retrieve document')
     }
-})
+}) 
 
 
 route.get("/citation/:asset", [authJWT.verifyToken], async (req, res) => { 
@@ -142,19 +142,32 @@ route.get("/citation/:asset", [authJWT.verifyToken], async (req, res) => {
         const {counter} = req.query; 
         if(typeof asset !== 'undefined' && asset !== '' && asset !== null) {
             const queryString = ``
-            const url = `https://api.patentsview.org/patents/query?q={"cited_patent_number":"${asset}"}&f=["patent_number","patent_date","patent_num_combined_citations","patent_title","assignee_organization", "app_date"]`
+            const url = `https://api.patentsview.org/patents/query?q={"cited_patent_number":"${asset}"}&f=["patent_number","patent_date","patent_num_combined_citations","patent_title","inventor_first_name", "inventor_last_name","assignee_organization", "assignee_first_name","assignee_last_name", "app_date"]`
             console.log(url)
             request(url, async(error, response, body) => { 
                 if (!error && response.statusCode == 200) {
                     const responseBody = JSON.parse(body)
                     const citationEvents = []
                     if(responseBody !== null && responseBody.total_patent_count > 0) {
-                        const allAssignee = [], assigneeNameMissing = '';
+                        const allAssignee = [], assigneeNameMissing = [], individualList = [];
                         responseBody.patents.forEach(item => {
                             let assignee = "";
                             if(item.assignees.length > 0) {
-                                assignee = item.assignees[item.assignees.length - 1].assignee_organization
-                            }
+                                assignee = item.assignees[item.assignees.length - 1].assignee_organization 
+                                if(assignee == '' || assignee == 'null' || assignee == null) {  
+                                    if(item.assignees[item.assignees.length - 1].assignee_first_name != null) { 
+                                        const name  = `${item.assignees[item.assignees.length - 1].assignee_first_name} ${item.assignees[item.assignees.length - 1].assignee_last_name}`
+                                        assignee = name
+                                        individualList.push(name)
+                                    }
+                                }
+
+                                if((assignee == ''  || assignee == 'null' || assignee == null) && item.inventors.length > 0) {  
+                                    const name = `${item.inventors[item.inventors.length - 1].inventor_first_name} ${item.inventors[item.inventors.length - 1].inventor_last_name}`
+                                    assignee = name
+                                    individualList.push(name)
+                                }
+                            } 
                             if(assignee !== '') {
                                 allAssignee.push(assignee)
                             } else {
@@ -224,8 +237,17 @@ route.get("/citation/:asset", [authJWT.verifyToken], async (req, res) => {
                                     })
                                 })
                             }
+                            if(individualList.length > 0) {
+                                individualList.forEach( inventor => {
+                                    citationEvents.forEach( (item, index) => {
+                                        if(item.assignee !== null && item.assignee != '' && item.assignee.toString().toLocaleLowerCase() == inventor.toString().toLocaleLowerCase()){
+                                            citationEvents[index].logo = 'https://s3.us-west-1.amazonaws.com/static.patentrack.com/images/psychology.svg'
+                                        }
+                                    })
+                                })
+                            }
                         }
-                    }
+                    } 
                     if(typeof counter !== 'undefined') {
                         res.status(200).send(`${citationEvents.length}`);
                     } else {
