@@ -2185,97 +2185,98 @@ let findCompanyEntitiesByAccountID = async(orgID, type, DBConnection, suggestion
 
 const groupFixIdentical = async (entitiesList) => {
     const getIdenticalList = await groupSuggestions(entitiesList, 1);
-    console.log('getIdenticalList', getIdenticalList.length)
-    if(Object.keys(getIdenticalList).length > 0 ) {
-        let i = 0;
-        for (const name in getIdenticalList) {
-            if(i == 0 ) {
-                const {main, groups} = getIdenticalList[name];
+    //console.log('getIdenticalList', getIdenticalList.length)
+    if(Object.keys(getIdenticalList).length > 0 ) { 
+        for (const name in getIdenticalList) { 
+            const {main, groups} = getIdenticalList[name];
 
-                console.log('main, groups', main, groups);
+            //console.log('main, groups', main, groups);
 
-                if(groups.length > 0) {
-                    let representativeName = '', representativeID = 0;
-                    if(main.representative_company != null) {
-                        representativeName = main.representative_company 
-                    } else {
-                        const allNames = []
-                        allNames.push(main.name)
-                        groups.forEach( item => {
-                            allNames.push(item.name)
+            if(groups.length > 0) {
+                let representativeName = '', representativeID = 0;
+                if(main.representative_company != null) {
+                    representativeName = main.representative_company 
+                } else {
+                    const allNames = []
+                    allNames.push(main.name)
+                    groups.forEach( item => {
+                        allNames.push(item.name)
+                    })
+                    if(allNames.length > 0) {
+                        const findRepresentative = await Representatives.findOne({
+                            where: {representative_name: allNames}
                         })
-                        if(allNames.length > 0) {
-                            const findRepresentative = await Representatives.findOne({
-                                where: {representative_name: allNames}
+                        if(findRepresentative != null) {
+                            representativeName = findRepresentative.representative_name
+                            representativeID = findRepresentative.representative_id
+                        } else {
+                            /**
+                             * Create Representative
+                             */
+                            let createRepresentativeName = main.name, highestDistance = main.counter
+
+                            groups.forEach( item => {
+                                if(parseInt(item.counter) >= parseInt(highestDistance)) {
+                                    createRepresentativeName = item.name
+                                    highestDistance = item.counter
+                                }
                             })
-                            if(findRepresentative != null) {
-                                representativeName = findRepresentative.representative_name
-                                representativeID = findRepresentative.representative_id
-                            } else {
-                                /**
-                                 * Create Representative
-                                 */
-                                let createRepresentativeName = main.name, highestDistance = main.counter
-    
-                                groups.forEach( item => {
-                                    if(item.counter > highestDistance) {
-                                        createRepresentativeName = item.name
-                                        highestDistance = item.counter
-                                    }
-                                })
-    
-                                if(createRepresentativeName != '') {
-                                    const representativeCompany = await Representatives.create({
-                                        representative_name: createRepresentativeName
-                                    });
-                                    if(representativeCompany != null) {
-                                        representativeName = representativeCompany.representative_name
-                                        representativeID = representativeCompany.representative_id
-                                    }
-                                } 
-                            }
+                            //console.log('createRepresentativeName', createRepresentativeName, highestDistance)
+                            if(createRepresentativeName != '') {
+                                const representativeCompany = await Representatives.create({
+                                    representative_name: createRepresentativeName
+                                });
+                                if(representativeCompany != null) {
+                                    representativeName = representativeCompany.representative_name
+                                    representativeID = representativeCompany.representative_id
+                                }
+                            } 
                         }
                     }
-                    if(representativeName != '' && groups.length > 0) {
-                        if(representativeID == 0) {
-                            const findRepresentative = await Representatives.findOne({
-                                where: {representative_name: representativeName}
-                            })
-                            if(findRepresentative != null) {
-                                representativeID = findRepresentative.representative_id
-                            }
+                }
+                if(representativeName != '' && groups.length > 0) {
+                    if(representativeID == 0) {
+                        const findRepresentative = await Representatives.findOne({
+                            where: {representative_name: representativeName}
+                        })
+                        if(findRepresentative != null) {
+                            representativeID = findRepresentative.representative_id
                         }
-                        const allAssignorAndAssignee = [], allApplicantAssignorAndAssignee = []
-    
+                    }
+                    const allAssignorAndAssignee = [], allApplicantAssignorAndAssignee = []
+                    if(main.normalize_name == null) {
                         if(main.flag == 1) {
                             allAssignorAndAssignee.push(main.id)
                         } else {
                             allApplicantAssignorAndAssignee.push(main.id)
                         }
-    
-                        groups.forEach( item => {
-                            if(item.flag == 1) {
-                                allAssignorAndAssignee.push(main.id)
-                            } else {
-                                allApplicantAssignorAndAssignee.push(main.id)
+                    }
+
+                    groups.forEach( item => {
+                        if(item.flag == 1) {
+                            if(item.normalize_name == null) {
+                                allAssignorAndAssignee.push(item.id)
                             }
-                        })
-    
-                        if(representativeID > 0 && (allAssignorAndAssignee.length > 0 || allApplicantAssignorAndAssignee.length > 0)) {
-                            const item = {representative_id: representativeID};
-    
-                            if(allAssignorAndAssignee.length > 0) {
-                                await AssignorAndAssignee.update(item, {where: {assignor_and_assignee_id: allAssignorAndAssignee}}); 
-                            }
-    
-                            if(allApplicantAssignorAndAssignee.length > 0) {
-                                await ApplicantAssignorAndAssignee.update(item, {where: {assignor_and_assignee_id: allApplicantAssignorAndAssignee}}); 
-                            }
-                        } 
-                    }  
-                }
+                        } else if(item.flag == 4) {
+                            if(item.normalize_name == null) {
+                                allApplicantAssignorAndAssignee.push(item.id)
+                            } 
+                        }
+                    })
+
+                    if(representativeID > 0 && (allAssignorAndAssignee.length > 0 || allApplicantAssignorAndAssignee.length > 0)) {
+                        const item = {representative_id: representativeID};
+
+                        if(allAssignorAndAssignee.length > 0) {
+                            await AssignorAndAssignee.update(item, {where: {assignor_and_assignee_id: allAssignorAndAssignee}}); 
+                        }
+
+                        if(allApplicantAssignorAndAssignee.length > 0) {
+                            await ApplicantAssignorAndAssignee.update(item, {where: {assignor_and_assignee_id: allApplicantAssignorAndAssignee}}); 
+                        }
+                    } 
+                }  
             } 
-            i++;
         }
     } 
 }
