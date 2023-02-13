@@ -2289,50 +2289,65 @@ const groupSuggestions = async (entitiesList, identical = 0) => {
     let otherSuggested = []
     for (let i = 0; i < names.length; i++) {
         for (let j = i + 1; j < names.length; j++) {
-            const distance1 = levenshtein.get(names[i].name.toLowerCase(), names[j].name.toLowerCase())
-            const name1 = names[i].name.split(" ").reverse().join(" ")
-            const name2  = names[j].name.split(" ").reverse().join(" ")
-            const distance2 = levenshtein.get(names[i].name.toLowerCase(), name2.toLowerCase())
-            const distance3 = levenshtein.get(name1.toLowerCase(), name2.toLowerCase())
-            const distance4 = levenshtein.get(name1.toLowerCase(), names[j].name.toLowerCase())
-            const distance = Math.min(distance1, distance2, distance3, distance4)
-            /* console.log(`INVENTOR: ${distance} - ${names[i].name} - ${names[j].name}`) */
-
-            if(distance < 3) {
-                let nameSimilar = names[j].name, nameChecked = names[i].name;
-                if(identical === 1) {
-                    /* console.log(`INVENTOR: ${distance} - ${distance1} - ${distance2} - ${distance3} - ${distance4} - ${nameChecked} - ${nameSimilar} - ${name1} - ${name2}`)  */
-                    let entered = false
-                    if(distance2 == distance && nameChecked.toLowerCase() == name2.toLowerCase()) {
-                        entered = true
-                    } else if(distance3 == distance && name1.toLowerCase() == name2.toLowerCase()) {
-                        entered = true
-                    } else if(distance4 == distance && name1.toLowerCase() == nameSimilar.toLowerCase()) {
-                        entered = true
-                    } else if(distance1 == distance && nameChecked.toLowerCase() == nameSimilar.toLowerCase()) {
-                        entered = true
-                    }
-                    if(entered === true) {
-                        if (suggestedGroups[nameChecked]) {
-                            suggestedGroups[nameChecked]['groups'].push(names[j]);
-                        } else {
-                            suggestedGroups[nameChecked] = {
-                                main: names[i],
-                                groups: [names[j]]
-                            }
-                        } 
-                    }
-                } else {
-                    if (suggestedGroups[nameChecked]) {
-                        suggestedGroups[nameChecked].push(nameSimilar);
-                        otherSuggested.push(nameSimilar)
-                    } else {
-                        if(!otherSuggested.includes(nameChecked)) {
-                            suggestedGroups[nameChecked] = [nameSimilar];
-                            otherSuggested.push(nameSimilar)
+            if(!otherSuggested.includes(names[j].name)) {
+                const distance1 = levenshtein.get(names[i].name.toLowerCase(), names[j].name.toLowerCase())
+                const name1 = names[i].name.split(" ").reverse().join(" ")
+                const name2  = names[j].name.split(" ").reverse().join(" ")
+                let name3 = ''
+                if(names[i].name.split(" ").length > 2) {
+                    const splitName = names[i].name.split(" ")
+                    name3 = splitName[2] + ' ' + splitName[0] + ' ' + splitName[1]
+                }
+                const distance2 = levenshtein.get(names[i].name.toLowerCase(), name2.toLowerCase())
+                const distance3 = levenshtein.get(name1.toLowerCase(), name2.toLowerCase())
+                const distance4 = levenshtein.get(names[i].name.toLowerCase(), names[j].name.toLowerCase())
+                let distance5 = 100;
+                if(name3 != '') {
+                    distance5 = levenshtein.get(name3.toLowerCase(), names[j].name.toLowerCase())
+                }
+                const distance = Math.min(distance1, distance2, distance3, distance4, distance5)
+                /* console.log(`INVENTOR: ${distance} - ${names[i].name} - ${names[j].name}`)  */
+    
+                if(distance < 3 || (names[j].name.split(" ").length > 2 && distance < 4)) {
+                    let nameSimilar = names[j].name, nameChecked = names[i].name;
+                    if(identical === 1) {
+                        /* console.log(`INVENTOR: ${distance} - ${distance1} - ${distance2} - ${distance3} - ${distance4} - ${nameChecked} - ${nameSimilar} - ${name1} - ${name2}`)  */
+                        let entered = false
+                        if(distance2 == distance && nameChecked.toLowerCase() == name2.toLowerCase()) {
+                            entered = true
+                        } else if(distance3 == distance && name1.toLowerCase() == name2.toLowerCase()) {
+                            entered = true
+                        } else if(distance4 == distance && name1.toLowerCase() == nameSimilar.toLowerCase()) {
+                            entered = true
+                        } else if(distance1 == distance && nameChecked.toLowerCase() == nameSimilar.toLowerCase()) {
+                            entered = true
+                        } else if(distance5 == distance && name3.toLowerCase() == nameSimilar.toLowerCase()) {
+                            entered = true
                         }
-                    }
-                } 
+                        if(entered === true) {
+                            if (suggestedGroups[nameChecked]) {
+                                suggestedGroups[nameChecked]['groups'].push(names[j]);
+                                otherSuggested.push(nameSimilar)
+                            } else {
+                                suggestedGroups[nameChecked] = {
+                                    main: names[i],
+                                    groups: [names[j]]
+                                }
+                                otherSuggested.push(nameSimilar)
+                            } 
+                        }
+                    } else {
+                        if (suggestedGroups[nameChecked]) {
+                            suggestedGroups[nameChecked].push(nameSimilar);
+                            otherSuggested.push(nameSimilar)
+                        } else {
+                            if(!otherSuggested.includes(nameChecked)) {
+                                suggestedGroups[nameChecked] = [nameSimilar];
+                                otherSuggested.push(nameSimilar)
+                            }
+                        }
+                    } 
+                }
             }
         }
     }  
@@ -2375,14 +2390,18 @@ const groupSuggestions = async (entitiesList, identical = 0) => {
                         const rowData = {...names[findIndex], correctName, highestOccurrences} 
                         newSuggestedSet.push(rowData) 
                         newSuggestedSet = [...newSuggestedSet, ...newGroup]
+                        console.log('NEWW GROUP')
+                        console.log(rowData)
+                        console.log(...newGroup)
                     }
                 }
             } 
         }
+        return newSuggestedSet; 
     }
 
     //console.log('newSuggestedSet', newSuggestedSet)
-    return newSuggestedSet; 
+    
 }
 
 const groupOrganisationSuggestions = (entitiesList) => {
