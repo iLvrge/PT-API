@@ -2308,7 +2308,7 @@ const groupSuggestions = async (entitiesList, identical = 0) => {
                 const distance = Math.min(distance1, distance2, distance3, distance4, distance5)
                 /* console.log(`INVENTOR: ${distance} - ${names[i].name} - ${names[j].name}`)  */
     
-                if(distance < 3 || (names[j].name.split(" ").length > 2 && distance < 4)) {
+                if(distance < 3 || ((names[i].name.split(" ").length > 2 || names[j].name.split(" ").length > 2) && distance < 4)) {
                     let nameSimilar = names[j].name, nameChecked = names[i].name;
                     if(identical === 1) {
                         /* console.log(`INVENTOR: ${distance} - ${distance1} - ${distance2} - ${distance3} - ${distance4} - ${nameChecked} - ${nameSimilar} - ${name1} - ${name2}`)  */
