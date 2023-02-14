@@ -2473,8 +2473,8 @@ const groupSuggestions = async (entitiesList, identical = 0) => {
                     let nameSimilar = names[j].name, nameChecked = names[i].name;
                     if(identical === 1) {
                     //console.log(`INVENTOR: ${distance} - ${distance1} - ${distance2} - ${distance3} - ${distance4} - ${nameChecked} - ${nameSimilar} - ${name1} - ${name2}`) 
-                    let entered = false
-                    if(distance2 == distance && nameChecked.toLowerCase() == name2.toLowerCase()) {
+                    let entered = true
+                    /* if(distance2 == distance && nameChecked.toLowerCase() == name2.toLowerCase()) {
                         entered = true
                     } else if(distance3 == distance && name1.toLowerCase() == name2.toLowerCase()) {
                         entered = true
@@ -2484,7 +2484,7 @@ const groupSuggestions = async (entitiesList, identical = 0) => {
                         entered = true
                     } else if(distance5 == distance && name3.toLowerCase() == nameSimilar.toLowerCase()) {
                         entered = true
-                    }
+                    } */
                     if(entered === true) {
                         if (suggestedGroups[nameChecked]) {
                             suggestedGroups[nameChecked]['groups'].push(names[j]);
@@ -2498,16 +2498,16 @@ const groupSuggestions = async (entitiesList, identical = 0) => {
                         } 
                     }
                     } else {
-                    if (suggestedGroups[nameChecked]) {
-                        suggestedGroups[nameChecked].push(nameSimilar);
-                        otherSuggested.push(nameSimilar)
-                    } else {
-                        if(!otherSuggested.includes(nameChecked)) {
-                            suggestedGroups[nameChecked] = [nameSimilar];
+                        if (suggestedGroups[nameChecked]) {
+                            suggestedGroups[nameChecked].push(nameSimilar);
                             otherSuggested.push(nameSimilar)
+                        } else {
+                            if(!otherSuggested.includes(nameChecked)) {
+                                suggestedGroups[nameChecked] = [nameSimilar];
+                                otherSuggested.push(nameSimilar)
+                            }
                         }
-                    }
-                    } 
+                    }s 
                 }
             }
         }
