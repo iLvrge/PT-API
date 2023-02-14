@@ -2281,7 +2281,13 @@ const groupFixIdentical = async (entitiesList) => {
     } 
 }
 
-const groupSuggestions = async (entitiesList, identical = 0) => {
+const sortWordsByLength = (words) =>{
+    return words.sort(function(a, b) {
+      return b.length - a.length;
+    });
+}
+
+/* const groupSuggestions = async (entitiesList, identical = 0) => {
     const names = [...entitiesList] ; 
 
     const suggestedGroups = {}; 
@@ -2291,8 +2297,12 @@ const groupSuggestions = async (entitiesList, identical = 0) => {
         for (let j = i + 1; j < names.length; j++) {
             if(!otherSuggested.includes(names[j].name)) {
                 const distance1 = levenshtein.get(names[i].name.toLowerCase(), names[j].name.toLowerCase())
-                const name1 = names[i].name.split(" ").reverse().join(" ")
-                const name2  = names[j].name.split(" ").reverse().join(" ")
+                const name1Split = names[i].name.split(" ")
+                const name2Split  = names[j].name.split(" ")
+ 
+
+                const name1 = name1Split.reverse().join(" ")
+                const name2  = name2Split.reverse().join(" ")
                 let name3 = ''
                 if(names[i].name.split(" ").length > 2) {
                     const splitName = names[i].name.split(" ")
@@ -2305,13 +2315,13 @@ const groupSuggestions = async (entitiesList, identical = 0) => {
                 if(name3 != '') {
                     distance5 = levenshtein.get(name3.toLowerCase(), names[j].name.toLowerCase())
                 }
-                const distance = Math.min(distance1, distance2, distance3, distance4, distance5)
-                /* console.log(`INVENTOR: ${distance} - ${names[i].name} - ${names[j].name}`)  */
+                const distance = Math.min(distance1, distance2, distance3, distance4, distance5) 
+                // console.log(`INVENTOR: ${distance} - ${names[i].name} - ${names[j].name}`)  
     
-                if(distance < 3 || ((names[i].name.split(" ").length > 2 || names[j].name.split(" ").length > 2) && distance < 4)) {
+                if(distance < 3 || ((names[i].name.split(" ").length > 2 || names[j].name.split(" ").length > 2) && distance < 4)) {  
                     let nameSimilar = names[j].name, nameChecked = names[i].name;
                     if(identical === 1) {
-                        /* console.log(`INVENTOR: ${distance} - ${distance1} - ${distance2} - ${distance3} - ${distance4} - ${nameChecked} - ${nameSimilar} - ${name1} - ${name2}`)  */
+                        // console.log(`INVENTOR: ${distance} - ${distance1} - ${distance2} - ${distance3} - ${distance4} - ${nameChecked} - ${nameSimilar} - ${name1} - ${name2}`)  
                         let entered = false
                         if(distance2 == distance && nameChecked.toLowerCase() == name2.toLowerCase()) {
                             entered = true
@@ -2402,7 +2412,159 @@ const groupSuggestions = async (entitiesList, identical = 0) => {
 
     //console.log('newSuggestedSet', newSuggestedSet)
     
+} */
+
+
+
+const groupSuggestions = async (entitiesList, identical = 0) => {
+    const names = [...entitiesList] ; 
+
+    const suggestedGroups = {}; 
+    // Check for similar names and group them
+    let otherSuggested = []
+    for (let i = 0; i < names.length; i++) {
+        for (let j = i + 1; j < names.length; j++) {
+            if(!otherSuggested.includes(names[j].name)) {
+                const distance1 = levenshtein.get(names[i].name.toLowerCase(), names[j].name.toLowerCase())
+                const name1Split = names[i].name.split(" ")
+                const name2Split  = names[j].name.split(" ")
+
+                 
+                const sortName1BasedOnCharacters = sortWordsByLength(name1Split)
+                const sortName2BasedOnCharacters = sortWordsByLength(name2Split)
+
+                let name1AfterSortCharLength = '', name2AfterSortCharLength = '', name1AfterSortWords = '', name2AfterSortWords = '';
+
+                if(sortName1BasedOnCharacters.length > 2) {
+                    name1AfterSortCharLength = `${sortName1BasedOnCharacters[0]} ${sortName1BasedOnCharacters[1]}`
+                } else {
+                    name1AfterSortCharLength = sortName1BasedOnCharacters.join(' ')
+                }
+
+                if(sortName2BasedOnCharacters.length > 2) {
+                    name2AfterSortCharLength = `${sortName2BasedOnCharacters[0]} ${sortName2BasedOnCharacters[1]}`
+                } else {
+                    name2AfterSortCharLength = sortName2BasedOnCharacters.join(' ')
+                }
+
+                if(name1Split.length > 2) {
+                    name1Split.sort()
+                    name1AfterSortWords = `${name1Split[0]} ${name1Split[1]}`
+                } else {
+                    name1Split.sort()
+                    name1AfterSortWords = name1Split.join(' ')
+                }
+
+                if(name2Split.length > 2) {
+                    name2Split.sort()
+                    name2AfterSortWords = `${name2Split[0]} ${name2Split[1]}`
+                } else {
+                    name2Split.sort()
+                    name2AfterSortWords = name2Split.join(' ')
+                }
+                const distance2 = levenshtein.get(name1AfterSortCharLength.toLowerCase(), name2AfterSortCharLength.toLowerCase())
+                const distance3 = levenshtein.get(name1AfterSortWords.toLowerCase(), name2AfterSortWords.toLowerCase())
+
+                const distance = Math.min(distance1, distance2, distance3) 
+
+                console.log(`INVENTOR: ${distance} - ${distance1} - ${distance2} - ${distance3} - ${name1AfterSortCharLength} - ${name2AfterSortCharLength} - ${name1AfterSortWords} - ${name2AfterSortWords}`) 
+
+                if(distance < 3) {
+                    let nameSimilar = names[j].name, nameChecked = names[i].name;
+                    if(identical === 1) {
+                    //console.log(`INVENTOR: ${distance} - ${distance1} - ${distance2} - ${distance3} - ${distance4} - ${nameChecked} - ${nameSimilar} - ${name1} - ${name2}`) 
+                    let entered = false
+                    if(distance2 == distance && nameChecked.toLowerCase() == name2.toLowerCase()) {
+                        entered = true
+                    } else if(distance3 == distance && name1.toLowerCase() == name2.toLowerCase()) {
+                        entered = true
+                    } else if(distance4 == distance && name1.toLowerCase() == nameSimilar.toLowerCase()) {
+                        entered = true
+                    } else if(distance1 == distance && nameChecked.toLowerCase() == nameSimilar.toLowerCase()) {
+                        entered = true
+                    } else if(distance5 == distance && name3.toLowerCase() == nameSimilar.toLowerCase()) {
+                        entered = true
+                    }
+                    if(entered === true) {
+                        if (suggestedGroups[nameChecked]) {
+                            suggestedGroups[nameChecked]['groups'].push(names[j]);
+                            otherSuggested.push(nameSimilar)
+                        } else {
+                            suggestedGroups[nameChecked] = {
+                                main: names[i],
+                                groups: [names[j]]
+                            }
+                            otherSuggested.push(nameSimilar)
+                        } 
+                    }
+                    } else {
+                    if (suggestedGroups[nameChecked]) {
+                        suggestedGroups[nameChecked].push(nameSimilar);
+                        otherSuggested.push(nameSimilar)
+                    } else {
+                        if(!otherSuggested.includes(nameChecked)) {
+                            suggestedGroups[nameChecked] = [nameSimilar];
+                            otherSuggested.push(nameSimilar)
+                        }
+                    }
+                    } 
+                }
+            }
+        }
+     }  
+     if(identical === 1) {
+         return suggestedGroups
+     } else {
+         let newSuggestedSet = [], allNamesID = [];
+         // Print suggested groups with correct name
+         for (const name in suggestedGroups) {
+             const group = suggestedGroups[name];
+             //group.push(name); 
+             //console.log(`${name} - ${group.length}`)
+             if(group.length > 0) {
+                 // Find the name with the highest occurrences that doesn't have a middle name
+                 let correctName = "";
+                 let highestOccurrences = 0;
+                 for (let i = 0; i < group.length; i++) {
+                     const parts = group[i].split(" ");
+                     if (parts.length === 2 && names.find(n => n.name === group[i]).counter > highestOccurrences) {
+                         correctName = group[i];
+                         highestOccurrences = names.find(n => n.name === group[i]).counter;
+                     }
+                 } 
+                 const findIndex = names.findIndex( row => row.name == name)
+                 if(findIndex !== -1) { 
+                     let newGroup = []
+                     allNamesID.push(names[findIndex].id)
+                     group.map( grp => {
+                         if(name != grp) {
+                             const grpIndex = names.findIndex( row => row.name == grp)
+                             if(grpIndex !== -1) {
+                                 if(!allNamesID.includes(names[grpIndex].id)) {  
+                                     newGroup.push(names[grpIndex]) 
+                                     allNamesID.push(names[grpIndex].id)
+                                 }
+                             }
+                         }
+                     })
+                     if(newGroup.length > 0) {
+                         const rowData = {...names[findIndex], correctName, highestOccurrences} 
+                         newSuggestedSet.push(rowData) 
+                         newSuggestedSet = [...newSuggestedSet, ...newGroup]
+                         console.log('NEWW GROUP')
+                         console.log(rowData)
+                         console.log(...newGroup)
+                     }
+                 }
+             } 
+         }
+         return newSuggestedSet; 
+     }
+ 
+     //console.log('newSuggestedSet', newSuggestedSet)
+     
 }
+
 
 const groupOrganisationSuggestions = (entitiesList) => {
     // sample subset array of organizations with names and occurrences
