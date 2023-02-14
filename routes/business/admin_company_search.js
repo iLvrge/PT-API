@@ -799,7 +799,7 @@ route.put("/company/search/all/", [authJWT.verifyToken, authJWT.isAdmin], async 
                             replaceNames.push(r.name)
                             return r;
                         })
-                        await Promise.all(promise);
+                        await Promise.all(promise);  
     
                         const getReplaceNameRepresentative = await Representatives.findAll({
                             where:{ representative_name: replaceNames}
@@ -868,7 +868,7 @@ route.put("/company/search/all/", [authJWT.verifyToken, authJWT.isAdmin], async 
                                     [connection.Op.or]: [
                                     {representative_id: otherIDs},
                                     {name: replaceNames}
-                                ]}
+                                ]}   
                             })
                             if(findOldRows.length > 0) {
                                 console.log("Applicant findOldRowsIDs", IDs)
