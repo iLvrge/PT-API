@@ -2467,7 +2467,7 @@ const groupSuggestions = async (entitiesList, identical = 0) => {
 
                 const distance = Math.min(distance1, distance2, distance3) 
 
-                console.log(`INVENTOR: ${distance} - ${distance1} - ${distance2} - ${distance3} - ${name1AfterSortCharLength} - ${name2AfterSortCharLength} - ${name1AfterSortWords} - ${name2AfterSortWords}`) 
+                /* console.log(`INVENTOR: ${distance} - ${distance1} - ${distance2} - ${distance3} - ${name1AfterSortCharLength} - ${name2AfterSortCharLength} - ${name1AfterSortWords} - ${name2AfterSortWords}`)  */
 
                 if(distance < 3) {
                     let nameSimilar = names[j].name, nameChecked = names[i].name;
