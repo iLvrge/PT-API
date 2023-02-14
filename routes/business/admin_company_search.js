@@ -938,12 +938,15 @@ route.put("/company/search/all/", [authJWT.verifyToken, authJWT.isAdmin], async 
                 
                 if(applicantAssignorAndAssigneeIDs.length > 0) {
                     replacement.applicantAssignorAndAssigneeIDs = applicantAssignorAndAssigneeIDs
-                    queryApplicantInventor += ` OR aaa.assignor_and_assignee_id IN (:applicantAssignorAndAssigneeIDs) `
+                    queryApplicantInventor += `  aaa.assignor_and_assignee_id IN (:applicantAssignorAndAssigneeIDs) `
                 }
     
                 if(otherIDs.length > 0) {
                     replacement.representative_id = otherIDs
-                    queryApplicantInventor += ` OR aaa.representative_id IN (:representative_id)`
+                    if(applicantAssignorAndAssigneeIDs.length > 0) {
+                        queryApplicantInventor += ` OR `;
+                    }
+                    queryApplicantInventor += ` aaa.representative_id IN (:representative_id)`
                 }
                 
                 queryApplicantInventor += `  GROUP BY aaa.name UNION SELECT appInv.assignor_and_assignee_id AS id, appInv.assignor_and_assignee_id, CONCAT(appInv.family_name, ' ', appInv.given_name) AS name, aaa.name AS aName, count(aaa.name) as counter, r.representative_name as normalize_name, (select rr.representative_name FROM representative as rr WHERE rr.representative_name = aaa.name GROUP BY rr.representative_name) as representativeCompany, aaa.instances as total_occurences, 0 AS rf_id, '${flag}'  AS flag FROM db_patent_grant_bibliographic.inventor_new AS appInv INNER JOIN  db_patent_application_bibliographic.assignor_and_assignee AS aaa ON aaa.assignor_and_assignee_id = appInv.assignor_and_assignee_id LEFT JOIN representative as r ON r.representative_id = aaa.representative_id WHERE  `
