@@ -2318,72 +2318,188 @@ const findEventList = async(req, res) => {
     }
 }
 
-route.get("/events/all/assets/to_record", [authJWT.verifyToken], async (req, res) =>{   
+route.get("/events/all/assets/:category_type", [authJWT.verifyToken], async (req, res) =>{   
     try {
         let { companies } = req.query, findData = [], other = [], icons = {};
+
+        const {category_type} = req.params; 
+        
         if(companies != '') {
             companies = JSON.parse(companies)
         }
 
         if(companies.length > 0) {
-            const queryToRecord = `SELECT application, patent, '' AS eventdate, '13' AS event_code, '' AS event_icon, IF(patent <> '' , FORMAT(patent, 0), CONCAT(SUBSTRING(application, 1, 2), '/', FORMAT(SUBSTRING(application, 3), 0))) AS template_string FROM dashboard_items WHERE organisation_id = :organisationID AND representative_id IN (:companies) AND type = :type GROUP BY application`;
-            findData = await connection.applicationNew.query(queryToRecord,{
-                    type: connection.Sequelize.QueryTypes.SELECT,
-                    raw: true,
-                    logging: console.log,
-                    replacements: { organisationID: req.orgId, companies, type: 22 },
-                }
-            );
-
-            if(findData != null && findData.length > 0) {
-                const assets = []
-                const promise = findData.map( item => {
-                    assets.push(`${item.application}`)
-                })
-                await Promise.all(promise)
-
-
-                const query = `SELECT  appno_doc_num,  date_format(appno_date, '%Y-%m-%d') AS eventdate FROM db_patent_grant_bibliographic.application_publication
-                    WHERE appno_doc_num IN (:applications)
-                    GROUP BY appno_doc_num UNION SELECT  appno_doc_num,  date_format(appno_date, '%Y-%m-%d') AS eventdate FROM db_patent_application_bibliographic.application_grant
-                    WHERE appno_doc_num IN (:applications)
-                    GROUP BY appno_doc_num`
-
-                
-                
-                const list = await connection.applicationNew.query(query,{
+            if( category_type == 'to_record' ) {
+                const queryToRecord = `SELECT application, patent, '' AS eventdate, '13' AS event_code, '' AS event_icon, IF(patent <> '' , FORMAT(patent, 0), CONCAT(SUBSTRING(application, 1, 2), '/', FORMAT(SUBSTRING(application, 3), 0))) AS template_string FROM dashboard_items WHERE organisation_id = :organisationID AND representative_id IN (:companies) AND type = :type GROUP BY application`;
+                findData = await connection.applicationNew.query(queryToRecord,{
                         type: connection.Sequelize.QueryTypes.SELECT,
                         raw: true,
                         logging: console.log,
-                        replacements: { applications: assets },
+                        replacements: { organisationID: req.orgId, companies, type: 22 },
                     }
-                ); 
-                 
-                if(findData.length > 0 && list.length) {
-
-                    const promise = findData.map( (item, index) => {
-                        const findIndex = list.findIndex( row => row.appno_doc_num == item.application)
-                        if(findIndex !== -1) {
-                            findData[index].eventdate = list[findIndex].eventdate
-                        }
+                );
+    
+                if(findData != null && findData.length > 0) {
+                    const assets = []
+                    const promise = findData.map( item => {
+                        assets.push(`${item.application}`)
                     })
-
                     await Promise.all(promise)
-
-                    if(list.length != findData.length) {
-                        
+    
+    
+                    const query = `SELECT  appno_doc_num,  date_format(appno_date, '%Y-%m-%d') AS eventdate FROM db_patent_grant_bibliographic.application_publication
+                        WHERE appno_doc_num IN (:applications)
+                        GROUP BY appno_doc_num UNION SELECT  appno_doc_num,  date_format(appno_date, '%Y-%m-%d') AS eventdate FROM db_patent_application_bibliographic.application_grant
+                        WHERE appno_doc_num IN (:applications)
+                        GROUP BY appno_doc_num`
+    
+                    
+                    
+                    const list = await connection.applicationNew.query(query,{
+                            type: connection.Sequelize.QueryTypes.SELECT,
+                            raw: true,
+                            logging: console.log,
+                            replacements: { applications: assets },
+                        }
+                    ); 
+                    
+                    if(findData.length > 0 && list.length) {
+    
+                        const promise = findData.map( (item, index) => {
+                            const findIndex = list.findIndex( row => row.appno_doc_num == item.application)
+                            if(findIndex !== -1) {
+                                findData[index].eventdate = list[findIndex].eventdate
+                            }
+                        })
+    
+                        await Promise.all(promise)
+    
+                        if(list.length != findData.length) {
+                            
+                        }
+    
+                        let eventCodeIcons = {
+                            icon1: SvgIconsContent['13'],
+                            icon2: SvgIconsContent['13'],
+                            icon3: SvgIconsContent['13'] 
+                        }
+                        icons['13'] = eventCodeIcons
                     }
-
-                    let eventCodeIcons = {
-                        icon1: SvgIconsContent['13'],
-                        icon2: SvgIconsContent['13'],
-                        icon3: SvgIconsContent['13'] 
+                }
+            } else if (category_type == 'surcharge') {
+                const queryLateMaintainence = `SELECT application FROM dashboard_items WHERE organisation_id = :organisationID AND representative_id IN (:companies) AND type = :type GROUP BY application`;
+                const list = await connection.applicationNew.query(queryLateMaintainence,{
+                        type: connection.Sequelize.QueryTypes.SELECT,
+                        raw: true,
+                        logging: console.log,
+                        replacements: { organisationID: req.orgId, companies, type: 23 },
                     }
-                    icons['13'] = eventCodeIcons
+                );
+    
+                if(list != null && list.length > 0) {
+                    const assets = []
+                    const promise = list.map( item => {
+                        assets.push(`${item.application}`)
+                    })
+                    await Promise.all(promise)
+        
+                    const event_code = ['F176', 'M1554', 'M1555', 'M1556', 'M1557', 'M1558', 'M176', 'M177', 'M178', 'M181', 'M182', 'M186', 'M187', 'M188', 'M2554', 'M2555', 'M2556', 'M2558', 'M277', 'M281', 'M282', 'M286', 'M3554', 'M3555', 'M3556', 'M3557', 'M3558'], attributes = ['grant_doc_num', 'appno_doc_num', 'grant_date', [connection.Sequelize.fn('date_format', connection.Sequelize.col('event_date'), '%Y-%m-%d'), 'eventdate'], 'event_code', 'event_icon'], group = ['eventdate','event_code'], include = [
+                        {
+                            model: MaintainenceCode,
+                            as: 'maintainence_code',
+                            attributes: ['event_code', 'event_description', 'template', 'template_string', 'icon1', 'icon2', 'icon3']
+                        }
+                    ];
+                    let where = {appno_doc_num: assets, event_code}, assetData;
+    
+                    findData = await MaintainenceFees.findAll({
+                        attributes: attributes,
+                        where: where, 
+                        include: include,
+                        group: ['appno_doc_num', 'eventdate']
+                    });
+    
+                    let  expiredEvents = ['EXP.'], expired = false, eventExpiredDate = ''
+                    if(findData.length > 0) {
+                        const promise = findData.map( event => {
+                            if(expired === false) {
+                                if(expiredEvents.includes(event.maintainence_code.event_code)){
+                                    expired = true
+                                    eventExpiredDate = event.get('eventdate')
+                                }
+                            }                    
+                            let eventCodeIcons = {}
+                            if(event.maintainence_code.icon1 != null) {
+                                eventCodeIcons['icon1'] = SvgIconsContent[event.maintainence_code.icon1]
+                            } 
+                            
+                            if(event.maintainence_code.icon2 != null) {
+                                eventCodeIcons['icon2'] = SvgIconsContent[event.maintainence_code.icon2]
+                            }
+    
+                            if(event.maintainence_code.icon3 != null) {
+                                eventCodeIcons['icon3'] = SvgIconsContent[event.maintainence_code.icon3]
+                            }
+                            icons[event.event_code] = eventCodeIcons
+                            return event
+                        })
+                        Promise.all(promise)
+                    }
+                }
+            } else if (category_type == 'abandoned') {
+                const queryAbandonedStatus =  `SELECT application FROM dashboard_items WHERE organisation_id = :organisationID AND representative_id IN (:companies) AND type = :type GROUP BY application`;
+                const list = await connection.applicationNew.query(queryAbandonedStatus,{
+                        type: connection.Sequelize.QueryTypes.SELECT,
+                        raw: true,
+                        logging: console.log,
+                        replacements: { organisationID: req.orgId, companies, type: 36 },
+                    }
+                );
+    
+                if(list != null && list.length > 0) {
+                    const assets = []
+                    const promise = list.map( item => {
+                        assets.push(`${item.application}`)
+                    })
+                    await Promise.all(promise)
+                    const event_code = ['EXP', 'EXP.'], attributes = ['grant_doc_num', 'appno_doc_num', 'grant_date', [connection.Sequelize.fn('date_format', connection.Sequelize.col('event_date'), '%Y-%m-%d'), 'eventdate'], [connection.Sequelize.fn('date_format', connection.Sequelize.col('event_date'), '%Y-%m-%d'), 'eventExpiredDate'], 'event_code', 'event_icon'], group = ['eventdate','event_code'], include = [
+                        {
+                            model: MaintainenceCode,
+                            as: 'maintainence_code',
+                            attributes: ['event_code', 'event_description', 'template', 'template_string', 'icon1', 'icon2', 'icon3']
+                        }
+                    ];
+                    let where = {appno_doc_num: assets, event_code}, assetData;
+    
+                    findData = await MaintainenceFees.findAll({
+                        attributes: attributes,
+                        where: where, 
+                        include: include,
+                        group: ['appno_doc_num', 'eventdate']
+                    });
+                    if(findData.length > 0) {
+                        const promise = findData.map( event => { 
+                            let eventCodeIcons = {}
+                            if(event.maintainence_code.icon1 != null) {
+                                eventCodeIcons['icon1'] = SvgIconsContent[event.maintainence_code.icon1]
+                            } 
+                            
+                            if(event.maintainence_code.icon2 != null) {
+                                eventCodeIcons['icon2'] = SvgIconsContent[event.maintainence_code.icon2]
+                            }
+    
+                            if(event.maintainence_code.icon3 != null) {
+                                eventCodeIcons['icon3'] = SvgIconsContent[event.maintainence_code.icon3]
+                            }
+                            icons[event.event_code] = eventCodeIcons
+                            return event
+                        })
+                        Promise.all(promise)
+                    }
                 }
             }
         }
-        res.status(200).json({main: findData, other, icons});
+        res.status(200).json({main: findData, other, icons}); 
     } catch (err) {
         console.log(err);
         res.status(500).send("Internal server error.");
@@ -2440,82 +2556,7 @@ route.get("/events/all/assets/to_record/detail/:application", [authJWT.verifyTok
         console.log(err);
         res.status(500).send("Internal server error.");
     }
-})
-
-route.get("/events/all/assets/surcharge", [authJWT.verifyToken], async (req, res) =>{   
-    try {
-        let { companies } = req.query, findData = [], other = [], icons = {};
-        if(companies != '') {
-            companies = JSON.parse(companies)
-        }
-
-        if(companies.length > 0) {
-            const queryLateMaintainence = `SELECT application FROM dashboard_items WHERE organisation_id = :organisationID AND representative_id IN (:companies) AND type = :type GROUP BY application`;
-            const list = await connection.applicationNew.query(queryLateMaintainence,{
-                    type: connection.Sequelize.QueryTypes.SELECT,
-                    raw: true,
-                    logging: console.log,
-                    replacements: { organisationID: req.orgId, companies, type: 23 },
-                }
-            );
-
-            if(list != null && list.length > 0) {
-                const assets = []
-                const promise = list.map( item => {
-                    assets.push(`${item.application}`)
-                })
-                await Promise.all(promise)
- 
-                const event_code = ['F176', 'M1554', 'M1555', 'M1556', 'M1557', 'M1558', 'M176', 'M177', 'M178', 'M181', 'M182', 'M186', 'M187', 'M188', 'M2554', 'M2555', 'M2556', 'M2558', 'M277', 'M281', 'M282', 'M286', 'M3554', 'M3555', 'M3556', 'M3557', 'M3558'], attributes = ['grant_doc_num', 'appno_doc_num', 'grant_date', [connection.Sequelize.fn('date_format', connection.Sequelize.col('event_date'), '%Y-%m-%d'), 'eventdate'], 'event_code', 'event_icon'], group = ['eventdate','event_code'], include = [
-                    {
-                        model: MaintainenceCode,
-                        as: 'maintainence_code',
-                        attributes: ['event_code', 'event_description', 'template', 'template_string', 'icon1', 'icon2', 'icon3']
-                    }
-                ];
-                let where = {appno_doc_num: assets, event_code}, assetData;
-
-                findData = await MaintainenceFees.findAll({
-                    attributes: attributes,
-                    where: where, 
-                    include: include,
-                    group: ['appno_doc_num', 'eventdate']
-                });
-
-                let  expiredEvents = ['EXP.'], expired = false, eventExpiredDate = ''
-                if(findData.length > 0) {
-                    const promise = findData.map( event => {
-                        if(expired === false) {
-                            if(expiredEvents.includes(event.maintainence_code.event_code)){
-                                expired = true
-                                eventExpiredDate = event.get('eventdate')
-                            }
-                        }                    
-                        let eventCodeIcons = {}
-                        if(event.maintainence_code.icon1 != null) {
-                            eventCodeIcons['icon1'] = SvgIconsContent[event.maintainence_code.icon1]
-                        } 
-                        
-                        if(event.maintainence_code.icon2 != null) {
-                            eventCodeIcons['icon2'] = SvgIconsContent[event.maintainence_code.icon2]
-                        }
-
-                        if(event.maintainence_code.icon3 != null) {
-                            eventCodeIcons['icon3'] = SvgIconsContent[event.maintainence_code.icon3]
-                        }
-                        icons[event.event_code] = eventCodeIcons
-                        return event
-                    })
-                    Promise.all(promise)
-                }
-            }
-        }
-        res.status(200).json({main: findData, other, icons});
-    } catch (err) {
-        console.log(err);
-        res.status(500).send("Internal server error.");
-    }
-})
+}) 
 
 route.get("/events/:applicationNumber", [authJWT.verifyToken], async (req, res) =>{     
     await findEventList(req, res)
