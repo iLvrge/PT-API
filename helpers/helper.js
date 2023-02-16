@@ -2185,12 +2185,12 @@ let findCompanyEntitiesByAccountID = async(orgID, type, DBConnection, suggestion
 
 const groupFixIdentical = async (entitiesList) => {
     const getIdenticalList = await groupSuggestions(entitiesList, 1);
-    //console.log('getIdenticalList', getIdenticalList.length)
+    console.log('getIdenticalList', getIdenticalList.length, Object.keys(getIdenticalList).length)
     if(Object.keys(getIdenticalList).length > 0 ) { 
         for (const name in getIdenticalList) { 
             const {main, groups} = getIdenticalList[name];
 
-            //console.log('main, groups', main, groups);
+            console.log('main, groups', main, groups);
 
             if(groups.length > 0) {
                 let representativeName = '', representativeID = 0;
@@ -2472,31 +2472,31 @@ const groupSuggestions = async (entitiesList, identical = 0) => {
                 if(distance < 3) {
                     let nameSimilar = names[j].name, nameChecked = names[i].name;
                     if(identical === 1) {
-                    //console.log(`INVENTOR: ${distance} - ${distance1} - ${distance2} - ${distance3} - ${distance4} - ${nameChecked} - ${nameSimilar} - ${name1} - ${name2}`) 
-                    let entered = true
-                    /* if(distance2 == distance && nameChecked.toLowerCase() == name2.toLowerCase()) {
-                        entered = true
-                    } else if(distance3 == distance && name1.toLowerCase() == name2.toLowerCase()) {
-                        entered = true
-                    } else if(distance4 == distance && name1.toLowerCase() == nameSimilar.toLowerCase()) {
-                        entered = true
-                    } else if(distance1 == distance && nameChecked.toLowerCase() == nameSimilar.toLowerCase()) {
-                        entered = true
-                    } else if(distance5 == distance && name3.toLowerCase() == nameSimilar.toLowerCase()) {
-                        entered = true
-                    } */
-                    if(entered === true) {
-                        if (suggestedGroups[nameChecked]) {
-                            suggestedGroups[nameChecked]['groups'].push(names[j]);
-                            otherSuggested.push(nameSimilar)
-                        } else {
-                            suggestedGroups[nameChecked] = {
-                                main: names[i],
-                                groups: [names[j]]
-                            }
-                            otherSuggested.push(nameSimilar)
-                        } 
-                    }
+                        //console.log(`INVENTOR: ${distance} - ${distance1} - ${distance2} - ${distance3} - ${distance4} - ${nameChecked} - ${nameSimilar} - ${name1} - ${name2}`) 
+                        let entered = true
+                        /* if(distance2 == distance && nameChecked.toLowerCase() == name2.toLowerCase()) {
+                            entered = true
+                        } else if(distance3 == distance && name1.toLowerCase() == name2.toLowerCase()) {
+                            entered = true
+                        } else if(distance4 == distance && name1.toLowerCase() == nameSimilar.toLowerCase()) {
+                            entered = true
+                        } else if(distance1 == distance && nameChecked.toLowerCase() == nameSimilar.toLowerCase()) {
+                            entered = true
+                        } else if(distance5 == distance && name3.toLowerCase() == nameSimilar.toLowerCase()) {
+                            entered = true
+                        } */
+                        if(entered === true) {
+                            if (suggestedGroups[nameChecked]) {
+                                suggestedGroups[nameChecked]['groups'].push(names[j]);
+                                otherSuggested.push(nameSimilar)
+                            } else {
+                                suggestedGroups[nameChecked] = {
+                                    main: names[i],
+                                    groups: [names[j]]
+                                }
+                                otherSuggested.push(nameSimilar)
+                            } 
+                        }
                     } else {
                         if (suggestedGroups[nameChecked]) {
                             suggestedGroups[nameChecked].push(nameSimilar);
@@ -2507,7 +2507,7 @@ const groupSuggestions = async (entitiesList, identical = 0) => {
                                 otherSuggested.push(nameSimilar)
                             }
                         }
-                    }s 
+                    }
                 }
             }
         }
