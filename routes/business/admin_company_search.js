@@ -549,10 +549,10 @@ route.put("/company/search/all/", [authJWT.verifyToken, authJWT.isAdmin], async 
                                 /** Bibliographic */
                                 applicantAssignorAndAssigneeIDs.push(row.id)
                                 otherNames.push(row.name)
-                                if(row.normalize_name != '') {
+                                if(row.normalize_name != '' && row.normalize_name != 'null' && row.normalize_name != null) {
                                     otherNames.push(row.normalize_name)
                                 }
-                                if(row.representative_company != '') {
+                                if(row.representative_company != '' && row.representative_company != 'null' && row.representative_company != null) {
                                     otherNames.push(row.representative_company)
                                 }
                             } else if (row.flag == 3) {
@@ -756,6 +756,8 @@ route.put("/company/search/all/", [authJWT.verifyToken, authJWT.isAdmin], async 
                     await ApplicantAssignorAndAssignee.update(item, {where: {assignor_and_assignee_id: applicantAssignorAndAssigneeIDs}}); 
                 } 
 
+                console.log("Applicant with Normalize name", normalize_name)
+
                 await ApplicantAssignorAndAssignee.update(item, {where: {name: normalize_name}});
 
                 if(ptabNames.length > 0) {
@@ -780,6 +782,7 @@ route.put("/company/search/all/", [authJWT.verifyToken, authJWT.isAdmin], async 
                 }	
             } else {
                 // Remove Representative
+                console.log("I am in delete")
                 const  allRepresentatives = [], replaceNames = [], otherIDs = [];
                 if(IDs.length > 0) {
                     let getList = await AssignorAndAssignee.findAll({
@@ -792,13 +795,13 @@ route.put("/company/search/all/", [authJWT.verifyToken, authJWT.isAdmin], async 
                         IDs = []
                         const promise = getList.map(r => {
                             IDs.push(r.assignor_and_assignee_id)
-                            if(r.representative_id > 0) {
+                            /* if(r.representative_id > 0) {
                                 allRepresentatives.push(r.representative_id)
-                            }
+                            } */
                             replaceNames.push(r.name)
                             return r;
                         })
-                        await Promise.all(promise);
+                        await Promise.all(promise);  
     
                         const getReplaceNameRepresentative = await Representatives.findAll({
                             where:{ representative_name: replaceNames}
@@ -825,13 +828,11 @@ route.put("/company/search/all/", [authJWT.verifyToken, authJWT.isAdmin], async 
                             }
                         }
                         await AssignorAndAssignee.update({representative_id: 0}, {where: {assignor_and_assignee_id: IDs}});
-
-                        
                     }
                 }
 
                 // Check Applicant Assignees
-                if(applicantAssignorAndAssigneeIDs.length > 0 || (applicantAssignorAndAssigneeIDs.length == 0 && allRepresentatives.length > 0)) {
+                if(applicantAssignorAndAssigneeIDs.length > 0 || (applicantAssignorAndAssigneeIDs.length == 0 && allRepresentatives.length > 0)) { 
                     let getList = await ApplicantAssignorAndAssignee.findAll({
                         attributes:['assignor_and_assignee_id', 'representative_id', 'name'],
                         where:{
@@ -869,7 +870,7 @@ route.put("/company/search/all/", [authJWT.verifyToken, authJWT.isAdmin], async 
                                     [connection.Op.or]: [
                                     {representative_id: otherIDs},
                                     {name: replaceNames}
-                                ]}
+                                ]}   
                             })
                             if(findOldRows.length > 0) {
                                 console.log("Applicant findOldRowsIDs", IDs)
@@ -884,7 +885,7 @@ route.put("/company/search/all/", [authJWT.verifyToken, authJWT.isAdmin], async 
                 console.log("DELETE ALL Standalone Representatives", allRepresentatives)
                 if(allRepresentatives.length > 0) {
                     console.log("Process start for deleting standalone representatives")
-                    await allRepresentativesCheckAndDelete([...allRepresentatives]);
+                    await allRepresentativesCheckAndDelete([...new Set(allRepresentatives)]);
                 }
 
                 if(ptabNames.length > 0) {
@@ -894,9 +895,13 @@ route.put("/company/search/all/", [authJWT.verifyToken, authJWT.isAdmin], async 
             // Get all list including normalize company and other names
             let list = [], applicantList = []
             if(IDs.length > 0) {
-                let queryCompany = `SELECT a.assignor_and_assignee_id as id, a.assignor_and_assignee_id, a.name, a.instances as counter, c.representative_name as normalize_name, (select rr.representative_name FROM representative as rr WHERE rr.representative_name = a.name GROUP BY rr.representative_name) as representative_company, (SELECT concat(ass.reel_no,'-', ass.frame_no) FROM assignee as ee INNER JOIN assignment as ass ON ass.rf_id = ee.rf_id WHERE ee.assignor_and_assignee_id = a.assignor_and_assignee_id LIMIT 1) as assigneeRFID, (SELECT concat(asss.reel_no,'-', asss.frame_no) FROM assignor as assi INNER JOIN assignment as asss ON asss.rf_id = assi.rf_id WHERE assi.assignor_and_assignee_id = a.assignor_and_assignee_id LIMIT 1) as assignorRFID, '1' AS flag FROM assignor_and_assignee as a LEFT JOIN representative as c ON c.representative_id = a.representative_id WHERE a.assignor_and_assignee_id IN (:IDs) OR a.name = :normalizeName `;
+                let queryCompany = `SELECT a.assignor_and_assignee_id as id, a.assignor_and_assignee_id, a.name, a.instances as counter, c.representative_name as normalize_name, (select rr.representative_name FROM representative as rr WHERE rr.representative_name = a.name GROUP BY rr.representative_name) as representative_company, (SELECT concat(ass.reel_no,'-', ass.frame_no) FROM assignee as ee INNER JOIN assignment as ass ON ass.rf_id = ee.rf_id WHERE ee.assignor_and_assignee_id = a.assignor_and_assignee_id LIMIT 1) as assigneeRFID, (SELECT concat(asss.reel_no,'-', asss.frame_no) FROM assignor as assi INNER JOIN assignment as asss ON asss.rf_id = assi.rf_id WHERE assi.assignor_and_assignee_id = a.assignor_and_assignee_id LIMIT 1) as assignorRFID, '1' AS flag FROM assignor_and_assignee as a LEFT JOIN representative as c ON c.representative_id = a.representative_id WHERE a.assignor_and_assignee_id IN (:IDs) `;
 
-                const replacements = {normalizeName:  normalize_name, IDs}
+                const replacements = { normalizeName:  normalize_name, IDs}
+
+                if(normalize_name != '') {
+                    queryCompany += ` OR a.name = :normalizeName `
+                }
     
                 if(otherIDs.length > 0) {
                     replacements.representative_id = otherIDs
@@ -911,7 +916,7 @@ route.put("/company/search/all/", [authJWT.verifyToken, authJWT.isAdmin], async 
                     }
                 );
     
-            } else {
+            } else if(normalize_name != ''){
                 let queryCompany = `SELECT a.assignor_and_assignee_id as id, a.assignor_and_assignee_id, a.name, a.instances as counter, c.representative_name as normalize_name, (select rr.representative_name FROM representative as rr WHERE rr.representative_name = a.name GROUP BY rr.representative_name) as representative_company, (SELECT concat(ass.reel_no,'-', ass.frame_no) FROM assignee as ee INNER JOIN assignment as ass ON ass.rf_id = ee.rf_id WHERE ee.assignor_and_assignee_id = a.assignor_and_assignee_id LIMIT 1) as assigneeRFID, (SELECT concat(asss.reel_no,'-', asss.frame_no) FROM assignor as assi INNER JOIN assignment as asss ON asss.rf_id = assi.rf_id WHERE assi.assignor_and_assignee_id = a.assignor_and_assignee_id LIMIT 1) as assignorRFID, '1' AS flag FROM assignor_and_assignee as a LEFT JOIN representative as c ON c.representative_id = a.representative_id WHERE a.name = :normalizeName `;
 
                 const replacements = {normalizeName:  normalize_name}
@@ -925,7 +930,7 @@ route.put("/company/search/all/", [authJWT.verifyToken, authJWT.isAdmin], async 
                     logging: console.log,
                     }
                 );
-            }
+            } 
             
             let flag = 2;
 
@@ -935,57 +940,92 @@ route.put("/company/search/all/", [authJWT.verifyToken, authJWT.isAdmin], async 
             let queryApplicantInventor = ''
             const replacement = {normalizeName:  normalize_name }
             if(flag === 4) {
-                queryApplicantInventor = `SELECT * FROM (SELECT appInv.assignor_and_assignee_id AS id, appInv.assignor_and_assignee_id , CONCAT(appInv.family_name, ' ', appInv.given_name) AS name, aaa.name AS aName, count(aaa.name) as counter, r.representative_name as normalize_name, (select rr.representative_name FROM representative as rr WHERE rr.representative_name = aaa.name GROUP BY rr.representative_name) as representativeCompany, aaa.instances as total_occurences, 0 AS rf_id, '${flag}'  AS flag FROM db_patent_application_bibliographic.inventor AS appInv INNER JOIN  db_patent_application_bibliographic.assignor_and_assignee AS aaa ON aaa.assignor_and_assignee_id = appInv.assignor_and_assignee_id LEFT JOIN representative as r ON r.representative_id = aaa.representative_id WHERE aaa.name = :normalizeName `
+                queryApplicantInventor = `SELECT * FROM (SELECT appInv.assignor_and_assignee_id AS id, appInv.assignor_and_assignee_id , CONCAT(appInv.family_name, ' ', appInv.given_name) AS name, aaa.name AS aName, count(aaa.name) as counter, r.representative_name as normalize_name, (select rr.representative_name FROM representative as rr WHERE rr.representative_name = aaa.name GROUP BY rr.representative_name) as representativeCompany, aaa.instances as total_occurences, 0 AS rf_id, '${flag}'  AS flag FROM db_patent_application_bibliographic.inventor AS appInv INNER JOIN  db_patent_application_bibliographic.assignor_and_assignee AS aaa ON aaa.assignor_and_assignee_id = appInv.assignor_and_assignee_id LEFT JOIN representative as r ON r.representative_id = aaa.representative_id WHERE `
+
+
+                if(normalize_name != '') {
+                    queryApplicantInventor += ` aaa.name = :normalizeName `
+                }
                 
                 if(applicantAssignorAndAssigneeIDs.length > 0) {
                     replacement.applicantAssignorAndAssigneeIDs = applicantAssignorAndAssigneeIDs
-                    queryApplicantInventor += ` OR aaa.assignor_and_assignee_id IN (:applicantAssignorAndAssigneeIDs) `
+                    if(normalize_name != '') {
+                        queryApplicantInventor += ` OR `
+                    }
+                    queryApplicantInventor += `  aaa.assignor_and_assignee_id IN (:applicantAssignorAndAssigneeIDs) `
                 }
     
                 if(otherIDs.length > 0) {
                     replacement.representative_id = otherIDs
-                    queryApplicantInventor += ` OR aaa.representative_id IN (:representative_id)`
+                    if(applicantAssignorAndAssigneeIDs.length > 0 || normalize_name != '') {
+                        queryApplicantInventor += ` OR `;
+                    }
+                    queryApplicantInventor += ` aaa.representative_id IN (:representative_id)`
                 }
                 
-                queryApplicantInventor += `  GROUP BY aaa.name UNION SELECT appInv.assignor_and_assignee_id AS id, appInv.assignor_and_assignee_id, CONCAT(appInv.family_name, ' ', appInv.given_name) AS name, aaa.name AS aName, count(aaa.name) as counter, r.representative_name as normalize_name, (select rr.representative_name FROM representative as rr WHERE rr.representative_name = aaa.name GROUP BY rr.representative_name) as representativeCompany, aaa.instances as total_occurences, 0 AS rf_id, '${flag}'  AS flag FROM db_patent_grant_bibliographic.inventor_new AS appInv INNER JOIN  db_patent_application_bibliographic.assignor_and_assignee AS aaa ON aaa.assignor_and_assignee_id = appInv.assignor_and_assignee_id LEFT JOIN representative as r ON r.representative_id = aaa.representative_id WHERE aaa.name = :normalizeName `
+                queryApplicantInventor += `  GROUP BY aaa.name UNION SELECT appInv.assignor_and_assignee_id AS id, appInv.assignor_and_assignee_id, CONCAT(appInv.family_name, ' ', appInv.given_name) AS name, aaa.name AS aName, count(aaa.name) as counter, r.representative_name as normalize_name, (select rr.representative_name FROM representative as rr WHERE rr.representative_name = aaa.name GROUP BY rr.representative_name) as representativeCompany, aaa.instances as total_occurences, 0 AS rf_id, '${flag}'  AS flag FROM db_patent_grant_bibliographic.inventor_new AS appInv INNER JOIN  db_patent_application_bibliographic.assignor_and_assignee AS aaa ON aaa.assignor_and_assignee_id = appInv.assignor_and_assignee_id LEFT JOIN representative as r ON r.representative_id = aaa.representative_id WHERE  `
+
+                if(normalize_name != '') {
+                    queryApplicantInventor += ` aaa.name = :normalizeName `
+                }
                 
                 if(applicantAssignorAndAssigneeIDs.length > 0) {
                     replacement.applicantAssignorAndAssigneeIDs = applicantAssignorAndAssigneeIDs
-                    queryApplicantInventor += ` OR aaa.assignor_and_assignee_id IN (:applicantAssignorAndAssigneeIDs) `
+                    if(normalize_name != '') {
+                        queryApplicantInventor += ` OR `
+                    }
+                    queryApplicantInventor += `  aaa.assignor_and_assignee_id IN (:applicantAssignorAndAssigneeIDs) `
                 }
     
                 if(otherIDs.length > 0) {
                     replacement.representative_id = otherIDs
+                    if(applicantAssignorAndAssigneeIDs.length > 0 || normalize_name != '') {
+                        queryApplicantInventor += ` OR `;
+                    }
                     queryApplicantInventor += ` OR aaa.representative_id IN (:representative_id)`
                 }
 
                 queryApplicantInventor += `  GROUP BY aaa.name) AS temp `
-            } else {
+            } else if(applicantAssignorAndAssigneeIDs.length > 0 || otherIDs.length > 0){
 
                 // Get all list including normalize company and other names
-                queryApplicantInventor = `SELECT a.assignor_and_assignee_id as id, a.assignor_and_assignee_id, a.name, a.instances as counter, c.representative_name as normalize_name, (SELECT rr.representative_name FROM representative as rr WHERE rr.representative_name = a.name GROUP BY rr.representative_name) as representative_company, (SELECT appno_doc_num FROM db_patent_application_bibliographic.applicant WHERE name = a.name LIMIT 1) as assigneeRFID, (SELECT appno_doc_num FROM db_patent_grant_bibliographic.applicant WHERE name = a.name LIMIT 1) as assignorRFID, '${flag}' AS flag FROM db_patent_application_bibliographic.assignor_and_assignee as a LEFT JOIN db_uspto.representative as c ON c.representative_id = a.representative_id WHERE  a.name = :normalizeName `;
+                queryApplicantInventor = `SELECT a.assignor_and_assignee_id as id, a.assignor_and_assignee_id, a.name, a.instances as counter, c.representative_name as normalize_name, (SELECT rr.representative_name FROM representative as rr WHERE rr.representative_name = a.name GROUP BY rr.representative_name) as representative_company, (SELECT appno_doc_num FROM db_patent_application_bibliographic.applicant WHERE name = a.name LIMIT 1) as assigneeRFID, (SELECT appno_doc_num FROM db_patent_grant_bibliographic.applicant WHERE name = a.name LIMIT 1) as assignorRFID, '${flag}' AS flag FROM db_patent_application_bibliographic.assignor_and_assignee as a LEFT JOIN db_uspto.representative as c ON c.representative_id = a.representative_id WHERE    `;
+
+                if(normalize_name != '') {
+                    queryApplicantInventor += ` a.name = :normalizeName `
+                }
+
+
                 if(applicantAssignorAndAssigneeIDs.length > 0) {
                     replacement.applicantAssignorAndAssigneeIDs = applicantAssignorAndAssigneeIDs
-                    queryApplicantInventor += ` OR a.assignor_and_assignee_id IN (:applicantAssignorAndAssigneeIDs) `
+                    if(normalize_name != '') {
+                        queryApplicantInventor += ` OR `
+                    }
+                    queryApplicantInventor += ` a.assignor_and_assignee_id IN (:applicantAssignorAndAssigneeIDs) `
                 }
     
                 if(otherIDs.length > 0) {
                     replacement.representative_id = otherIDs
-                    queryApplicantInventor += ` OR a.representative_id IN (:representative_id)`
+
+                    if(applicantAssignorAndAssigneeIDs.length > 0 || otherIDs.length > 0) {
+                        queryApplicantInventor += ` OR `
+                    }
+                    queryApplicantInventor += ` a.representative_id IN (:representative_id)`
                 }
             }
 
             
 
-            
+            if(queryApplicantInventor != '') {
+                applicantList = await connection.resources.query(queryApplicantInventor,{
+                    type: connection.Sequelize.QueryTypes.SELECT,
+                    raw: true,
+                    replacements: replacement,
+                    logging: console.log,
+                    }
+                );
+            }
 
-            applicantList = await connection.resources.query(queryApplicantInventor,{
-                type: connection.Sequelize.QueryTypes.SELECT,
-                raw: true,
-                replacements: replacement,
-                logging: console.log,
-                }
-            );
 
             let ptabList = [];
             console.log('PTNAMES', ptabNames)

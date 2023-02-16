@@ -27,6 +27,8 @@ const RepresentativeAssignmentConveyance = require("../model/resources/Represent
 
 const AssignorAndAssignee = require("../model/resources/AssignorAndAssignee");
 
+const ApplicantAssignorAndAssignee = require('../model/resources/ApplicantAssignorAndAssignee'); 
+
 const RepresentativeApplication = require("../model/resources/Representatives");
 
 const Users = require("../model/business/Users");
@@ -2140,7 +2142,7 @@ let updateAllCustomerInventor = async(organisationID, inventors, flag, DBConnect
 }
 */
 
-let findCompanyEntitiesByAccountID = async(orgID, type, DBConnection, suggestions) => {
+let findCompanyEntitiesByAccountID = async(orgID, type, DBConnection, suggestions, fixed_identicals) => {
     const list = await getCompaniesList(DBConnection);
     let entitiesList = [];
     if(list.length > 0) {
@@ -2170,13 +2172,122 @@ let findCompanyEntitiesByAccountID = async(orgID, type, DBConnection, suggestion
                         entitiesList = groupOrganisationSuggestions(entitiesList)
                     }
                 }
+                if(typeof fixed_identicals != 'undefined' && fixed_identicals == 1) {
+                    if(type == 1) {
+                        entitiesList = groupFixIdentical(entitiesList)
+                    }
+                }
             }
         }
     }
     return entitiesList;
 }
 
-const groupSuggestions = (entitiesList) => {
+const groupFixIdentical = async (entitiesList) => {
+    const getIdenticalList = await groupSuggestions(entitiesList, 1);
+    console.log('getIdenticalList', getIdenticalList.length, Object.keys(getIdenticalList).length)
+    if(Object.keys(getIdenticalList).length > 0 ) { 
+        for (const name in getIdenticalList) { 
+            const {main, groups} = getIdenticalList[name];
+
+            console.log('main, groups', main, groups);
+
+            if(groups.length > 0) {
+                let representativeName = '', representativeID = 0;
+                if(main.representative_company != null) {
+                    representativeName = main.representative_company 
+                } else {
+                    const allNames = []
+                    allNames.push(main.name)
+                    groups.forEach( item => {
+                        allNames.push(item.name)
+                    })
+                    if(allNames.length > 0) {
+                        const findRepresentative = await Representatives.findOne({
+                            where: {representative_name: allNames}
+                        })
+                        if(findRepresentative != null) {
+                            representativeName = findRepresentative.representative_name
+                            representativeID = findRepresentative.representative_id
+                        } else {
+                            /**
+                             * Create Representative
+                             */
+                            let createRepresentativeName = main.name, highestDistance = main.counter
+
+                            groups.forEach( item => {
+                                if(parseInt(item.counter) >= parseInt(highestDistance)) {
+                                    createRepresentativeName = item.name
+                                    highestDistance = item.counter
+                                }
+                            })
+                            //console.log('createRepresentativeName', createRepresentativeName, highestDistance)
+                            if(createRepresentativeName != '') {
+                                const representativeCompany = await Representatives.create({
+                                    representative_name: createRepresentativeName
+                                });
+                                if(representativeCompany != null) {
+                                    representativeName = representativeCompany.representative_name
+                                    representativeID = representativeCompany.representative_id
+                                }
+                            } 
+                        }
+                    }
+                }
+                if(representativeName != '' && groups.length > 0) {
+                    if(representativeID == 0) {
+                        const findRepresentative = await Representatives.findOne({
+                            where: {representative_name: representativeName}
+                        })
+                        if(findRepresentative != null) {
+                            representativeID = findRepresentative.representative_id
+                        }
+                    }
+                    const allAssignorAndAssignee = [], allApplicantAssignorAndAssignee = []
+                    if(main.normalize_name == null) {
+                        if(main.flag == 1) {
+                            allAssignorAndAssignee.push(main.id)
+                        } else {
+                            allApplicantAssignorAndAssignee.push(main.id)
+                        }
+                    }
+
+                    groups.forEach( item => {
+                        if(item.flag == 1) {
+                            if(item.normalize_name == null) {
+                                allAssignorAndAssignee.push(item.id)
+                            }
+                        } else if(item.flag == 4) {
+                            if(item.normalize_name == null) {
+                                allApplicantAssignorAndAssignee.push(item.id)
+                            } 
+                        }
+                    })
+
+                    if(representativeID > 0 && (allAssignorAndAssignee.length > 0 || allApplicantAssignorAndAssignee.length > 0)) {
+                        const item = {representative_id: representativeID};
+
+                        if(allAssignorAndAssignee.length > 0) {
+                            await AssignorAndAssignee.update(item, {where: {assignor_and_assignee_id: allAssignorAndAssignee}}); 
+                        }
+
+                        if(allApplicantAssignorAndAssignee.length > 0) {
+                            await ApplicantAssignorAndAssignee.update(item, {where: {assignor_and_assignee_id: allApplicantAssignorAndAssignee}}); 
+                        }
+                    } 
+                }  
+            } 
+        }
+    } 
+}
+
+const sortWordsByLength = (words) =>{
+    return words.sort(function(a, b) {
+      return b.length - a.length;
+    });
+}
+
+/* const groupSuggestions = async (entitiesList, identical = 0) => {
     const names = [...entitiesList] ; 
 
     const suggestedGroups = {}; 
@@ -2184,72 +2295,276 @@ const groupSuggestions = (entitiesList) => {
     let otherSuggested = []
     for (let i = 0; i < names.length; i++) {
         for (let j = i + 1; j < names.length; j++) {
-            const distance1 = levenshtein.get(names[i].name.toLowerCase(), names[j].name.toLowerCase())
-            const name1 = names[i].name.split(" ").reverse().join(" ")
-            const name2  = names[j].name.split(" ").reverse().join(" ")
-            const distance2 = levenshtein.get(names[i].name.toLowerCase(), name2.toLowerCase())
-            const distance3 = levenshtein.get(name1.toLowerCase(), name2.toLowerCase())
-            const distance4 = levenshtein.get(name1.toLowerCase(), names[j].name.toLowerCase())
-            const distance = Math.min(distance1, distance2, distance3, distance4)
-            /* console.log(`INVENTOR: ${distance} - ${names[i].name} - ${names[j].name}`) */
-            if(distance < 3) {
-                
-                if (suggestedGroups[names[i].name]) {
-                    suggestedGroups[names[i].name].push(names[j].name);
-                    otherSuggested.push(names[j].name)
-                } else {
-                    if(!otherSuggested.includes(names[i].name)) {
-                        suggestedGroups[names[i].name] = [names[j].name];
-                        otherSuggested.push(names[j].name)
-                    }
+            if(!otherSuggested.includes(names[j].name)) {
+                const distance1 = levenshtein.get(names[i].name.toLowerCase(), names[j].name.toLowerCase())
+                const name1Split = names[i].name.split(" ")
+                const name2Split  = names[j].name.split(" ")
+ 
+
+                const name1 = name1Split.reverse().join(" ")
+                const name2  = name2Split.reverse().join(" ")
+                let name3 = ''
+                if(names[i].name.split(" ").length > 2) {
+                    const splitName = names[i].name.split(" ")
+                    name3 = splitName[2] + ' ' + splitName[0] + ' ' + splitName[1]
+                }
+                const distance2 = levenshtein.get(names[i].name.toLowerCase(), name2.toLowerCase())
+                const distance3 = levenshtein.get(name1.toLowerCase(), name2.toLowerCase())
+                const distance4 = levenshtein.get(names[i].name.toLowerCase(), names[j].name.toLowerCase())
+                let distance5 = 100;
+                if(name3 != '') {
+                    distance5 = levenshtein.get(name3.toLowerCase(), names[j].name.toLowerCase())
+                }
+                const distance = Math.min(distance1, distance2, distance3, distance4, distance5) 
+                // console.log(`INVENTOR: ${distance} - ${names[i].name} - ${names[j].name}`)  
+    
+                if(distance < 3 || ((names[i].name.split(" ").length > 2 || names[j].name.split(" ").length > 2) && distance < 4)) {  
+                    let nameSimilar = names[j].name, nameChecked = names[i].name;
+                    if(identical === 1) {
+                        // console.log(`INVENTOR: ${distance} - ${distance1} - ${distance2} - ${distance3} - ${distance4} - ${nameChecked} - ${nameSimilar} - ${name1} - ${name2}`)  
+                        let entered = false
+                        if(distance2 == distance && nameChecked.toLowerCase() == name2.toLowerCase()) {
+                            entered = true
+                        } else if(distance3 == distance && name1.toLowerCase() == name2.toLowerCase()) {
+                            entered = true
+                        } else if(distance4 == distance && name1.toLowerCase() == nameSimilar.toLowerCase()) {
+                            entered = true
+                        } else if(distance1 == distance && nameChecked.toLowerCase() == nameSimilar.toLowerCase()) {
+                            entered = true
+                        } else if(distance5 == distance && name3.toLowerCase() == nameSimilar.toLowerCase()) {
+                            entered = true
+                        }
+                        if(entered === true) {
+                            if (suggestedGroups[nameChecked]) {
+                                suggestedGroups[nameChecked]['groups'].push(names[j]);
+                                otherSuggested.push(nameSimilar)
+                            } else {
+                                suggestedGroups[nameChecked] = {
+                                    main: names[i],
+                                    groups: [names[j]]
+                                }
+                                otherSuggested.push(nameSimilar)
+                            } 
+                        }
+                    } else {
+                        if (suggestedGroups[nameChecked]) {
+                            suggestedGroups[nameChecked].push(nameSimilar);
+                            otherSuggested.push(nameSimilar)
+                        } else {
+                            if(!otherSuggested.includes(nameChecked)) {
+                                suggestedGroups[nameChecked] = [nameSimilar];
+                                otherSuggested.push(nameSimilar)
+                            }
+                        }
+                    } 
                 }
             }
         }
     }  
-    let newSuggestedSet = [], allNamesID = [];
-    // Print suggested groups with correct name
-    for (const name in suggestedGroups) {
-        const group = suggestedGroups[name];
-        //group.push(name); 
-        //console.log(`${name} - ${group.length}`)
-        if(group.length > 0) {
-            // Find the name with the highest occurrences that doesn't have a middle name
-            let correctName = "";
-            let highestOccurrences = 0;
-            for (let i = 0; i < group.length; i++) {
-                const parts = group[i].split(" ");
-                if (parts.length === 2 && names.find(n => n.name === group[i]).counter > highestOccurrences) {
-                    correctName = group[i];
-                    highestOccurrences = names.find(n => n.name === group[i]).counter;
-                }
-            } 
-            const findIndex = names.findIndex( row => row.name == name)
-            if(findIndex !== -1) { 
-                let newGroup = []
-                allNamesID.push(names[findIndex].id)
-                group.map( grp => {
-                    if(name != grp) {
-                        const grpIndex = names.findIndex( row => row.name == grp)
-                        if(grpIndex !== -1) {
-                            if(!allNamesID.includes(names[grpIndex].id)) {  
-                                newGroup.push(names[grpIndex]) 
-                                allNamesID.push(names[grpIndex].id)
+    if(identical === 1) {
+        return suggestedGroups
+    } else {
+        let newSuggestedSet = [], allNamesID = [];
+        // Print suggested groups with correct name
+        for (const name in suggestedGroups) {
+            const group = suggestedGroups[name];
+            //group.push(name); 
+            //console.log(`${name} - ${group.length}`)
+            if(group.length > 0) {
+                // Find the name with the highest occurrences that doesn't have a middle name
+                let correctName = "";
+                let highestOccurrences = 0;
+                for (let i = 0; i < group.length; i++) {
+                    const parts = group[i].split(" ");
+                    if (parts.length === 2 && names.find(n => n.name === group[i]).counter > highestOccurrences) {
+                        correctName = group[i];
+                        highestOccurrences = names.find(n => n.name === group[i]).counter;
+                    }
+                } 
+                const findIndex = names.findIndex( row => row.name == name)
+                if(findIndex !== -1) { 
+                    let newGroup = []
+                    allNamesID.push(names[findIndex].id)
+                    group.map( grp => {
+                        if(name != grp) {
+                            const grpIndex = names.findIndex( row => row.name == grp)
+                            if(grpIndex !== -1) {
+                                if(!allNamesID.includes(names[grpIndex].id)) {  
+                                    newGroup.push(names[grpIndex]) 
+                                    allNamesID.push(names[grpIndex].id)
+                                }
                             }
                         }
+                    })
+                    if(newGroup.length > 0) {
+                        const rowData = {...names[findIndex], correctName, highestOccurrences} 
+                        newSuggestedSet.push(rowData) 
+                        newSuggestedSet = [...newSuggestedSet, ...newGroup]
+                        console.log('NEWW GROUP')
+                        console.log(rowData)
+                        console.log(...newGroup)
                     }
-                })
-                if(newGroup.length > 0) {
-                    const rowData = {...names[findIndex], correctName, highestOccurrences} 
-                    newSuggestedSet.push(rowData) 
-                    newSuggestedSet = [...newSuggestedSet, ...newGroup]
                 }
-            }
-        } 
+            } 
+        }
+        return newSuggestedSet; 
     }
 
     //console.log('newSuggestedSet', newSuggestedSet)
-    return newSuggestedSet; 
+    
+} */
+
+
+
+const groupSuggestions = async (entitiesList, identical = 0) => {
+    const names = [...entitiesList] ; 
+
+    const suggestedGroups = {}; 
+    // Check for similar names and group them
+    let otherSuggested = []
+    for (let i = 0; i < names.length; i++) {
+        for (let j = i + 1; j < names.length; j++) {
+            if(!otherSuggested.includes(names[j].name)) {
+                const distance1 = levenshtein.get(names[i].name.toLowerCase(), names[j].name.toLowerCase())
+                const name1Split = names[i].name.split(" ")
+                const name2Split  = names[j].name.split(" ")
+
+                 
+                const sortName1BasedOnCharacters = sortWordsByLength(name1Split)
+                const sortName2BasedOnCharacters = sortWordsByLength(name2Split)
+
+                let name1AfterSortCharLength = '', name2AfterSortCharLength = '', name1AfterSortWords = '', name2AfterSortWords = '';
+
+                if(sortName1BasedOnCharacters.length > 2) {
+                    name1AfterSortCharLength = `${sortName1BasedOnCharacters[0]} ${sortName1BasedOnCharacters[1]}`
+                } else {
+                    name1AfterSortCharLength = sortName1BasedOnCharacters.join(' ')
+                }
+
+                if(sortName2BasedOnCharacters.length > 2) {
+                    name2AfterSortCharLength = `${sortName2BasedOnCharacters[0]} ${sortName2BasedOnCharacters[1]}`
+                } else {
+                    name2AfterSortCharLength = sortName2BasedOnCharacters.join(' ')
+                }
+
+                if(name1Split.length > 2) {
+                    name1Split.sort()
+                    name1AfterSortWords = `${name1Split[0]} ${name1Split[1]}`
+                } else {
+                    name1Split.sort()
+                    name1AfterSortWords = name1Split.join(' ')
+                }
+
+                if(name2Split.length > 2) {
+                    name2Split.sort()
+                    name2AfterSortWords = `${name2Split[0]} ${name2Split[1]}`
+                } else {
+                    name2Split.sort()
+                    name2AfterSortWords = name2Split.join(' ')
+                }
+                const distance2 = levenshtein.get(name1AfterSortCharLength.toLowerCase(), name2AfterSortCharLength.toLowerCase())
+                const distance3 = levenshtein.get(name1AfterSortWords.toLowerCase(), name2AfterSortWords.toLowerCase())
+
+                const distance = Math.min(distance1, distance2, distance3) 
+
+                /* console.log(`INVENTOR: ${distance} - ${distance1} - ${distance2} - ${distance3} - ${name1AfterSortCharLength} - ${name2AfterSortCharLength} - ${name1AfterSortWords} - ${name2AfterSortWords}`)  */
+
+                if(distance < 3) {
+                    let nameSimilar = names[j].name, nameChecked = names[i].name;
+                    if(identical === 1) {
+                        //console.log(`INVENTOR: ${distance} - ${distance1} - ${distance2} - ${distance3} - ${distance4} - ${nameChecked} - ${nameSimilar} - ${name1} - ${name2}`) 
+                        let entered = true
+                        /* if(distance2 == distance && nameChecked.toLowerCase() == name2.toLowerCase()) {
+                            entered = true
+                        } else if(distance3 == distance && name1.toLowerCase() == name2.toLowerCase()) {
+                            entered = true
+                        } else if(distance4 == distance && name1.toLowerCase() == nameSimilar.toLowerCase()) {
+                            entered = true
+                        } else if(distance1 == distance && nameChecked.toLowerCase() == nameSimilar.toLowerCase()) {
+                            entered = true
+                        } else if(distance5 == distance && name3.toLowerCase() == nameSimilar.toLowerCase()) {
+                            entered = true
+                        } */
+                        if(entered === true) {
+                            if (suggestedGroups[nameChecked]) {
+                                suggestedGroups[nameChecked]['groups'].push(names[j]);
+                                otherSuggested.push(nameSimilar)
+                            } else {
+                                suggestedGroups[nameChecked] = {
+                                    main: names[i],
+                                    groups: [names[j]]
+                                }
+                                otherSuggested.push(nameSimilar)
+                            } 
+                        }
+                    } else {
+                        if (suggestedGroups[nameChecked]) {
+                            suggestedGroups[nameChecked].push(nameSimilar);
+                            otherSuggested.push(nameSimilar)
+                        } else {
+                            if(!otherSuggested.includes(nameChecked)) {
+                                suggestedGroups[nameChecked] = [nameSimilar];
+                                otherSuggested.push(nameSimilar)
+                            }
+                        }
+                    }
+                }
+            }
+        }
+     }  
+     if(identical === 1) {
+         return suggestedGroups
+     } else {
+         let newSuggestedSet = [], allNamesID = [];
+         // Print suggested groups with correct name
+         for (const name in suggestedGroups) {
+             const group = suggestedGroups[name];
+             //group.push(name); 
+             //console.log(`${name} - ${group.length}`)
+             if(group.length > 0) {
+                 // Find the name with the highest occurrences that doesn't have a middle name
+                 let correctName = "";
+                 let highestOccurrences = 0;
+                 for (let i = 0; i < group.length; i++) {
+                     const parts = group[i].split(" ");
+                     if (parts.length === 2 && names.find(n => n.name === group[i]).counter > highestOccurrences) {
+                         correctName = group[i];
+                         highestOccurrences = names.find(n => n.name === group[i]).counter;
+                     }
+                 } 
+                 const findIndex = names.findIndex( row => row.name == name)
+                 if(findIndex !== -1) { 
+                     let newGroup = []
+                     allNamesID.push(names[findIndex].id)
+                     group.map( grp => {
+                         if(name != grp) {
+                             const grpIndex = names.findIndex( row => row.name == grp)
+                             if(grpIndex !== -1) {
+                                 if(!allNamesID.includes(names[grpIndex].id)) {  
+                                     newGroup.push(names[grpIndex]) 
+                                     allNamesID.push(names[grpIndex].id)
+                                 }
+                             }
+                         }
+                     })
+                     if(newGroup.length > 0) {
+                         const rowData = {...names[findIndex], correctName, highestOccurrences} 
+                         newSuggestedSet.push(rowData) 
+                         newSuggestedSet = [...newSuggestedSet, ...newGroup]
+                         console.log('NEWW GROUP')
+                         console.log(rowData)
+                         console.log(...newGroup)
+                     }
+                 }
+             } 
+         }
+         return newSuggestedSet; 
+     }
+ 
+     //console.log('newSuggestedSet', newSuggestedSet)
+     
 }
+
 
 const groupOrganisationSuggestions = (entitiesList) => {
     // sample subset array of organizations with names and occurrences
@@ -2317,7 +2632,7 @@ const groupOrganisationSuggestions = (entitiesList) => {
     return newSuggestedSet;   
 }
 
-let findCompanyEntitiesByAccountIDByRepresentativeIDs = async(orgID, representativeIDs, type, DBConnection, suggestions) => {
+let findCompanyEntitiesByAccountIDByRepresentativeIDs = async(orgID, representativeIDs, type, DBConnection, suggestions, fixed_identicals) => {
    
     let entitiesList = [];
     if(representativeIDs.length > 0) {        
@@ -2342,6 +2657,11 @@ let findCompanyEntitiesByAccountIDByRepresentativeIDs = async(orgID, representat
                     entitiesList = groupSuggestions(entitiesList)
                 } else {
                     entitiesList = groupOrganisationSuggestions(entitiesList)
+                }
+            }
+            if(typeof fixed_identicals != 'undefined' && fixed_identicals == 1) {
+                if(type == 1) {
+                    entitiesList = await groupFixIdentical(entitiesList)
                 }
             }
         }
