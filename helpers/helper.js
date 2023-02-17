@@ -53,6 +53,8 @@ const moment = require('moment');
 
 const { create } = require('xmlbuilder2');
 
+const { exec, spawn  } = require("child_process");
+
 const ASSETS_LIFE_SPAN_DATE_FORMAT = 'YYYY';
 
 const fs = require('fs');
@@ -2167,14 +2169,15 @@ let findCompanyEntitiesByAccountID = async(orgID, type, DBConnection, suggestion
                 console.log('suggestions', suggestions)
                 if(typeof suggestions != 'undefined' && suggestions == 1) {
                     if(type == 1) {
-                        entitiesList = groupSuggestions(entitiesList)
+                        entitiesList = await inventorSortNames(entitiesList)
+                        entitiesList = await inventorGroupLevenshtein(entitiesList)
                     } else {
                         entitiesList = groupOrganisationSuggestions(entitiesList)
                     }
                 }
                 if(typeof fixed_identicals != 'undefined' && fixed_identicals == 1) {
                     if(type == 1) {
-                        entitiesList = groupFixIdentical(entitiesList)
+                        entitiesList = inventorGroupSuggestions(entitiesList)
                     }
                 }
             }
@@ -2414,7 +2417,238 @@ const sortWordsByLength = (words) =>{
     
 } */
 
+const inventorSortNames = async(names) => {
+    /**
+     * Each name is sorted by the number of characters in each word in a descending order
+     * Take the first two word from left and sort the name alphabetically
+     */
+    for (let i = 0; i < names.length; i++) {
+        const name1Split = names[i].name.split(" ")
+        const sortName1BasedOnCharacters = sortWordsByLength(name1Split)
+        let newArray = []
+        if(sortName1BasedOnCharacters.length > 2) {
+            newArray.push(sortName1BasedOnCharacters[0])
+            newArray.push(sortName1BasedOnCharacters[1])
+        } else {
+            newArray = [...sortName1BasedOnCharacters]
+        }
+        newArray.sort()
+        names[i]['new_sorted_name'] = newArray.join(' ')
+    }
+    return names
+}
 
+const inventorGroupSuggestions = async (entitiesList) => {
+    console.log('calling inventorGroupSuggestions')
+    const names = await inventorSortNames([...entitiesList]); 
+    console.log('names sorted', names)
+    /**
+     * Normalize names with the same two most left words, where representative is the name with the highest occurence
+     */
+    let suggestedGroups = {}, otherSuggested = []; 
+    for (let i = 0; i < names.length; i++) {
+        for (let j = i + 1; j < names.length; j++) {
+            /**
+             * two most left words is same or not
+             */
+             let nameSimilar = names[j].name, nameChecked = names[i].name;
+            if(!otherSuggested.includes(nameSimilar)) {
+                console.log('name', names[i].new_sorted_name.toLowerCase(), names[j].new_sorted_name.toLowerCase())
+                if(names[i].new_sorted_name.toLowerCase() == names[j].new_sorted_name.toLowerCase()) {
+                    if (suggestedGroups[nameChecked]) {
+                        suggestedGroups[nameChecked]['groups'].push(names[j]);
+                        otherSuggested.push(nameSimilar)
+                    } else {
+                        suggestedGroups[nameChecked] = {
+                            main: names[i],
+                            groups: [names[j]]
+                        }
+                        otherSuggested.push(nameSimilar)
+                    } 
+                }
+            }
+        }
+    } 
+    console.log('suggestedGroups', suggestedGroups)
+    if(Object.keys(suggestedGroups).length > 0 ) {
+        await normalizedSimilarNames(suggestedGroups);
+        /**
+         * Send push notification
+         */
+        await exec(`node /var/www/html/script/send_push_notification.js "Normalize similar name script finished."`, async (error, std, stderr) => {
+            console.log('inventorGroupSuggestions')
+            console.log('Err', error)
+            console.log('std', std)
+            console.log('stderr', stderr)
+            return []
+        })
+    } else {
+        return inventorGroupLevenshtein(names)
+    }  
+}
+
+
+const inventorGroupLevenshtein = async(names) => { 
+    // Check for similar names and group them
+    const suggestedGroups = {}, otherSuggested = [];
+    let newSuggestedSet = [], allNamesID = [];
+    for (let i = 0; i < names.length; i++) {
+        for (let j = i + 1; j < names.length; j++) {
+            if(!otherSuggested.includes(names[j].new_sorted_name)) {
+                const distance = levenshtein.get(names[i].new_sorted_name.toLowerCase(), names[j].new_sorted_name.toLowerCase())
+                if(distance < 3) {
+                    let nameSimilar = names[j].name, nameChecked = names[i].name;
+                    if (suggestedGroups[nameChecked]) {
+                        suggestedGroups[nameChecked].push(nameSimilar);
+                        otherSuggested.push(nameSimilar)
+                    } else {
+                        if(!otherSuggested.includes(nameChecked)) {
+                            suggestedGroups[nameChecked] = [nameSimilar];
+                            otherSuggested.push(nameSimilar)
+                        }
+                    }
+                }
+            }
+        }
+    }
+    //console.log('suggestedGroups', suggestedGroups)
+        // Print suggested groups with correct name
+    for (const name in suggestedGroups) {
+        const group = suggestedGroups[name];
+        //group.push(name); 
+        //console.log(`${name} - ${group.length}`)
+        if(group.length > 0) {
+            // Find the name with the highest occurrences that doesn't have a middle name
+            let correctName = "";
+            let highestOccurrences = 0;
+            const findIndex = names.findIndex( row => row.name == name)
+            //console.log(`findIndex`, name, findIndex)
+            if(findIndex !== -1) { 
+                let newGroup = [] 
+                allNamesID.push(names[findIndex].id)
+                group.map( grp => {
+                    if(name != grp) {
+                        const grpIndex = names.findIndex( row => row.name == grp)
+                        //console.log('grpIndex', grpIndex, grp, name)
+                        if(grpIndex !== -1) {
+                            if(!allNamesID.includes(names[grpIndex].id)) {  
+                                newGroup.push(names[grpIndex]) 
+                                allNamesID.push(names[grpIndex].id)
+                            }
+                        }
+                    }
+                })
+                if(newGroup.length > 0) {
+                    const rowData = {...names[findIndex], correctName, highestOccurrences} 
+                    newSuggestedSet.push(rowData) 
+                    newSuggestedSet = [...newSuggestedSet, ...newGroup]
+                    /* console.log('NEWW GROUP')
+                    console.log(rowData)
+                    console.log(...newGroup) */
+                }
+            }
+        } 
+    }
+    return newSuggestedSet; 
+}
+
+
+const normalizedSimilarNames = async (getIdenticalList) => {
+    console.log('normalizedSimilarNames', getIdenticalList)
+    if(Object.keys(getIdenticalList).length > 0 ) { 
+        for (const name in getIdenticalList) { 
+            const {main, groups} = getIdenticalList[name];
+
+            console.log('main, groups', main, groups);
+
+            if(groups.length > 0) {
+                let representativeName = '', representativeID = 0;
+                if(main.representative_company != null) {
+                    representativeName = main.representative_company 
+                } else {
+                    const allNames = []
+                    allNames.push(main.name)
+                    groups.forEach( item => {
+                        allNames.push(item.name)
+                    })
+                    if(allNames.length > 0) {
+                        const findRepresentative = await Representatives.findOne({
+                            where: {representative_name: allNames}
+                        })
+                        if(findRepresentative != null) {
+                            representativeName = findRepresentative.representative_name
+                            representativeID = findRepresentative.representative_id
+                        } else {
+                            /**
+                             * Create Representative
+                             */
+                            let createRepresentativeName = main.name, highestDistance = main.counter
+
+                            groups.forEach( item => {
+                                if(parseInt(item.counter) >= parseInt(highestDistance)) {
+                                    createRepresentativeName = item.name
+                                    highestDistance = item.counter
+                                }
+                            })
+                            //console.log('createRepresentativeName', createRepresentativeName, highestDistance)
+                            if(createRepresentativeName != '') {
+                                const representativeCompany = await Representatives.create({
+                                    representative_name: createRepresentativeName
+                                });
+                                if(representativeCompany != null) {
+                                    representativeName = representativeCompany.representative_name
+                                    representativeID = representativeCompany.representative_id
+                                }
+                            } 
+                        }
+                    }
+                }
+                if(representativeName != '' && groups.length > 0) {
+                    if(representativeID == 0) {
+                        const findRepresentative = await Representatives.findOne({
+                            where: {representative_name: representativeName}
+                        })
+                        if(findRepresentative != null) {
+                            representativeID = findRepresentative.representative_id
+                        }
+                    }
+                    const allAssignorAndAssignee = [], allApplicantAssignorAndAssignee = []
+                    if(main.normalize_name == null) {
+                        if(main.flag == 1) {
+                            allAssignorAndAssignee.push(main.id)
+                        } else {
+                            allApplicantAssignorAndAssignee.push(main.id)
+                        }
+                    }
+
+                    groups.forEach( item => {
+                        if(item.flag == 1) {
+                            if(item.normalize_name == null) {
+                                allAssignorAndAssignee.push(item.id)
+                            }
+                        } else if(item.flag == 4) {
+                            if(item.normalize_name == null) {
+                                allApplicantAssignorAndAssignee.push(item.id)
+                            } 
+                        }
+                    })
+
+                    if(representativeID > 0 && (allAssignorAndAssignee.length > 0 || allApplicantAssignorAndAssignee.length > 0)) {
+                        const item = {representative_id: representativeID};
+
+                        if(allAssignorAndAssignee.length > 0) {
+                            await AssignorAndAssignee.update(item, {where: {assignor_and_assignee_id: allAssignorAndAssignee}}); 
+                        }
+
+                        if(allApplicantAssignorAndAssignee.length > 0) {
+                            await ApplicantAssignorAndAssignee.update(item, {where: {assignor_and_assignee_id: allApplicantAssignorAndAssignee}}); 
+                        }
+                    } 
+                }  
+            } 
+        }
+    }
+}
 
 const groupSuggestions = async (entitiesList, identical = 0) => {
     const names = [...entitiesList] ; 
@@ -2515,51 +2749,51 @@ const groupSuggestions = async (entitiesList, identical = 0) => {
      if(identical === 1) {
          return suggestedGroups
      } else {
-         let newSuggestedSet = [], allNamesID = [];
+        let newSuggestedSet = [], allNamesID = [];
          // Print suggested groups with correct name
-         for (const name in suggestedGroups) {
-             const group = suggestedGroups[name];
-             //group.push(name); 
-             //console.log(`${name} - ${group.length}`)
-             if(group.length > 0) {
-                 // Find the name with the highest occurrences that doesn't have a middle name
-                 let correctName = "";
-                 let highestOccurrences = 0;
-                 for (let i = 0; i < group.length; i++) {
-                     const parts = group[i].split(" ");
-                     if (parts.length === 2 && names.find(n => n.name === group[i]).counter > highestOccurrences) {
-                         correctName = group[i];
-                         highestOccurrences = names.find(n => n.name === group[i]).counter;
-                     }
-                 } 
-                 const findIndex = names.findIndex( row => row.name == name)
-                 if(findIndex !== -1) { 
-                     let newGroup = []
-                     allNamesID.push(names[findIndex].id)
-                     group.map( grp => {
-                         if(name != grp) {
-                             const grpIndex = names.findIndex( row => row.name == grp)
-                             if(grpIndex !== -1) {
-                                 if(!allNamesID.includes(names[grpIndex].id)) {  
-                                     newGroup.push(names[grpIndex]) 
-                                     allNamesID.push(names[grpIndex].id)
-                                 }
-                             }
-                         }
-                     })
-                     if(newGroup.length > 0) {
-                         const rowData = {...names[findIndex], correctName, highestOccurrences} 
-                         newSuggestedSet.push(rowData) 
-                         newSuggestedSet = [...newSuggestedSet, ...newGroup]
-                         console.log('NEWW GROUP')
-                         console.log(rowData)
-                         console.log(...newGroup)
-                     }
-                 }
-             } 
-         }
-         return newSuggestedSet; 
-     }
+        for (const name in suggestedGroups) {
+            const group = suggestedGroups[name];
+            //group.push(name); 
+            //console.log(`${name} - ${group.length}`)
+            if(group.length > 0) {
+                // Find the name with the highest occurrences that doesn't have a middle name
+                let correctName = "";
+                let highestOccurrences = 0;
+                for (let i = 0; i < group.length; i++) {
+                    const parts = group[i].split(" ");
+                    if (parts.length === 2 && names.find(n => n.name === group[i]).counter > highestOccurrences) {
+                        correctName = group[i];
+                        highestOccurrences = names.find(n => n.name === group[i]).counter;
+                    }
+                } 
+                const findIndex = names.findIndex( row => row.name == name)
+                if(findIndex !== -1) { 
+                    let newGroup = []
+                    allNamesID.push(names[findIndex].id)
+                    group.map( grp => {
+                        if(name != grp) {
+                            const grpIndex = names.findIndex( row => row.name == grp)
+                            if(grpIndex !== -1) {
+                                if(!allNamesID.includes(names[grpIndex].id)) {  
+                                    newGroup.push(names[grpIndex]) 
+                                    allNamesID.push(names[grpIndex].id)
+                                }
+                            }
+                        }
+                    })
+                    if(newGroup.length > 0) {
+                        const rowData = {...names[findIndex], correctName, highestOccurrences} 
+                        newSuggestedSet.push(rowData) 
+                        newSuggestedSet = [...newSuggestedSet, ...newGroup]
+                        console.log('NEWW GROUP')
+                        console.log(rowData)
+                        console.log(...newGroup)
+                    }
+                }
+            } 
+        }
+        return newSuggestedSet; 
+    }
  
      //console.log('newSuggestedSet', newSuggestedSet)
      
@@ -2654,14 +2888,15 @@ let findCompanyEntitiesByAccountIDByRepresentativeIDs = async(orgID, representat
             console.log('suggestions', suggestions)
             if(typeof suggestions != 'undefined' && suggestions == 1) {
                 if(type == 1) {
-                    entitiesList = groupSuggestions(entitiesList)
+                    entitiesList = await inventorSortNames(entitiesList) 
+                    entitiesList = await inventorGroupLevenshtein(entitiesList)
                 } else {
                     entitiesList = groupOrganisationSuggestions(entitiesList)
                 }
             }
             if(typeof fixed_identicals != 'undefined' && fixed_identicals == 1) {
                 if(type == 1) {
-                    entitiesList = await groupFixIdentical(entitiesList)
+                    entitiesList = await inventorGroupSuggestions(entitiesList)
                 }
             }
         }
