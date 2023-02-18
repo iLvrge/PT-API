@@ -2284,11 +2284,20 @@ const groupFixIdentical = async (entitiesList) => {
     } 
 }
 
-const sortWordsByLength = (words) =>{
+const sortWordsByLength = (name) => {
+    // Split name into words
+    const words = name.split(' ');
+    // Sort words by the number of letters in descending order
+    words.sort((a, b) => b.length - a.length);
+    return words;
+};
+
+
+/* const sortWordsByLength = (words) =>{
     return words.sort(function(a, b) {
       return b.length - a.length;
     });
-}
+} */
 
 /* const groupSuggestions = async (entitiesList, identical = 0) => {
     const names = [...entitiesList] ; 
@@ -2422,18 +2431,9 @@ const inventorSortNames = async(names) => {
      * Each name is sorted by the number of characters in each word in a descending order
      * Take the first two word from left and sort the name alphabetically
      */
-    for (let i = 0; i < names.length; i++) {
-        const name1Split = names[i].name.split(" ")
-        const sortName1BasedOnCharacters = sortWordsByLength(name1Split)
-        let newArray = []
-        if(sortName1BasedOnCharacters.length > 2) {
-            newArray.push(sortName1BasedOnCharacters[0])
-            newArray.push(sortName1BasedOnCharacters[1])
-        } else {
-            newArray = [...sortName1BasedOnCharacters]
-        }
-        newArray.sort()
-        names[i]['new_sorted_name'] = newArray.join(' ')
+    for (let i = 0; i < names.length; i++) { 
+        const sortName1BasedOnCharacters = sortWordsByLength(names[i].name).slice(0, 2).sort().join(' '); 
+        names[i]['new_sorted_name'] = sortName1BasedOnCharacters
     }
     return names
 }
@@ -2451,7 +2451,7 @@ const inventorGroupSuggestions = async (entitiesList) => {
             /**
              * two most left words is same or not
              */
-             let nameSimilar = names[j].name, nameChecked = names[i].name;
+            let nameSimilar = names[j].name, nameChecked = names[i].name;
             if(!otherSuggested.includes(nameSimilar)) {
                 console.log('name', names[i].new_sorted_name.toLowerCase(), names[j].new_sorted_name.toLowerCase())
                 if(names[i].new_sorted_name.toLowerCase() == names[j].new_sorted_name.toLowerCase()) {
@@ -2494,10 +2494,17 @@ const inventorGroupLevenshtein = async(names) => {
     let newSuggestedSet = [], allNamesID = [];
     for (let i = 0; i < names.length; i++) {
         for (let j = i + 1; j < names.length; j++) {
-            if(!otherSuggested.includes(names[j].new_sorted_name)) {
-                const distance = levenshtein.get(names[i].new_sorted_name.toLowerCase(), names[j].new_sorted_name.toLowerCase())
+            if(!otherSuggested.includes(names[j].name) && (names[j].normalize_name == '' || names[j].normalize_name == null) && names[i].id != names[j].id) {
+                const checkRepresentative = names[i].normalize_name;
+                let distance1 = 5;
+                if(checkRepresentative != '' && checkRepresentative != null) { 
+                    const newRepresentativeName = sortWordsByLength(checkRepresentative).slice(0, 2).sort().join(' ');  
+                    distance1 = levenshtein.get(newRepresentativeName.toLowerCase(), names[j].new_sorted_name.toLowerCase())
+                }
+                const distance2 = levenshtein.get(names[i].new_sorted_name.toLowerCase(), names[j].new_sorted_name.toLowerCase())
+                const distance = Math.min(distance1, distance2)
                 console.log(distance, names[j].normalize_name,  names[i].id,  names[j].id)
-                if(distance < 3 && (names[j].normalize_name == '' || names[j].normalize_name == null) && names[i].id != names[j].id) {
+                if(distance < 3 ) {
                     let nameSimilar = names[j].name, nameChecked = names[i].name;
                     if (suggestedGroups[nameChecked]) {
                         suggestedGroups[nameChecked].push(nameSimilar);
@@ -2668,7 +2675,7 @@ const groupSuggestions = async (entitiesList, identical = 0) => {
                 const sortName1BasedOnCharacters = sortWordsByLength(name1Split)
                 const sortName2BasedOnCharacters = sortWordsByLength(name2Split)
 
-                let name1AfterSortCharLength = '', name2AfterSortCharLength = '', name1AfterSortWords = '', name2AfterSortWords = '';
+                let name1AfterSortCharLength = sortWordsByLength(name1Split).slice(0, 2).sort().join(' ') , name2AfterSortCharLength = sortWordsByLength(name2Split).slice(0, 2).sort().join(' '), name1AfterSortWords = '', name2AfterSortWords = '';
 
                 if(sortName1BasedOnCharacters.length > 2) {
                     name1AfterSortCharLength = `${sortName1BasedOnCharacters[0]} ${sortName1BasedOnCharacters[1]}`
@@ -2682,20 +2689,16 @@ const groupSuggestions = async (entitiesList, identical = 0) => {
                     name2AfterSortCharLength = sortName2BasedOnCharacters.join(' ')
                 }
 
-                if(name1Split.length > 2) {
-                    name1Split.sort()
-                    name1AfterSortWords = `${name1Split[0]} ${name1Split[1]}`
-                } else {
-                    name1Split.sort()
-                    name1AfterSortWords = name1Split.join(' ')
+                if(name1Split.length > 2) { 
+                    name1AfterSortWords = name1Split.sort().slice(0, 2).join(' ')
+                } else { 
+                    name1AfterSortWords = name1Split.sort().join(' ')
                 }
 
-                if(name2Split.length > 2) {
-                    name2Split.sort()
-                    name2AfterSortWords = `${name2Split[0]} ${name2Split[1]}`
-                } else {
-                    name2Split.sort()
-                    name2AfterSortWords = name2Split.join(' ')
+                if(name2Split.length > 2) { 
+                    name2AfterSortWords = name2Split.sort().slice(0, 2).join(' ')
+                } else { 
+                    name2AfterSortWords = name2Split.sort().join(' ')
                 }
                 const distance2 = levenshtein.get(name1AfterSortCharLength.toLowerCase(), name2AfterSortCharLength.toLowerCase())
                 const distance3 = levenshtein.get(name1AfterSortWords.toLowerCase(), name2AfterSortWords.toLowerCase())
