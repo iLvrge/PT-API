@@ -378,13 +378,11 @@ const getFamilyDataFromXML = async(req) => {
     if(formatAsset !== null && formatAsset !== '') {
                     
         let getFamilyData = '', fileExist = false
-        /*if (fs.existsSync(`${extraDiskPath}FAMILY/${formatAsset}.XML`)) {*/
-        if (fs.existsSync(`/Users/vivekkapoor/Waste/US7105339.XML`)) {
+        if (fs.existsSync(`${extraDiskPath}FAMILY/${formatAsset}.XML`)) { 
             //file exists
             console.log('FILE EXIST')
             fileExist = true
-            /* getFamilyData = await fs.promises.readFile(`${extraDiskPath}FAMILY/${formatAsset}.XML`, 'utf8'); */
-            getFamilyData = await fs.promises.readFile(`/Users/vivekkapoor/Waste/US7105339.XML`, 'utf8');
+            getFamilyData = await fs.promises.readFile(`${extraDiskPath}FAMILY/${formatAsset}.XML`, 'utf8');  
         } else {
             const token = await epo.readToken('HedCET') 
             if(token !== 'undefined' && token != '') {
@@ -397,7 +395,7 @@ const getFamilyDataFromXML = async(req) => {
         }
 
         if( getFamilyData !== '' ) {
-            //console.log('getFamilyData', getFamilyData)
+            console.log('getFamilyData', getFamilyData)
             const parser = new xml2js.Parser
             const xmlData = await new Promise((resolve, reject) => parser.parseString(getFamilyData, (err, result) => {
                 if (err){
@@ -409,9 +407,9 @@ const getFamilyDataFromXML = async(req) => {
             //const xmlData = JSON.stringify(result)    
             if( xmlData.hasOwnProperty('ops:world-patent-data') ){
                 
-                /* if(fileExist === false) {
+                if(fileExist === false) {
                     fs.writeFileSync(`${extraDiskPath}FAMILY/${formatAsset}.XML`, getFamilyData);
-                } */
+                }
                 const worldPatentData = xmlData['ops:world-patent-data']
                 if(worldPatentData.hasOwnProperty('ops:patent-family')) {
                     const patentFamily =  worldPatentData['ops:patent-family']
