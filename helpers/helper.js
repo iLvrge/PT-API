@@ -2431,8 +2431,12 @@ const inventorSortNames = async(names) => {
      * Each name is sorted by the number of characters in each word in a descending order
      * Take the first two word from left and sort the name alphabetically
      */
+    const regex = /[.,]/g ;
     for (let i = 0; i < names.length; i++) { 
-        const sortName1BasedOnCharacters = sortWordsByLength(names[i].name).slice(0, 2).sort().join(' '); 
+        let name = names[i].name
+
+        name = name.replace(regex, '') 
+        const sortName1BasedOnCharacters = sortWordsByLength(name).slice(0, 2).sort().join(' '); 
         names[i]['new_sorted_name'] = sortName1BasedOnCharacters
     }
     return names
@@ -2441,10 +2445,10 @@ const inventorSortNames = async(names) => {
 const inventorGroupSuggestions = async (entitiesList) => {
     console.log('calling inventorGroupSuggestions')
     const names = await inventorSortNames([...entitiesList]); 
-    console.log('names sorted', names)
+    console.log('names sorted', JSON.stringify(names))
     /**
      * Normalize names with the same two most left words, where representative is the name with the highest occurence
-     */
+     */ 
     let suggestedGroups = {}, otherSuggested = []; 
     for (let i = 0; i < names.length; i++) {
         for (let j = i + 1; j < names.length; j++) {
@@ -2453,23 +2457,25 @@ const inventorGroupSuggestions = async (entitiesList) => {
              */
             let nameSimilar = names[j].name, nameChecked = names[i].name;
             if(!otherSuggested.includes(nameSimilar)) {
-                console.log('name', names[i].new_sorted_name.toLowerCase(), names[j].new_sorted_name.toLowerCase())
+                //console.log('name', names[i].new_sorted_name.toLowerCase(), names[j].new_sorted_name.toLowerCase())
+                //console.log(`Adon Delgado`)
+                
                 if(names[i].new_sorted_name.toLowerCase() == names[j].new_sorted_name.toLowerCase()) {
                     if (suggestedGroups[nameChecked]) {
                         suggestedGroups[nameChecked]['groups'].push(names[j]);
-                        otherSuggested.push(nameSimilar)
+                        otherSuggested.push(nameSimilar);
                     } else {
                         suggestedGroups[nameChecked] = {
                             main: names[i],
                             groups: [names[j]]
                         }
-                        otherSuggested.push(nameSimilar)
+                        otherSuggested.push(nameSimilar);
                     } 
                 }
             }
         }
     } 
-    console.log('suggestedGroups', suggestedGroups)
+     //console.log('suggestedGroups', suggestedGroups)
     if(Object.keys(suggestedGroups).length > 0 ) {
         await normalizedSimilarNames(suggestedGroups);
         /**
@@ -2484,7 +2490,7 @@ const inventorGroupSuggestions = async (entitiesList) => {
         })
     } else {
         return inventorGroupLevenshtein(names)
-    }  
+    } 
 }
 
 
@@ -2589,12 +2595,12 @@ const inventorGroupLevenshtein = async(names) => {
 
 
 const normalizedSimilarNames = async (getIdenticalList) => {
-    console.log('normalizedSimilarNames', getIdenticalList)
+    //console.log('normalizedSimilarNames', getIdenticalList)
     if(Object.keys(getIdenticalList).length > 0 ) { 
         for (const name in getIdenticalList) { 
             const {main, groups} = getIdenticalList[name];
 
-            console.log('main, groups', main, groups);
+            //console.log('main, groups', main, groups);
 
             if(groups.length > 0) {
                 let representativeName = '', representativeID = 0;
