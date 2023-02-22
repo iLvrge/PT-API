@@ -120,7 +120,7 @@ const slackConfig = {
 
 const DEFAULT_LIMIT = 100 
 
-const DEFAULT_YEAR = moment(new Date()).subtract(21, 'year').format('YYYY')
+const DEFAULT_YEAR = moment(new Date()).subtract(24, 'year').format('YYYY')
 
 const db = { Sequelize, Op, application, applicationNew, resources, business, maintainence, biblioGrant, biblioApplication, config, bucketConfig, slackConfig, DEFAULT_LIMIT, DEFAULT_YEAR };
  

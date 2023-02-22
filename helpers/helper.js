@@ -2503,7 +2503,7 @@ const inventorGroupLevenshtein = async(names) => {
                 }
                 const distance2 = levenshtein.get(names[i].new_sorted_name.toLowerCase(), names[j].new_sorted_name.toLowerCase())
                 const distance = Math.min(distance1, distance2)
-                console.log(distance, names[j].normalize_name,  names[i].id,  names[j].id)
+                /* console.log(distance, names[j].normalize_name,  names[i].id,  names[j].id) */
                 if(distance < 3 ) {
                     let nameSimilar = names[j].name, nameChecked = names[i].name;
                     if (suggestedGroups[nameChecked]) {
