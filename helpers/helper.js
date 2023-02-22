@@ -2547,7 +2547,34 @@ const inventorGroupLevenshtein = async(names) => {
                     }
                 })
                 if(newGroup.length > 0) {
-                    const rowData = {...names[findIndex], correctName, highestOccurrences} 
+                    let findRepresentativeData = null;
+                    if(names[findIndex].normalize_name != null && names[findIndex].representative_company == null) { 
+                        let queryRepresentative = "SELECT a.assignor_and_assignee_id, a.or_name as name, count(a.or_name) as counter, r.representative_name as normalize_name, (select rr.representative_name FROM representative as rr WHERE rr.representative_name = aaa.name GROUP BY rr.representative_name) as representativeCompany, (SELECT aa.instances FROM assignor_and_assignee as aa WHERE aa.assignor_and_assignee_id = a.assignor_and_assignee_id GROUP BY aa.assignor_and_assignee_id) as total_occurences, a.rf_id, 1 AS flag FROM db_uspto.assignor as a LEFT JOIN assignor_and_assignee as aaa ON aaa.assignor_and_assignee_id = a.assignor_and_assignee_id LEFT JOIN db_uspto.representative_assignment_conveyance as rac ON rac.rf_id = a.rf_id LEFT JOIN representative as r ON r.representative_id = aaa.representative_id WHERE aaa.name = :representativeName  GROUP BY a.or_name LIMIT 1";  
+
+                        findRepresentativeData = await connection.resources.query(queryRepresentative,{
+                            type: connection.Sequelize.QueryTypes.SELECT,
+                            replacements: { representativeName: names[findIndex].normalize_name },
+                            raw: true,
+                            plain: true,
+                            logging: console.log,
+                            }   
+                        );  
+                        if(findRepresentativeData == null) {
+                            queryRepresentative = "SELECT * FROM (SELECT appInv.assignor_and_assignee_id, CONCAT(appInv.family_name, ' ', appInv.given_name) AS aName, aaa.name AS name, count(aaa.name) as counter, r.representative_name as normalize_name, (select rr.representative_name FROM representative as rr WHERE rr.representative_name = aaa.name GROUP BY rr.representative_name) as representativeCompany, aaa.instances as total_occurences, 0 AS rf_id, 4 AS flag FROM db_patent_application_bibliographic.inventor AS appInv INNER JOIN  db_patent_application_bibliographic.assignor_and_assignee AS aaa ON aaa.assignor_and_assignee_id = appInv.assignor_and_assignee_id LEFT JOIN representative as r ON r.representative_id = aaa.representative_id WHERE aaa.name = :representativeName GROUP BY aaa.name UNION SELECT appInv.assignor_and_assignee_id, CONCAT(appInv.family_name, ' ', appInv.given_name) AS aName, aaa.name AS name, count(aaa.name) as counter, r.representative_name as normalize_name, (select rr.representative_name FROM representative as rr WHERE rr.representative_name = aaa.name GROUP BY rr.representative_name) as representativeCompany, aaa.instances as total_occurences, 0 AS rf_id, 4 AS flag FROM db_patent_grant_bibliographic.inventor_new AS appInv INNER JOIN  db_patent_application_bibliographic.assignor_and_assignee AS aaa ON aaa.assignor_and_assignee_id = appInv.assignor_and_assignee_id LEFT JOIN representative as r ON r.representative_id = aaa.representative_id WHERE aaa.name = :representativeName GROUP BY aaa.name) AS temp LIMIT 1"; 
+                            findRepresentativeData = await connection.resources.query(queryRepresentative,{
+                                type: connection.Sequelize.QueryTypes.SELECT,
+                                replacements: { representativeName: names[findIndex].normalize_name },
+                                raw: true,
+                                plain: true,
+                                logging: console.log,
+                                }   
+                            );  
+                        }
+                    }
+                    if(findRepresentativeData == null) {
+                        findRepresentativeData = {...names[findIndex]}
+                    } 
+                    const rowData = {...findRepresentativeData, correctName, highestOccurrences} 
                     newSuggestedSet.push(rowData) 
                     newSuggestedSet = [...newSuggestedSet, ...newGroup]
                     /* console.log('NEWW GROUP')
