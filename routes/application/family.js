@@ -406,7 +406,7 @@ const getFamilyDataFromXML = async(req) => {
                 console.log('getFamilyData1213', getFamilyData)
             }
         }
-
+        console.log('getFamilyData', getFamilyData)
         if( getFamilyData !== '' ) {
             
             const parser = new xml2js.Parser
