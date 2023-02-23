@@ -5,6 +5,8 @@ const request = require("request");
 
 const rp = require('request-promise');
 
+const shortUUID = require('short-uuid')
+
 const FtsQuery = require("full-text-search-query");
 
 const levenshtein = require('fast-levenshtein');
@@ -3522,7 +3524,8 @@ let getNewCode = async () => {
     let run =  true;
     for (let i = 0; i < retryLimit; i++) {
         if(run === true){
-            const code = uuidv4() + (Math.random()*1e32).toString(36).substr(0,10);
+            /* const code = uuidv4() + (Math.random()*1e32).toString(36).substr(0,10); */
+            const code = shortUUID.generate()
             await Share.findOne({
                 where:{code: code},
                 attributes: ['share_id']
@@ -3530,7 +3533,7 @@ let getNewCode = async () => {
             .then( s => {
                 if(s == null){ 
                     newCode = code ;
-                    run = false;
+                    run = false; 
                 }
             })  
         } else {
