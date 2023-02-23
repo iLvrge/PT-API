@@ -389,6 +389,7 @@ const getFamilyDataFromXML = async(req) => {
                 }
             }
         } 
+        console.log("sendNewRequest", sendNewRequest)
         if(sendNewRequest === true) {
             const token = await epo.readToken('HedCET') 
             if(token !== 'undefined' && token != '') {
