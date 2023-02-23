@@ -42,6 +42,7 @@
     "request": "^2.88.2",
     "request-promise": "^4.2.6",
     "sequelize": "^5.21.11",
+    "short-uuid": "^4.2.2",
     "stream": "^0.0.2",
     "uuidv4": "^6.1.0",
     "winston": "^3.8.2",
