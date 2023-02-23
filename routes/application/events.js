@@ -1982,7 +1982,7 @@ route.post("/events/assets", [authJWT.verifyToken], async(req, res, next) => {
                 if(type == 'missed_monetization') {
                     query = "SELECT ag.appno_doc_num AS application, ag.grant_doc_num AS patent, 0 AS `status`,  ag.appno_date AS appno_date FROM db_patent_application_bibliographic.application_grant AS ag WHERE ag.appno_doc_num IN (:list) AND date_format(ag.appno_date, '%Y') > :year GROUP BY ag.appno_doc_num"
                 } else { 
-                    query = "SELECT documentid.appno_doc_num AS application, documentid.grant_doc_num AS patent, documentid.status AS `status`,  documentid.appno_date AS appno_date FROM activity_parties_transactions INNER JOIN db_uspto.documentid AS documentid ON documentid.rf_id = activity_parties_transactions.rf_id WHERE documentid.appno_doc_num IN (:list) AND date_format(documentid.appno_date, '%Y') > :year AND documentid.grant_doc_num <> '' GROUP BY documentid.appno_doc_num"
+                    query = "SELECT documentid.appno_doc_num AS application, documentid.grant_doc_num AS patent, documentid.status AS `status`,  documentid.appno_date AS appno_date FROM   db_uspto.documentid AS documentid   WHERE documentid.appno_doc_num IN (:list) AND date_format(documentid.appno_date, '%Y') > :year AND documentid.grant_doc_num <> '' GROUP BY documentid.appno_doc_num"
                 }
 
                 const replacements = {list, year: connection.DEFAULT_YEAR}
