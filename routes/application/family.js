@@ -394,15 +394,19 @@ const getFamilyDataFromXML = async(req) => {
             const token = await epo.readToken('HedCET') 
             if(token !== 'undefined' && token != '') {
                 const publication = findPatent != null && findPatent.grant_doc_num != null && findPatent.grant_doc_num != '' ? 'publication' : 'application'
+                console.log('SENDING nEW REQUEST');
                 getFamilyData = await epo.runUrl(token, 'family', publication, 'docdb', `${formatAsset}/legal`);
+               
                 if( !getFamilyData  || getFamilyData.indexOf('EntityNotFound') !== -1) {
                     getFamilyData = await epo.runUrl(token, 'family', publication,'epodoc', `${formatAsset}/legal`);
                 }
+
+                console.log('getFamilyData1213', getFamilyData)
             }
         }
 
         if( getFamilyData !== '' ) {
-            console.log('getFamilyData', getFamilyData)
+            
             const parser = new xml2js.Parser
             const xmlData = await new Promise((resolve, reject) => parser.parseString(getFamilyData, (err, result) => {
                 if (err){
@@ -412,9 +416,8 @@ const getFamilyDataFromXML = async(req) => {
                 }
             }));
             //const xmlData = JSON.stringify(result)    
-            if( xmlData.hasOwnProperty('ops:world-patent-data') ){
-                
-                if(fileExist === false) {
+            if( xmlData.hasOwnProperty('ops:world-patent-data') ){ 
+                if(sendNewRequest === true) {  
                     fs.writeFileSync(`${extraDiskPath}FAMILY/${formatAsset}.XML`, getFamilyData);
                 }
                 const worldPatentData = xmlData['ops:world-patent-data']
