@@ -4365,7 +4365,7 @@ const ArrayInterString = (data) => {
 }
 
 
-const findFilterAssets = async(req) => {
+const findFilterAssets = async(req, fType) => {
     try {
         let { list, total, type, selectedCompanies, tabs, customers, assignments, data_type, format_type, other_mode, sale, license } = req.body
         
@@ -4472,7 +4472,7 @@ const findFilterAssets = async(req) => {
                                 }
         
                                 query += ` GROUP BY activity_parties_transactions.rf_id ) GROUP BY documentid.appno_doc_num) `
-                            } else  if(Array.isArray(tabs) && tabs.length === 0) {
+                            } else  if(Array.isArray(tabs) && tabs.length === 0 && typeof fType == 'undefined') {
                                 /**exclude employees */
                                 query += ` AND assets.appno_doc_num IN (  SELECT documentid.appno_doc_num FROM db_uspto.documentid WHERE rf_id  IN ( SELECT activity_parties_transactions.rf_id  FROM db_new_application.activity_parties_transactions WHERE activity_parties_transactions.organisation_id = :organisationID AND activity_parties_transactions.activity_id <> 10  ` 
     

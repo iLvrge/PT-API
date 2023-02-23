@@ -1112,7 +1112,7 @@ route.post("/asset_types/assets/family", [authJWT.verifyToken, clientDBConnectio
     try {
         
         const {type} = req.body
-        let list = await helpers.findFilterAssets(req);
+        let list = await helpers.findFilterAssets(req, 1);
         
         let result = [['Country', 'Assets']]
         if(list != '' && Array.isArray(list) && list.length > 0) {
