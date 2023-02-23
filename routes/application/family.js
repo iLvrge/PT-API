@@ -413,9 +413,8 @@ const getFamilyDataFromXML = async(req) => {
                 }
             }));
             //const xmlData = JSON.stringify(result)    
-            if( xmlData.hasOwnProperty('ops:world-patent-data') ){
-                
-                if(sendNewRequest === true) {
+            if( xmlData.hasOwnProperty('ops:world-patent-data') ){ 
+                if(sendNewRequest === true) {  
                     fs.writeFileSync(`${extraDiskPath}FAMILY/${formatAsset}.XML`, getFamilyData);
                 }
                 const worldPatentData = xmlData['ops:world-patent-data']
