@@ -387,6 +387,8 @@ const getFamilyDataFromXML = async(req) => {
                 if(checkFamilyLegalData.indexOf('ops:legal') !== -1) {
                     sendNewRequest = false
                 }
+            } else {
+                getFamilyData = checkFamilyLegalData
             }
         } 
         console.log("sendNewRequest", sendNewRequest)
