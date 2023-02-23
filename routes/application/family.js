@@ -377,13 +377,19 @@ const getFamilyDataFromXML = async(req) => {
       console.log('formatAsset', formatAsset)
     if(formatAsset !== null && formatAsset !== '') {
                     
-        let getFamilyData = '', fileExist = false
+        let getFamilyData = '', fileExist = false, sendNewRequest = true
         if (fs.existsSync(`${extraDiskPath}FAMILY/${formatAsset}.XML`)) { 
             //file exists
             console.log('FILE EXIST')
             fileExist = true
-            getFamilyData = await fs.promises.readFile(`${extraDiskPath}FAMILY/${formatAsset}.XML`, 'utf8');  
-        } else {
+            const checkFamilyLegalData = await fs.promises.readFile(`${extraDiskPath}FAMILY/${formatAsset}.XML`, 'utf8');  
+            if( checkFamilyLegalData !== '' ) { 
+                if(checkFamilyLegalData.indexOf('ops:legal') !== -1) {
+                    sendNewRequest = false
+                }
+            }
+        } 
+        if(sendNewRequest === true) {
             const token = await epo.readToken('HedCET') 
             if(token !== 'undefined' && token != '') {
                 const publication = findPatent != null && findPatent.grant_doc_num != null && findPatent.grant_doc_num != '' ? 'publication' : 'application'
