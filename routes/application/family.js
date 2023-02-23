@@ -380,16 +380,15 @@ const getFamilyDataFromXML = async(req) => {
         let getFamilyData = '', fileExist = false, sendNewRequest = true
         if (fs.existsSync(`${extraDiskPath}FAMILY/${formatAsset}.XML`)) { 
             //file exists
-            console.log('FILE EXIST')
+            console.log('FILE EXIST', `${extraDiskPath}FAMILY/${formatAsset}.XML`)
             fileExist = true
             const checkFamilyLegalData = await fs.promises.readFile(`${extraDiskPath}FAMILY/${formatAsset}.XML`, 'utf8');  
             if( checkFamilyLegalData !== '' ) { 
                 if(checkFamilyLegalData.indexOf('ops:legal') !== -1) {
                     sendNewRequest = false
+                    getFamilyData = checkFamilyLegalData
                 }
-            } else {
-                getFamilyData = checkFamilyLegalData
-            }
+            } 
         } 
         console.log("sendNewRequest", sendNewRequest)
         if(sendNewRequest === true) {
