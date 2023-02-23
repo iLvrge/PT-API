@@ -2431,8 +2431,12 @@ const inventorSortNames = async(names) => {
      * Each name is sorted by the number of characters in each word in a descending order
      * Take the first two word from left and sort the name alphabetically
      */
+    const regex = /[.,]/g ;
     for (let i = 0; i < names.length; i++) { 
-        const sortName1BasedOnCharacters = sortWordsByLength(names[i].name).slice(0, 2).sort().join(' '); 
+        let name = names[i].name
+
+        name = name.replace(regex, '') 
+        const sortName1BasedOnCharacters = sortWordsByLength(name).slice(0, 2).sort().join(' '); 
         names[i]['new_sorted_name'] = sortName1BasedOnCharacters
     }
     return names
@@ -2441,10 +2445,10 @@ const inventorSortNames = async(names) => {
 const inventorGroupSuggestions = async (entitiesList) => {
     console.log('calling inventorGroupSuggestions')
     const names = await inventorSortNames([...entitiesList]); 
-    console.log('names sorted', names)
+    console.log('names sorted', JSON.stringify(names))
     /**
      * Normalize names with the same two most left words, where representative is the name with the highest occurence
-     */
+     */ 
     let suggestedGroups = {}, otherSuggested = []; 
     for (let i = 0; i < names.length; i++) {
         for (let j = i + 1; j < names.length; j++) {
@@ -2453,23 +2457,25 @@ const inventorGroupSuggestions = async (entitiesList) => {
              */
             let nameSimilar = names[j].name, nameChecked = names[i].name;
             if(!otherSuggested.includes(nameSimilar)) {
-                console.log('name', names[i].new_sorted_name.toLowerCase(), names[j].new_sorted_name.toLowerCase())
+                //console.log('name', names[i].new_sorted_name.toLowerCase(), names[j].new_sorted_name.toLowerCase())
+                //console.log(`Adon Delgado`)
+                
                 if(names[i].new_sorted_name.toLowerCase() == names[j].new_sorted_name.toLowerCase()) {
                     if (suggestedGroups[nameChecked]) {
                         suggestedGroups[nameChecked]['groups'].push(names[j]);
-                        otherSuggested.push(nameSimilar)
+                        otherSuggested.push(nameSimilar);
                     } else {
                         suggestedGroups[nameChecked] = {
                             main: names[i],
                             groups: [names[j]]
                         }
-                        otherSuggested.push(nameSimilar)
+                        otherSuggested.push(nameSimilar);
                     } 
                 }
             }
         }
     } 
-    console.log('suggestedGroups', suggestedGroups)
+     //console.log('suggestedGroups', suggestedGroups)
     if(Object.keys(suggestedGroups).length > 0 ) {
         await normalizedSimilarNames(suggestedGroups);
         /**
@@ -2484,7 +2490,7 @@ const inventorGroupSuggestions = async (entitiesList) => {
         })
     } else {
         return inventorGroupLevenshtein(names)
-    }  
+    } 
 }
 
 
@@ -2503,7 +2509,7 @@ const inventorGroupLevenshtein = async(names) => {
                 }
                 const distance2 = levenshtein.get(names[i].new_sorted_name.toLowerCase(), names[j].new_sorted_name.toLowerCase())
                 const distance = Math.min(distance1, distance2)
-                console.log(distance, names[j].normalize_name,  names[i].id,  names[j].id)
+                /* console.log(distance, names[j].normalize_name,  names[i].id,  names[j].id) */
                 if(distance < 3 ) {
                     let nameSimilar = names[j].name, nameChecked = names[i].name;
                     if (suggestedGroups[nameChecked]) {
@@ -2547,7 +2553,34 @@ const inventorGroupLevenshtein = async(names) => {
                     }
                 })
                 if(newGroup.length > 0) {
-                    const rowData = {...names[findIndex], correctName, highestOccurrences} 
+                    let findRepresentativeData = null;
+                    if(names[findIndex].normalize_name != null) { 
+                        let queryRepresentative = "SELECT a.assignor_and_assignee_id, a.or_name as name, count(a.or_name) as counter, r.representative_name as normalize_name, (select rr.representative_name FROM representative as rr WHERE rr.representative_name = aaa.name GROUP BY rr.representative_name) as representativeCompany, (SELECT aa.instances FROM assignor_and_assignee as aa WHERE aa.assignor_and_assignee_id = a.assignor_and_assignee_id GROUP BY aa.assignor_and_assignee_id) as total_occurences, a.rf_id, 1 AS flag FROM db_uspto.assignor as a LEFT JOIN assignor_and_assignee as aaa ON aaa.assignor_and_assignee_id = a.assignor_and_assignee_id LEFT JOIN db_uspto.representative_assignment_conveyance as rac ON rac.rf_id = a.rf_id LEFT JOIN representative as r ON r.representative_id = aaa.representative_id WHERE aaa.name = :representativeName  GROUP BY a.or_name LIMIT 1";  
+
+                        findRepresentativeData = await connection.resources.query(queryRepresentative,{
+                                type: connection.Sequelize.QueryTypes.SELECT,
+                                replacements: { representativeName: names[findIndex].normalize_name },
+                                raw: true,
+                                plain: true,
+                                logging: console.log,
+                            }   
+                        );  
+                        if(findRepresentativeData == null) {
+                            queryRepresentative = "SELECT * FROM (SELECT appInv.assignor_and_assignee_id, CONCAT(appInv.family_name, ' ', appInv.given_name) AS aName, aaa.name AS name, count(aaa.name) as counter, r.representative_name as normalize_name, (select rr.representative_name FROM representative as rr WHERE rr.representative_name = aaa.name GROUP BY rr.representative_name) as representativeCompany, aaa.instances as total_occurences, 0 AS rf_id, 4 AS flag FROM db_patent_application_bibliographic.inventor AS appInv INNER JOIN  db_patent_application_bibliographic.assignor_and_assignee AS aaa ON aaa.assignor_and_assignee_id = appInv.assignor_and_assignee_id LEFT JOIN representative as r ON r.representative_id = aaa.representative_id WHERE aaa.name = :representativeName GROUP BY aaa.name UNION SELECT appInv.assignor_and_assignee_id, CONCAT(appInv.family_name, ' ', appInv.given_name) AS aName, aaa.name AS name, count(aaa.name) as counter, r.representative_name as normalize_name, (select rr.representative_name FROM representative as rr WHERE rr.representative_name = aaa.name GROUP BY rr.representative_name) as representativeCompany, aaa.instances as total_occurences, 0 AS rf_id, 4 AS flag FROM db_patent_grant_bibliographic.inventor_new AS appInv INNER JOIN  db_patent_application_bibliographic.assignor_and_assignee AS aaa ON aaa.assignor_and_assignee_id = appInv.assignor_and_assignee_id LEFT JOIN representative as r ON r.representative_id = aaa.representative_id WHERE aaa.name = :representativeName GROUP BY aaa.name) AS temp LIMIT 1"; 
+                            findRepresentativeData = await connection.resources.query(queryRepresentative,{
+                                    type: connection.Sequelize.QueryTypes.SELECT,
+                                    replacements: { representativeName: names[findIndex].normalize_name },
+                                    raw: true,
+                                    plain: true,
+                                    logging: console.log,
+                                }   
+                            );  
+                        }
+                    }
+                    if(findRepresentativeData == null) {
+                        findRepresentativeData = {...names[findIndex]}
+                    } 
+                    const rowData = {...findRepresentativeData, correctName, highestOccurrences} 
                     newSuggestedSet.push(rowData) 
                     newSuggestedSet = [...newSuggestedSet, ...newGroup]
                     /* console.log('NEWW GROUP')
@@ -2562,12 +2595,12 @@ const inventorGroupLevenshtein = async(names) => {
 
 
 const normalizedSimilarNames = async (getIdenticalList) => {
-    console.log('normalizedSimilarNames', getIdenticalList)
+    //console.log('normalizedSimilarNames', getIdenticalList)
     if(Object.keys(getIdenticalList).length > 0 ) { 
         for (const name in getIdenticalList) { 
             const {main, groups} = getIdenticalList[name];
 
-            console.log('main, groups', main, groups);
+            //console.log('main, groups', main, groups);
 
             if(groups.length > 0) {
                 let representativeName = '', representativeID = 0;

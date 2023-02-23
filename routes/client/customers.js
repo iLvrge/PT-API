@@ -1682,6 +1682,22 @@ route.get("/:layout/assets", [authJWT.verifyToken, clientDBConnection.connect], 
                             } else if(Array.isArray(customers) && customers.length > 0) {
                                 query += `  AND assignor_id IN (:customers) `
                             }
+
+                            if(assignments && assignments != '') {
+                                assignments = JSON.parse( assignments )
+                                replacements.assignments = assignments
+                                query += ` AND application IN (
+                                        SELECT documentid.appno_doc_num FROM db_uspto.documentid 
+                                        WHERE rf_id  IN ( 
+                                            SELECT activity_parties_transactions.rf_id  FROM db_new_application.activity_parties_transactions 
+                                            WHERE activity_parties_transactions.organisation_id = :organisationID 
+                                            AND activity_parties_transactions.company_id IN (:companies)  
+                                            AND activity_parties_transactions.rf_id IN (:assignments) 
+                                            GROUP BY activity_parties_transactions.rf_id
+                                        ) 
+                                        GROUP BY documentid.appno_doc_num
+                                )  `
+                            }  
                         } 
                         query += `   ) AS queryTemp `
                     }           

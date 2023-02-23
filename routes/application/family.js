@@ -377,13 +377,19 @@ const getFamilyDataFromXML = async(req) => {
       console.log('formatAsset', formatAsset)
     if(formatAsset !== null && formatAsset !== '') {
                     
-        let getFamilyData = '', fileExist = false
-        if (fs.existsSync(`${extraDiskPath}FAMILY/${formatAsset}.XML`)) {
+        let getFamilyData = '', fileExist = false, sendNewRequest = true
+        if (fs.existsSync(`${extraDiskPath}FAMILY/${formatAsset}.XML`)) { 
             //file exists
             console.log('FILE EXIST')
             fileExist = true
-            getFamilyData = await fs.promises.readFile(`${extraDiskPath}FAMILY/${formatAsset}.XML`, 'utf8');
-        } else {
+            const checkFamilyLegalData = await fs.promises.readFile(`${extraDiskPath}FAMILY/${formatAsset}.XML`, 'utf8');  
+            if( checkFamilyLegalData !== '' ) { 
+                if(checkFamilyLegalData.indexOf('ops:legal') !== -1) {
+                    sendNewRequest = false
+                }
+            }
+        } 
+        if(sendNewRequest === true) {
             const token = await epo.readToken('HedCET') 
             if(token !== 'undefined' && token != '') {
                 const publication = findPatent != null && findPatent.grant_doc_num != null && findPatent.grant_doc_num != '' ? 'publication' : 'application'
@@ -413,7 +419,6 @@ const getFamilyDataFromXML = async(req) => {
                 const worldPatentData = xmlData['ops:world-patent-data']
                 if(worldPatentData.hasOwnProperty('ops:patent-family')) {
                     const patentFamily =  worldPatentData['ops:patent-family']
-                    
                     if( patentFamily.length > 0 && typeof patentFamily[0] !== 'undefined' ) {
                         const familyMembers = patentFamily[0]['ops:family-member']
                         if( familyMembers.length > 0 ) {                                
@@ -427,20 +432,19 @@ const getFamilyDataFromXML = async(req) => {
                                     if(findPatent == null || findPatent.grant_doc_num == null || findPatent.grant_doc_num == '') {
                                         dbTypeData = family['application-reference'][0]['document-id'][0]
                                     }
-                                    console.log("dbTypeData['doc-number'] == asset", dbTypeData['doc-number'], asset)
+                                    //console.log("dbTypeData['doc-number'] == asset", dbTypeData['doc-number'], asset)
                                     if((familyID === 0 && dbTypeData['doc-number'].toString() == asset) || (familyID !== 0 && familyID == family.$['family-id'])) {
                                         if(familyID === 0 && dbTypeData['doc-number'].toString() == asset) {
                                             familyID = family.$['family-id']
-                                        }                                                                                            
+                                        }
                                     }
                                 }
                             });
-                            console.log('familyID', familyID)
+                            //console.log('familyID', familyID)
                             if(familyID > 0) {
                                 const allApplicationNumbers = []
                                 familyMembers.forEach(family => {
                                     if(familyID === family.$['family-id']) {
-                                                                                   
                                         let dbTypeData = family['publication-reference'][0]['document-id'][0]
                                         if( dbTypeData.$['document-id-type'] !== 'docdb' ) {
                                             dbTypeData = family['publication-reference'][0]['document-id'][1]
@@ -450,22 +454,30 @@ const getFamilyDataFromXML = async(req) => {
                                                 dbTypeData = family['application-reference'][0]['document-id'][0]
                                             }
                                         }
+                                        let legal = [], findLegal = false
                                         if(!allApplicationNumbers.includes(family['application-reference'][0]['document-id'][0]['date'].toString())){
                                             allApplicationNumbers.push(family['application-reference'][0]['document-id'][0]['date'].toString())
                                         } else {
-                                            console.log('APPLICATION', dbTypeData['kind'].toString().toLowerCase().indexOf('b'))
-                                            if(dbTypeData['kind'].toString().toLowerCase().indexOf('b') !== null) {
-                                                const findIndex = getFamily.findIndex( r => r.application_number == family['application-reference'][0]['document-id'][0]['doc-number'].toString())
+                                            //console.log('APPLICATION', dbTypeData['kind'].toString().toLowerCase().indexOf('b') )
+                                            if(dbTypeData['kind'].toString().toLowerCase().indexOf('b') !== -1) {
+                                                
+                                                const findIndex = getFamily.findIndex( r => r.application_number == family['application-reference'][0]['document-id'][0]['doc-number'].toString()) 
+
                                                 if(findIndex !== -1) {
+                                                    const getFamilyIndexData = getFamily[findIndex]; 
+                                                    if(getFamilyIndexData.hasOwnProperty('legal')) {
+                                                        legal = getFamilyIndexData.legal
+                                                        findLegal = true
+                                                    } 
                                                     getFamily.splice(findIndex, 1)
                                                 }
                                             }
                                         } 
-
-                                        const legal = []   
-                                        console.log('family', family)
+                                        
+                                        //console.log('family', family)
                                         if(family.hasOwnProperty('ops:legal')) {
-                                            console.log('IN LEGAL ARRAY')
+                                            //console.log('IN LEGAL ARRAY')
+                                            legal = []
                                             if(Array.isArray(family['ops:legal'])) {
                                                 family['ops:legal'].forEach( legalItem => { 
                                                     const code = legalItem.$['code'];
@@ -491,7 +503,7 @@ const getFamilyDataFromXML = async(req) => {
                                                     const date_first_exchanged = legalItem['ops:L019EP'][0]['_'];
                                                     const lespList = []
                                                     if(legalItem.hasOwnProperty('ops:L500EP')) {
-                                                        console.log('legalItem["L500EP"]', legalItem['ops:L500EP'])
+                                                        //console.log('legalItem["L500EP"]', legalItem['ops:L500EP'])
                                                         if(legalItem['ops:L500EP'].length > 0) {
                                                             legalItem['ops:L500EP'].forEach( lesp => {
                                                                 if(lesp.hasOwnProperty('ops:L501EP')) {
@@ -580,7 +592,7 @@ const getFamilyDataFromXML = async(req) => {
                                                 const date_first_exchanged = legalItem['ops:L019EP'][0]['_'];
                                                 const lespList = []
                                                 if(legalItem.hasOwnProperty('ops:L500EP')) {
-                                                    console.log('legalItem["L500EP"]', legalItem['ops:L500EP'])
+                                                    //console.log('legalItem["L500EP"]', legalItem['ops:L500EP'])
                                                     if(legalItem['ops:L500EP'].length > 0) {
                                                         legalItem['ops:L500EP'].forEach( lesp => {
                                                             if(lesp.hasOwnProperty('ops:L501EP')) {
@@ -644,7 +656,7 @@ const getFamilyDataFromXML = async(req) => {
                                                     lespList
                                                 })
                                             }
-                                            console.log('legal', legal)
+                                            //console.log('legal', legal)
                                         } else {
                                             console.log('NO LEGAL')
                                         } 
