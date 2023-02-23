@@ -389,13 +389,14 @@ const getFamilyDataFromXML = async(req) => {
                 }
             }
         } 
+        console.log("sendNewRequest", sendNewRequest)
         if(sendNewRequest === true) {
             const token = await epo.readToken('HedCET') 
             if(token !== 'undefined' && token != '') {
                 const publication = findPatent != null && findPatent.grant_doc_num != null && findPatent.grant_doc_num != '' ? 'publication' : 'application'
-                getFamilyData = await epo.runUrl(token, 'family', publication, 'docdb', `${formatAsset}`);
+                getFamilyData = await epo.runUrl(token, 'family', publication, 'docdb', `${formatAsset}/legal`);
                 if( !getFamilyData  || getFamilyData.indexOf('EntityNotFound') !== -1) {
-                    getFamilyData = await epo.runUrl(token, 'family', publication,'epodoc', `${formatAsset}`);
+                    getFamilyData = await epo.runUrl(token, 'family', publication,'epodoc', `${formatAsset}/legal`);
                 }
             }
         }
