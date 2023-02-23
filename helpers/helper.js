@@ -3525,6 +3525,8 @@ let getNewCode = async () => {
     for (let i = 0; i < retryLimit; i++) {
         if(run === true){
             /* const code = uuidv4() + (Math.random()*1e32).toString(36).substr(0,10); */
+
+            
             const code = shortUUID.generate()
             await Share.findOne({
                 where:{code: code},
