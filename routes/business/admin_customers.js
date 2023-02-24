@@ -1091,27 +1091,30 @@ route.put("/customers/:id/users/:user_id", [authJWT.verifyToken, authJWT.isAdmin
                                 user.email_address = req.body.email_address;
                                 user.username = req.body.email_address;
                                 user.linkedin_url = req.body.linkedin_url;
+                                user.type = req.body.type;
+                                user.role_id = req.body.type == 0 ? 1 : 2;
                             }
                             console.log(user);							
                             const update = await Users.update(user,{where: {user_id: req.params.user_id}});
                             if(update) {
-                                if(req.body.password != undefined && req.body.password != null && req.body.password != ""){
 
-                                    const dbUser = await req.connection_db.define('Users', ClientUsers.mainStructure, ClientUsers.options);
-    
-                                    const getUser = dbUser.findOne({
-                                        where: {username: u.username}
-                                    })
-                                    console.log('getUser', getUser)
-                                    if(getUser !== null) {
-                                        getUser.first_name = req.body.first_name;
-                                        getUser.last_name = req.body.last_name;
-                                        getUser.email_address = req.body.email_address;
-                                        getUser.username = req.body.email_address;
-                                        getUser.linkedin_url = req.body.linkedin_url;
-                                        getUser.save();
-                                    }                                    
-                                }
+                                const dbUser = await req.connection_db.define('Users', ClientUsers.mainStructure, ClientUsers.options);
+
+                                const getUser = await dbUser.findOne({
+                                    where: {username: u.username}
+                                })
+                                console.log('getUser', getUser)
+                                if(getUser !== null) {
+                                    const updateCurrentUser = {}
+                                    updateCurrentUser.first_name = req.body.first_name;
+                                    updateCurrentUser.last_name = req.body.last_name;
+                                    updateCurrentUser.email_address = req.body.email_address;
+                                    updateCurrentUser.username = req.body.email_address;
+                                    updateCurrentUser.linkedin_url = req.body.linkedin_url;
+                                    updateCurrentUser.role_id = req.body.type == 0 ? 1 : 2,
+                                   
+                                    await dbUser.update(updateCurrentUser,{where: {user_id: getUser.user_id}});
+                                }        
                             }
                             
                             res.status(200).send("Updated successfully");

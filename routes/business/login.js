@@ -46,7 +46,7 @@ route.get("/authenticate/:code/:type", async(req, res, next) => {
         if( findOrg != null ) {
             const findAdminUser = await User.findOne({
                                         where: {
-                                            type: '1',
+                                            type: ['0','1'],
                                             status: 0,
                                             organisation_id: findOrg.organisation_id
                                         }
