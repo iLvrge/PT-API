@@ -1171,10 +1171,19 @@ route.post("/asset_types/assets/family", [authJWT.verifyToken, clientDBConnectio
                 getList.forEach(row => {
                     result.push([row.name, parseInt(row.number)])
                 })
+
+                const findIndex = result.findIndex( item => item[0] == 'United States');
+                if(findIndex !== -1){
+                    result[findIndex][1] =  result[findIndex][1] + ( list.length - result[findIndex][1] )
+                } else {
+                    result.push(['United States', list.length ])
+                }
             }
 
+            
 
-            const queryNoFamily = `SELECT COUNT(*) AS counter FROM (SELECT assets.*
+
+            /* const queryNoFamily = `SELECT COUNT(*) AS counter FROM (SELECT assets.*
                 FROM db_new_application.assets AS assets
                 LEFT OUTER JOIN db_uspto.assets_family AS af ON af.grant_doc_num = assets.grant_doc_num
                 WHERE af.grant_doc_num IS NULL
@@ -1192,13 +1201,8 @@ route.post("/asset_types/assets/family", [authJWT.verifyToken, clientDBConnectio
                 }
             ); 
             if(getNoFamilyCounter != null && getNoFamilyCounter.counter > 0) {
-                const findIndex = result.findIndex( item => item[0] == 'United States');
-                if(findIndex !== -1){
-                    result[findIndex][1] = result[findIndex][1] + getNoFamilyCounter.counter
-                } else {
-                    result.push(['United States', parseInt(getNoFamilyCounter.counter)])
-                }
-            }
+                
+            } */
         }
         /* result = [
             ['Country', 'Popularity'],
