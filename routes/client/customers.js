@@ -1571,7 +1571,37 @@ route.get("/:layout/assets", [authJWT.verifyToken, clientDBConnection.connect], 
                 
             } */ else {
                 if(replacements.layoutID != 15) {
-                    if(replacements.layoutID == 30 || replacements.layoutID == 22 || replacements.layoutID == 31 ) { 
+                    if(replacements.layoutID == 22) {
+                        query = `SELECT * FROM (SELECT  CASE WHEN patent = '' OR patent IS NULL THEN CONCAT(SUBSTRING(application, 1, 2), '/', FORMAT(SUBSTRING(application, 3), 0)) ELSE FORMAT(patent, 0) END AS format_asset,
+                        CASE WHEN patent = '' OR patent IS NULL THEN application ELSE patent END AS asset, 
+                        CASE WHEN patent = '' OR patent IS NULL THEN 1 ELSE 0 END AS asset_type, application AS appno_doc_num, patent AS grant_doc_num, 0 AS child_count, '' AS channel  FROM db_new_application.dashboard_items WHERE organisation_id = :organisationID AND type = :layoutID `;
+
+                        if(typeof replacements.companies != 'undefined' && Array.isArray(replacements.companies) && replacements.companies.length > 0) {
+                            query += ` AND representative_id IN (:companies) `
+                        }
+
+                        if(Array.isArray(customers) && customers.length > 0){
+                            query += ` AND application IN (  SELECT appno_doc_num COLLATE utf8mb4_0900_ai_ci  FROM (
+                                Select appno_doc_num, assignor_and_assignee_id  from db_patent_application_bibliographic.inventor
+                                where appno_doc_num COLLATE utf8mb4_0900_ai_ci IN (
+                                
+                                        select application FROM db_new_application.dashboard_items 
+                                        WHERE organisation_id = :organisationID AND type = :layoutID  
+                                        AND representative_id IN (:companies)
+                                    )
+                                    UNION 
+                                    Select appno_doc_num, assignor_and_assignee_id  from db_patent_grant_bibliographic.inventor_new
+                                where appno_doc_num COLLATE utf8mb4_0900_ai_ci IN (
+                                
+                                        select application FROM db_new_application.dashboard_items 
+                                        WHERE organisation_id = :organisationID AND type = :layoutID  
+                                        AND representative_id IN (:companies)
+                                    )) AS tempInventor
+                                    where assignor_and_assignee_id IN (:customers)) `;
+                        }
+                        query += ` GROUP BY application) AS queryTemp `;
+
+                    } else if(replacements.layoutID == 30 || replacements.layoutID == 31 ) { 
                         /**
                          * Owner Assets (Filled + Acquired)
                          */
