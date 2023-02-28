@@ -328,6 +328,20 @@ route.get('/family/list/:grantNumber', [authJWT.verifyToken], async (req, res) =
 })
 
 
+const getFamilySendRequestEPO = async(grantDocNum) => { 
+    const token = await epo.readToken('HedCET') 
+    if(token !== 'undefined' && token != '') {
+        const publication =  'publication' 
+        const formatAsset = `US${grantDocNum}`
+        getFamilyData = await epo.runUrl(token, 'family', publication, 'docdb', `${formatAsset}/legal`);
+        
+        if( !getFamilyData  || getFamilyData.indexOf('EntityNotFound') !== -1) {
+            getFamilyData = await epo.runUrl(token, 'family', publication,'epodoc', `${formatAsset}/legal`);
+        }
+    }
+    console.log('getFamilyData', getFamilyData)
+}
+
 const getFamilyDataFromXML = async(req) => {
     const applicationNumber = req.params.applicationNumber;
     const {f} = req.query;
@@ -401,8 +415,6 @@ const getFamilyDataFromXML = async(req) => {
                 if( !getFamilyData  || getFamilyData.indexOf('EntityNotFound') !== -1) {
                     getFamilyData = await epo.runUrl(token, 'family', publication,'epodoc', `${formatAsset}/legal`);
                 }
-
-                console.log('getFamilyData1213', getFamilyData)
             }
         }
         console.log('getFamilyData', getFamilyData)
@@ -741,6 +753,19 @@ const getFamilyDataFromXML = async(req) => {
     }
     return getFamily
 }
+
+route.get('/family/epo/grant/:grantDocNumber', async (req, res) => {
+    //getFamilySendRequestEPO
+    try {
+        const {grantDocNumber} = req.params;  
+        if(grantDocNumber != '') {
+            getFamilySendRequestEPO(grantDocNumber);
+        }
+    } catch ( err ) {
+        console.log('ERROR IN FAMILY', err);
+        res.status(500).send("Internal server error.");
+    }
+}); 
 
 route.get("/family/:applicationNumber", [authJWT.verifyToken], async (req, res) =>{  
 
