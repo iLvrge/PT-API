@@ -2320,7 +2320,7 @@ const findEventList = async(req, res) => {
 
 route.get("/events/all/assets/:category_type", [authJWT.verifyToken], async (req, res) =>{   
     try {
-        let { companies } = req.query, findData = [], other = [], icons = {};
+        let { companies, customers } = req.query, findData = [], other = [], icons = {};
 
         const {category_type} = req.params; 
         
@@ -2328,14 +2328,66 @@ route.get("/events/all/assets/:category_type", [authJWT.verifyToken], async (req
             companies = JSON.parse(companies)
         }
 
+        if(customers != '') {
+            customers = JSON.parse(customers)
+        }
+
         if(companies.length > 0) {
+            const replacements = { organisationID: req.orgId, companies }
             if( category_type == 'to_record' ) {
-                const queryToRecord = `SELECT application, patent, '' AS eventdate, '13' AS event_code, '' AS event_icon, IF(patent <> '' , FORMAT(patent, 0), CONCAT(SUBSTRING(application, 1, 2), '/', FORMAT(SUBSTRING(application, 3), 0))) AS template_string FROM dashboard_items WHERE organisation_id = :organisationID AND representative_id IN (:companies) AND type = :type GROUP BY application`;
+                replacements.type =  22
+                let queryToRecord = `SELECT application, patent, '' AS eventdate, '13' AS event_code, '' AS event_icon, IF(patent <> '' , FORMAT(patent, 0), CONCAT(SUBSTRING(application, 1, 2), '/', FORMAT(SUBSTRING(application, 3), 0))) AS template_string FROM dashboard_items WHERE organisation_id = :organisationID AND representative_id IN (:companies) AND type = :type ` 
+
+                if(Array.isArray(customers) && customers.length > 0) {
+                    replacements.customers = customers;
+                    queryToRecord += ` AND `
+
+                    if( customers.length == 2){
+                        queryToRecord += ` ( `
+
+                    }
+                    
+                    queryToRecord += ` application IN (
+                                SELECT documentid.appno_doc_num FROM db_uspto.documentid 
+                                WHERE rf_id  IN ( 
+                                    SELECT activity_parties_transactions.rf_id  FROM db_new_application.activity_parties_transactions 
+                                    WHERE activity_parties_transactions.organisation_id = :organisationID 
+                                    AND activity_parties_transactions.company_id IN (:companies)  
+                                    AND activity_parties_transactions.assignor_and_assignee_id IN (:customers) 
+                                    GROUP BY activity_parties_transactions.rf_id
+                                ) 
+                                GROUP BY documentid.appno_doc_num
+                        )  `
+                    if( customers.length == 2){
+                        const allCustomers = replacements.customers
+                        replacements.customers = allCustomers[0]
+                        replacements.inventor = allCustomers[1]
+                        queryToRecord += ` OR application IN (  SELECT appno_doc_num COLLATE utf8mb4_0900_ai_ci  FROM (
+                            Select appno_doc_num, assignor_and_assignee_id  from db_patent_application_bibliographic.inventor
+                            where appno_doc_num COLLATE utf8mb4_0900_ai_ci IN (
+                            
+                                    select application FROM db_new_application.dashboard_items 
+                                    WHERE organisation_id = :organisationID AND type = :type  
+                                    AND representative_id IN (:companies)
+                                )
+                                UNION 
+                                Select appno_doc_num, assignor_and_assignee_id  from db_patent_grant_bibliographic.inventor_new
+                            where appno_doc_num COLLATE utf8mb4_0900_ai_ci IN (
+                            
+                                    select application FROM db_new_application.dashboard_items 
+                                    WHERE organisation_id = :organisationID AND type = :type  
+                                    AND representative_id IN (:companies)
+                                )) AS tempInventor
+                                where assignor_and_assignee_id IN (:inventor))) `;
+                    }
+                }
+                
+                queryToRecord += ` GROUP BY application`;
                 findData = await connection.applicationNew.query(queryToRecord,{
                         type: connection.Sequelize.QueryTypes.SELECT,
                         raw: true,
                         logging: console.log,
-                        replacements: { organisationID: req.orgId, companies, type: 22 },
+                        replacements
                     }
                 );
     
@@ -2387,12 +2439,58 @@ route.get("/events/all/assets/:category_type", [authJWT.verifyToken], async (req
                     }
                 }
             } else if (category_type == 'surcharge') {
-                const queryLateMaintainence = `SELECT application FROM dashboard_items WHERE organisation_id = :organisationID AND representative_id IN (:companies) AND type = :type GROUP BY application`;
+                replacements.type =  23
+                let queryLateMaintainence = `SELECT application FROM dashboard_items WHERE organisation_id = :organisationID AND representative_id IN (:companies) AND type = :type  `;
+
+                if(Array.isArray(customers) && customers.length > 0) {
+                    replacements.customers = customers;
+                    queryLateMaintainence += ` AND `
+
+                    if( customers.length == 2){
+                        queryLateMaintainence += ` ( `
+
+                    }
+                    
+                    queryLateMaintainence += ` application IN (
+                                SELECT documentid.appno_doc_num FROM db_uspto.documentid 
+                                WHERE rf_id  IN ( 
+                                    SELECT activity_parties_transactions.rf_id  FROM db_new_application.activity_parties_transactions 
+                                    WHERE activity_parties_transactions.organisation_id = :organisationID 
+                                    AND activity_parties_transactions.company_id IN (:companies)  
+                                    AND activity_parties_transactions.assignor_and_assignee_id IN (:customers) 
+                                    GROUP BY activity_parties_transactions.rf_id
+                                ) 
+                                GROUP BY documentid.appno_doc_num
+                        )  `
+                    if( customers.length == 2){
+                        const allCustomers = replacements.customers;
+                        replacements.customers = allCustomers[0]
+                        replacements.inventor = allCustomers[1]
+                        queryLateMaintainence += ` OR application IN (  SELECT appno_doc_num COLLATE utf8mb4_0900_ai_ci  FROM (
+                            Select appno_doc_num, assignor_and_assignee_id  from db_patent_application_bibliographic.inventor
+                            where appno_doc_num COLLATE utf8mb4_0900_ai_ci IN (
+                            
+                                    select application FROM db_new_application.dashboard_items 
+                                    WHERE organisation_id = :organisationID AND type = :type  
+                                    AND representative_id IN (:companies)
+                                )
+                                UNION 
+                                Select appno_doc_num, assignor_and_assignee_id  from db_patent_grant_bibliographic.inventor_new
+                            where appno_doc_num COLLATE utf8mb4_0900_ai_ci IN (
+                            
+                                    select application FROM db_new_application.dashboard_items 
+                                    WHERE organisation_id = :organisationID AND type = :type  
+                                    AND representative_id IN (:companies)
+                                )) AS tempInventor
+                                where assignor_and_assignee_id IN (:inventor))) `;
+                    } 
+                }
+                queryLateMaintainence += `  GROUP BY application`;
                 const list = await connection.applicationNew.query(queryLateMaintainence,{
                         type: connection.Sequelize.QueryTypes.SELECT,
                         raw: true,
                         logging: console.log,
-                        replacements: { organisationID: req.orgId, companies, type: 23 },
+                        replacements 
                     }
                 );
     
@@ -2447,12 +2545,59 @@ route.get("/events/all/assets/:category_type", [authJWT.verifyToken], async (req
                     }
                 }
             } else if (category_type == 'abandoned') {
-                const queryAbandonedStatus =  `SELECT application FROM dashboard_items WHERE organisation_id = :organisationID AND representative_id IN (:companies) AND type = :type GROUP BY application`;
+                replacements.type =  36
+                let queryAbandonedStatus =  `SELECT application FROM dashboard_items WHERE organisation_id = :organisationID AND representative_id IN (:companies) AND type = :type  `;
+
+                if(Array.isArray(customers) && customers.length > 0) {
+                    replacements.customers = customers;
+                    queryAbandonedStatus += ` AND `
+
+                    if( customers.length == 2){
+                        queryAbandonedStatus += ` ( `
+
+                    }
+                    
+                    queryAbandonedStatus += ` application IN (
+                                SELECT documentid.appno_doc_num FROM db_uspto.documentid 
+                                WHERE rf_id  IN ( 
+                                    SELECT activity_parties_transactions.rf_id  FROM db_new_application.activity_parties_transactions 
+                                    WHERE activity_parties_transactions.organisation_id = :organisationID 
+                                    AND activity_parties_transactions.company_id IN (:companies)  
+                                    AND activity_parties_transactions.assignor_and_assignee_id IN (:customers) 
+                                    GROUP BY activity_parties_transactions.rf_id
+                                ) 
+                                GROUP BY documentid.appno_doc_num
+                        )  `
+                    if( customers.length == 2){
+                        const allCustomers = replacements.customers;
+                        replacements.customers = allCustomers[0]
+                        replacements.inventor = allCustomers[1]
+                        queryAbandonedStatus += ` OR application IN (  SELECT appno_doc_num COLLATE utf8mb4_0900_ai_ci  FROM (
+                            Select appno_doc_num, assignor_and_assignee_id  from db_patent_application_bibliographic.inventor
+                            where appno_doc_num COLLATE utf8mb4_0900_ai_ci IN (
+                            
+                                    select application FROM db_new_application.dashboard_items 
+                                    WHERE organisation_id = :organisationID AND type = :type  
+                                    AND representative_id IN (:companies)
+                                )
+                                UNION 
+                                Select appno_doc_num, assignor_and_assignee_id  from db_patent_grant_bibliographic.inventor_new
+                            where appno_doc_num COLLATE utf8mb4_0900_ai_ci IN (
+                            
+                                    select application FROM db_new_application.dashboard_items 
+                                    WHERE organisation_id = :organisationID AND type = :type  
+                                    AND representative_id IN (:companies)
+                                )) AS tempInventor
+                                where assignor_and_assignee_id IN (:inventor))) `;
+                    }
+                }
+                queryAbandonedStatus +=  `  GROUP BY application`;
+
                 const list = await connection.applicationNew.query(queryAbandonedStatus,{
                         type: connection.Sequelize.QueryTypes.SELECT,
                         raw: true,
                         logging: console.log,
-                        replacements: { organisationID: req.orgId, companies, type: 36 },
+                        replacements 
                     }
                 );
     
