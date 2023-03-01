@@ -865,8 +865,7 @@ route.get("/assets/:patentNumber/files/:channelID/slack/:token", [authJWT.verify
                 query += ' AND list2.rf_id IN  ( SELECT documentid.rf_id FROM documentid WHERE documentid.appno_doc_num IN (:assetsList) GROUP BY documentid.rf_id )'
             } else if ( patents.length > 0 ) {
                 replacements.appno_doc_num = patents
-                replacements.grant_doc_num = patents
-                query += ' AND  list2.rf_id IN ( SELECT documentid.rf_id FROM documentid WHERE appno_doc_num IN (:appno_doc_num) OR grant_doc_num IN (:grant_doc_num) GROUP BY documentid.rf_id ) '
+                query += ' AND  assignment.rf_id IN ( SELECT documentid.rf_id FROM documentid WHERE appno_doc_num IN (:appno_doc_num) GROUP BY documentid.rf_id ) '
             } else {
                 if(activities.length > 0 || parties.length > 0 || rfIDs.length > 0 ) {
                     let tap = false
