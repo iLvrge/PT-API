@@ -199,6 +199,8 @@ route.post("/assets/cpc", [authJWT.verifyToken, clientDBConnection.connect], asy
                             queryAssets += `  AND type = :type `
                             queryAssets += ` AND rf_id IN (:assignments) `;
                         } 
+                    } else {
+                        queryAssets += `  AND type = :type `
                     }
                 } else {
                     queryAssets += `  AND type = :type `
