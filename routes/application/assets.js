@@ -831,7 +831,7 @@ route.get("/assets/:patentNumber/files/:channelID/slack/:token", [authJWT.verify
 
             const replacements = { organisation_id: req.orgId, year: connection.DEFAULT_YEAR }
 
-            replacements.layout = findLayout(layout)
+            replacements.layout =  helpers.findLayout(layout); 
 
             let assetsList = []
             if( patents.length === 0 && activities.length === 0 && parties.length === 0 && rfIDs.length === 0 ) {
@@ -841,6 +841,7 @@ route.get("/assets/:patentNumber/files/:channelID/slack/:token", [authJWT.verify
                     replacementAssets.companies = companies
                     queryFindAssets += ' AND representative_id IN (:companies)'
                 }
+                
                 queryFindAssets += '  GROUP BY assets.application '
 
                 const getAssets =  await connection.resources.query(queryFindAssets,{
@@ -873,8 +874,12 @@ route.get("/assets/:patentNumber/files/:channelID/slack/:token", [authJWT.verify
             }
 
             if(assetsList.length > 0) {
-                replacements.assetsList = assetsList
-                query += ' AND list2.rf_id IN  ( SELECT documentid.rf_id FROM documentid WHERE documentid.appno_doc_num IN (:assetsList) GROUP BY documentid.rf_id )'
+                replacements.assetsList = assetsList 
+                if([40, 41].includes(replacements.layout)) {
+                    query += ' AND list2.rf_id IN ( SELECT assets.rf_id FROM db_new_application.dashboard_items as assets WHERE type = :layout AND organisation_id = :organisation_id   AND representative_id IN (:companies) AND type = :layout  GROUP BY assets.rf_id) '
+                } else {
+                    query += ' AND list2.rf_id IN  ( SELECT documentid.rf_id FROM documentid WHERE documentid.appno_doc_num IN (:assetsList) GROUP BY documentid.rf_id )'
+                }
             } else if ( patents.length > 0 ) {
                 replacements.appno_doc_num = patents
                 query += ' AND  assignment.rf_id IN ( SELECT documentid.rf_id FROM documentid WHERE appno_doc_num IN (:appno_doc_num) GROUP BY documentid.rf_id ) '
