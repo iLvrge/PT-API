@@ -898,7 +898,7 @@ route.get("/assets/:patentNumber/files/:channelID/slack/:token", [authJWT.verify
                 }
             } 
   
-            if(lawyers != '' && lawyers != null && lawyers != undefined && parseInt(lawyers) > 0) {
+            if(assetsList.length == 0 && patents.length == 0 && lawyers != '' && lawyers != null && lawyers != undefined && parseInt(lawyers) > 0) {
                 if(companies.length > 0) {
                     replacements.companies = companies
                 }
