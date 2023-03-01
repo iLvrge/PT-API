@@ -1897,7 +1897,16 @@ route.post("/events/assets", [authJWT.verifyToken], async(req, res, next) => {
                     }
 
                     if(where.layoutID > 15) {
-                        query = `SELECT application AS appno_doc_num FROM db_new_application.dashboard_items AS assets WHERE assets.organisation_id = :organisationID AND representative_id IN (:company_id) AND type = :layoutID GROUP BY application`
+                        query = `SELECT application AS appno_doc_num FROM db_new_application.dashboard_items AS assets WHERE assets.organisation_id = :organisationID AND representative_id IN (:company_id) AND type = :layoutID `
+                        
+                        
+                        if(assignments && assignments != '' && where.layoutID == 40) {
+                            assignments = JSON.parse( assignments )
+                            where.assignments = assignments
+                            query += ` AND rf_id IN (:assignments) `
+                        }
+
+                        query += ` GROUP BY application`
                     } else { 
                         if(tabs && tabs != '') {
                             tabs = JSON.parse( tabs )
@@ -2021,6 +2030,7 @@ route.post("/events/assets", [authJWT.verifyToken], async(req, res, next) => {
                     }
                     
                     const timelineSpan = [], applicationNumberAdded = [], dateAdded = [];
+                    console.log(getList.length)
                     const promises = getList.map( async item => {
                         if(!applicationNumberAdded.includes(item.application)){
                             const startYear = moment(new Date(item.appno_date)).format(ASSETS_LIFE_SPAN_DATE_FORMAT);
@@ -2053,6 +2063,7 @@ route.post("/events/assets", [authJWT.verifyToken], async(req, res, next) => {
                     });            
                     await Promise.all(promises);
                     assetsLifeSpan = await helpers.findMaxMinLifeSpan(timelineSpan)        
+                    console.log(assetsLifeSpan)
                 }
             }
         }
