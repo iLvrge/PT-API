@@ -187,14 +187,21 @@ route.post("/assets/cpc", [authJWT.verifyToken, clientDBConnection.connect], asy
                 if(replacements.type == 38) {
                     replacements.type = 30
                 }
-                let queryAssets = `SELECT application FROM db_new_application.dashboard_items WHERE organisation_id = :organisation_id AND representative_id = :companies AND type = :type `
+                let queryAssets = `SELECT application FROM db_new_application.dashboard_items WHERE organisation_id = :organisation_id AND representative_id = :companies   `
                 replacements.companies = companies
                 if(assignments && assignments != '') {
                     assignments = JSON.parse( assignments )
                     if(assignments.length > 0) { 
                         replacements.assignments = assignments
-                        queryAssets += ` AND rf_id IN (:assignments) `;
+                        if(replacements.type == 30) {
+                            queryAssets += ` AND application IN (SELECT application FROM db_new_application.dashboard_items WHERE organisation_id = :organisation_id AND representative_id = :companies AND rf_id IN (:assignments) ) `;
+                        } else {
+                            queryAssets += `  AND type = :type `
+                            queryAssets += ` AND rf_id IN (:assignments) `;
+                        } 
                     }
+                } else {
+                    queryAssets += `  AND type = :type `
                 }
 
                 if(customers && customers != '') {
