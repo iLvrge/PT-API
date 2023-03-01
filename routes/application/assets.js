@@ -893,11 +893,7 @@ route.get("/assets/:patentNumber/files/:channelID/slack/:token", [authJWT.verify
     
                     if(rfIDs.length > 0) {
                         replacements.rfIDs = rfIDs
-                        if(tap === false) {
-                            query += ' list2.rf_id IN (:rfIDs)'
-                        } else {
-                            query += ' AND list2.rf_id IN (:rfIDs)'
-                        }
+                        query += ' AND list2.rf_id IN (:rfIDs)'
                     }  
                 }
             } 
