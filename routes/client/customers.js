@@ -2068,7 +2068,7 @@ route.get("/:layout/transactions", [authJWT.verifyToken, clientDBConnection.conn
             companies = JSON.parse( companies )            
         }
         
-        if(replacements.layoutID == 17 || replacements.layoutID == 18 || replacements.layoutID == 19 ||replacements.layoutID == 24 || replacements.layoutID == 25 || replacements.layoutID == 26 || replacements.layoutID == 39 || replacements.layoutID == 40 || replacements.layoutID == 41) {
+        if([17, 18, 19, 24, 25, 26, 39, 40, 41].includes(replacements.layoutID)) {
             if(companies.length > 0) {
                 replacements.companies = companies
             }
