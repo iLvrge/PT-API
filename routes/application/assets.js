@@ -187,14 +187,21 @@ route.post("/assets/cpc", [authJWT.verifyToken, clientDBConnection.connect], asy
                 if(replacements.type == 38) {
                     replacements.type = 30
                 }
-                let queryAssets = `SELECT application FROM db_new_application.dashboard_items WHERE organisation_id = :organisation_id AND representative_id = :companies AND type = :type `
+                let queryAssets = `SELECT application FROM db_new_application.dashboard_items WHERE organisation_id = :organisation_id AND representative_id = :companies   `
                 replacements.companies = companies
                 if(assignments && assignments != '') {
                     assignments = JSON.parse( assignments )
                     if(assignments.length > 0) { 
                         replacements.assignments = assignments
-                        queryAssets += ` AND rf_id IN (:assignments) `;
+                        if(replacements.type == 30) {
+                            queryAssets += ` AND application IN (SELECT application FROM db_new_application.dashboard_items WHERE organisation_id = :organisation_id AND representative_id = :companies AND rf_id IN (:assignments) ) `;
+                        } else {
+                            queryAssets += `  AND type = :type `
+                            queryAssets += ` AND rf_id IN (:assignments) `;
+                        } 
                     }
+                } else {
+                    queryAssets += `  AND type = :type `
                 }
 
                 if(customers && customers != '') {
@@ -750,7 +757,7 @@ route.get("/assets/:patentNumber/files/:channelID/slack/:token", [authJWT.verify
     let assets_files = [], document_files = [], type = 1, findNumber = null
     try {
         const { patentNumber, token, channelID } = req.params
-        let { type, companies, layout, g, ga, activities, parties, rfIDs, patents } = req.query
+        let { type, companies, layout, g, ga, activities, parties, rfIDs, patents, lawyers } = req.query
         
 
         if( patentNumber != '' && patentNumber != null && patentNumber != 'undefined' ) {
@@ -820,7 +827,7 @@ route.get("/assets/:patentNumber/files/:channelID/slack/:token", [authJWT.verify
                 rfIDs = JSON.parse(rfIDs)
             }
 
-            const replacements = { organisation_id: req.orgId }
+            const replacements = { organisation_id: req.orgId, year: connection.DEFAULT_YEAR }
 
             replacements.layout = findLayout(layout)
 
@@ -851,24 +858,23 @@ route.get("/assets/:patentNumber/files/:channelID/slack/:token", [authJWT.verify
             
 
             
-            let query = 'SELECT assignment.rf_id as id, "usptodrive" as external_type, date_format(assignor.exec_dt, "%m-%d-%Y") as date, CASE WHEN representative_assignment_conveyance.convey_ty = "assignment" THEN "Ownership" WHEN representative_assignment_conveyance.convey_ty = "addresschg" THEN "Address Change" WHEN representative_assignment_conveyance.convey_ty = "namechg" THEN "Name Change" WHEN representative_assignment_conveyance.convey_ty = "partialassignment" THEN "Ownership" WHEN representative_assignment_conveyance.convey_ty = "release" THEN "Security Release"  ELSE representative_assignment_conveyance.convey_ty END as convey_ty, CASE WHEN assignment.status = 1 THEN CONCAT("https://s3-us-west-1.amazonaws.com/static.patentrack.com/assignments/var/www/html/beta/resources/shared/data/assignment-pat-",reel_no,"-",frame_no,".pdf") ELSE CONCAT("https://legacy-assignments.uspto.gov/assignments/assignment-pat-",reel_no,"-",frame_no,".pdf") END as url_private, (SELECT sum(no_of_parties) FROM report_representative_assets_transactions_parties WHERE report_representative_assets_transactions_parties.rf_id = assignment.rf_id GROUP BY report_representative_assets_transactions_parties.rf_id ) as count_parties, (SELECT assignee FROM report_representative_assets_transactions WHERE report_representative_assets_transactions.rf_id = assignment.rf_id LIMIT 1) as assignee, (SELECT assignor FROM report_representative_assets_transactions WHERE report_representative_assets_transactions.rf_id = assignment.rf_id LIMIT 1) as assignor FROM assignment INNER JOIN assignor ON assignor.rf_id = assignment.rf_id INNER JOIN representative_assignment_conveyance ON representative_assignment_conveyance.rf_id = assignment.rf_id INNER JOIN list2 ON list2.rf_id = assignment.rf_id WHERE ';
+            let query = 'SELECT assignment.rf_id as id, "usptodrive" as external_type, date_format(assignor.exec_dt, "%m-%d-%Y") as date, CASE WHEN representative_assignment_conveyance.convey_ty = "assignment" THEN "Ownership" WHEN representative_assignment_conveyance.convey_ty = "addresschg" THEN "Address Change" WHEN representative_assignment_conveyance.convey_ty = "namechg" THEN "Name Change" WHEN representative_assignment_conveyance.convey_ty = "partialassignment" THEN "Ownership" WHEN representative_assignment_conveyance.convey_ty = "release" THEN "Security Release"  ELSE representative_assignment_conveyance.convey_ty END as convey_ty, CASE WHEN assignment.status = 1 THEN CONCAT("https://s3-us-west-1.amazonaws.com/static.patentrack.com/assignments/var/www/html/beta/resources/shared/data/assignment-pat-",reel_no,"-",frame_no,".pdf") ELSE CONCAT("https://legacy-assignments.uspto.gov/assignments/assignment-pat-",reel_no,"-",frame_no,".pdf") END as url_private, (SELECT sum(no_of_parties) FROM report_representative_assets_transactions_parties WHERE report_representative_assets_transactions_parties.rf_id = assignment.rf_id GROUP BY report_representative_assets_transactions_parties.rf_id ) as count_parties, (SELECT assignee FROM report_representative_assets_transactions WHERE report_representative_assets_transactions.rf_id = assignment.rf_id LIMIT 1) as assignee, (SELECT assignor FROM report_representative_assets_transactions WHERE report_representative_assets_transactions.rf_id = assignment.rf_id LIMIT 1) as assignor FROM assignment INNER JOIN assignor ON assignor.rf_id = assignment.rf_id INNER JOIN representative_assignment_conveyance ON representative_assignment_conveyance.rf_id = assignment.rf_id INNER JOIN list2 ON list2.rf_id = assignment.rf_id WHERE date_format(assignor.exec_dt, "%Y") > :year ';
 
             if(assetsList.length > 0) {
                 replacements.assetsList = assetsList
-                query += ' list2.rf_id IN  ( SELECT documentid.rf_id FROM documentid WHERE documentid.appno_doc_num IN (:assetsList) GROUP BY documentid.rf_id )'
+                query += ' AND list2.rf_id IN  ( SELECT documentid.rf_id FROM documentid WHERE documentid.appno_doc_num IN (:assetsList) GROUP BY documentid.rf_id )'
             } else if ( patents.length > 0 ) {
                 replacements.appno_doc_num = patents
-                replacements.grant_doc_num = patents
-                query += '  list2.rf_id IN ( SELECT documentid.rf_id FROM documentid WHERE appno_doc_num IN (:appno_doc_num) OR grant_doc_num IN (:grant_doc_num) GROUP BY documentid.rf_id ) '
+                query += ' AND  assignment.rf_id IN ( SELECT documentid.rf_id FROM documentid WHERE appno_doc_num IN (:appno_doc_num) GROUP BY documentid.rf_id ) '
             } else {
-                if(activities.length > 0 || parties.length > 0 || rfIDs.length > 0) {
+                if(activities.length > 0 || parties.length > 0 || rfIDs.length > 0 ) {
                     let tap = false
                     if(activities.length > 0 || parties.length > 0){
                         tap = true
                         replacements.activities = activities
                         replacements.parties = parties
                         replacements.companies = companies
-                        query += 'list2.rf_id IN ( SELECT rf_id FROM db_new_application.activity_parties_transactions WHERE organisation_id = :organisation_id  '
+                        query += ' AND list2.rf_id IN ( SELECT rf_id FROM db_new_application.activity_parties_transactions WHERE organisation_id = :organisation_id  '
     
                         if(companies.length > 0) {
                             query += ' AND company_id IN (:companies) '
@@ -886,15 +892,46 @@ route.get("/assets/:patentNumber/files/:channelID/slack/:token", [authJWT.verify
     
                     if(rfIDs.length > 0) {
                         replacements.rfIDs = rfIDs
-                        if(tap === false) {
-                            query += ' list2.rf_id IN (:rfIDs)'
-                        } else {
-                            query += ' AND list2.rf_id IN (:rfIDs)'
-                        }
-                    }               
+                        query += ' AND list2.rf_id IN (:rfIDs)'
+                    }  
                 }
-            }
+            } 
+  
+            if(assetsList.length == 0 && patents.length == 0 && lawyers != '' && lawyers != null && lawyers != undefined && parseInt(lawyers) > 0) {
+                if(companies.length > 0) {
+                    replacements.companies = companies
+                }
+                const findLawFirm = `SELECT cname, lf.name, rlf.representative_id, rlf.representative_name FROM db_uspto.correspondent AS c LEFT JOIN db_uspto.law_firm  as lf ON c.cname = lf.name
+                    LEFT JOIN db_uspto.representative_law_firm AS rlf ON rlf.representative_id = lf.representative_id WHERE c.rf_id = :lawyers`
+    
+                const getLawFirmData = await connection.applicationNew.query(findLawFirm, {
+                    type: connection.Sequelize.QueryTypes.SELECT,
+                    raw: true,
+                    plain: true,
+                    logging: console.log,
+                    replacements: {lawyers},
+                })  
+                if(getLawFirmData != null ) { 
+                    if(getLawFirmData.representative_id > 0) {
+                        replacements.representative_id = getLawFirmData.representative_id 
+                    } else {
+                        replacements.name = getLawFirmData.cname
+                    }
+    
+                    let tempQuery = `SELECT di.rf_id FROM db_uspto.law_firm  as lf  
+                    INNER JOIN db_new_application.dashboard_items AS di ON di.lawfirm_id = lf.law_firm_id
+                    LEFT JOIN db_uspto.representative_law_firm AS rlf ON rlf.representative_id = lf.representative_id WHERE   
+                    organisation_id = :organisation_id AND di.representative_id IN (:companies) AND type = 40 `
+                    if(typeof replacements.representative_id != 'undefined') {
+                        tempQuery += ` AND rlf.representative_id = :representative_id`
+                    } else {
+                        tempQuery += ` AND lf.name = :name`
+                    }
+                    tempQuery += ` GROUP BY di.rf_id`
 
+                    query += ` AND list2.rf_id IN (${tempQuery}) ` 
+                } 
+            } 
 
             /* if(companies.length > 0) {
                 replacements.companies = companies
