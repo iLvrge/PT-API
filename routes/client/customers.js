@@ -1727,9 +1727,7 @@ route.get("/:layout/assets", [authJWT.verifyToken, clientDBConnection.connect], 
                                 } 
                             }
 
-                            query += ` )) `
-
-
+                            query += ` )) ` 
                         /* if(Array.isArray(customers) && customers.length > 0){
                             query += ` AND application IN ( SELECT documentid.appno_doc_num FROM db_uspto.documentid WHERE rf_id  IN ( SELECT activity_parties_transactions.rf_id  FROM db_new_application.activity_parties_transactions WHERE activity_parties_transactions.organisation_id = :organisationID `;
 
