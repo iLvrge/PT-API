@@ -84,6 +84,7 @@ const activities = require("./routes/client/activities");
 const comments = require("./routes/client/comments");
 const professionals = require("./routes/client/professionals");
 const users = require("./routes/client/users");
+const category_products = require("./routes/client/category_products");
 const documents = require("./routes/client/documents");
 const company = require("./routes/client/company");
 const address = require("./routes/client/address");
@@ -172,6 +173,8 @@ app.use("/customers", customers);
 app.use("/timeline", timelines);
 
 app.use("/users", users);
+
+app.use("/category_products", category_products);
 
 app.use("/professionals", professionals);
 
