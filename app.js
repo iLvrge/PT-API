@@ -52,7 +52,14 @@ app.use(bodyParser.urlencoded({limit: '100mb', extended:false, parameterLimit:10
 
 app.use(upload());
 
-app.use(cors());
+app.use(cors({
+    origin: '*',
+    methods: ['GET','POST','DELETE','PUT','PATCH'],
+    preflightContinue: false,
+    optionsSuccessStatus: 204
+}));
+
+app.options('*', cors()) 
 
 /**nginx client_max_body_size 100M; #100mb */
 

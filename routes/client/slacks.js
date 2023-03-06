@@ -656,6 +656,55 @@ route.get("/conversations/history/:token/:channelID" , async(req, res, next) => 
     }
 })
 
+
+route.get("/conversations/search/assigned/:token" , async(req, res, next) => {
+    try{
+        const { token } = req.params; 
+         
+
+        const showAllMessages = (messages) => {
+            res.status( 200 ).json( messages )
+        }
+
+        await retrievedAllSeachMessages( token, showAllMessages)
+         
+    } catch (e) {
+        console.log(e)
+        res.status(401).send(`Error: ${e.data.error}`);
+    }
+})
+
+const retrievedAllSeachMessages = async( token, callback) => {
+    const web = new WebClient(token);
+    const reteiveMessagesFromMatechedString  = async(page, result) => {
+        const request = {
+            query: 'assigned to this asset via PatenTrack',
+        }
+        if(page > 1 ) {
+            request.page = page
+        }
+
+        const response = await web.search.messages(request) 
+
+        if(response && response.ok === true) {
+            let {paging, matches} = response.messages
+            result = result.concat(matches);
+
+            let {page, pages} = paging;
+             
+
+            if(page + 1 < pages) {
+                await reteiveMessagesFromMatechedString(page + 1, result)
+            } else {
+                callback(result)
+            }
+        } else {
+            callback(result)
+        }
+    }
+    await reteiveMessagesFromMatechedString(1, []);
+}
+
 route.get("/conversations/users/:token" , async(req, res, next) => {
     try{
         const { token } = req.params;

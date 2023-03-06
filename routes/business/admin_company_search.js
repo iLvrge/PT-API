@@ -2301,8 +2301,8 @@ route.put("/company/raw/assignments/:id", [authJWT.verifyToken, authJWT.isAdmin,
         const customerID = req.params.id, representativeIDs = JSON.parse(req.query.portfolios != undefined ? req.query.portfolios : "[]");
         exec(`php -f /var/www/html/trash/address_swapping.php "${customerID}" "${representativeIDs}"`, function (error, stdout, stderr) {
             console.log(error);
-            console.log(stdout);
-            console.log(stderr);
+            //console.log(stdout);
+            //console.log(stderr);
         });
         res.status(200).send("In process");
     } catch (e) {
@@ -2501,22 +2501,26 @@ route.put("/company/assignments", [authJWT.verifyToken, authJWT.isAdmin], async 
                                     updateQuery2 = ` caddress_1 = :item `
                                     item = getData.caddress_2
                                 }
-                                updateQuery1 = `UPDATE db_uspto.correspondent SET ${updateQuery1} WHERE rf_id IN (:allRfIDs)`
-                                const update = await connection.applicationNew.query(updateQuery1, {
-                                    type: connection.Sequelize.QueryTypes.UPDATE,
-                                    raw: true,
-                                    logging: console.log,
-                                    replacements: {allRfIDs},
-                                })
-                                console.log(update)
-                                if(update) {
-                                    updateQuery2 = `UPDATE db_uspto.correspondent SET ${updateQuery2} WHERE rf_id IN (:allRfIDs)`
-                                    await connection.applicationNew.query(updateQuery2, {
+                                if(updateQuery1 != '') { 
+                                    updateQuery1 = `UPDATE db_uspto.correspondent SET ${updateQuery1} WHERE rf_id IN (:allRfIDs)`
+                                    const update = await connection.applicationNew.query(updateQuery1, {
                                         type: connection.Sequelize.QueryTypes.UPDATE,
                                         raw: true,
                                         logging: console.log,
-                                        replacements: {allRfIDs, item},
+                                        replacements: {allRfIDs},
                                     })
+                                    console.log(update)
+                                    if(update) {
+                                        if(updateQuery2 != '') { 
+                                            updateQuery2 = `UPDATE db_uspto.correspondent SET ${updateQuery2} WHERE rf_id IN (:allRfIDs)`
+                                            await connection.applicationNew.query(updateQuery2, {
+                                                type: connection.Sequelize.QueryTypes.UPDATE,
+                                                raw: true,
+                                                logging: console.log,
+                                                replacements: {allRfIDs, item},
+                                            })
+                                        }
+                                    }
                                 }
                             }
                             res.status(200).send("Records Updated");
