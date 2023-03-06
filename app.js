@@ -52,7 +52,7 @@ app.use(bodyParser.urlencoded({limit: '100mb', extended:false, parameterLimit:10
 
 app.use(upload());
 
-app.use(cors({
+/* app.use(cors({
     origin: '*',
     methods: ['GET','POST','DELETE','PUT','PATCH', 'OPTIONS'],
     preflightContinue: false,
@@ -66,7 +66,37 @@ app.use(function(req, res, next) {
    res.header('Access-Control-Allow-Methods', 'DELETE, PUT, GET, POST, OPTIONS, PATCH');
    res.header("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept");
    next();
-});
+}); */
+
+// enable cors
+app.use(
+    cors({
+        origin: '*',
+        optionsSuccessStatus: 200,
+        credentials: true,
+    })
+  );
+  app.options(
+    '*',
+    cors({
+        origin: '*',
+        optionsSuccessStatus: 200,
+        credentials: true,
+    })
+);
+
+app.use((req, res, next) => { //doesn't send response just adjusts it
+    res.header("Access-Control-Allow-Origin", "*") //* to give access to any origin
+    res.header(
+        "Access-Control-Allow-Headers",
+        "Origin, X-Requested-With, Content-Type, Accept, Authorization" //to give access to all the headers provided
+    );
+    if(req.method === 'OPTIONS'){
+        res.header('Access-Control-Allow-Methods', 'PUT, POST, PATCH, DELETE, GET'); //to give access to all the methods provided
+        return res.status(200).json({});
+    }
+    next(); //so that other routes can take over
+})
 
 /**nginx client_max_body_size 100M; #100mb */
 
