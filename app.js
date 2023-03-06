@@ -72,20 +72,27 @@ app.use(function(req, res, next) {
 app.use(
     cors({
         origin: '*',
+        exposedHeaders: '*',
         optionsSuccessStatus: 200,
         credentials: true,
     })
   );
-  app.options(
+/* app.options(
     '*',
     cors({
         origin: '*',
+        exposedHeaders: '*',
         optionsSuccessStatus: 200,
         credentials: true,
     })
-);
-
-app.use((req, res, next) => { //doesn't send response just adjusts it
+); */
+app.options('*', (req, res) => {
+    res.writeHead(200, '', {
+        'Access-Control-Allow-Origin': '*',
+        'Access-Control-Allow-Methods': 'OPTIONS',
+    }).end();
+});
+/* app.use((req, res, next) => { //doesn't send response just adjusts it
     res.header("Access-Control-Allow-Origin", "*") //* to give access to any origin
     res.header(
         "Access-Control-Allow-Headers",
@@ -96,7 +103,7 @@ app.use((req, res, next) => { //doesn't send response just adjusts it
         return res.status(200).json({});
     }
     next(); //so that other routes can take over
-})
+}) */
 
 /**nginx client_max_body_size 100M; #100mb */
 
