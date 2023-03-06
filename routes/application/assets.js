@@ -242,7 +242,7 @@ route.post("/assets/cpc", [authJWT.verifyToken, clientDBConnection.connect], asy
                 list = JSON.parse(list)
             }            
 
-            let rangeConcat = 'CONCAT(section, class)'
+            let rangeConcat = 'CONCAT(section, class, sub_class)'
 
             if( range != undefined && range != 'undefined' && range != null) {
                 switch(parseInt(range)) {
@@ -520,7 +520,7 @@ route.post("/assets/cpc", [authJWT.verifyToken, clientDBConnection.connect], asy
                             }
                             return 0;
                         });
-                        console.log('getList', getList)
+                        //console.log('getList', getList)
                         const promise = remainingList.map( item => {  
                             if(!cpcCode.includes(item.cpc_code)){
                                 cpcCode.push(item.cpc_code) 
