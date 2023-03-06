@@ -59,7 +59,14 @@ app.use(cors({
     optionsSuccessStatus: 204
 }));
 
-app.options('*', cors()) 
+app.options('*', cors())  
+
+app.use(function(req, res, next) {
+   res.header("Access-Control-Allow-Origin", "*");
+   res.header('Access-Control-Allow-Methods', 'DELETE, PUT, GET, POST, OPTIONS, PATCH');
+   res.header("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept");
+   next();
+});
 
 /**nginx client_max_body_size 100M; #100mb */
 
