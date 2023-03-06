@@ -54,7 +54,7 @@ app.use(upload());
 
 app.use(cors({
     origin: '*',
-    methods: ['GET','POST','DELETE','PUT','PATCH'],
+    methods: ['GET','POST','DELETE','PUT','PATCH', 'OPTIONS'],
     preflightContinue: false,
     optionsSuccessStatus: 204
 }));
