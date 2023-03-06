@@ -404,20 +404,24 @@ route.get("/customers/run_query/:representative_name/:query_no", [authJWT.verify
  */
 
 route.get("/customers", [authJWT.verifyToken, authJWT.isAdmin], (req, res, next) => {
+    try{
 
-    Organisations.findAll({
-        attributes: [['organisation_id', 'id'], 'name','logo', 'organisation_type', [connection.Sequelize.literal(0, 'no_of_parties'), 'share_url'], [connection.Sequelize.literal(0, 'assets'), 'assets'], [connection.Sequelize.literal(0, 'no_of_transactions'),'no_of_transactions'], [connection.Sequelize.literal(0, 'no_of_parties'), 'no_of_parties'], [connection.Sequelize.literal(0, 'no_of_entities'), 'no_of_entities'], [connection.Sequelize.literal(0, 'no_of_employees'), 'no_of_employees'], [connection.Sequelize.literal(0, 'product'), 'product']],
-        where: {type:{[connection.Op.ne]: 2}},
-        order:[
-            ['name', 'ASC']
-        ]
-    })
-    .then((list)=>{
-        res.status(200).json(list);
-    }).catch((err)=>{
-        console.log(err);
-        res.status(500).json({message: "Unable to retrieve customer list"})
-    });
+        Organisations.findAll({
+            attributes: [['organisation_id', 'id'], 'name','logo', 'organisation_type', [connection.Sequelize.literal(0, 'no_of_parties'), 'share_url'], [connection.Sequelize.literal(0, 'assets'), 'assets'], [connection.Sequelize.literal(0, 'no_of_transactions'),'no_of_transactions'], [connection.Sequelize.literal(0, 'no_of_parties'), 'no_of_parties'], [connection.Sequelize.literal(0, 'no_of_entities'), 'no_of_entities'], [connection.Sequelize.literal(0, 'no_of_employees'), 'no_of_employees'], [connection.Sequelize.literal(0, 'product'), 'product']],
+            where: {type:{[connection.Op.ne]: 2}},
+            order:[
+                ['name', 'ASC']
+            ]
+        })
+        .then((list)=>{
+            res.status(200).json(list);
+        }).catch((err)=>{
+            console.log(err);
+            res.status(500).json({message: "Unable to retrieve customer list"})
+        });
+    } catch (e) {
+        
+    }
 });
 
 /**
@@ -1187,51 +1191,55 @@ let downloadImageFromUrl = async (org, res, url, filename, contentType, callback
             });
         });                                                                         
     }).end(); */
+    try{
 
-    request.head(url, (err, response, body) => {
-        const path = url.split('/').pop(), pathDirectory = '/var/www/html/betapp/'
-        request(url)
-        .pipe(fs.createWriteStream(`${pathDirectory}${path}`))
-        .on('close', () => {
-            const imageData = fs.readFileSync(`${pathDirectory}${path}`, {flag:'r'});
-            if(imageData){
-                const bucketConfig = config.bucketConfig;  
-            
-                filename = filename.replace(/\s+/g, '-');
-               
-                let s3 = new AWS.S3({
-                    credentials: {
-                        accessKeyId: bucketConfig.accessKeyId,
-                        secretAccessKey: bucketConfig.secretAccessKey,
-                    },
-                    region: bucketConfig.region
-                })
-               
-                const params = {
-                    Key: `${bucketConfig.dirName}/${filename}`,
-                    Bucket: bucketConfig.bucketName,
-                    Body: imageData,
-                    ACL: 'public-read',
-                    ContentType: contentType,
-                    ContentDisposition: 'inline'
-                }
-                console.log("params", params)
-                s3.putObject(params, async function(err, data) {
-                    console.log(err, data);
-                    if(err == null) {
-                        filename = `https://s3-${bucketConfig.region}.amazonaws.com/${bucketConfig.bucketName}/${bucketConfig.dirName}/${filename}`;
-                        await org.update({
-                            logo: filename
-                        })
-                        spawn('rm', [`${pathDirectory}${path}`]);
-                        res.status(200).json({name: org.name, logo: org.logo});    
-                    } else {
-                        res.status(200).json({name: org.name, logo: ''});    
+        request.head(url, (err, response, body) => {
+            const path = url.split('/').pop(), pathDirectory = '/var/www/html/betapp/'
+            request(url)
+            .pipe(fs.createWriteStream(`${pathDirectory}${path}`))
+            .on('close', () => {
+                const imageData = fs.readFileSync(`${pathDirectory}${path}`, {flag:'r'});
+                if(imageData){
+                    const bucketConfig = config.bucketConfig;  
+                
+                    filename = filename.replace(/\s+/g, '-');
+                   
+                    let s3 = new AWS.S3({
+                        credentials: {
+                            accessKeyId: bucketConfig.accessKeyId,
+                            secretAccessKey: bucketConfig.secretAccessKey,
+                        },
+                        region: bucketConfig.region
+                    })
+                   
+                    const params = {
+                        Key: `${bucketConfig.dirName}/${filename}`,
+                        Bucket: bucketConfig.bucketName,
+                        Body: imageData,
+                        ACL: 'public-read',
+                        ContentType: contentType,
+                        ContentDisposition: 'inline'
                     }
-                });
-            }
+                    console.log("params", params)
+                    s3.putObject(params, async function(err, data) {
+                        console.log(err, data);
+                        if(err == null) {
+                            filename = `https://s3-${bucketConfig.region}.amazonaws.com/${bucketConfig.bucketName}/${bucketConfig.dirName}/${filename}`;
+                            await org.update({
+                                logo: filename
+                            })
+                            spawn('rm', [`${pathDirectory}${path}`]);
+                            res.status(200).json({name: org.name, logo: org.logo});    
+                        } else {
+                            res.status(200).json({name: org.name, logo: ''});    
+                        }
+                    });
+                }
+            })
         })
-    })
+    } catch (e) {
+        
+    }
 };
 
 route.put("/customers/:id/logo", [authJWT.verifyToken, authJWT.isAdmin], async (req, res) => {
@@ -1371,6 +1379,7 @@ route.put("/customers/:id/logo", [authJWT.verifyToken, authJWT.isAdmin], async (
  */
 
 route.get("/customers/:id/libraries", [authJWT.verifyToken, authJWT.isAdmin], (req, res, next) => {
+    
     (async () => {
         try{
             let organisationID = req.params.id;
@@ -1899,17 +1908,22 @@ route.get("/customers/:organisation_id/address/publish", [authJWT.verifyToken, a
 });
 
 route.put("/customers/:id/flag_update_manually", [authJWT.verifyToken, authJWT.isAdmin, authJWT.addClientID, clientDBConnection.connect], async(req, res, next) => {
-    let inventors = req.body.inventors, organisationID = req.params.id, flag = req.body.flag;
+    try{
 
-    if(inventors != undefined && inventors.length > 0) {
-        if(typeof req.connection_db != "undefined" && req.connection_db != null ) {
-            let update = await helpers.updateAllCustomerInventor(organisationID, inventors, flag, req.connection_db);
-            res.status(200).json(update);
+        let inventors = req.body.inventors, organisationID = req.params.id, flag = req.body.flag;
+    
+        if(inventors != undefined && inventors.length > 0) {
+            if(typeof req.connection_db != "undefined" && req.connection_db != null ) {
+                let update = await helpers.updateAllCustomerInventor(organisationID, inventors, flag, req.connection_db);
+                res.status(200).json(update);
+            } else {
+                res.status(400).send("No companies found ");
+            }
         } else {
-            res.status(400).send("No companies found ");
+            res.status(400).send("No list found! ");
         }
-    } else {
-        res.status(400).send("No list found! ");
+    } catch (e) {
+        
     }
 });
 
@@ -1948,39 +1962,44 @@ route.delete("/customers/:organisation_id", [authJWT.verifyToken, authJWT.isAdmi
 });
 
 
-route.get("/patents/:asset",[authJWT.verifyToken, authJWT.isAdmin], async (req, res) =>{        
-    let asset = req.params.asset;
-    let where = {
-        [connection.Op.or]:[{grant_doc_num: asset},{appno_doc_num: asset}]
-    }
-    if(typeof flag !== 'undefined' && flag >= 0) {
-        if(flag == 1) {
-            where = {
-                grant_doc_num: asset
-            }
-        } else if(flag == 0) {
-            where = {
-                appno_doc_num: asset
+route.get("/patents/:asset",[authJWT.verifyToken, authJWT.isAdmin], async (req, res) =>{       
+    try{
+
+        let asset = req.params.asset;
+        let where = {
+            [connection.Op.or]:[{grant_doc_num: asset},{appno_doc_num: asset}]
+        }
+        if(typeof flag !== 'undefined' && flag >= 0) {
+            if(flag == 1) {
+                where = {
+                    grant_doc_num: asset
+                }
+            } else if(flag == 0) {
+                where = {
+                    appno_doc_num: asset
+                }
             }
         }
-    }
-    Documentids.findAll({
-        where,
-        attributes:['rf_id',['grant_doc_num','number'], ['appno_doc_num','application']],
-    })
-    .then(p => {
-        console.log("CHECKING PATENT");
-        console.log('%j',p);     
-        if(p != null && p.length > 0){
-            console.log(p); 
-            helpers.generateJSON(req, res);
-        } else {
+        Documentids.findAll({
+            where,
+            attributes:['rf_id',['grant_doc_num','number'], ['appno_doc_num','application']],
+        })
+        .then(p => {
+            console.log("CHECKING PATENT");
+            console.log('%j',p);     
+            if(p != null && p.length > 0){
+                console.log(p); 
+                helpers.generateJSON(req, res);
+            } else {
+                res.status(400).send("Invalid number");
+            }       
+        }).catch(err => {
+            console.log(err);
             res.status(400).send("Invalid number");
-        }       
-    }).catch(err => {
-        console.log(err);
-        res.status(400).send("Invalid number");
-    })
+        })
+    } catch (e) {
+        
+    } 
 });
 
 route.get("/patents/:patentNumber/comments",[authJWT.verifyToken, authJWT.isAdmin], async (req, res) =>{        
@@ -1988,84 +2007,94 @@ route.get("/patents/:patentNumber/comments",[authJWT.verifyToken, authJWT.isAdmi
 });
 
 route.get("/patents/:patentNumber/outsource",[authJWT.verifyToken, authJWT.isAdmin], async (req, res) =>{ 
-    let patentNumber = req.params.patentNumber;       
-    Documentids.findOne({
-        where:{[connection.Op.or]:[{grant_doc_num: patentNumber},{appno_doc_num: patentNumber}]},
-        attributes:['rf_id',['grant_doc_num','number'], ['appno_doc_num','application']],
-    })
-    .then(p => {
-        if(p != null) {
-            let type = "patNum";
-            console.log('%j',p); 
-            let data = p.toJSON();
-            if(patentNumber == data.application){
-                patentNumber = data.application;
-                type = "applNum";
-            }      
-            res.status(200).json({url:`https://assignment.uspto.gov/patent/index.html#/patent/search/resultAbstract?id=${patentNumber}&type=${type}`});
-        } else {
-            res.status(200).send("");
-        }        
-    }).catch(err => {
-        console.log(err);
-        res.status(400).send("Invalid number");
-    })
+    try{
+
+        let patentNumber = req.params.patentNumber;       
+        Documentids.findOne({
+            where:{[connection.Op.or]:[{grant_doc_num: patentNumber},{appno_doc_num: patentNumber}]},
+            attributes:['rf_id',['grant_doc_num','number'], ['appno_doc_num','application']],
+        })
+        .then(p => {
+            if(p != null) {
+                let type = "patNum";
+                console.log('%j',p); 
+                let data = p.toJSON();
+                if(patentNumber == data.application){
+                    patentNumber = data.application;
+                    type = "applNum";
+                }      
+                res.status(200).json({url:`https://assignment.uspto.gov/patent/index.html#/patent/search/resultAbstract?id=${patentNumber}&type=${type}`});
+            } else {
+                res.status(200).send("");
+            }        
+        }).catch(err => {
+            console.log(err);
+            res.status(400).send("Invalid number");
+        })
+    } catch (e) {
+        
+    }
 });
 
 route.get("/patents/:patentNumber/assignments",[authJWT.verifyToken, authJWT.isAdmin], async (req, res) =>{ 
-    let patentNumber = req.params.patentNumber; 
-    Documentids.findOne({
-        where:{[connection.Op.or]:[{grant_doc_num: patentNumber},{appno_doc_num: patentNumber}]},
-        attributes:['rf_id',['grant_doc_num','number'], ['appno_doc_num','application']],
-    })
-    .then(p => {
-        if(p != null) {
-            let type = "patNum";
-            console.log('%j',p); 
-            let data = p.toJSON();
-            if(patentNumber == data.application){
-                patentNumber = data.application;
-                type = "applNum";
-            }      
+    try{
 
-            let queryAssignments = "SELECT a.rf_id, a.convey_text, ac.convey_ty, '' as file, r.representative_type FROM assignment as a INNER JOIN assignor as `or` ON `or`.rf_id = a.rf_id INNER JOIN assignment_conveyance as ac ON ac.rf_id = a.rf_id INNER JOIN documentid as d ON d.rf_id = a.rf_id LEFT JOIN representative_assignment_conveyance as r ON r.rf_id = a.rf_id WHERE ";
-
-            if(type == "patNum") {
-                queryAssignments += " d.grant_doc_num = :number";
-            } else if(type == "applNum") {
-                queryAssignments += " d.appno_doc_num = :number";
-            }
-
-            queryAssignments +=" ORDER BY a.exec_dt ASC";
-            (async () => {
-                let getAssignmentList = await connection.resources.query(queryAssignments,{
-                    type: connection.Sequelize.QueryTypes.SELECT,
-                    replacements: { number: patentNumber },
-                    raw: true,
-                    logging: console.log,
-                    }
-                );	
+        let patentNumber = req.params.patentNumber; 
+        Documentids.findOne({
+            where:{[connection.Op.or]:[{grant_doc_num: patentNumber},{appno_doc_num: patentNumber}]},
+            attributes:['rf_id',['grant_doc_num','number'], ['appno_doc_num','application']],
+        })
+        .then(p => {
+            if(p != null) {
+                let type = "patNum";
+                console.log('%j',p); 
+                let data = p.toJSON();
+                if(patentNumber == data.application){
+                    patentNumber = data.application;
+                    type = "applNum";
+                }      
     
-                if(getAssignmentList.length > 0) {
-                    const path = '/var/wwww/html/PatenTrack/resources/shared/data/';
-                    getAssignmentList.map( (a, index) => {
-                        let fileName = `assignment-pat-${a.reel_no}-${a.frame_no}.pdf`;
-                        if (fs.existsSync(path+fileName)) {
-                            //file exists
-                            getAssignmentList[index].file = `https://patentrack.com/resources/shared/data/${fileName}`;
-                        }
-                    });
+                let queryAssignments = "SELECT a.rf_id, a.convey_text, ac.convey_ty, '' as file, r.representative_type FROM assignment as a INNER JOIN assignor as `or` ON `or`.rf_id = a.rf_id INNER JOIN assignment_conveyance as ac ON ac.rf_id = a.rf_id INNER JOIN documentid as d ON d.rf_id = a.rf_id LEFT JOIN representative_assignment_conveyance as r ON r.rf_id = a.rf_id WHERE ";
+    
+                if(type == "patNum") {
+                    queryAssignments += " d.grant_doc_num = :number";
+                } else if(type == "applNum") {
+                    queryAssignments += " d.appno_doc_num = :number";
                 }
-                res.status(200).json(getAssignmentList);
-            }) ();
-            
-        } else {
-            res.status(200).send("");
-        }        
-    }).catch(err => {
-        console.log(err);
-        res.status(400).send("Invalid number");
-    })
+    
+                queryAssignments +=" ORDER BY a.exec_dt ASC";
+                (async () => {
+                    let getAssignmentList = await connection.resources.query(queryAssignments,{
+                        type: connection.Sequelize.QueryTypes.SELECT,
+                        replacements: { number: patentNumber },
+                        raw: true,
+                        logging: console.log,
+                        }
+                    );	
+        
+                    if(getAssignmentList.length > 0) {
+                        const path = '/var/wwww/html/PatenTrack/resources/shared/data/';
+                        getAssignmentList.map( (a, index) => {
+                            let fileName = `assignment-pat-${a.reel_no}-${a.frame_no}.pdf`;
+                            if (fs.existsSync(path+fileName)) {
+                                //file exists
+                                getAssignmentList[index].file = `https://patentrack.com/resources/shared/data/${fileName}`;
+                            }
+                        });
+                    }
+                    res.status(200).json(getAssignmentList);
+                }) ();
+                
+            } else {
+                res.status(200).send("");
+            }        
+        }).catch(err => {
+            console.log(err);
+            res.status(400).send("Invalid number");
+        })
+    } catch (e) {
+        
+    }
 });
 
 
@@ -2086,35 +2115,40 @@ route.get("/customers/retrieve_cited_patents/:customerID",[authJWT.verifyToken, 
 })
 
 route.get("/customers/retrieve_cited_patents_domain/:customerID/:apiName",[authJWT.verifyToken, authJWT.isAdmin], async (req, res) =>{ 
-    const {customerID, apiName} = req.params
-    const {assignees, type} = req.query
-    console.log('retrieve_cited_patents_domain')
-    /* exec(`node /var/www/html/script/name_to_domain_api.js ${customerID} ${apiName} ${assignees} 0 > name_to_domain_api.log  2>&1`, function(err, stdout, stderr){
-        console.log(`assigneeLogos downloadFileSpawn.stdout: ${stdout}`)
-        console.log(`Error assigneeLogos downloadFileSpawn.stderr: ${stderr}`)
-        console.log(`Error assigneeLogos downloadFileSpawn.err: ${err}`)
-    }); */
-    logger.info('Sending request to RapidAPI script')
+    try{
+
+        const {customerID, apiName} = req.params
+        const {assignees, type} = req.query
+        console.log('retrieve_cited_patents_domain')
+        /* exec(`node /var/www/html/script/name_to_domain_api.js ${customerID} ${apiName} ${assignees} 0 > name_to_domain_api.log  2>&1`, function(err, stdout, stderr){
+            console.log(`assigneeLogos downloadFileSpawn.stdout: ${stdout}`)
+            console.log(`Error assigneeLogos downloadFileSpawn.stderr: ${stderr}`)
+            console.log(`Error assigneeLogos downloadFileSpawn.err: ${err}`)
+        }); */
+        logger.info('Sending request to RapidAPI script')
+        
+        const assigneeLogos = spawn('node', ['/var/www/html/script/name_to_domain_api.js', customerID, apiName, assignees, 0]);
     
-    const assigneeLogos = spawn('node', ['/var/www/html/script/name_to_domain_api.js', customerID, apiName, assignees, 0]);
-
-    assigneeLogos.stdout.on('data', (data) => {
-        logger.info(data)
-        console.log(`assigneeLogos downloadFileSpawn.stdout: ${data}`)
-    });
-    assigneeLogos.stderr.on('data', (data) => {
-        logger.info(data)
-        console.log(`Error assigneeLogos downloadFileSpawn.stderr: ${data}`)
-        //reject(data)
-    });
-
-    assigneeLogos.on('close', (code) => {
-        logger.info(code)
-        resolve(`download assigneeLogos downloadFileSpawn.close ${code}`)    
-    }) 
-
-
-    res.status(200).send("run logo script");
+        assigneeLogos.stdout.on('data', (data) => {
+            logger.info(data)
+            console.log(`assigneeLogos downloadFileSpawn.stdout: ${data}`)
+        });
+        assigneeLogos.stderr.on('data', (data) => {
+            logger.info(data)
+            console.log(`Error assigneeLogos downloadFileSpawn.stderr: ${data}`)
+            //reject(data)
+        });
+    
+        assigneeLogos.on('close', (code) => {
+            logger.info(code)
+            resolve(`download assigneeLogos downloadFileSpawn.close ${code}`)    
+        }) 
+    
+    
+        res.status(200).send("run logo script");
+    } catch (e) {
+        
+    }
 })
 
 route.post("/customers/retrieve_cited_patents_logo",[authJWT.verifyToken, authJWT.isAdmin], async (req, res) =>{ 

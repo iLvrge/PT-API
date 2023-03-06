@@ -383,146 +383,161 @@ route.get("/company/search/country/:name", [authJWT.verifyToken, authJWT.isAdmin
 });
 
 let updateDataAndShowData = async (representativeCompany, name, oldRepresentativeCompanyID, oldRepresentativeCompanyName, findRow, res) => {
-    const item = {representative_id: representativeCompany.representative_id};
-                
-    if(oldRepresentativeCompanyID == 0) {
-        /**
-         * Update representative ID
-         */
-        await AssignorAndAssignee.update(item, {where: {name: name}});                                             
-    } else {                        
-        await AssignorAndAssignee.update(item, {where: {name: oldRepresentativeCompanyName}});
-        await AssignorAndAssignee.update(item, {where: {representative_id: oldRepresentativeCompanyID}});
-    }
+    try{
 
-    if(findRow != null && findRow.representative_id > 0) {
-        const findData = await helpers.checkRepresentativeCompany(name);
-
-        if(findData != null) {
-            const findCount = await AssignorAndAssignee.count({
-                where: {representative_id: findData.representative_id}
-            });
-
-            if(findCount == 0) {
-                await Representatives.destroy({
-                    where: {representative_id: findData.representative_id}
-                })
-            }
-        }                    
-    }
-
-    const queryCompany = `SELECT a.assignor_and_assignee_id as id, a.assignor_and_assignee_id, a.name, a.instances as counter, c.representative_name as normalize_name, (select rr.representative_name FROM representative as rr WHERE rr.representative_name = a.name GROUP BY rr.representative_name) as representative_company, (SELECT concat(ass.reel_no,'-', ass.frame_no) FROM assignee as ee INNER JOIN assignment as ass ON ass.rf_id = ee.rf_id WHERE ee.assignor_and_assignee_id = a.assignor_and_assignee_id LIMIT 1) as assigneeRFID, (SELECT concat(asss.reel_no,'-', asss.frame_no) FROM assignor as assi INNER JOIN assignment as asss ON asss.rf_id = assi.rf_id WHERE assi.assignor_and_assignee_id = a.assignor_and_assignee_id LIMIT 1) as assignorRFID  FROM assignor_and_assignee as a LEFT JOIN representative as c ON c.representative_id = a.representative_id WHERE a.name = :name `;
-
-    findRow = await connection.resources.query(queryCompany,{
-        type: connection.Sequelize.QueryTypes.SELECT,
-        raw: true,
-        replacements: { name: name },
-        plain: true,
-        logging: console.log,
+        const item = {representative_id: representativeCompany.representative_id};
+                    
+        if(oldRepresentativeCompanyID == 0) {
+            /**
+             * Update representative ID
+             */
+            await AssignorAndAssignee.update(item, {where: {name: name}});                                             
+        } else {                        
+            await AssignorAndAssignee.update(item, {where: {name: oldRepresentativeCompanyName}});
+            await AssignorAndAssignee.update(item, {where: {representative_id: oldRepresentativeCompanyID}});
         }
-    );
-    res.status(200).json(findRow);	
+    
+        if(findRow != null && findRow.representative_id > 0) {
+            const findData = await helpers.checkRepresentativeCompany(name);
+    
+            if(findData != null) {
+                const findCount = await AssignorAndAssignee.count({
+                    where: {representative_id: findData.representative_id}
+                });
+    
+                if(findCount == 0) {
+                    await Representatives.destroy({
+                        where: {representative_id: findData.representative_id}
+                    })
+                }
+            }                    
+        }
+    
+        const queryCompany = `SELECT a.assignor_and_assignee_id as id, a.assignor_and_assignee_id, a.name, a.instances as counter, c.representative_name as normalize_name, (select rr.representative_name FROM representative as rr WHERE rr.representative_name = a.name GROUP BY rr.representative_name) as representative_company, (SELECT concat(ass.reel_no,'-', ass.frame_no) FROM assignee as ee INNER JOIN assignment as ass ON ass.rf_id = ee.rf_id WHERE ee.assignor_and_assignee_id = a.assignor_and_assignee_id LIMIT 1) as assigneeRFID, (SELECT concat(asss.reel_no,'-', asss.frame_no) FROM assignor as assi INNER JOIN assignment as asss ON asss.rf_id = assi.rf_id WHERE assi.assignor_and_assignee_id = a.assignor_and_assignee_id LIMIT 1) as assignorRFID  FROM assignor_and_assignee as a LEFT JOIN representative as c ON c.representative_id = a.representative_id WHERE a.name = :name `;
+    
+        findRow = await connection.resources.query(queryCompany,{
+            type: connection.Sequelize.QueryTypes.SELECT,
+            raw: true,
+            replacements: { name: name },
+            plain: true,
+            logging: console.log,
+            }
+        );
+        res.status(200).json(findRow);	
+    } catch (e) {
+        
+    }
 }
 
 let allRepresentativesCheckAndDelete = async (allRepresentatives) => {
-    const findRepresentativeCount = await AssignorAndAssignee.findAll({
-        attributes: ['representative_id', [connection.Sequelize.fn('COUNT', 'assignor_and_assignee_id'), 'counter']],
-        where: {representative_id: allRepresentatives},
-        group:['representative_id']
-    });
-    console.log('findRepresentativeCount', findRepresentativeCount.length)
-    const destroyRepresentatives = [];
-    if(findRepresentativeCount.length > 0) { 
-        const promise = findRepresentativeCount.map(r => {
-            if(r.representative_id > 0 && r.get('counter') == 0) {
-                destroyRepresentatives.push(r.representative_id);
-            }
-            return r;
-        })
-        await Promise.all(promise);
-    }
-    
-    if(destroyRepresentatives.length > 0) {
-        const findBiblioData = await ApplicantAssignorAndAssignee.findAll({
-            where: {representative_id: destroyRepresentatives}
-        })
+    try{
 
-        if(findBiblioData.length == 0 || findBiblioData == null) {
-            await Representatives.destroy({
-                where: {representative_id: destroyRepresentatives}
-            })
-        } else {
-            const promise = findBiblioData.map(r => {
-                if(r.representative_id > 0) {
-                    const findIndex = destroyRepresentatives.findIndex( item => item == r.representative_id)
-                    if(findIndex != -1) {
-                        destroyRepresentatives.splice(findIndex, 1);
-                    }
+        const findRepresentativeCount = await AssignorAndAssignee.findAll({
+            attributes: ['representative_id', [connection.Sequelize.fn('COUNT', 'assignor_and_assignee_id'), 'counter']],
+            where: {representative_id: allRepresentatives},
+            group:['representative_id']
+        });
+        console.log('findRepresentativeCount', findRepresentativeCount.length)
+        const destroyRepresentatives = [];
+        if(findRepresentativeCount.length > 0) { 
+            const promise = findRepresentativeCount.map(r => {
+                if(r.representative_id > 0 && r.get('counter') == 0) {
+                    destroyRepresentatives.push(r.representative_id);
                 }
                 return r;
             })
             await Promise.all(promise);
-
-            if(destroyRepresentatives.length > 0) {
+        }
+        
+        if(destroyRepresentatives.length > 0) {
+            const findBiblioData = await ApplicantAssignorAndAssignee.findAll({
+                where: {representative_id: destroyRepresentatives}
+            })
+    
+            if(findBiblioData.length == 0 || findBiblioData == null) {
                 await Representatives.destroy({
                     where: {representative_id: destroyRepresentatives}
                 })
+            } else {
+                const promise = findBiblioData.map(r => {
+                    if(r.representative_id > 0) {
+                        const findIndex = destroyRepresentatives.findIndex( item => item == r.representative_id)
+                        if(findIndex != -1) {
+                            destroyRepresentatives.splice(findIndex, 1);
+                        }
+                    }
+                    return r;
+                })
+                await Promise.all(promise);
+    
+                if(destroyRepresentatives.length > 0) {
+                    await Representatives.destroy({
+                        where: {representative_id: destroyRepresentatives}
+                    })
+                }
             }
-        }
-    } else {
-        const findBiblioData = await ApplicantAssignorAndAssignee.findAll({
-            where: {representative_id: allRepresentatives}
-        })
-        if(findBiblioData.length == 0 || findBiblioData == null) {
-            await Representatives.destroy({
+        } else {
+            const findBiblioData = await ApplicantAssignorAndAssignee.findAll({
                 where: {representative_id: allRepresentatives}
             })
-        } else {
-            const promise = findBiblioData.map(r => {
-                if(r.representative_id > 0) {
-                    const findIndex = allRepresentatives.findIndex( item => item == r.representative_id)
-                    if(findIndex != -1) {
-                        allRepresentatives.splice(findIndex, 1);
-                    }
-                }
-                return r;
-            })
-            await Promise.all(promise);
-
-            if(allRepresentatives.length > 0) {
+            if(findBiblioData.length == 0 || findBiblioData == null) {
                 await Representatives.destroy({
                     where: {representative_id: allRepresentatives}
                 })
+            } else {
+                const promise = findBiblioData.map(r => {
+                    if(r.representative_id > 0) {
+                        const findIndex = allRepresentatives.findIndex( item => item == r.representative_id)
+                        if(findIndex != -1) {
+                            allRepresentatives.splice(findIndex, 1);
+                        }
+                    }
+                    return r;
+                })
+                await Promise.all(promise);
+    
+                if(allRepresentatives.length > 0) {
+                    await Representatives.destroy({
+                        where: {representative_id: allRepresentatives}
+                    })
+                }
             }
         }
+    } catch (e) {
+        
     }
 }
 
 let allRepresentativesFirmCheckAndDelete = async (allRepresentatives) => {
-    const findRepresentativeCount = await LawFirms.findAll({
-        attributes: ['representative_id', [connection.Sequelize.fn('COUNT', 'law_firm_id'), 'counter']],
-        where: {representative_id: allRepresentatives},
-        group:['representative_id']
-    });
-    if(findRepresentativeCount.length > 0) {
-        const destroyRepresentatives = [];
-        const promise = findRepresentativeCount.map(r => {
-            if(r.representative_id > 0 && r.get('counter') == 0) {
-                destroyRepresentatives.push(r.representative_id);
-            }
-            return r;
-        })
-        await Promise.all(promise);
+    try{
 
-        if(destroyRepresentatives.length > 0) {
-            await RepresentativeLawFirms.destroy({
-                where: {representative_id: destroyRepresentatives}
+        const findRepresentativeCount = await LawFirms.findAll({
+            attributes: ['representative_id', [connection.Sequelize.fn('COUNT', 'law_firm_id'), 'counter']],
+            where: {representative_id: allRepresentatives},
+            group:['representative_id']
+        });
+        if(findRepresentativeCount.length > 0) {
+            const destroyRepresentatives = [];
+            const promise = findRepresentativeCount.map(r => {
+                if(r.representative_id > 0 && r.get('counter') == 0) {
+                    destroyRepresentatives.push(r.representative_id);
+                }
+                return r;
             })
+            await Promise.all(promise);
+    
+            if(destroyRepresentatives.length > 0) {
+                await RepresentativeLawFirms.destroy({
+                    where: {representative_id: destroyRepresentatives}
+                })
+            }
+        } else {
+             await RepresentativeLawFirms.destroy({
+                where: {representative_id: allRepresentatives}
+            }) 
         }
-    } else {
-         await RepresentativeLawFirms.destroy({
-            where: {representative_id: allRepresentatives}
-        }) 
+    } catch (e) {
+        
     }
 }
 
@@ -2115,116 +2130,272 @@ route.put("/company/lawyers", [authJWT.verifyToken, authJWT.isAdmin, authJWT.add
 
 
 route.get("/company/raw/assignments/:id", [authJWT.verifyToken, authJWT.isAdmin, authJWT.addClientID, clientDBConnection.connect], async (req, res, next) => {
+    try{
 
-    const customerID = req.params.id, representativeIDs = JSON.parse(req.query.portfolios != undefined ? req.query.portfolios : "[]");
-    let getList = [];
-    if(customerID > 0) {
-        const where = {organisation_id: customerID};
-        let whereRepresentative = {};
-        if(representativeIDs.length > 0) {
-            where.company_id = representativeIDs;
-            whereRepresentative = {
-                [connection.Op.or]: [
-                    {parent_id: representativeIDs},
-                    {representative_id: representativeIDs}
-                ]
-            }
-        }
-
-        const assignorAndAssigneeIDs = [];
-
-        if(req.connection_db != null) {
-            const RepresentativeClient = req.connection_db.define('Representatives', RepresentativeCustomer.mainStructure, RepresentativeCustomer.options);
-            const findRepresentativeCompanies = await RepresentativeClient.findAll({
-                attributes:['original_name'],
-                where:whereRepresentative
-            });
-
-            if(findRepresentativeCompanies != null && findRepresentativeCompanies.length > 0) {
-                const allNames = [];
-                const promises = findRepresentativeCompanies.map( company => {
-                    allNames.push(company.original_name);
-                    return company;
-                });
-
-                await Promise.all(promises);
-
-                const findAssignorAndAssignee = await AssignorAndAssignee.findAll({
-                    attributes: ['assignor_and_assignee_id'],
-                    where:{name: allNames}
-                });
-
-                if(findAssignorAndAssignee != null && findAssignorAndAssignee.length > 0) {
-                    const assignorAndAssigneePromises = findAssignorAndAssignee.map( assignor_and_assignee => {
-                        assignorAndAssigneeIDs.push(assignor_and_assignee.assignor_and_assignee_id);
-                        return assignor_and_assignee;
-                    });
-    
-                    await Promise.all(assignorAndAssigneePromises);
+        const customerID = req.params.id, representativeIDs = JSON.parse(req.query.portfolios != undefined ? req.query.portfolios : "[]");
+        let getList = [];
+        if(customerID > 0) {
+            const where = {organisation_id: customerID};
+            let whereRepresentative = {};
+            if(representativeIDs.length > 0) {
+                where.company_id = representativeIDs;
+                whereRepresentative = {
+                    [connection.Op.or]: [
+                        {parent_id: representativeIDs},
+                        {representative_id: representativeIDs}
+                    ]
                 }
             }
+    
+            const assignorAndAssigneeIDs = [];
+    
+            if(req.connection_db != null) {
+                const RepresentativeClient = req.connection_db.define('Representatives', RepresentativeCustomer.mainStructure, RepresentativeCustomer.options);
+                const findRepresentativeCompanies = await RepresentativeClient.findAll({
+                    attributes:['original_name'],
+                    where:whereRepresentative
+                });
+    
+                if(findRepresentativeCompanies != null && findRepresentativeCompanies.length > 0) {
+                    const allNames = [];
+                    const promises = findRepresentativeCompanies.map( company => {
+                        allNames.push(company.original_name);
+                        return company;
+                    });
+    
+                    await Promise.all(promises);
+    
+                    const findAssignorAndAssignee = await AssignorAndAssignee.findAll({
+                        attributes: ['assignor_and_assignee_id'],
+                        where:{name: allNames}
+                    });
+    
+                    if(findAssignorAndAssignee != null && findAssignorAndAssignee.length > 0) {
+                        const assignorAndAssigneePromises = findAssignorAndAssignee.map( assignor_and_assignee => {
+                            assignorAndAssigneeIDs.push(assignor_and_assignee.assignor_and_assignee_id);
+                            return assignor_and_assignee;
+                        });
+        
+                        await Promise.all(assignorAndAssigneePromises);
+                    }
+                }
+            }
+    
+            const whereAssignor = {};
+            if(assignorAndAssigneeIDs.length > 0) {
+                whereAssignor.assignor_and_assignee_id = assignorAndAssigneeIDs;
+            }
+            Promise.all([
+                Correspondence.findAll({
+                    attributes: [['rf_id', 'id'], 'rf_id', 'cname', 'caddress_1', 'caddress_2','caddress_7','caddress_5','caddress_6','caddress_3','caddress_4'],  
+                    /*where: {
+                        [connection.Op.or]: [
+                            {caddress_1: {[connection.Op.ne]: ''}},
+                            {caddress_2: {[connection.Op.ne]: ''}}
+                        ]
+                    },  */  
+                    /* group:['cname', 'caddress_1', 'caddress_2','caddress_7','caddress_5','caddress_6','caddress_3','caddress_4'],    */ 
+                    group:['cname', 'caddress_1', 'caddress_2'], 
+                    include: [ 
+                        {
+                            model: List2,
+                            as: "representativetransaction",
+                            attributes: [],
+                            where: where,
+                            include: [
+                                {
+                                    model: Assignees,
+                                    as: 'assignee',
+                                    attributes: [],
+                                    where: whereAssignor
+                                },
+                                {
+                                    model: AssetsPartiesAssignment,
+                                    as: 'assetspartiesassignment',
+                                    attributes: [],
+                                    where: {
+                                        [connection.Op.and]: [
+                                            connection.Sequelize.where(
+                                                connection.Sequelize.fn(
+                                                    'DATE_FORMAT',
+                                                    connection.Sequelize.col('exec_dt'),
+                                                    '%Y'
+                                                ),
+                                                connection.Sequelize.Op.gte,
+                                                connection.DEFAULT_YEAR
+                                            ),
+                                            {exec_dt: {[connection.Op.ne]: '0000-00-00'}} 
+                                        ]
+                                    } 
+                                }
+                            ]                      
+                        }
+                    ]
+                }),
+                Correspondence.findAll({
+                    attributes: [['rf_id', 'id'], 'rf_id', 'cname', 'caddress_1', 'caddress_2','caddress_7','caddress_5','caddress_6','caddress_3','caddress_4'],  
+                    where: {
+                        caddress_1: '',
+                        caddress_2: '',
+                        cname: ''
+                    }, 
+                    /* group:['cname', 'caddress_1', 'caddress_2','caddress_7','caddress_5','caddress_6','caddress_3','caddress_4'],    */ 
+                    
+                    include: [
+                        {
+                            model: List2,
+                            as: "representativetransaction",
+                            attributes: [],
+                            where: where,
+                            include: [
+                                {
+                                    model: Assignees,
+                                    as: 'assignee',
+                                    attributes: [],
+                                    where: whereAssignor
+                                },
+                                {
+                                    model: AssetsPartiesAssignment,
+                                    as: 'assetspartiesassignment',
+                                    attributes: [],
+                                    where: {
+                                        [connection.Op.and]: [
+                                            connection.Sequelize.where(
+                                                connection.Sequelize.fn(
+                                                    'DATE_FORMAT',
+                                                    connection.Sequelize.col('exec_dt'),
+                                                    '%Y'
+                                                ),
+                                                connection.Sequelize.Op.gte,
+                                                connection.DEFAULT_YEAR
+                                            ),
+                                            {exec_dt: {[connection.Op.ne]: '0000-00-00'}} 
+                                        ]
+                                    }
+                                }
+                            ]                      
+                        }
+                    ]
+                })
+            ]).then(modelReturn => {
+                if(modelReturn.length > 0) {
+                    modelReturn.forEach(item => {
+                        getList = [...getList, ...item]
+                    })
+                    //console.log(getList)
+                    res.status(200).json(getList);
+                }
+            })
+        }  else {
+            res.status(200).json(getList);
         }
+    } catch (e) {
+        
+    }
+    
+});
 
-        const whereAssignor = {};
-        if(assignorAndAssigneeIDs.length > 0) {
-            whereAssignor.assignor_and_assignee_id = assignorAndAssigneeIDs;
-        }
-        Promise.all([
-            Correspondence.findAll({
-                attributes: [['rf_id', 'id'], 'rf_id', 'cname', 'caddress_1', 'caddress_2','caddress_7','caddress_5','caddress_6','caddress_3','caddress_4'],  
-                /*where: {
+route.put("/company/raw/assignments/:id", [authJWT.verifyToken, authJWT.isAdmin, authJWT.addClientID, clientDBConnection.connect], async (req, res, next) => {
+    try{
+
+        const customerID = req.params.id, representativeIDs = JSON.parse(req.query.portfolios != undefined ? req.query.portfolios : "[]");
+        exec(`php -f /var/www/html/trash/address_swapping.php "${customerID}" "${representativeIDs}"`, function (error, stdout, stderr) {
+            console.log(error);
+            console.log(stdout);
+            console.log(stderr);
+        });
+        res.status(200).send("In process");
+    } catch (e) {
+        
+    }
+});
+
+
+route.get("/company/assignments", [authJWT.verifyToken, authJWT.isAdmin], async (req, res, next) => {
+    try{
+
+        const getList = await Assignments.findAll({
+            attributes: [['rf_id', 'id'], 'rf_id', 'cname', 'caddress_1', 'caddress_2', 'reel_no', 'frame_no'],
+            where: {
+                [connection.Op.or]: [
+                    {caddress_1: {[connection.Op.ne]: ''}},
+                    {caddress_2: {[connection.Op.ne]: ''}}
+                ]
+            }, 
+            group: ['cname','caddress_1','caddress_2'],   
+        });
+        res.status(200).json(getList);
+    } catch (e) {
+        
+    }
+});
+
+route.get("/company/assignments/:id", [authJWT.verifyToken, authJWT.isAdmin, authJWT.addClientID, clientDBConnection.connect], async (req, res, next) => {
+    try{
+
+        const customerID = req.params.id, representativeIDs = JSON.parse(req.query.portfolios != undefined ? req.query.portfolios : "[]");
+        let getList = [];
+        if(customerID > 0) {
+            const where = {organisation_id: customerID};
+            let whereRepresentative = {};
+            if(representativeIDs.length > 0) {
+                where.representative_id = representativeIDs;
+                whereRepresentative = {
+                    [connection.Op.or]: [
+                        {parent_id: representativeIDs},
+                        {representative_id: representativeIDs}
+                    ]
+                }
+            }
+    
+            const assignorAndAssigneeIDs = [];
+    
+            if(req.connection_db != null) {
+                const RepresentativeClient = req.connection_db.define('Representatives', RepresentativeCustomer.mainStructure, RepresentativeCustomer.options);
+                const findRepresentativeCompanies = await RepresentativeClient.findAll({
+                    attributes:['original_name'],
+                    where:whereRepresentative
+                });
+    
+                if(findRepresentativeCompanies != null && findRepresentativeCompanies.length > 0) {
+                    const allNames = [];
+                    const promises = findRepresentativeCompanies.map( company => {
+                        allNames.push(company.original_name);
+                        return company;
+                    });
+    
+                    await Promise.all(promises);
+    
+                    const findAssignorAndAssignee = await AssignorAndAssignee.findAll({
+                        attributes: ['assignor_and_assignee_id'],
+                        where:{name: allNames}
+                    });
+    
+                    if(findAssignorAndAssignee != null && findAssignorAndAssignee.length > 0) {
+                        const assignorAndAssigneePromises = findAssignorAndAssignee.map( assignor_and_assignee => {
+                            assignorAndAssigneeIDs.push(assignor_and_assignee.assignor_and_assignee_id);
+                            return assignor_and_assignee;
+                        });
+        
+                        await Promise.all(assignorAndAssigneePromises);
+                    }
+                }
+            }
+    
+            const whereAssignor = {};
+            if(assignorAndAssigneeIDs.length > 0) {
+                whereAssignor.assignor_and_assignee_id = assignorAndAssigneeIDs;
+            }
+    
+            getList = await Assignments.findAll({
+                attributes: [['rf_id', 'id'], 'rf_id', 'cname', 'caddress_1', 'caddress_2', 'reel_no', 'frame_no'],  
+                where: {
                     [connection.Op.or]: [
                         {caddress_1: {[connection.Op.ne]: ''}},
                         {caddress_2: {[connection.Op.ne]: ''}}
                     ]
-                },  */  
-                /* group:['cname', 'caddress_1', 'caddress_2','caddress_7','caddress_5','caddress_6','caddress_3','caddress_4'],    */ 
-                group:['cname', 'caddress_1', 'caddress_2'], 
-                include: [ 
-                    {
-                        model: List2,
-                        as: "representativetransaction",
-                        attributes: [],
-                        where: where,
-                        include: [
-                            {
-                                model: Assignees,
-                                as: 'assignee',
-                                attributes: [],
-                                where: whereAssignor
-                            },
-                            {
-                                model: AssetsPartiesAssignment,
-                                as: 'assetspartiesassignment',
-                                attributes: [],
-                                where: {
-                                    [connection.Op.and]: [
-                                        connection.Sequelize.where(
-                                            connection.Sequelize.fn(
-                                                'DATE_FORMAT',
-                                                connection.Sequelize.col('exec_dt'),
-                                                '%Y'
-                                            ),
-                                            connection.Sequelize.Op.gte,
-                                            connection.DEFAULT_YEAR
-                                        ),
-                                        {exec_dt: {[connection.Op.ne]: '0000-00-00'}} 
-                                    ]
-                                } 
-                            }
-                        ]                      
-                    }
-                ]
-            }),
-            Correspondence.findAll({
-                attributes: [['rf_id', 'id'], 'rf_id', 'cname', 'caddress_1', 'caddress_2','caddress_7','caddress_5','caddress_6','caddress_3','caddress_4'],  
-                where: {
-                    caddress_1: '',
-                    caddress_2: '',
-                    cname: ''
-                }, 
-                /* group:['cname', 'caddress_1', 'caddress_2','caddress_7','caddress_5','caddress_6','caddress_3','caddress_4'],    */ 
-                
+                },  
+                group: ['cname','caddress_1','caddress_2'],           
                 include: [
                     {
                         model: List2,
@@ -2237,154 +2408,16 @@ route.get("/company/raw/assignments/:id", [authJWT.verifyToken, authJWT.isAdmin,
                                 as: 'assignee',
                                 attributes: [],
                                 where: whereAssignor
-                            },
-                            {
-                                model: AssetsPartiesAssignment,
-                                as: 'assetspartiesassignment',
-                                attributes: [],
-                                where: {
-                                    [connection.Op.and]: [
-                                        connection.Sequelize.where(
-                                            connection.Sequelize.fn(
-                                                'DATE_FORMAT',
-                                                connection.Sequelize.col('exec_dt'),
-                                                '%Y'
-                                            ),
-                                            connection.Sequelize.Op.gte,
-                                            connection.DEFAULT_YEAR
-                                        ),
-                                        {exec_dt: {[connection.Op.ne]: '0000-00-00'}} 
-                                    ]
-                                }
                             }
                         ]                      
                     }
                 ]
-            })
-        ]).then(modelReturn => {
-            if(modelReturn.length > 0) {
-                modelReturn.forEach(item => {
-                    getList = [...getList, ...item]
-                })
-                //console.log(getList)
-                res.status(200).json(getList);
-            }
-        })
-    }  else {
-        res.status(200).json(getList);
-    }
-    
-});
-
-route.put("/company/raw/assignments/:id", [authJWT.verifyToken, authJWT.isAdmin, authJWT.addClientID, clientDBConnection.connect], async (req, res, next) => {
-    const customerID = req.params.id, representativeIDs = JSON.parse(req.query.portfolios != undefined ? req.query.portfolios : "[]");
-    exec(`php -f /var/www/html/trash/address_swapping.php "${customerID}" "${representativeIDs}"`, function (error, stdout, stderr) {
-        console.log(error);
-        console.log(stdout);
-        console.log(stderr);
-    });
-    res.status(200).send("In process");
-});
-
-
-route.get("/company/assignments", [authJWT.verifyToken, authJWT.isAdmin], async (req, res, next) => {
-    const getList = await Assignments.findAll({
-        attributes: [['rf_id', 'id'], 'rf_id', 'cname', 'caddress_1', 'caddress_2', 'reel_no', 'frame_no'],
-        where: {
-            [connection.Op.or]: [
-                {caddress_1: {[connection.Op.ne]: ''}},
-                {caddress_2: {[connection.Op.ne]: ''}}
-            ]
-        }, 
-        group: ['cname','caddress_1','caddress_2'],   
-    });
-    res.status(200).json(getList);
-});
-
-route.get("/company/assignments/:id", [authJWT.verifyToken, authJWT.isAdmin, authJWT.addClientID, clientDBConnection.connect], async (req, res, next) => {
-
-    const customerID = req.params.id, representativeIDs = JSON.parse(req.query.portfolios != undefined ? req.query.portfolios : "[]");
-    let getList = [];
-    if(customerID > 0) {
-        const where = {organisation_id: customerID};
-        let whereRepresentative = {};
-        if(representativeIDs.length > 0) {
-            where.representative_id = representativeIDs;
-            whereRepresentative = {
-                [connection.Op.or]: [
-                    {parent_id: representativeIDs},
-                    {representative_id: representativeIDs}
-                ]
-            }
-        }
-
-        const assignorAndAssigneeIDs = [];
-
-        if(req.connection_db != null) {
-            const RepresentativeClient = req.connection_db.define('Representatives', RepresentativeCustomer.mainStructure, RepresentativeCustomer.options);
-            const findRepresentativeCompanies = await RepresentativeClient.findAll({
-                attributes:['original_name'],
-                where:whereRepresentative
             });
-
-            if(findRepresentativeCompanies != null && findRepresentativeCompanies.length > 0) {
-                const allNames = [];
-                const promises = findRepresentativeCompanies.map( company => {
-                    allNames.push(company.original_name);
-                    return company;
-                });
-
-                await Promise.all(promises);
-
-                const findAssignorAndAssignee = await AssignorAndAssignee.findAll({
-                    attributes: ['assignor_and_assignee_id'],
-                    where:{name: allNames}
-                });
-
-                if(findAssignorAndAssignee != null && findAssignorAndAssignee.length > 0) {
-                    const assignorAndAssigneePromises = findAssignorAndAssignee.map( assignor_and_assignee => {
-                        assignorAndAssigneeIDs.push(assignor_and_assignee.assignor_and_assignee_id);
-                        return assignor_and_assignee;
-                    });
-    
-                    await Promise.all(assignorAndAssigneePromises);
-                }
-            }
-        }
-
-        const whereAssignor = {};
-        if(assignorAndAssigneeIDs.length > 0) {
-            whereAssignor.assignor_and_assignee_id = assignorAndAssigneeIDs;
-        }
-
-        getList = await Assignments.findAll({
-            attributes: [['rf_id', 'id'], 'rf_id', 'cname', 'caddress_1', 'caddress_2', 'reel_no', 'frame_no'],  
-            where: {
-                [connection.Op.or]: [
-                    {caddress_1: {[connection.Op.ne]: ''}},
-                    {caddress_2: {[connection.Op.ne]: ''}}
-                ]
-            },  
-            group: ['cname','caddress_1','caddress_2'],           
-            include: [
-                {
-                    model: List2,
-                    as: "representativetransaction",
-                    attributes: [],
-                    where: where,
-                    include: [
-                        {
-                            model: Assignees,
-                            as: 'assignee',
-                            attributes: [],
-                            where: whereAssignor
-                        }
-                    ]                      
-                }
-            ]
-        });
-    }   
-    res.status(200).json(getList);
+        }   
+        res.status(200).json(getList);
+    } catch (e) {
+        
+    }
 });
 
 route.put("/company/assignments", [authJWT.verifyToken, authJWT.isAdmin], async (req, res, next) => {
@@ -3229,86 +3262,91 @@ route.post("/company/:id/add_bulk_companies", [authJWT.verifyToken, authJWT.isAd
 })
 
 route.post("/company/cited/:id/export", [authJWT.verifyToken, authJWT.isAdmin, authJWT.addClientID, clientDBConnection.connect], async (req, res, next) => {
-    const {portfolios, token} = req.body
+    try{
 
-    const customerID = req.params.id, representativeIDs = JSON.parse(portfolios != undefined ? portfolios : "[]");
-    let citedAssignees = [], organizations = [];
-    if(customerID > 0) {
-        const where = {organisation_id: customerID};
-        let whereRepresentative = {};
-        if(representativeIDs.length > 0) {
-            where.representative_id = representativeIDs;
-            whereRepresentative = {
-                [connection.Op.or]: [
-                    {parent_id: representativeIDs},
-                    {representative_id: representativeIDs}
-                ]
+        const {portfolios, token} = req.body
+    
+        const customerID = req.params.id, representativeIDs = JSON.parse(portfolios != undefined ? portfolios : "[]");
+        let citedAssignees = [], organizations = [];
+        if(customerID > 0) {
+            const where = {organisation_id: customerID};
+            let whereRepresentative = {};
+            if(representativeIDs.length > 0) {
+                where.representative_id = representativeIDs;
+                whereRepresentative = {
+                    [connection.Op.or]: [
+                        {parent_id: representativeIDs},
+                        {representative_id: representativeIDs}
+                    ]
+                }
             }
-        }
-
-        if(req.connection_db != null) {
-            const RepresentativeClient = req.connection_db.define('Representatives', RepresentativeCustomer.mainStructure, RepresentativeCustomer.options);
-            const findRepresentativeCompanies = await RepresentativeClient.findAll({
-                attributes:['representative_id'],
-                where:whereRepresentative
-            });
-
-            if(findRepresentativeCompanies != null && findRepresentativeCompanies.length > 0) {
-                const companies = [];
-                const promises = findRepresentativeCompanies.map( company => {
-                    companies.push(company.representative_id);
-                    return company;
+    
+            if(req.connection_db != null) {
+                const RepresentativeClient = req.connection_db.define('Representatives', RepresentativeCustomer.mainStructure, RepresentativeCustomer.options);
+                const findRepresentativeCompanies = await RepresentativeClient.findAll({
+                    attributes:['representative_id'],
+                    where:whereRepresentative
                 });
-                await Promise.all(promises);
-
-                const queryCitedPatentsAssignee = `SELECT ao.assignee_organization, assignee_query FROM assignee_organizations AS ao 
-                                        INNER JOIN cited_patents AS cp ON cp.assignee_id = ao.assignee_id
-                                        INNER JOIN assets AS a ON a.grant_doc_num  COLLATE utf8mb4_general_ci = cp.patent_number  COLLATE utf8mb4_general_ci 
-                                        WHERE a.layout_id = :layout_id AND a.organisation_id = :organisationID AND a.company_id IN (:companiesIDs) AND ao.organisation_id = 0
-                                        GROUP BY ao.assignee_id LIMIT 998, 998`
-                
-                citedAssignees = await connection.applicationNew.query(queryCitedPatentsAssignee,{
-                        type: connection.Sequelize.QueryTypes.SELECT,
-                        raw: true,
-                        replacements: {organisationID: customerID, companiesIDs: companies, layout_id: 15 },
-                        logging: console.log,
-                    }
-                );
-
-                if(citedAssignees.length > 0) {
-                    const spreadsheetID = `18ZdO_58z9jJ3hkdUY1DrjiddRRNGWpfGMCNS8IGdp54`
-                    const sheetHelper = new SheetsHelper(token), newDate = new Date()
-                    const request = {
-                        spreadsheetId: spreadsheetID, 
-                        resource: {
-                            requests: [
-                                {
-                                    addSheet: {
-                                        properties: {
-                                            title: `SHEET - ${newDate.getTime()}`,
-                                            gridProperties: {
-                                                frozenRowCount: 1
+    
+                if(findRepresentativeCompanies != null && findRepresentativeCompanies.length > 0) {
+                    const companies = [];
+                    const promises = findRepresentativeCompanies.map( company => {
+                        companies.push(company.representative_id);
+                        return company;
+                    });
+                    await Promise.all(promises);
+    
+                    const queryCitedPatentsAssignee = `SELECT ao.assignee_organization, assignee_query FROM assignee_organizations AS ao 
+                                            INNER JOIN cited_patents AS cp ON cp.assignee_id = ao.assignee_id
+                                            INNER JOIN assets AS a ON a.grant_doc_num  COLLATE utf8mb4_general_ci = cp.patent_number  COLLATE utf8mb4_general_ci 
+                                            WHERE a.layout_id = :layout_id AND a.organisation_id = :organisationID AND a.company_id IN (:companiesIDs) AND ao.organisation_id = 0
+                                            GROUP BY ao.assignee_id LIMIT 998, 998`
+                    
+                    citedAssignees = await connection.applicationNew.query(queryCitedPatentsAssignee,{
+                            type: connection.Sequelize.QueryTypes.SELECT,
+                            raw: true,
+                            replacements: {organisationID: customerID, companiesIDs: companies, layout_id: 15 },
+                            logging: console.log,
+                        }
+                    );
+    
+                    if(citedAssignees.length > 0) {
+                        const spreadsheetID = `18ZdO_58z9jJ3hkdUY1DrjiddRRNGWpfGMCNS8IGdp54`
+                        const sheetHelper = new SheetsHelper(token), newDate = new Date()
+                        const request = {
+                            spreadsheetId: spreadsheetID, 
+                            resource: {
+                                requests: [
+                                    {
+                                        addSheet: {
+                                            properties: {
+                                                title: `SHEET - ${newDate.getTime()}`,
+                                                gridProperties: {
+                                                    frozenRowCount: 1
+                                                }
                                             }
                                         }
                                     }
-                                }
-                            ]
-                        }
-                    }
-                    sheetHelper.batchUpdate(request, async function(sheet) {
-                        if( sheet !== null ) {
-                            if(Object.keys(sheet).length > 0) {
-                                const assignees = []
-                                citedAssignees.forEach( assignee => {
-                                    assignees.push(assignee.assignee_query !== '' && assignee.assignee_query !== null ? assignee.assignee_query : assignee.assignee_organization )
-                                })
-                                assignees.splice(0,0, 'Assignee')
-                                await addNewDataToSheet(sheetHelper, spreadsheetID, sheet.replies[sheet.replies.length - 1].addSheet.properties.sheetId, 0, assignees, res)
+                                ]
                             }
                         }
-                    })
+                        sheetHelper.batchUpdate(request, async function(sheet) {
+                            if( sheet !== null ) {
+                                if(Object.keys(sheet).length > 0) {
+                                    const assignees = []
+                                    citedAssignees.forEach( assignee => {
+                                        assignees.push(assignee.assignee_query !== '' && assignee.assignee_query !== null ? assignee.assignee_query : assignee.assignee_organization )
+                                    })
+                                    assignees.splice(0,0, 'Assignee')
+                                    await addNewDataToSheet(sheetHelper, spreadsheetID, sheet.replies[sheet.replies.length - 1].addSheet.properties.sheetId, 0, assignees, res)
+                                }
+                            }
+                        })
+                    } else {
+                        res.status(402).send('Assignee list is empty');
+                    }
                 } else {
-                    res.status(402).send('Assignee list is empty');
+                    res.status(401).send('Invalid input');
                 }
             } else {
                 res.status(401).send('Invalid input');
@@ -3316,8 +3354,8 @@ route.post("/company/cited/:id/export", [authJWT.verifyToken, authJWT.isAdmin, a
         } else {
             res.status(401).send('Invalid input');
         }
-    } else {
-        res.status(401).send('Invalid input');
+    } catch (e) {
+        
     }
     
 })
@@ -3327,134 +3365,139 @@ route.post("/company/cited/:id/export", [authJWT.verifyToken, authJWT.isAdmin, a
  */
 
  route.get("/company/owned/cited/:id", [authJWT.verifyToken, authJWT.isAdmin, authJWT.addClientID, clientDBConnection.connect], async (req, res, next) => {
-    const customerID = req.params.id;
-    const { portfolios, sort_by, sort_direction, rows_per_page, current_page, assignee_id } = req.query
-    const representativeIDs = JSON.parse(portfolios != undefined ? portfolios : "[]");
-    let citedAssignees = [], organizations = [], total_records = 0;
-    if(customerID > 0) {
-        const where = {organisationID: customerID, layout_id: 15};
-        let whereRepresentative = {};
-        if(representativeIDs.length > 0) {
-            where.representative_id = representativeIDs;
-            whereRepresentative = {
-                [connection.Op.or]: [
-                    {parent_id: representativeIDs},
-                    {representative_id: representativeIDs}
-                ]
+    try{
+
+        const customerID = req.params.id;
+        const { portfolios, sort_by, sort_direction, rows_per_page, current_page, assignee_id } = req.query
+        const representativeIDs = JSON.parse(portfolios != undefined ? portfolios : "[]");
+        let citedAssignees = [], organizations = [], total_records = 0;
+        if(customerID > 0) {
+            const where = {organisationID: customerID, layout_id: 15};
+            let whereRepresentative = {};
+            if(representativeIDs.length > 0) {
+                where.representative_id = representativeIDs;
+                whereRepresentative = {
+                    [connection.Op.or]: [
+                        {parent_id: representativeIDs},
+                        {representative_id: representativeIDs}
+                    ]
+                }
             }
-        }
-        
-        if(assignee_id != undefined) {
-            where.assignee_id = assignee_id
-        }
-        console.log('where',  where)
-
-        if(req.connection_db != null) {
-            if(assignee_id == undefined) {
-                const RepresentativeClient = req.connection_db.define('Representatives', RepresentativeCustomer.mainStructure, RepresentativeCustomer.options);
-                const findRepresentativeCompanies = await RepresentativeClient.findAll({
-                    attributes:['representative_id'],
-                    where:whereRepresentative
-                });
-
-                if(findRepresentativeCompanies != null && findRepresentativeCompanies.length > 0) {
-                    const companies = [];
-                    const promises = findRepresentativeCompanies.map( company => {
-                        companies.push(company.representative_id);
-                        return company;
+            
+            if(assignee_id != undefined) {
+                where.assignee_id = assignee_id
+            }
+            console.log('where',  where)
+    
+            if(req.connection_db != null) {
+                if(assignee_id == undefined) {
+                    const RepresentativeClient = req.connection_db.define('Representatives', RepresentativeCustomer.mainStructure, RepresentativeCustomer.options);
+                    const findRepresentativeCompanies = await RepresentativeClient.findAll({
+                        attributes:['representative_id'],
+                        where:whereRepresentative
                     });
-                    await Promise.all(promises);
-                    where.companiesIDs = companies
-                }
-            }    
-            where.type = [30, 21, 36]
-
-            let queryOwnedAssets = `SELECT application FROM db_new_application.dashboard_items WHERE type IN (:type) AND organisation_id = :organisationID `
-
-            if(typeof where.companiesIDs !== 'undefined') {
-                queryOwnedAssets += ` AND representative_id IN (:companiesIDs) `
-            }
-
-            queryOwnedAssets += ` GROUP BY application`
-
-            const getAssetsList = await connection.applicationNew.query(queryOwnedAssets,{
-                    type: connection.Sequelize.QueryTypes.SELECT,
-                    raw: true,
-                    replacements: where,
-                    logging: console.log,
-                }
-            );
-
-            if(getAssetsList.length > 0) {
-                const allOwnedAssets = []
-
-                const promise = getAssetsList.map(asset => {
-                    allOwnedAssets.push(`${asset.application}`)
-                })
-
-                await Promise.all(promise)
-
-                if(allOwnedAssets.length > 0) {
-                    let queryCitedPatentsAssignee = `Select assignee_id, COUNT(assignee_id) AS occurences, assignee_organization, assignee_query, domain, domain2, domain3, api_logo, api_logo1,
-                    api_logo2, api_logo3, api_logo4, api_logo5, api_logo6, api_logo7, api_logo8, api_logo9, without_square, image_url, img FROM (SELECT ao.assignee_id, ao.assignee_organization, ao.assignee_query, ao.domain, ao.domain2, ao.domain3, IF(ao.api_logo <> "null", ao.api_logo, "") AS api_logo, IF(ao.api_logo1 <> "null", ao.api_logo1, "") AS api_logo1, IF(ao.api_logo2 <> "null", ao.api_logo2, "") AS api_logo2, IF(ao.api_logo3 <> "null", ao.api_logo3, "") AS api_logo3, IF(ao.api_logo4 <> "null", ao.api_logo4, "") AS api_logo4, IF(ao.api_logo5 <> "null", ao.api_logo5, "") AS api_logo5, IF(ao.api_logo6 <> "null", ao.api_logo6, "") AS api_logo6, IF(ao.api_logo7 <> "null", ao.api_logo7, "") AS api_logo7, IF(ao.api_logo8 <> "null", ao.api_logo8, "") AS api_logo8, IF(ao.api_logo9 <> "null", ao.api_logo9, "") AS api_logo9, without_square, image_url, '' AS img FROM assignee_organizations AS ao 
-                    INNER JOIN cited_patents AS cp ON cp.assignee_id = ao.assignee_id
-                    INNER JOIN dashboard_items AS a ON a.patent  COLLATE utf8mb4_general_ci  = cp.patent_number  COLLATE utf8mb4_general_ci 
-                    WHERE a.organisation_id = :organisationID ` 
-
-                    queryCitedPatentsAssignee +=   `AND a.application IN (:application)  `
-                    where.application = allOwnedAssets
-                    
-                    if(typeof where.companiesIDs !== 'undefined') {
-                        queryCitedPatentsAssignee +=   `AND a.representative_id IN (:companiesIDs) AND ao.organisation_id = 0`
-                    }                       
-
-                    if(assignee_id != undefined) {
-                        queryCitedPatentsAssignee += ` AND ao.assignee_id = :assignee_id `
-                    }     
-
-
-
-                    queryCitedPatentsAssignee += ` GROUP BY ao.assignee_id , cp.patent_number
-                    ) AS temp GROUP BY assignee_id `
-
-
-                    const recordsResult = await connection.applicationNew.query(`SELECT COUNT(*) as total_records FROM (${queryCitedPatentsAssignee}) as temp`,{
-                            type: connection.Sequelize.QueryTypes.SELECT,
-                            raw: true,
-                            replacements: where,
-                            logging: console.log,
-                            plain: true
+    
+                    if(findRepresentativeCompanies != null && findRepresentativeCompanies.length > 0) {
+                        const companies = [];
+                        const promises = findRepresentativeCompanies.map( company => {
+                            companies.push(company.representative_id);
+                            return company;
                         });
-
-                    if(recordsResult !== null) {
-                        total_records = recordsResult.total_records
+                        await Promise.all(promises);
+                        where.companiesIDs = companies
                     }
-
-                    queryCitedPatentsAssignee += ` ORDER BY   ${typeof sort_by !== "undefined" ? sort_by : "occurences "} ${typeof sort_direction !== "undefined" ? sort_direction : "desc "} `
-
-
-                    queryCitedPatentsAssignee += ` LIMIT  ${typeof current_page !== "undefined" ? current_page * rows_per_page + ", " : " 0, "} ${typeof rows_per_page !== "undefined" ? rows_per_page : " 50 "} `
-
-                    citedAssignees = await connection.applicationNew.query(queryCitedPatentsAssignee,{
+                }    
+                where.type = [30, 21, 36]
+    
+                let queryOwnedAssets = `SELECT application FROM db_new_application.dashboard_items WHERE type IN (:type) AND organisation_id = :organisationID `
+    
+                if(typeof where.companiesIDs !== 'undefined') {
+                    queryOwnedAssets += ` AND representative_id IN (:companiesIDs) `
+                }
+    
+                queryOwnedAssets += ` GROUP BY application`
+    
+                const getAssetsList = await connection.applicationNew.query(queryOwnedAssets,{
                         type: connection.Sequelize.QueryTypes.SELECT,
                         raw: true,
                         replacements: where,
                         logging: console.log,
-                    });
+                    }
+                );
+    
+                if(getAssetsList.length > 0) {
+                    const allOwnedAssets = []
+    
+                    const promise = getAssetsList.map(asset => {
+                        allOwnedAssets.push(`${asset.application}`)
+                    })
+    
+                    await Promise.all(promise)
+    
+                    if(allOwnedAssets.length > 0) {
+                        let queryCitedPatentsAssignee = `Select assignee_id, COUNT(assignee_id) AS occurences, assignee_organization, assignee_query, domain, domain2, domain3, api_logo, api_logo1,
+                        api_logo2, api_logo3, api_logo4, api_logo5, api_logo6, api_logo7, api_logo8, api_logo9, without_square, image_url, img FROM (SELECT ao.assignee_id, ao.assignee_organization, ao.assignee_query, ao.domain, ao.domain2, ao.domain3, IF(ao.api_logo <> "null", ao.api_logo, "") AS api_logo, IF(ao.api_logo1 <> "null", ao.api_logo1, "") AS api_logo1, IF(ao.api_logo2 <> "null", ao.api_logo2, "") AS api_logo2, IF(ao.api_logo3 <> "null", ao.api_logo3, "") AS api_logo3, IF(ao.api_logo4 <> "null", ao.api_logo4, "") AS api_logo4, IF(ao.api_logo5 <> "null", ao.api_logo5, "") AS api_logo5, IF(ao.api_logo6 <> "null", ao.api_logo6, "") AS api_logo6, IF(ao.api_logo7 <> "null", ao.api_logo7, "") AS api_logo7, IF(ao.api_logo8 <> "null", ao.api_logo8, "") AS api_logo8, IF(ao.api_logo9 <> "null", ao.api_logo9, "") AS api_logo9, without_square, image_url, '' AS img FROM assignee_organizations AS ao 
+                        INNER JOIN cited_patents AS cp ON cp.assignee_id = ao.assignee_id
+                        INNER JOIN dashboard_items AS a ON a.patent  COLLATE utf8mb4_general_ci  = cp.patent_number  COLLATE utf8mb4_general_ci 
+                        WHERE a.organisation_id = :organisationID ` 
+    
+                        queryCitedPatentsAssignee +=   `AND a.application IN (:application)  `
+                        where.application = allOwnedAssets
+                        
+                        if(typeof where.companiesIDs !== 'undefined') {
+                            queryCitedPatentsAssignee +=   `AND a.representative_id IN (:companiesIDs) AND ao.organisation_id = 0`
+                        }                       
+    
+                        if(assignee_id != undefined) {
+                            queryCitedPatentsAssignee += ` AND ao.assignee_id = :assignee_id `
+                        }     
+    
+    
+    
+                        queryCitedPatentsAssignee += ` GROUP BY ao.assignee_id , cp.patent_number
+                        ) AS temp GROUP BY assignee_id `
+    
+    
+                        const recordsResult = await connection.applicationNew.query(`SELECT COUNT(*) as total_records FROM (${queryCitedPatentsAssignee}) as temp`,{
+                                type: connection.Sequelize.QueryTypes.SELECT,
+                                raw: true,
+                                replacements: where,
+                                logging: console.log,
+                                plain: true
+                            });
+    
+                        if(recordsResult !== null) {
+                            total_records = recordsResult.total_records
+                        }
+    
+                        queryCitedPatentsAssignee += ` ORDER BY   ${typeof sort_by !== "undefined" ? sort_by : "occurences "} ${typeof sort_direction !== "undefined" ? sort_direction : "desc "} `
+    
+    
+                        queryCitedPatentsAssignee += ` LIMIT  ${typeof current_page !== "undefined" ? current_page * rows_per_page + ", " : " 0, "} ${typeof rows_per_page !== "undefined" ? rows_per_page : " 50 "} `
+    
+                        citedAssignees = await connection.applicationNew.query(queryCitedPatentsAssignee,{
+                            type: connection.Sequelize.QueryTypes.SELECT,
+                            raw: true,
+                            replacements: where,
+                            logging: console.log,
+                        });
+                    }
                 }
+    
+                /* const queryOrganisations = `SELECT organisation_id, organisation_name FROM organisations`
+                organizations = await connection.applicationNew.query(queryOrganisations,{
+                        type: connection.Sequelize.QueryTypes.SELECT,
+                        raw: true,
+                        replacements: { },
+                        logging: console.log,
+                    }
+                ); */
             }
-
-            /* const queryOrganisations = `SELECT organisation_id, organisation_name FROM organisations`
-            organizations = await connection.applicationNew.query(queryOrganisations,{
-                    type: connection.Sequelize.QueryTypes.SELECT,
-                    raw: true,
-                    replacements: { },
-                    logging: console.log,
-                }
-            ); */
         }
+        res.status(200).json({citedAssignees, organizations, total_records});
+    } catch (e) {
+        
     }
-    res.status(200).json({citedAssignees, organizations, total_records});
 })
 
 /**
@@ -3462,100 +3505,105 @@ route.post("/company/cited/:id/export", [authJWT.verifyToken, authJWT.isAdmin, a
  */
 
 route.get("/company/cited/:id", [authJWT.verifyToken, authJWT.isAdmin, authJWT.addClientID, clientDBConnection.connect], async (req, res, next) => {
-    const customerID = req.params.id;
-    const { portfolios, sort_by, sort_direction, rows_per_page, current_page, assignee_id } = req.query
-    const representativeIDs = JSON.parse(portfolios != undefined ? portfolios : "[]");
-    let citedAssignees = [], organizations = [], total_records = 0;
-    if(customerID > 0) {
-        const where = {organisationID: customerID, layout_id: 15};
-        let whereRepresentative = {};
-        if(representativeIDs.length > 0) {
-            where.representative_id = representativeIDs;
-            whereRepresentative = {
-                [connection.Op.or]: [
-                    {parent_id: representativeIDs},
-                    {representative_id: representativeIDs}
-                ]
-            }
-        }
-        
-        if(assignee_id != undefined) {
-            where.assignee_id = assignee_id
-        }
-        console.log('assignee_id', assignee_id, where)
+    try{
 
-        if(req.connection_db != null) {
-            if(assignee_id == undefined) {
-                const RepresentativeClient = req.connection_db.define('Representatives', RepresentativeCustomer.mainStructure, RepresentativeCustomer.options);
-                const findRepresentativeCompanies = await RepresentativeClient.findAll({
-                    attributes:['representative_id'],
-                    where:whereRepresentative
-                });
-
-                if(findRepresentativeCompanies != null && findRepresentativeCompanies.length > 0) {
-                    const companies = [];
-                    const promises = findRepresentativeCompanies.map( company => {
-                        companies.push(company.representative_id);
-                        return company;
-                    });
-                    await Promise.all(promises);
-                    where.companiesIDs = companies
+        const customerID = req.params.id;
+        const { portfolios, sort_by, sort_direction, rows_per_page, current_page, assignee_id } = req.query
+        const representativeIDs = JSON.parse(portfolios != undefined ? portfolios : "[]");
+        let citedAssignees = [], organizations = [], total_records = 0;
+        if(customerID > 0) {
+            const where = {organisationID: customerID, layout_id: 15};
+            let whereRepresentative = {};
+            if(representativeIDs.length > 0) {
+                where.representative_id = representativeIDs;
+                whereRepresentative = {
+                    [connection.Op.or]: [
+                        {parent_id: representativeIDs},
+                        {representative_id: representativeIDs}
+                    ]
                 }
-            }    
-
-            let queryCitedPatentsAssignee = `SELECT ao.assignee_id, COUNT(ao.assignee_id) AS occurences, ao.assignee_organization, ao.assignee_query, ao.domain, ao.domain2, ao.domain3, IF(ao.api_logo <> "null", ao.api_logo, "") AS api_logo, IF(ao.api_logo1 <> "null", ao.api_logo1, "") AS api_logo1, IF(ao.api_logo2 <> "null", ao.api_logo2, "") AS api_logo2, IF(ao.api_logo3 <> "null", ao.api_logo3, "") AS api_logo3, IF(ao.api_logo4 <> "null", ao.api_logo4, "") AS api_logo4, IF(ao.api_logo5 <> "null", ao.api_logo5, "") AS api_logo5, IF(ao.api_logo6 <> "null", ao.api_logo6, "") AS api_logo6, IF(ao.api_logo7 <> "null", ao.api_logo7, "") AS api_logo7, IF(ao.api_logo8 <> "null", ao.api_logo8, "") AS api_logo8, IF(ao.api_logo9 <> "null", ao.api_logo9, "") AS api_logo9, without_square, image_url, '' AS img FROM assignee_organizations AS ao 
-                                        INNER JOIN cited_patents AS cp ON cp.assignee_id = ao.assignee_id
-                                        INNER JOIN assets AS a ON a.grant_doc_num  COLLATE utf8mb4_general_ci  = cp.patent_number  COLLATE utf8mb4_general_ci 
-                                        WHERE a.layout_id = :layout_id AND a.organisation_id = :organisationID ` 
-                                        
-            if(typeof where.companiesIDs !== 'undefined') {
-                queryCitedPatentsAssignee +=   `AND a.company_id IN (:companiesIDs) AND ao.organisation_id = 0`
-            }                       
-
-            if(assignee_id != undefined) {
-                queryCitedPatentsAssignee += ` AND ao.assignee_id = :assignee_id `
-            }                       
-
-            queryCitedPatentsAssignee += ` GROUP BY ao.assignee_id`
-
-
-            const recordsResult = await connection.applicationNew.query(`SELECT COUNT(*) as total_records FROM (${queryCitedPatentsAssignee}) as temp`,{
-                    type: connection.Sequelize.QueryTypes.SELECT,
-                    raw: true,
-                    replacements: where,
-                    logging: console.log,
-                    plain: true
-                }
-            );
-
-            if(recordsResult !== null) {
-                total_records = recordsResult.total_records
             }
-
-            queryCitedPatentsAssignee += ` ORDER BY   ${typeof sort_by !== "undefined" ? sort_by : "occurences "} ${typeof sort_direction !== "undefined" ? sort_direction : "desc "} `
-
-
-            queryCitedPatentsAssignee += ` LIMIT  ${typeof current_page !== "undefined" ? current_page * rows_per_page + ", " : " 0, "} ${typeof rows_per_page !== "undefined" ? rows_per_page : " 50 "} `
             
-            citedAssignees = await connection.applicationNew.query(queryCitedPatentsAssignee,{
-                    type: connection.Sequelize.QueryTypes.SELECT,
-                    raw: true,
-                    replacements: where,
-                    logging: console.log,
+            if(assignee_id != undefined) {
+                where.assignee_id = assignee_id
+            }
+            console.log('assignee_id', assignee_id, where)
+    
+            if(req.connection_db != null) {
+                if(assignee_id == undefined) {
+                    const RepresentativeClient = req.connection_db.define('Representatives', RepresentativeCustomer.mainStructure, RepresentativeCustomer.options);
+                    const findRepresentativeCompanies = await RepresentativeClient.findAll({
+                        attributes:['representative_id'],
+                        where:whereRepresentative
+                    });
+    
+                    if(findRepresentativeCompanies != null && findRepresentativeCompanies.length > 0) {
+                        const companies = [];
+                        const promises = findRepresentativeCompanies.map( company => {
+                            companies.push(company.representative_id);
+                            return company;
+                        });
+                        await Promise.all(promises);
+                        where.companiesIDs = companies
+                    }
+                }    
+    
+                let queryCitedPatentsAssignee = `SELECT ao.assignee_id, COUNT(ao.assignee_id) AS occurences, ao.assignee_organization, ao.assignee_query, ao.domain, ao.domain2, ao.domain3, IF(ao.api_logo <> "null", ao.api_logo, "") AS api_logo, IF(ao.api_logo1 <> "null", ao.api_logo1, "") AS api_logo1, IF(ao.api_logo2 <> "null", ao.api_logo2, "") AS api_logo2, IF(ao.api_logo3 <> "null", ao.api_logo3, "") AS api_logo3, IF(ao.api_logo4 <> "null", ao.api_logo4, "") AS api_logo4, IF(ao.api_logo5 <> "null", ao.api_logo5, "") AS api_logo5, IF(ao.api_logo6 <> "null", ao.api_logo6, "") AS api_logo6, IF(ao.api_logo7 <> "null", ao.api_logo7, "") AS api_logo7, IF(ao.api_logo8 <> "null", ao.api_logo8, "") AS api_logo8, IF(ao.api_logo9 <> "null", ao.api_logo9, "") AS api_logo9, without_square, image_url, '' AS img FROM assignee_organizations AS ao 
+                                            INNER JOIN cited_patents AS cp ON cp.assignee_id = ao.assignee_id
+                                            INNER JOIN assets AS a ON a.grant_doc_num  COLLATE utf8mb4_general_ci  = cp.patent_number  COLLATE utf8mb4_general_ci 
+                                            WHERE a.layout_id = :layout_id AND a.organisation_id = :organisationID ` 
+                                            
+                if(typeof where.companiesIDs !== 'undefined') {
+                    queryCitedPatentsAssignee +=   `AND a.company_id IN (:companiesIDs) AND ao.organisation_id = 0`
+                }                       
+    
+                if(assignee_id != undefined) {
+                    queryCitedPatentsAssignee += ` AND ao.assignee_id = :assignee_id `
+                }                       
+    
+                queryCitedPatentsAssignee += ` GROUP BY ao.assignee_id`
+    
+    
+                const recordsResult = await connection.applicationNew.query(`SELECT COUNT(*) as total_records FROM (${queryCitedPatentsAssignee}) as temp`,{
+                        type: connection.Sequelize.QueryTypes.SELECT,
+                        raw: true,
+                        replacements: where,
+                        logging: console.log,
+                        plain: true
+                    }
+                );
+    
+                if(recordsResult !== null) {
+                    total_records = recordsResult.total_records
                 }
-            );
-
-            /* const queryOrganisations = `SELECT organisation_id, organisation_name FROM organisations`
-            organizations = await connection.applicationNew.query(queryOrganisations,{
-                    type: connection.Sequelize.QueryTypes.SELECT,
-                    raw: true,
-                    replacements: { },
-                    logging: console.log,
-                }
-            ); */
+    
+                queryCitedPatentsAssignee += ` ORDER BY   ${typeof sort_by !== "undefined" ? sort_by : "occurences "} ${typeof sort_direction !== "undefined" ? sort_direction : "desc "} `
+    
+    
+                queryCitedPatentsAssignee += ` LIMIT  ${typeof current_page !== "undefined" ? current_page * rows_per_page + ", " : " 0, "} ${typeof rows_per_page !== "undefined" ? rows_per_page : " 50 "} `
+                
+                citedAssignees = await connection.applicationNew.query(queryCitedPatentsAssignee,{
+                        type: connection.Sequelize.QueryTypes.SELECT,
+                        raw: true,
+                        replacements: where,
+                        logging: console.log,
+                    }
+                );
+    
+                /* const queryOrganisations = `SELECT organisation_id, organisation_name FROM organisations`
+                organizations = await connection.applicationNew.query(queryOrganisations,{
+                        type: connection.Sequelize.QueryTypes.SELECT,
+                        raw: true,
+                        replacements: { },
+                        logging: console.log,
+                    }
+                ); */
+            }
         }
+        res.status(200).json({citedAssignees, organizations, total_records});
+    } catch (e) {
+        
     }
-    res.status(200).json({citedAssignees, organizations, total_records});
 })
 
 route.put("/company/cited/:id", [authJWT.verifyToken, authJWT.isAdmin, authJWT.addClientID], async (req, res, next) => {
