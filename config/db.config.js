@@ -4,7 +4,7 @@ const moment = require('moment');
 
 const Op = Sequelize.Op;
 
-const application = new Sequelize(`${DATABASE_APPLICATION}`, `${USER}`, `${PASSWORD}`, {
+const application = new Sequelize(process.env.DATABASE_APPLICATION, process.env.USER, process.env.PASSWORD, {
     host: '167.172.195.92',
     dialect: 'mysql',
     operatorsAliases: Op,
@@ -17,7 +17,7 @@ const application = new Sequelize(`${DATABASE_APPLICATION}`, `${USER}`, `${PASSW
     }*/
 });
 
-const applicationNew = new Sequelize(`${DATABASE_APPLICATION_NEW}`, `${USER}`, `${PASSWORD}`, {
+const applicationNew = new Sequelize(process.env.DATABASE_APPLICATION_NEW, process.env.USER, process.env.PASSWORD, {
   host: '167.172.195.92',
   dialect: 'mysql',
   operatorsAliases: Op, 
@@ -25,7 +25,7 @@ const applicationNew = new Sequelize(`${DATABASE_APPLICATION_NEW}`, `${USER}`, `
 
 applicationNew.dialect.supports.schemas = true; 
 
-const resources = new Sequelize(`${DATABASE_RAW}`, `${USER}`, `${PASSWORD}`, {
+const resources = new Sequelize(process.env.DATABASE_RAW, process.env.USER, process.env.PASSWORD, {
     host: '167.172.195.92',
     dialect: 'mysql',
     operatorsAliases: Op,
@@ -38,7 +38,7 @@ const resources = new Sequelize(`${DATABASE_RAW}`, `${USER}`, `${PASSWORD}`, {
     }*/
 });
 
-const business = new Sequelize(`${DATABASE_BUSINESS}`, `${USER}`, `${PASSWORD}`, {
+const business = new Sequelize(process.env.DATABASE_BUSINESS, process.env.USER, process.env.PASSWORD, {
     host: '167.172.195.92',
     dialect: 'mysql',
     operatorsAliases: Op,
@@ -51,7 +51,7 @@ const business = new Sequelize(`${DATABASE_BUSINESS}`, `${USER}`, `${PASSWORD}`,
     }*/
 });
 
-const maintainence = new Sequelize(`${DATABASE_MAINTAINENCE}`, `${USER}`, `${PASSWORD}`, {
+const maintainence = new Sequelize(process.env.DATABASE_MAINTAINENCE, process.env.USER, process.env.PASSWORD, {
   host: '167.172.195.92',
   dialect: 'mysql',
   operatorsAliases: Op,
@@ -64,7 +64,7 @@ const maintainence = new Sequelize(`${DATABASE_MAINTAINENCE}`, `${USER}`, `${PAS
   }*/
 });
 
-const biblioGrant = new Sequelize(`${DATABASE_GRANT_BIBLIO}`, `${USER}`, `${PASSWORD}`, {
+const biblioGrant = new Sequelize(process.env.DATABASE_GRANT_BIBLIO, process.env.USER, process.env.PASSWORD, {
   host: '167.172.195.92',
   dialect: 'mysql',
   operatorsAliases: Op,
@@ -77,7 +77,7 @@ const biblioGrant = new Sequelize(`${DATABASE_GRANT_BIBLIO}`, `${USER}`, `${PASS
   }*/
 });
 
-const biblioApplication = new Sequelize(`${DATABASE_APPLICATION_BIBLIO}`, `${USER}`, `${PASSWORD}`, {
+const biblioApplication = new Sequelize(process.env.DATABASE_APPLICATION_BIBLIO, process.env.USER, process.env.PASSWORD, {
   host: '167.172.195.92',
   dialect: 'mysql',
   operatorsAliases: Op,
@@ -91,7 +91,7 @@ const biblioApplication = new Sequelize(`${DATABASE_APPLICATION_BIBLIO}`, `${USE
 });
 
 const config = {
-  'secret': `${SECRET}` || 'p@nt3nt8@60',
+  'secret': process.env.SECRET || 'p@nt3nt8@60',
   'pusher_appId': '938985',
   'pusher_key': '3252bb191d77e92ddb3c',
   'pusher_secret': '2a3dd823cd1abcd45c71',
@@ -102,20 +102,20 @@ const config = {
 }
 
 const bucketConfig = {
-  bucketName: `${BUCKET_NAME}`,
-  dirName: `${BUCKET_PHOTO_DIR}`, /* optional */
-  region: `${BUCKET_REGION}`,
-  accessKeyId: `${BUCKET_ACCESS_KEY}`,
-  secretAccessKey: `${BUCKET_SECRET_KEY}`,
-  s3Url: `${BUCKET_URL}`, /* optional */
-  documentDir: `${BUCKET_DOCUMENT_DIR}`,
-  figuresDir: `${BUCKET_FIGURES_DIR}`,
+  bucketName: process.env.BUCKET_NAME,
+  dirName: process.env.BUCKET_PHOTO_DIR, /* optional */
+  region: process.env.BUCKET_REGION,
+  accessKeyId: process.env.BUCKET_ACCESS_KEY,
+  secretAccessKey: process.env.BUCKET_SECRET_KEY,
+  s3Url: process.env.BUCKET_URL, /* optional */
+  documentDir: process.env.BUCKET_DOCUMENT_DIR,
+  figuresDir: process.env.BUCKET_FIGURES_DIR,
 }
 
 const slackConfig = {
-  clientID: `${SLACK_CLIENT_ID}`,
-  clientSecret: `${SLACK_CLIENT_SECRET}`,
-  botToken: `${SLACK_BOT_TOKEN}`
+  clientID: process.env.SLACK_CLIENT_ID,
+  clientSecret: process.env.SLACK_CLIENT_SECRET,
+  botToken: process.env.SLACK_BOT_TOKEN
 }
 
 const DEFAULT_LIMIT = 100 
