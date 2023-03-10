@@ -17,10 +17,15 @@ const CompanyKeywords = require("../../model/resources/CompanyKeywords");
  * Get list of keywords
  */
 route.get("/keywords", [authJWT.verifyToken, authJWT.isAdmin], async(req, res, next) => {
-    const getKeywordList = await Keywords.findAll({
-        attributes:[['keyword_id', 'id'], ['keyword_name', 'keyword']]
-    });
-    res.status(200).json(getKeywordList);
+    try{
+
+        const getKeywordList = await Keywords.findAll({
+            attributes:[['keyword_id', 'id'], ['keyword_name', 'keyword']]
+        });
+        res.status(200).json(getKeywordList);
+    } catch (e) {
+
+    }
 });
 
 /**
@@ -118,10 +123,15 @@ route.delete("/keywords/:keywordID", [authJWT.verifyToken, authJWT.isAdmin], asy
  * Get list of superKeyword
  */
 route.get("/super_keywords", [authJWT.verifyToken, authJWT.isAdmin], async(req, res, next) => {
-    const getKeywordList = await SuperKeywords.findAll({
-        attributes:[['super_keyword_id', 'id'], ['super_keyword_name', 'keyword']]
-    });
-    res.status(200).json(getKeywordList);
+    try{
+
+        const getKeywordList = await SuperKeywords.findAll({
+            attributes:[['super_keyword_id', 'id'], ['super_keyword_name', 'keyword']]
+        });
+        res.status(200).json(getKeywordList);
+    } catch (e) {
+
+    }
 });
 
 
@@ -223,10 +233,15 @@ route.delete("/super_keywords/:keywordID", [authJWT.verifyToken, authJWT.isAdmin
  * Get list of superKeyword
  */
 route.get("/state", [authJWT.verifyToken, authJWT.isAdmin], async(req, res, next) => {
-    const getKeywordList = await State.findAll({
-        attributes:[['state_id', 'id'], ['name', 'keyword']]
-    });
-    res.status(200).json(getKeywordList);
+    try{
+
+        const getKeywordList = await State.findAll({
+            attributes:[['state_id', 'id'], ['name', 'keyword']]
+        });
+        res.status(200).json(getKeywordList);
+    } catch (e) {
+        
+    }
 });
 
 
@@ -328,10 +343,15 @@ route.delete("/state/:stateID", [authJWT.verifyToken, authJWT.isAdmin], async(re
  * Get list of company keywords
  */
  route.get("/company_keywords", [authJWT.verifyToken, authJWT.isAdmin], async(req, res, next) => {
-    const getKeywordList = await CompanyKeywords.findAll({
-        attributes:[['keyword_id', 'id'], ['keyword_name', 'keyword']]
-    });
-    res.status(200).json(getKeywordList);
+    try{
+
+        const getKeywordList = await CompanyKeywords.findAll({
+            attributes:[['keyword_id', 'id'], ['keyword_name', 'keyword']]
+        });
+        res.status(200).json(getKeywordList);
+    } catch (e) {
+        
+    }
 });
 
 

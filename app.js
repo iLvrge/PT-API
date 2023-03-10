@@ -52,7 +52,58 @@ app.use(bodyParser.urlencoded({limit: '100mb', extended:false, parameterLimit:10
 
 app.use(upload());
 
-app.use(cors());
+/* app.use(cors({
+    origin: '*',
+    methods: ['GET','POST','DELETE','PUT','PATCH', 'OPTIONS'],
+    preflightContinue: false,
+    optionsSuccessStatus: 204
+}));
+
+app.options('*', cors())  
+
+app.use(function(req, res, next) {
+   res.header("Access-Control-Allow-Origin", "*");
+   res.header('Access-Control-Allow-Methods', 'DELETE, PUT, GET, POST, OPTIONS, PATCH');
+   res.header("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept");
+   next();
+}); */
+
+// enable cors
+app.use(
+    cors({
+        origin: '*',
+        exposedHeaders: '*',
+        optionsSuccessStatus: 200,
+        credentials: true,
+    })
+  );
+/* app.options(
+    '*',
+    cors({
+        origin: '*',
+        exposedHeaders: '*',
+        optionsSuccessStatus: 200,
+        credentials: true,
+    })
+); */
+app.options('*', (req, res) => {
+    res.writeHead(200, '', {
+        'Access-Control-Allow-Origin': '*',
+        'Access-Control-Allow-Methods': 'OPTIONS',
+    }).end();
+});
+/* app.use((req, res, next) => { //doesn't send response just adjusts it
+    res.header("Access-Control-Allow-Origin", "*") //* to give access to any origin
+    res.header(
+        "Access-Control-Allow-Headers",
+        "Origin, X-Requested-With, Content-Type, Accept, Authorization" //to give access to all the headers provided
+    );
+    if(req.method === 'OPTIONS'){
+        res.header('Access-Control-Allow-Methods', 'PUT, POST, PATCH, DELETE, GET'); //to give access to all the methods provided
+        return res.status(200).json({});
+    }
+    next(); //so that other routes can take over
+}) */
 
 /**nginx client_max_body_size 100M; #100mb */
 
@@ -84,6 +135,7 @@ const activities = require("./routes/client/activities");
 const comments = require("./routes/client/comments");
 const professionals = require("./routes/client/professionals");
 const users = require("./routes/client/users");
+const category_products = require("./routes/client/category_products");
 const documents = require("./routes/client/documents");
 const company = require("./routes/client/company");
 const address = require("./routes/client/address");
@@ -172,6 +224,8 @@ app.use("/customers", customers);
 app.use("/timeline", timelines);
 
 app.use("/users", users);
+
+app.use("/category_products", category_products);
 
 app.use("/professionals", professionals);
 

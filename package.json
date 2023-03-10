@@ -11,6 +11,7 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
+    "@paralleldrive/cuid2": "^2.2.0",
     "@sentry/node": "^5.28.0",
     "@sentry/tracing": "^5.28.0",
     "@slack/web-api": "^5.14.0",
@@ -42,7 +43,6 @@
     "request": "^2.88.2",
     "request-promise": "^4.2.6",
     "sequelize": "^5.21.11",
-    "short-uuid": "^4.2.2",
     "stream": "^0.0.2",
     "uuidv4": "^6.1.0",
     "winston": "^3.8.2",

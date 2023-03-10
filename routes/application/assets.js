@@ -242,15 +242,15 @@ route.post("/assets/cpc", [authJWT.verifyToken, clientDBConnection.connect], asy
                 list = JSON.parse(list)
             }            
 
-            let rangeConcat = 'CONCAT(section, class)'
+            let rangeConcat = 'CONCAT(section, class, sub_class)'
 
             if( range != undefined && range != 'undefined' && range != null) {
                 switch(parseInt(range)) {
                     case 5:
                         rangeConcat = 'section'
                         break;                        
-                    case 3:
-                        rangeConcat = 'CONCAT(section, class, sub_class)'
+                    case 4:
+                        rangeConcat = 'CONCAT(section, class)'
                         break;
                     case 2:
                         rangeConcat = 'CONCAT(section, class, sub_class, main_group, "/00")'
@@ -258,9 +258,9 @@ route.post("/assets/cpc", [authJWT.verifyToken, clientDBConnection.connect], asy
                     case 1:
                         rangeConcat = 'CONCAT(section, class, sub_class, main_group, "/", sub_group)'
                         break;                            
-                    case 4:
+                    case 3:
                     default:
-                        rangeConcat = 'CONCAT(section, class)'
+                        rangeConcat = 'CONCAT(section, class, sub_class)' 
                         break;
                 }
             }
@@ -520,7 +520,7 @@ route.post("/assets/cpc", [authJWT.verifyToken, clientDBConnection.connect], asy
                             }
                             return 0;
                         });
-                        console.log('getList', getList)
+                        //console.log('getList', getList)
                         const promise = remainingList.map( item => {  
                             if(!cpcCode.includes(item.cpc_code)){
                                 cpcCode.push(item.cpc_code) 
@@ -730,6 +730,7 @@ route.post("/assets/cpc/:year/:cpcCode", [authJWT.verifyToken, clientDBConnectio
                         case 1:
                             rangeConcat = 'CONCAT(section, class, sub_class, main_group, "/", sub_group)'
                             break;
+                        case 3:
                         default:
                             rangeConcat = 'CONCAT(section, class, sub_class)'
                             break;

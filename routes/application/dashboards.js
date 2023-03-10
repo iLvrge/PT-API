@@ -1355,7 +1355,7 @@ route.post("/temp", [authJWT.verifyToken], async(req, res, next) => {
 
 route.post("/share", [authJWT.verifyToken], async(req, res, next) => {
     try {
-        let { selectedCompanies, tabs, customers, share_button } = req.body
+        let { selectedCompanies, tabs, customers, share_button } = req.body 
         if(selectedCompanies.length > 0) {
             let code = await helpers.getNewCode();
             if(code != undefined) {
