@@ -5,7 +5,11 @@ const request = require("request");
 
 const rp = require('request-promise');
 
-const shortUUID = require('short-uuid')
+//const shortUUID = require('short-uuid')
+
+//const nanoid = require('nanoid');
+
+const {init} = require('@paralleldrive/cuid2')
 
 const FtsQuery = require("full-text-search-query");
 
@@ -3519,30 +3523,41 @@ let generateJSON = async(req, res) => {
 }
 
 let getNewCode = async () => {
-    const retryLimit = 50;
-    let newCode = undefined;
-    let run =  true;
-    for (let i = 0; i < retryLimit; i++) {
-        if(run === true){
-            /* const code = uuidv4() + (Math.random()*1e32).toString(36).substr(0,10); */
+    try {
 
-            
-            const code = shortUUID.generate()
-            await Share.findOne({
-                where:{code: code},
-                attributes: ['share_id']
-            })
-            .then( s => {
-                if(s == null){ 
-                    newCode = code ;
-                    run = false; 
-                }
-            })  
-        } else {
-            return newCode;
-        }        
+        const retryLimit = 50;
+        let newCode = undefined;
+        let run =  true;
+        const createId = init({
+            // A custom random function with the same API as Math.random.
+            // You should use this to pass a cryptographically secure random function.
+            random: Math.random,
+            length: 6,  
+        });
+        for (let i = 0; i < retryLimit; i++) {
+            if(run === true){
+                /* const code = uuidv4() + (Math.random()*1e32).toString(36).substr(0,10); */
+    
+                
+                const code = createId()
+                await Share.findOne({
+                    where:{code: code},
+                    attributes: ['share_id']
+                })
+                .then( s => {
+                    if(s == null){ 
+                        newCode = code ;
+                        run = false; 
+                    }
+                })  
+            } else {
+                return newCode;
+            }        
+        }
+        return newCode;
+    } catch (e) {
+
     }
-    return newCode;
 };
 
 const removeAllOldSharingUrl = async(organisation_id) => {
