@@ -2174,16 +2174,20 @@ let findCompanyEntitiesByAccountID = async(orgID, type, DBConnection, suggestion
                 entitiesList = await findAssignorAndAssigneeListFromRFIDs(rfIDs, type);
                 console.log('suggestions', suggestions)
                 if(typeof suggestions != 'undefined' && suggestions == 1) {
+                    console.log('TYPE', type);
                     if(type == 1) {
                         entitiesList = await inventorSortNames(entitiesList)
                         entitiesList = await inventorGroupLevenshtein(entitiesList)
                     } else {
-                        entitiesList = groupOrganisationSuggestions(entitiesList)
+                        console.log("SENDING FOR ORG")
+                        entitiesList = await groupOrganisationSuggestions(entitiesList)
+                        console.log("AFTER ORG")
+                        console.log('entitiesList', entitiesList)
                     }
                 }
                 if(typeof fixed_identicals != 'undefined' && fixed_identicals == 1) {
                     if(type == 1) {
-                        entitiesList = inventorGroupSuggestions(entitiesList)
+                        entitiesList = await inventorGroupSuggestions(entitiesList)
                     }
                 }
             }
@@ -2843,31 +2847,43 @@ const groupSuggestions = async (entitiesList, identical = 0) => {
 }
 
 
-const groupOrganisationSuggestions = (entitiesList) => {
+const groupOrganisationSuggestions = async (entitiesList) => {
     // sample subset array of organizations with names and occurrences
     const orgs =  [...entitiesList]
+   
     // function to group similar names and suggest correct name 
     // create an empty object to store groups of similar names
-    const groups = {}, allNames = [];
+    const groups = {}, allNames = [], otherSuggested = [];
 
-    orgs.forEach((org) => {
-        let added = false; 
-        allNames.push(org.name)
-        // check if there is already a group for the current name
-        for (let group in groups) {
-            if (levenshteinNatural(org.name, group) <= 2) {
-                // if the levenshtein distance is less than or equal to 2, add the name to the existing group
-                groups[group].push(org);
-                added = true;
-                break;
+
+    for (let i = 0; i < orgs.length; i++) {
+        allNames.push(orgs[i].name)
+        for (let j = i + 1; j < orgs.length; j++) {
+            if(!otherSuggested.includes(orgs[j].name) && (orgs[j].normalize_name == '' || orgs[j].normalize_name == null) && orgs[i].id != orgs[j].id) {
+                const checkRepresentative = orgs[i].normalize_name;
+                let distance1 = 5;
+                if(checkRepresentative != '' && checkRepresentative != null) {  
+                    distance1 = levenshtein.get(checkRepresentative.toLowerCase(), orgs[j].name.toLowerCase())
+                }
+                const distance2 = levenshtein.get(orgs[i].name.toLowerCase(), orgs[j].name.toLowerCase())
+                const distance = Math.min(distance1, distance2)
+                /* console.log(distance, names[j].normalize_name,  names[i].id,  names[j].id) */
+                if(distance < 3 ) {
+                    let nameSimilar = orgs[j].name, nameChecked = orgs[i].name;
+                    if (groups[nameChecked]) {
+                        groups[nameChecked].push(orgs[j]);
+                        otherSuggested.push(nameSimilar)
+                    } else {
+                        if(!otherSuggested.includes(nameChecked)) {
+                            groups[nameChecked] = [orgs[j]];
+                            otherSuggested.push(nameSimilar)
+                        }
+                    }
+                }
             }
-        } 
-        if (!added) {
-            // if no group found, create a new group with the current name
-            groups[org.name] = [org];
         }
-    });
-
+    } 
+    
     let newSuggestedSet = [], allOrgID = [];
     const spellcheck = new natural.Spellcheck(allNames);
     // loop through the groups and suggest the correct name
@@ -2885,9 +2901,7 @@ const groupOrganisationSuggestions = (entitiesList) => {
             }
         });
         const findIndex = orgs.findIndex( row => row.name == group)
-        if(findIndex !== -1) {
-            /* const similarNames = [];
-            groups[group].map((org) => similarNames.push(org.name)) */
+        if(findIndex !== -1) { 
             
             if(groups[group].length > 0) {
                 allOrgID.push(orgs[findIndex].id)
@@ -2906,7 +2920,7 @@ const groupOrganisationSuggestions = (entitiesList) => {
             }
         } 
     } 
-    return newSuggestedSet;   
+    return newSuggestedSet; 
 }
 
 let findCompanyEntitiesByAccountIDByRepresentativeIDs = async(orgID, representativeIDs, type, DBConnection, suggestions, fixed_identicals) => {
@@ -2934,7 +2948,7 @@ let findCompanyEntitiesByAccountIDByRepresentativeIDs = async(orgID, representat
                     entitiesList = await inventorSortNames(entitiesList) 
                     entitiesList = await inventorGroupLevenshtein(entitiesList)
                 } else {
-                    entitiesList = groupOrganisationSuggestions(entitiesList)
+                    entitiesList = await groupOrganisationSuggestions(entitiesList)
                 }
             }
             if(typeof fixed_identicals != 'undefined' && fixed_identicals == 1) {
@@ -3057,6 +3071,8 @@ let findAssignorAndAssigneeListFromRFIDs = async(rfIDs, type) => {
             logging: console.log,
             }
         ); */
+
+        
 
         let queryAssignor = `SELECT assignor_and_assignee_id, name, SUM(counter) AS counter, normalize_name, representativeCompany, total_occurences, rf_id, flag FROM (SELECT a.assignor_and_assignee_id, a.or_name as name, count(a.or_name) as counter, r.representative_name as normalize_name, (select rr.representative_name FROM representative as rr WHERE rr.representative_name = aaa.name GROUP BY rr.representative_name) as representativeCompany, (SELECT aa.instances FROM assignor_and_assignee as aa WHERE aa.assignor_and_assignee_id = a.assignor_and_assignee_id  GROUP BY aa.assignor_and_assignee_id) as total_occurences, a.rf_id, 1 AS flag FROM assignor as a INNER JOIN assignor_and_assignee as aaa ON aaa.assignor_and_assignee_id = a.assignor_and_assignee_id INNER JOIN representative_assignment_conveyance as rac ON rac.rf_id = a.rf_id LEFT JOIN representative as r ON r.representative_id = aaa.representative_id WHERE aaa.assignor_and_assignee_id NOT IN (SELECT inventors.assignor_and_assignee_id FROM inventors) AND a.rf_id IN (SELECT rf_id FROM documentid WHERE appno_doc_num IN (SELECT appno_doc_num FROM documentid WHERE rf_id IN (:rfIDs)) GROUP BY rf_id) AND rac.employer_assign = 0  AND date_format(a.exec_dt, '%Y') > :year GROUP BY a.or_name
         UNION ALL
