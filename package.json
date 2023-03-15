@@ -13,8 +13,6 @@
   "dependencies": {
     "@mapbox/node-pre-gyp": "^1.0.10",
     "@paralleldrive/cuid2": "^2.2.0",
-    "@sentry/node": "^5.28.0",
-    "@sentry/tracing": "^5.28.0",
     "@slack/web-api": "^5.14.0",
     "aws-sdk": "^2.797.0",
     "bcrypt": "^5.1.0",
@@ -36,7 +34,6 @@
     "moment": "^2.29.1",
     "mysql2": "^2.1.0",
     "natural": "^6.1.4",
-    "newrelic": "^9.7.4",
     "node-libcurl": "^3.0.0-0",
     "nodemailer": "^6.4.8",
     "nodemon": "^2.0.4",

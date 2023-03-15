@@ -5,17 +5,17 @@ const cors = require("cors");
 
 const bodyParser = require("body-parser");
 
-const Sentry = require('@sentry/node');
+/* const Sentry = require('@sentry/node');
 
-const Tracing = require("@sentry/tracing");
+const Tracing = require("@sentry/tracing"); */
 
 const upload = require("express-fileupload");
 
 // load the agent
-const newrelic = require('newrelic');
+/* const newrelic = require('newrelic'); */
 
 const app = express();
-
+/* 
 // instrument express after the agent has been loaded
 newrelic.instrumentLoadedModule(
     'express',    // the module's name, as a string
@@ -42,7 +42,7 @@ const transaction = Sentry.startTransaction({
 
 app.use(Sentry.Handlers.requestHandler());
 app.use(Sentry.Handlers.tracingHandler());
-app.use(Sentry.Handlers.errorHandler());
+app.use(Sentry.Handlers.errorHandler()); */
 
 app.use(express.json({limit: '100mb', type:'application/json'}));
 app.use(express.urlencoded({limit: '100mb', extended:false, parameterLimit:100000, type:'application/x-www-form-urlencoded'}));
