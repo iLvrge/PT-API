@@ -1373,7 +1373,7 @@ route.post("/share", [authJWT.verifyToken], async(req, res, next) => {
                 }
                 const insertRecord = await Share.create(params);
                 if(insertRecord != null && insertRecord.share_id > 0) {  
-                    res.status(200).send(`https://${subdomain}.patentrack.com/${params.code}`); 
+                    res.status(200).send(`https://${subdomain}.patentrack.com/dashboard/${params.code}`); 
                 }
             } else {
                 res.status(500).send("Unable to create share url.");
