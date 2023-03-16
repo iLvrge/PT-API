@@ -4645,30 +4645,38 @@ const findFillingAssets = async (req) => {
         
         findAllAssigneeAssets += ` ) AND appno_doc_num IN (SELECT application FROM dashboard_items WHERE organisation_id = :organisation_id  AND representative_id IN (:companies) AND type = :type `
 
-        if(typeof lawfirm != 'undefined' && lawfirm > 0) {
+        if(typeof lawfirm != 'undefined' && lawfirm > 0) {  
 
-            if(lawfirm > 0) { 
-                const findLawFirm = `SELECT  lf.law_firm_id  FROM db_uspto.correspondent AS c LEFT JOIN db_uspto.law_firm  as lf ON c.cname = lf.name
-                LEFT JOIN db_uspto.representative_law_firm AS rlf ON rlf.representative_id = lf.representative_id WHERE c.rf_id = :rfID`
+            const findLawFirm = `SELECT  cname, lf.name, rlf.representative_id, rlf.representative_name FROM db_uspto.correspondent AS c LEFT JOIN db_uspto.law_firm  as lf ON c.cname = lf.name
+            LEFT JOIN db_uspto.representative_law_firm AS rlf ON rlf.representative_id = lf.representative_id WHERE c.rf_id = :rfID`
 
-                const getLawFirmData = await connection.applicationNew.query(findLawFirm, {
-                    type: connection.Sequelize.QueryTypes.SELECT,
-                    raw: true,
-                    plain: true,
-                    logging: console.log,
-                    replacements: {rfID: lawfirm},
-                }) 
+            const getLawFirmData = await connection.applicationNew.query(findLawFirm, {
+                type: connection.Sequelize.QueryTypes.SELECT,
+                raw: true,
+                plain: true,
+                logging: console.log,
+                replacements: {rfID: lawfirm},
+            }) 
 
-                if(getLawFirmData.length > 0) {
-                    const allLawfirms = []
-                    const promise = getLawFirmData.map( row => {
-                        allLawfirms.push(row.law_firm_id)
-                    })
-                    await Promise.all(promise)
-                    replacements.lawfirms = allLawfirms
-                    findAllAssigneeAssets += ` AND lawfirm_id IN (:lawfirms) `;
-                } 
-            } 
+            if(getLawFirmData != null ) { 
+                if(getLawFirmData.representative_id > 0) {
+                    replacements.representative_id = getLawFirmData.representative_id 
+                } else {
+                    replacements.name = getLawFirmData.cname
+                }
+
+                let tempQuery = `SELECT lf.law_firm_id  FROM db_uspto.law_firm  as lf  
+                LEFT JOIN db_uspto.representative_law_firm AS rlf ON rlf.representative_id = lf.representative_id WHERE   `
+
+                if(typeof replacements.representative_id != 'undefined') {
+                    tempQuery += ` rlf.representative_id = :representative_id`
+                } else {
+                    tempQuery += ` lf.name = :name`
+                }
+                tempQuery += ` GROUP BY  lf.law_firm_id`
+                replacements.lawfirm_type = 40 
+                findAllAssigneeAssets += ` AND application IN ( SELECT application FROM dashboard_items WHERE organisation_id = :organisation_id  AND representative_id IN (:companies) AND type = :lawfirm_type AND lawfirm_id IN (${tempQuery})) `  
+            }  
         }
         
         findAllAssigneeAssets += `  GROUP BY application) GROUP BY appno_doc_num`
@@ -4722,6 +4730,10 @@ const findLawFirmName = async (props) => {
 
     if(typeof props.assignments  != 'undefined' && props.assignments.length > 0) {  
         queryFillingLawFirm += ` AND rf_id IN (:assignments) ` 
+    }
+
+    if(typeof props.lawfirm != 'undefined' && props.lawfirm > 0) { 
+        queryFillingLawFirm += ` AND rf_id = :lawfirm ` 
     }
 
     queryFillingLawFirm += ` GROUP BY lawfirm `

@@ -120,7 +120,7 @@ const findLawFirmName = async (props) => {
 
 route.post("/assets/cpc", [authJWT.verifyToken, clientDBConnection.connect], async(req, res, next) => {
     try{
-        let { list, total, type, selectedCompanies, tabs, customers, assignments, range, scope, year, other_mode, data_type, sale, license, primary } = req.body, getList = [], group = [], sales = []
+        let { list, total, type, selectedCompanies, tabs, customers, assignments, range, scope, year, other_mode, data_type, sale, license, primary, lawfirm } = req.body, getList = [], group = [], sales = []
         const replacements = { organisation_id: req.orgId, year: 2000 }
         let companies = []
         if(typeof selectedCompanies != 'undefined' && selectedCompanies != '') {            
@@ -130,7 +130,7 @@ route.post("/assets/cpc", [authJWT.verifyToken, clientDBConnection.connect], asy
         if(typeof type !== 'undefined' && type != 'due_dilligence') {
             if(type == 'top_law_firms') { 
                 let getFiilingAssets = []
-                if(typeof primary != 'undefined'){
+                if(typeof primary != 'undefined'){ 
                     getFiilingAssets = await helpers.findFillingAssets(req) 
                 } else {
                     
@@ -152,6 +152,7 @@ route.post("/assets/cpc", [authJWT.verifyToken, clientDBConnection.connect], asy
                         await Promise.all(promise)
                     }
                 }
+ 
     
                 if(getFiilingAssets.length > 0) {  
                     replacements.applications = getFiilingAssets
