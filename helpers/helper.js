@@ -4665,7 +4665,7 @@ const findFillingAssets = async (req) => {
                     replacements.name = getLawFirmData.cname
                 }
 
-                let tempQuery = `SELECT lf.law_firm_id  FROM db_uspto.law_firm  as lf  
+                let tempQuery = `SELECT lf.name  FROM db_uspto.law_firm  as lf  
                 LEFT JOIN db_uspto.representative_law_firm AS rlf ON rlf.representative_id = lf.representative_id WHERE   `
 
                 if(typeof replacements.representative_id != 'undefined') {
@@ -4673,9 +4673,9 @@ const findFillingAssets = async (req) => {
                 } else {
                     tempQuery += ` lf.name = :name`
                 }
-                tempQuery += ` GROUP BY  lf.law_firm_id`
-                replacements.lawfirm_type = 40 
-                findAllAssigneeAssets += ` AND application IN ( SELECT application FROM dashboard_items WHERE organisation_id = :organisation_id  AND representative_id IN (:companies) AND type = :lawfirm_type AND lawfirm_id IN (${tempQuery})) `  
+                tempQuery += ` GROUP BY  lf.law_firm_id` 
+
+                findAllAssigneeAssets += ` AND application IN ( SELECT appno_doc_num FROM db_patent_application_bibliographic.lawfirm AS l WHERE name IN (${tempQuery}) AND appno_doc_num IN (SELECT application FROM dashboard_items WHERE organisation_id = :organisation_id  AND representative_id IN (:companies) AND type = :type)) `  
             }  
         }
         
