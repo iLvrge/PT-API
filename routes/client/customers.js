@@ -144,23 +144,23 @@ route.get("/timeline", [authJWT.verifyToken], async(req, res, next) => {
             replacements.companies = companies
             if(replacements.layout == 34) { 
                 const findList = await findCollateralizedAssets(replacements)
-                replacements.activity_id = [5, 12];
+                replacements.convey_ty = ['security', 'restatedsecurity'];
                 replacements.assets = findList;
 
                 if(findList.length > 0) {
 
-                    query = "SELECT assignment.rf_id as id, apt.exec_dt, release_rf_id, release_exec_dt, full_match AS partial_transaction, all_release_ids, total_assets AS releaseAssets, IF(representative.representative_name <> '', representative.representative_name, assignor_and_assignee.name)  AS customerName,  assignor_and_assignee.assignor_and_assignee_id AS name_id, representative.representative_id as repID, apt.activity_id AS tab_id, '' AS `group`, '' AS `company`, COUNT(DISTINCT doc.appno_doc_num) AS totalAssets FROM db_uspto.assignment INNER JOIN db_new_application.activity_parties_transactions AS apt ON apt.rf_id = assignment.rf_id INNER JOIN db_uspto.documentid AS doc ON doc.rf_id = apt.rf_id INNER JOIN db_uspto.assignor_and_assignee AS assignor_and_assignee ON assignor_and_assignee.assignor_and_assignee_id = apt.assignor_and_assignee_id LEFT JOIN db_uspto.representative AS representative ON representative.representative_id = assignor_and_assignee.representative_id WHERE apt.activity_id IN (:activity_id) AND apt.organisation_id = :organisation_id AND apt.company_id IN (:companies) AND (release_exec_dt IS NULL OR full_match = 0) AND doc.appno_doc_num IN(:assets) "
+                    query = "SELECT assignment.rf_id as id, aor.exec_dt, '' AS release_rf_id, '' AS release_exec_dt, 0 AS partial_transaction, '' AS all_release_ids, 0 AS releaseAssets, IF(representative.representative_name <> '', representative.representative_name, assignor_and_assignee.name)  AS customerName,  assignor_and_assignee.assignor_and_assignee_id AS name_id, representative.representative_id as repID, 5 AS tab_id, '' AS `group`, '' AS `company`, COUNT(DISTINCT doc.appno_doc_num) AS totalAssets FROM db_uspto.assignment INNER JOIN db_uspto.documentid AS doc ON doc.rf_id = assignment.rf_id INNER JOIN db_uspto.representative_assignment_conveyance AS rac ON rac.rf_id = assignment.rf_id INNER JOIN db_uspto.assignor AS aor ON aor.rf_id = assignment.rf_id INNER JOIN db_uspto.assignor_and_assignee AS assignor_and_assignee ON assignor_and_assignee.assignor_and_assignee_id = aor.assignor_and_assignee_id LEFT JOIN db_uspto.representative AS representative ON representative.representative_id = assignor_and_assignee.representative_id WHERE rac.convey_ty IN (:convey_ty)  AND doc.appno_doc_num IN(:assets) "
                     
                     
                     if(typeof start != 'undefined' && start != '' && typeof end != 'undefined' && end != '') {
                         replacements.start = start
                         replacements.end = end
-                        query += " AND  apt.exec_dt BETWEEN :start AND :end "
+                        query += " AND  aor.exec_dt BETWEEN :start AND :end "
                     } else {
-                        query += " AND date_format(apt.exec_dt, '%Y') > :year "
+                        query += " AND date_format(aor.exec_dt, '%Y') > :year "
                     }
                     
-                    query += " GROUP BY assignment.rf_id ORDER BY apt.exec_dt DESC  LIMIT 0, 500" 
+                    query += " GROUP BY assignment.rf_id ORDER BY aor.exec_dt DESC  LIMIT 0, 500" 
                 } else {
                     query = ''
                 }
