@@ -517,7 +517,7 @@ route.post("/timeline", [authJWT.verifyToken, clientDBConnection.connect], async
                                 activityIDs = [3, 4]
                                 break
                             case 4:
-                                activityIDs = [5, 12, 13, 11]
+                                activityIDs = [5, 12]
                                 break
                             case 5:
                                 activityIDs = [10]
@@ -555,6 +555,8 @@ route.post("/timeline", [authJWT.verifyToken, clientDBConnection.connect], async
                         INNER JOIN db_uspto.assignment AS assign ON assign.rf_id = apt.rf_id
                         LEFT JOIN db_uspto.assignment AS assign1 ON assign1.rf_id = apt.release_rf_id
                         INNER JOIN db_uspto.assignor_and_assignee AS aaa ON aaa.assignor_and_assignee_id = apt.assignor_and_assignee_id LEFT JOIN db_uspto.representative AS r ON r.representative_id = aaa.representative_id WHERE apt.organisation_id = :organisationID AND company_id IN (:companyIDs)  AND apt.activity_id IN (:activityIDs) ${parties.length > 0 ? ' AND apt.assignor_and_assignee_id IN (:assignor_id) ' : ''} AND apt.recorded_assignor_and_assignee_id IN (:assignorAssigneeIDs) AND date_format(apt.exec_dt, '%Y') > :year GROUP BY apt.rf_id ORDER BY exec_dt DESC `;
+
+                        
 
                         
                         getList =  await connection.applicationNew.query(query,{

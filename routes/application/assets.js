@@ -165,7 +165,7 @@ route.post("/assets/cpc", [authJWT.verifyToken, clientDBConnection.connect], asy
     
                     replacements.lawfirm_name = lawfirmName
     
-                    let queryFillingLawFirm = `SELECT l.appno_doc_num FROM db_patent_application_bibliographic.lawfirm AS l  WHERE l.appno_doc_num IN (:applications) AND l.name IN (:lawfirm_name) GROUP BY l.appno_doc_num `
+                    let queryFillingLawFirm = "SELECT l.appno_doc_num FROM db_patent_application_bibliographic.lawfirm AS l  WHERE l.appno_doc_num IN (:applications) AND TRIM(BOTH  '.' FROM l.name) IN (:lawfirm_name) GROUP BY l.appno_doc_num "
         
                     const assetsWithLawFirm =  await connection.applicationNew.query(queryFillingLawFirm, {
                         type: connection.Sequelize.QueryTypes.SELECT,
