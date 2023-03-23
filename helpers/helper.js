@@ -1707,7 +1707,7 @@ let getCompaniesListSumWithReports = async (DBConnection, organisationID) => {
 
     if(getList.length > 0) { 
 
-        const query = `SELECT organisation_id, companies, activities, SUM(entities) AS no_of_entities , SUM(parties) AS no_of_parties, employees, SUM(transactions) AS no_of_transactions, SUM(assets) AS assets, SUM(arrows) AS product, 0 AS documents FROM db_uspto.summary WHERE organisation_id = :organisationID `;
+        const query = `SELECT organisation_id, companies, activities, SUM(entities) AS no_of_entities , SUM(parties) AS no_of_parties, employees, SUM(transactions) AS no_of_transactions, SUM(assets) AS assets, SUM(arrows) AS product, 0 AS documents FROM db_uspto.summary WHERE organisation_id = :organisationID AND company_id = 0`;
 
         let reports = await connection.resources.query(query, {
             type: connection.Sequelize.QueryTypes.SELECT,
