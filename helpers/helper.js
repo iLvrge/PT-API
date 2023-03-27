@@ -2443,11 +2443,10 @@ const inventorSortNames = async(names) => {
      */
     const regex = /[.,]/g ;
     for (let i = 0; i < names.length; i++) { 
-        let name = names[i].name
-
-        name = name.replace(regex, '') 
-        const sortName1BasedOnCharacters = sortWordsByLength(name).slice(0, 2).sort().join(' '); 
-        names[i]['new_sorted_name'] = sortName1BasedOnCharacters
+        let name = names[i].name 
+        name = name.replace(regex, '')  
+        
+        names[i]['new_sorted_name'] = sortWordsByLength(name.toLowerCase()).slice(0, 2).sort().join(' '); 
     }
     return names
 }

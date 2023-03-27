@@ -143,6 +143,7 @@ const telephone = require("./routes/client/telephone");
 const lawfirm = require("./routes/client/lawfirm");
 const lawfirm_address = require("./routes/client/lawfirm_address");
 const slacks = require("./routes/client/slacks");
+const microsoft = require("./routes/client/microsoft");
 
 const charts = require("./routes/client/charts");
 const collections = require("./routes/client/collections");
@@ -212,6 +213,8 @@ app.use('/search', search);
 app.use('/entity', entity);
 
 app.use("/slacks", slacks);
+
+app.use("/microsoft", microsoft);
 
 app.use("/charts", charts);
 
