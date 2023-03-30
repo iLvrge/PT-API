@@ -1525,7 +1525,8 @@ route.post("/customers", [authJWT.verifyToken, authJWT.isAdmin], async (req, res
                 org =  await Organisations.create({
                     name: req.body.company_name,
                     country_id:1,
-                    organisation_type: req.body.organisation_type
+                    organisation_type: req.body.organisation_type,
+                    subscribtion: 3
                 })
             }
             if(org != null && org.organisation_id > 0){
@@ -1608,7 +1609,7 @@ route.put("/customers" , [authJWT.verifyToken, authJWT.isAdmin], async (req, res
                 await org.update({
                     name: req.body.company_name,
                     organisation_type: req.body.organisation_type,
-                    subscribtion: typeof req.body.subscribtion  !== 'undefined' ? req.body.subscribtion : 1
+                    subscribtion: typeof req.body.subscribtion  !== 'undefined' ? req.body.subscribtion : 3
                 });
                 res.status(200).json({name: org.name, logo: org.logo, organisation_type: org.organisation_type, subscribtion: org.subscribtion, organisation_id: org.organisation_id});   
             } else {
