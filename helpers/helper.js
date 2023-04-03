@@ -1707,7 +1707,7 @@ let getCompaniesListSumWithReports = async (DBConnection, organisationID) => {
 
     if(getList.length > 0) { 
 
-        const query = `SELECT organisation_id, companies, activities, SUM(entities) AS no_of_entities , SUM(parties) AS no_of_parties, employees, SUM(transactions) AS no_of_transactions, SUM(assets) AS assets, SUM(arrows) AS product, 0 AS documents FROM db_uspto.summary WHERE organisation_id = :organisationID `;
+        const query = `SELECT organisation_id, companies, activities, SUM(entities) AS no_of_entities , SUM(parties) AS no_of_parties, employees, SUM(transactions) AS no_of_transactions, SUM(assets) AS assets, SUM(arrows) AS product, 0 AS documents FROM db_uspto.summary WHERE organisation_id = :organisationID AND company_id = 0`;
 
         let reports = await connection.resources.query(query, {
             type: connection.Sequelize.QueryTypes.SELECT,
@@ -2443,11 +2443,10 @@ const inventorSortNames = async(names) => {
      */
     const regex = /[.,]/g ;
     for (let i = 0; i < names.length; i++) { 
-        let name = names[i].name
-
-        name = name.replace(regex, '') 
-        const sortName1BasedOnCharacters = sortWordsByLength(name).slice(0, 2).sort().join(' '); 
-        names[i]['new_sorted_name'] = sortName1BasedOnCharacters
+        let name = names[i].name 
+        name = name.replace(regex, '')  
+        
+        names[i]['new_sorted_name'] = sortWordsByLength(name.toLowerCase()).slice(0, 2).sort().join(' '); 
     }
     return names
 }
