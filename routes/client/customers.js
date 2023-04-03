@@ -407,7 +407,7 @@ route.get("/timeline/filling_assets", [authJWT.verifyToken, clientDBConnection.c
                 replacements.end = end
                 queryFillingLawFirm += " WHERE exec_dt BETWEEN :start AND :end "
             }  
-            queryFillingLawFirm += " LIMIT 0, 500 ";
+            queryFillingLawFirm += " ORDER BY exec_dt DESC LIMIT 0, 500 ";
 
 
             list =  await connection.applicationNew.query(queryFillingLawFirm, {
