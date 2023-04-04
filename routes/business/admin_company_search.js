@@ -2299,7 +2299,7 @@ route.put("/company/raw/assignments/:id", [authJWT.verifyToken, authJWT.isAdmin,
     try{
 
         const customerID = req.params.id, representativeIDs = JSON.parse(req.query.portfolios != undefined ? req.query.portfolios : "[]");
-        exec(`php -f /var/www/html/trash/address_swapping.php "${customerID}" "${representativeIDs}"`, function (error, stdout, stderr) {
+        exec(`php -f /var/www/html/trash/address_swapping.php ${customerID} ${representativeIDs}`, function (error, stdout, stderr) {
             console.log(error);
             //console.log(stdout);
             //console.log(stderr);
@@ -3705,7 +3705,8 @@ route.post("/company/cited/:id", [authJWT.verifyToken, authJWT.isAdmin, authJWT.
                 const promise =  partiesResult.map( row => {
                     allParties.push(row.partyName)
                     insertBulkRecord.push({
-                        assignee_organization: row.partyName
+                        assignee_organization: row.partyName,
+                        assignee_query: row.partyName
                     })
                 })
                 await Promise.all(promise)
