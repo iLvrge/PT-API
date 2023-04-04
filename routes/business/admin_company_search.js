@@ -2300,7 +2300,7 @@ route.put("/company/raw/assignments/:id", [authJWT.verifyToken, authJWT.isAdmin,
 
         const customerID = req.params.id, representativeIDs = JSON.parse(req.query.portfolios != undefined ? req.query.portfolios : "[]");
         console.log(`php -f /var/www/html/trash/address_swapping.php ${customerID} ${representativeIDs}`)
-        exec(`php -f /var/www/html/trash/address_swapping.php ${customerID} ${representativeIDs}`, function (error, stdout, stderr) {
+        exec(`php -f /var/www/html/trash/address_swapping.php ${customerID} ${JSON.stringify(representativeIDs)}`, function (error, stdout, stderr) {
             console.log(error);
             console.log(stdout);
             //console.log(stderr);
