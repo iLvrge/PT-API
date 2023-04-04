@@ -2301,7 +2301,7 @@ route.put("/company/raw/assignments/:id", [authJWT.verifyToken, authJWT.isAdmin,
         const customerID = req.params.id, representativeIDs = JSON.parse(req.query.portfolios != undefined ? req.query.portfolios : "[]");
         exec(`php -f /var/www/html/trash/address_swapping.php ${customerID} ${representativeIDs}`, function (error, stdout, stderr) {
             console.log(error);
-            //console.log(stdout);
+            console.log(stdout);
             //console.log(stderr);
         });
         res.status(200).send("In process");
