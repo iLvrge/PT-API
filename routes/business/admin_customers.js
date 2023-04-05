@@ -2120,17 +2120,18 @@ route.get("/customers/retrieve_cited_patents_domain/:customerID/:apiName",[authJ
 
         const {customerID, apiName} = req.params
         const {assignees, type} = req.query
-        console.log('retrieve_cited_patents_domain')
+        //console.log('retrieve_cited_patents_domain')
         /* exec(`node /var/www/html/script/name_to_domain_api.js ${customerID} ${apiName} ${assignees} 0 > name_to_domain_api.log  2>&1`, function(err, stdout, stderr){
             console.log(`assigneeLogos downloadFileSpawn.stdout: ${stdout}`)
             console.log(`Error assigneeLogos downloadFileSpawn.stderr: ${stderr}`)
             console.log(`Error assigneeLogos downloadFileSpawn.err: ${err}`)
         }); */
-        logger.info('Sending request to RapidAPI script')
+        //logger.info('Sending request to RapidAPI script')
         
-        const assigneeLogos = spawn('node', ['/var/www/html/script/name_to_domain_api.js', customerID, apiName, assignees, 0]);
+        /* const assigneeLogos = spawn('node', ['/var/www/html/script/name_to_domain_api.js', customerID, apiName, assignees, 0]); */
+        spawn('node', ['/var/www/html/script/name_to_domain_api.js', customerID, apiName, assignees, 0]);
     
-        assigneeLogos.stdout.on('data', (data) => {
+        /* assigneeLogos.stdout.on('data', (data) => {
             logger.info(data)
             console.log(`assigneeLogos downloadFileSpawn.stdout: ${data}`)
         });
@@ -2143,12 +2144,13 @@ route.get("/customers/retrieve_cited_patents_domain/:customerID/:apiName",[authJ
         assigneeLogos.on('close', (code) => {
             logger.info(code)
             resolve(`download assigneeLogos downloadFileSpawn.close ${code}`)    
-        }) 
+        })  */
     
     
         res.status(200).send("run logo script");
     } catch (e) {
-        
+        console.log("Error in downloading image", e)
+        res.status(500).send(e);
     }
 })
 
@@ -2163,11 +2165,12 @@ route.post("/customers/retrieve_cited_patents_logo",[authJWT.verifyToken, authJW
             console.log(`Error assigneeLogos downloadFileSpawn.err: ${err}`)
         }); */ 
     
-        logger.info('Sending request to RapidAPI script')
-        console.log('/var/www/html/script/name_to_domain_api.js', client_id, api_name, assignees, 1, company_id, all, type)
-        const assigneeLogos = spawn('node', ['/var/www/html/script/name_to_domain_api.js', client_id, api_name, assignees, 1, company_id, all, type, source_data]);
+        /* logger.info('Sending request to RapidAPI script')
+        console.log('/var/www/html/script/name_to_domain_api.js', client_id, api_name, assignees, 1, company_id, all, type) */
+        /* const assigneeLogos = spawn('node', ['/var/www/html/script/name_to_domain_api.js', client_id, api_name, assignees, 1, company_id, all, type, source_data]); */
+        spawn('node', ['/var/www/html/script/name_to_domain_api.js', client_id, api_name, assignees, 1, company_id, all, type, source_data]);
     
-        assigneeLogos.stdout.on('data', (data) => {
+        /* assigneeLogos.stdout.on('data', (data) => {
             logger.info(data)
             console.log(`assigneeLogos downloadFileSpawn.stdout: ${data}`)
         });
@@ -2180,11 +2183,12 @@ route.post("/customers/retrieve_cited_patents_logo",[authJWT.verifyToken, authJW
         assigneeLogos.on('close', (code) => {
             logger.info(code)
             resolve(`download assigneeLogos downloadFileSpawn.close ${code}`)    
-        }) 
+        })  */
     
     
         res.status(200).send("run logo script");
     } catch (err) {
+        console.log("Error in downloading image", err)
         res.status(500).send(err);
     }
 })
