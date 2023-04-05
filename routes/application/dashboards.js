@@ -554,11 +554,12 @@ route.post("/timeline", [authJWT.verifyToken, clientDBConnection.connect], async
                         let query = `SELECT apt.rf_id as id, assign.reel_no, assign.frame_no, exec_dt, release_rf_id, release_exec_dt, apt.full_match AS partial_transaction, total_assets AS releaseAssets, all_release_ids, assign1.reel_no AS release_reel_no, assign1.frame_no AS release_frame_no, IF(r.representative_name <> '', r.representative_name,aaa.name)  AS customerName, activity_id AS tab_id, company_id AS company, (SELECT count(asset) FROM ( SELECT IF(dd.grant_doc_num <> '', dd.grant_doc_num, dd.appno_doc_num) AS asset FROM db_uspto.documentid AS dd WHERE dd.rf_id = apt.rf_id GROUP BY asset ) AS temp) AS totalAssets FROM activity_parties_transactions AS apt
                         INNER JOIN db_uspto.assignment AS assign ON assign.rf_id = apt.rf_id
                         LEFT JOIN db_uspto.assignment AS assign1 ON assign1.rf_id = apt.release_rf_id
-                        INNER JOIN db_uspto.assignor_and_assignee AS aaa ON aaa.assignor_and_assignee_id = apt.assignor_and_assignee_id LEFT JOIN db_uspto.representative AS r ON r.representative_id = aaa.representative_id WHERE apt.organisation_id = :organisationID AND company_id IN (:companyIDs)  AND apt.activity_id IN (:activityIDs) ${parties.length > 0 ? ' AND apt.assignor_and_assignee_id IN (:assignor_id) ' : ''} AND apt.recorded_assignor_and_assignee_id IN (:assignorAssigneeIDs) AND date_format(apt.exec_dt, '%Y') > :year GROUP BY apt.rf_id ORDER BY exec_dt DESC `;
+                        INNER JOIN db_uspto.assignor_and_assignee AS aaa ON aaa.assignor_and_assignee_id = apt.assignor_and_assignee_id LEFT JOIN db_uspto.representative AS r ON r.representative_id = aaa.representative_id WHERE apt.organisation_id = :organisationID AND company_id IN (:companyIDs)  AND apt.activity_id IN (:activityIDs) ${parties.length > 0 ? ' AND apt.assignor_and_assignee_id IN (:assignor_id) ' : ''} AND apt.recorded_assignor_and_assignee_id IN (:assignorAssigneeIDs) AND date_format(apt.exec_dt, '%Y') > :year GROUP BY apt.rf_id ORDER BY exec_dt DESC`;
 
-                        
-
-                        
+                        if(parseInt(type) != 5) {
+                            query = `SELECT temp.*, ao.original_logo AS logo FROM (${query}) AS temp LEFT JOIN db_new_application.organisations AS ao ON ao.organisation_name COLLATE utf8mb4_general_ci = temp.customerName COLLATE utf8mb4_general_ci`
+                        }
+  
                         getList =  await connection.applicationNew.query(query,{
                             type: connection.Sequelize.QueryTypes.SELECT,
                             raw: true,
