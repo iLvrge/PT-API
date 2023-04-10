@@ -3692,7 +3692,7 @@ route.post("/company/cited/:id", [authJWT.verifyToken, authJWT.isAdmin, authJWT.
                 queryParties += `AND company_id IN (:representativeIDs) `
             }
 
-            queryParties += `  GROUP BY apt.assignor_and_assignee_id ) AS temp INNER JOIN db_uspto.assignor_and_assignee AS aaa ON aaa.assignor_and_assignee_id = temp.assignor_and_assignee_id LEFT JOIN db_uspto.representative AS r ON r.representative_id = aaa.representative_id ) AS temp GROUP BY partyName`; 
+            queryParties += ` AND apt.assignor_and_assignee_id NOT IN (SELECT inventors.assignor_and_assignee_id FROM inventors) GROUP BY apt.assignor_and_assignee_id ) AS temp INNER JOIN db_uspto.assignor_and_assignee AS aaa ON aaa.assignor_and_assignee_id = temp.assignor_and_assignee_id LEFT JOIN db_uspto.representative AS r ON r.representative_id = aaa.representative_id ) AS temp GROUP BY partyName`; 
 
             const partiesResult = await connection.applicationNew.query( queryParties,{
                 type: connection.Sequelize.QueryTypes.SELECT,
