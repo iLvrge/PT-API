@@ -2425,7 +2425,7 @@ route.get("/company/assignments/:id", [authJWT.verifyToken, authJWT.isAdmin, aut
 
 route.put("/company/assignments", [authJWT.verifyToken, authJWT.isAdmin], async (req, res, next) => {
     try{
-        const {rf_id, type, client_id, flag, cname, caddress_1, caddress_2, caddress_7, caddress_5, caddress_6, caddress_3, caddress_4} = req.body;
+        const {rf_id, type, client_id, flag, other_column, cname, caddress_1, caddress_2, caddress_7, caddress_5, caddress_6, caddress_3, caddress_4} = req.body;
         if(rf_id > 0) {
             const getData = await Correspondence.findOne({
                 where: {rf_id}
@@ -2443,8 +2443,14 @@ route.put("/company/assignments", [authJWT.verifyToken, authJWT.isAdmin], async 
                 getData.caddress_3 = caddress_3
                 getData.caddress_4 = caddress_4
                 await getData.save()
-                if(typeof flag != 'undefined') {
-                    const whereConstraint = {organisationID: client_id};
+                let whereConstraint = null;
+                if(typeof other_column != 'undefined' && other_column != null) {
+                    const clickableColumn = JSON.parse(other_column)
+                    whereConstraint = {organisationID: client_id};
+                    whereConstraint[clickableColumn.id] = clickableColumn.value
+                    where = ` AND ${clickableColumn.id} = :${clickableColumn.id}` 
+                } else  if(typeof flag != 'undefined') {
+                    whereConstraint = {organisationID: client_id};
                     let where = ''
                     switch(parseInt(flag)) {
                         case 1:
@@ -2460,50 +2466,135 @@ route.put("/company/assignments", [authJWT.verifyToken, authJWT.isAdmin], async 
                             where = ` AND caddress_1 = :caddress_1`
                             break;
                     }
-                    console.log(whereConstraint)
-                    if(Object.entries(whereConstraint).length > 0) {
-                         /**
-                         * Other Records
-                         */
+                } 
+                    
+                if(whereConstraint != null && Object.entries(whereConstraint).length > 0) {
+                    /**
+                     * Other Records
+                     */
 
-                        const query = `SELECT * FROM db_uspto.correspondent WHERE rf_id IN ( SELECT apt.rf_id FROM db_new_application.activity_parties_transactions AS apt WHERE organisation_id = :organisationID ) ${where}`
+                    const query = `SELECT * FROM db_uspto.correspondent WHERE rf_id IN ( SELECT apt.rf_id FROM db_new_application.activity_parties_transactions AS apt WHERE organisation_id = :organisationID ) ${where}`
 
-                        const findOtherRecords = await connection.applicationNew.query(query, {
-                            type: connection.Sequelize.QueryTypes.SELECT,
-                            raw: true,
-                            logging: console.log,
-                            replacements: whereConstraint,
-                        })
+                    console.log(query, whereConstraint)
 
-                        /* let findOtherRecords = [];
-                        findOtherRecords = await Correspondence.findAll({
-                            where: whereConstraint
-                        }) */
-                        
-                        console.log(findOtherRecords.length)
-                        if(findOtherRecords.length > 0) {
+                    const findOtherRecords = await connection.applicationNew.query(query, {
+                        type: connection.Sequelize.QueryTypes.SELECT,
+                        raw: true,
+                        logging: console.log,
+                        replacements: whereConstraint,
+                    })
+
+                    /* let findOtherRecords = [];
+                    findOtherRecords = await Correspondence.findAll({
+                        where: whereConstraint
+                    }) */
+                    
+                    console.log(findOtherRecords.length)
+                    if(findOtherRecords.length > 0) {
+                        if(typeof other_column != 'undefined' && other_column != null) {
+                            const clickableColumn = JSON.parse(other_column)
+                            const promise = findOtherRecords.map(async assignment => {
+                                if(assignment[clickableColumn.id].toLowerCase() == clickableColumn.value.toLowerCase()){
+                                    let updateQuery = ''
+                                    if(clickableColumn.id == 'caddress_4' ) { 
+                                      if(assignment.caddress_1 == "") {
+                                        updateQuery = `SET caddress_1 = :newValue, caddress_4 = '' ` 
+                                      } else if(assignment.cname == "") {
+                                        updateQuery = `SET caddress_1 = :newValue, caddress_4 = '' `  
+                                      } else if(assignment.caddress_2 == "") {
+                                        updateQuery = `SET caddress_2 = :newValue, caddress_4 = '' `  
+                                      } else if(assignment.caddress_7 == "") {
+                                        updateQuery = `SET caddress_7 = :newValue, caddress_4 = '' `   
+                                      } else if(assignment.caddress_5 == "") {
+                                        updateQuery = `SET caddress_5 = :newValue, caddress_4 = '' `   
+                                      } else if(assignment.caddress_6 == "") {
+                                        updateQuery = `SET caddress_6 = :newValue, caddress_4 = '' `   
+                                      } else if(assignment.caddress_3 == "") {
+                                        updateQuery = `SET caddress_3 = :newValue, caddress_4 = '' `   
+                                      }
+                                    } else if(clickableColumn.id == 'caddress_3') { 
+                                      if(assignment.caddress_1 == "") {
+                                        updateQuery = `SET caddress_1 = :newValue, caddress_3 = '' `  
+                                      }  else if(assignment.cname == "") {
+                                        updateQuery = `SET cname = :newValue, caddress_3 = '' `   
+                                      } else if(assignment.caddress_2 == "") {
+                                        updateQuery = `SET caddress_2 = :newValue, caddress_3 = '' `   
+                                      } else if(assignment.caddress_7 == "") {
+                                        updateQuery = `SET caddress_7 = :newValue, caddress_3 = '' `   
+                                      } else if(assignment.caddress_5 == "") {
+                                        updateQuery = `SET caddress_5 = :newValue, caddress_3 = '' `   
+                                      } else if(assignment.caddress_6 == "") {
+                                        updateQuery = `SET caddress_6 = :newValue, caddress_3 = '' `   
+                                      }
+                                    } else if(clickableColumn.id == 'caddress_6') { 
+                                      if(assignment.caddress_1 == "") {
+                                        updateQuery = `SET caddress_1 = :newValue, caddress_6 = '' `  
+                                      } else if(assignment.cname == "") {
+                                        updateQuery = `SET cname = :newValue, caddress_6 = '' `    
+                                      } else if(assignment.caddress_2 == "") {
+                                        updateQuery = `SET caddress_2 = :newValue, caddress_6 = '' `  
+                                      } else if(assignment.caddress_7 == "") {
+                                        updateQuery = `SET caddress_7 = :newValue, caddress_6 = '' `  
+                                      } else if(assignment.caddress_5 == "") {
+                                        updateQuery = `SET caddress_5 = :newValue, caddress_6 = '' `  
+                                      }
+                                    } else if(clickableColumn.id == 'caddress_5') { 
+                                      if(assignment.caddress_1 == "") {
+                                        updateQuery = `SET caddress_1 = :newValue, caddress_5 = '' `  
+                                      } else if(assignment.cname == "") {
+                                        updateQuery = `SET cname = :newValue, caddress_5 = '' `   
+                                      } else if(assignment.caddress_2 == "") {
+                                        updateQuery = `SET caddress_2 = :newValue, caddress_5 = '' `  
+                                      } else if(assignment.caddress_7 == "") {
+                                        updateQuery = `SET caddress_7 = :newValue, caddress_5 = '' `   
+                                      }
+                                    } else if(clickableColumn.id == 'caddress_7') { 
+                                      if(assignment.caddress_1 == "") {
+                                        updateQuery = `SET caddress_1 = :newValue, caddress_7 = '' `   
+                                      } else if(assignment.cname == "") { 
+                                        updateQuery = `SET cname = :newValue, caddress_7 = '' `   
+                                      } else if(assignment.caddress_2 == "") {
+                                        updateQuery = `SET caddress_2 = :newValue, caddress_7 = '' `   
+                                      }
+                                    }
+                                    if(updateQuery != '') {
+                                        updateQuery = `UPDATE db_uspto.correspondent ${updateQuery} WHERE rf_id = :rf_id`
+                                        //console.log(updateQuery, {newValue: clickableColumn.value, rf_id: assignment.rf_id})
+
+                                        let update = await connection.applicationNew.query(updateQuery, {
+                                            type: connection.Sequelize.QueryTypes.UPDATE,
+                                            raw: true,
+                                            logging: console.log,
+                                            replacements: {newValue: clickableColumn.value, rf_id: assignment.rf_id},
+                                        }) 
+                                    }
+                                }
+                            });
+                            await Promise.all(promise)
+                            res.status(200).send("Records Updated");
+                        } else { 
                             const allRfIDs = []
                             const promise = findOtherRecords.map(async assignment => {
                                 allRfIDs.push(assignment.rf_id)
                             });
-
+    
                             await Promise.all(promise)
                             if(allRfIDs.length > 0) {
                                 console.log(allRfIDs)
-                                let updateQuery1 = '', updateQuery2 = {}, item
-                                if(parseInt(flag) === 1) {
-                                    item = getData.cname
-                                    updateQuery1 = ` caddress_1 = cname`
-                                    updateQuery2 = ` cname = :item`
-                                } else if(parseInt(flag) == 2) {
-                                    updateQuery1 = ` caddress_2 = cname`
-                                    updateQuery2 = ` cname = :item`
-                                    item = getData.cname
-                                } else if(parseInt(flag) == 3) {
-                                    updateQuery1 = ` caddress_2 = caddress_1`
-                                    updateQuery2 = ` caddress_1 = :item `
-                                    item = getData.caddress_2
-                                }
+                                let updateQuery1 = '', updateQuery2 = {}, item 
+                                    if(parseInt(flag) === 1) {
+                                        item = getData.cname
+                                        updateQuery1 = ` caddress_1 = cname`
+                                        updateQuery2 = ` cname = :item`
+                                    } else if(parseInt(flag) == 2) {
+                                        updateQuery1 = ` caddress_2 = cname`
+                                        updateQuery2 = ` cname = :item`
+                                        item = getData.cname
+                                    } else if(parseInt(flag) == 3) {
+                                        updateQuery1 = ` caddress_2 = caddress_1`
+                                        updateQuery2 = ` caddress_1 = :item `
+                                        item = getData.caddress_2
+                                    } 
                                 if(updateQuery1 != '') { 
                                     updateQuery1 = `UPDATE db_uspto.correspondent SET ${updateQuery1} WHERE rf_id IN (:allRfIDs)`
                                     const update = await connection.applicationNew.query(updateQuery1, {
@@ -2527,13 +2618,13 @@ route.put("/company/assignments", [authJWT.verifyToken, authJWT.isAdmin], async 
                                 }
                             }
                             res.status(200).send("Records Updated");
-                        } else {
-                            res.status(200).send("Records Updated");
                         }
+                    } else {
+                        res.status(200).send("Records Updated");
                     }
                 } else {
                     res.status(200).send("Records Updated");
-                }
+                } 
                 /* let lawfirmID = 0;
                 if(getData.law_firm_id > 0) {
                     
