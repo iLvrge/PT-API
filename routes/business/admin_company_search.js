@@ -2443,7 +2443,7 @@ route.put("/company/assignments", [authJWT.verifyToken, authJWT.isAdmin], async 
                 getData.caddress_3 = caddress_3
                 getData.caddress_4 = caddress_4
                 await getData.save()
-                let whereConstraint = null;
+                let whereConstraint = null, where = ''
                 if(typeof other_column != 'undefined' && other_column != null) {
                     const clickableColumn = JSON.parse(other_column)
                     whereConstraint = {organisationID: client_id};
@@ -2451,7 +2451,6 @@ route.put("/company/assignments", [authJWT.verifyToken, authJWT.isAdmin], async 
                     where = ` AND ${clickableColumn.id} = :${clickableColumn.id}` 
                 } else  if(typeof flag != 'undefined') {
                     whereConstraint = {organisationID: client_id};
-                    let where = ''
                     switch(parseInt(flag)) {
                         case 1:
                             whereConstraint.caddress_1 = cname;
