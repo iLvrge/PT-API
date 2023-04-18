@@ -2158,7 +2158,7 @@ route.post("/customers/retrieve_cited_patents_logo",[authJWT.verifyToken, authJW
     try {
 
         const {client_id, api_name, assignees, all, company_id, type, source_data} = req.body
-        console.log('retrieve_cited_patents_logo')
+        console.log('retrieve_cited_patents_logo', '/var/www/html/script/name_to_domain_api.js', client_id, api_name, assignees, 1, company_id, all, type, source_data)
         /* exec(`node /var/www/html/script/name_to_domain_api.js ${client_id} ${api_name} ${assignees} 1 > name_to_domain_api.log  2>&1`, function(err, stdout, stderr){
             console.log(`assigneeLogos downloadFileSpawn.stdout: ${stdout}`)
             console.log(`Error assigneeLogos downloadFileSpawn.stderr: ${stderr}`)
