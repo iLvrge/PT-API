@@ -3778,7 +3778,7 @@ route.post("/company/cited/:id", [authJWT.verifyToken, authJWT.isAdmin, authJWT.
         const representativeIDs = JSON.parse(portfolios != undefined ? portfolios : "[]");
         let list = [],   total_records = 0;
         if(customerID > 0) { 
-            let queryParties = `Select partyName FROM (SELECT IF(r.representative_name <> '', r.representative_name, aaa.name) AS partyName FROM (  SELECT apt.assignor_and_assignee_id FROM db_new_application.activity_parties_transactions AS apt WHERE activity_id <> :activityID AND organisation_id = :organisationID `;
+            let queryParties = `Select partyName FROM (SELECT IF(r.representative_name <> '', r.representative_name, aaa.name) AS partyName FROM (  SELECT apt.assignor_and_assignee_id FROM db_new_application.activity_parties_transactions AS apt WHERE activity_id IN (:activityID) AND organisation_id = :organisationID `;
 
             if(representativeIDs.length > 0) {
                 queryParties += `AND company_id IN (:representativeIDs) `
@@ -3789,7 +3789,7 @@ route.post("/company/cited/:id", [authJWT.verifyToken, authJWT.isAdmin, authJWT.
             const partiesResult = await connection.applicationNew.query( queryParties,{
                 type: connection.Sequelize.QueryTypes.SELECT,
                 raw: true,
-                replacements: {organisationID: customerID, activityID: 10, representativeIDs, year: 1998},
+                replacements: {organisationID: customerID, activityID: [1, 6, 2, 7, 3, 4, 5, 12, 9], representativeIDs, year: 1998},
                 logging: console.log,
             });
 
