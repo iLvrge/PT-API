@@ -953,7 +953,9 @@ route.get("/assets/:patentNumber/files/:channelID/slack/:token", [authJWT.verify
 
                     query += ` AND list2.rf_id IN (${tempQuery}) ` 
                 } 
-            } 
+            } else if(replacements.layout > 15 && assetsList.length == 0 && patents.length == 0 ) {
+                query = ''
+            }
 
             /* if(companies.length > 0) {
                 replacements.companies = companies
@@ -967,17 +969,17 @@ route.get("/assets/:patentNumber/files/:channelID/slack/:token", [authJWT.verify
             }
             query += '  GROUP BY assets.appno_doc_num ) GROUP BY documentid.rf_id ) ' */
 
-            
+            if(query != '') {
+                query += '   GROUP BY assignment.rf_id  ORDER BY date ASC'
 
-            query += '   GROUP BY assignment.rf_id  ORDER BY date ASC'
-
-            assets_files =  await connection.resources.query(query,{
-                    type: connection.Sequelize.QueryTypes.SELECT,
-                    replacements: replacements,
-                    raw: true,
-                    logging: console.log,
-                }
-            );
+                assets_files =  await connection.resources.query(query,{
+                        type: connection.Sequelize.QueryTypes.SELECT,
+                        replacements: replacements,
+                        raw: true,
+                        logging: console.log,
+                    }
+                );
+            }  
         }
 
         if(type == 1 && token != '' && token != undefined && token != 'undefined' && channelID != '' && channelID != undefined && channelID != 'undefined') {
