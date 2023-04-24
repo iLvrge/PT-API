@@ -326,7 +326,7 @@ route.post('/parties', [authJWT.verifyToken, clientDBConnection.connect], async(
         /**
          * Find company name
          */
-        let layoutID = 32;
+        let layoutID = 32, activityID = [1, 6]
 
         if(typeof layout != 'undefined') {
             layoutID = helpers.findLayout(layout)
@@ -344,35 +344,43 @@ route.post('/parties', [authJWT.verifyToken, clientDBConnection.connect], async(
             organisationID: req.orgId,
             selectedCompanies,
             layoutID,
-            /* acitivityID: [1, 6, 10], */
-            acitivityID: [1, 6],
+            activityID,
             year: connection.DEFAULT_YEAR
         }
 
         if( getRepresentativeName != null || (layoutID == 15 && total == list.length)) {
+            let subQuery = ``
+            console.log('type', type)
+            if(typeof type != 'undefined' && ['lenders', 'license_out'].includes(type)) {
 
-            let subQuery = `SELECT application COLLATE utf8mb4_0900_ai_ci FROM dashboard_items WHERE organisation_id = :organisationID AND representative_id IN (:selectedCompanies) AND type = :layoutID` 
-            if(layoutID == 15 && total == list.length) {    
-                subQuery = `:list`;
-                where.list = list;
-
-
-                const findCompanyQuery = `SELECT representative_id, COUNT(representative_id) AS counter FROM dashboard_items WHERE organisation_id = :organisationID AND application IN (:list) ORDER BY counter desc limit 1`
-                const companyData = await connection.applicationNew.query(findCompanyQuery,{
-                    type: connection.Sequelize.QueryTypes.SELECT,
-                    raw: true,
-                    plain: true,
-                    logging: console.log,
-                    replacements: where
-                })
-
-                if(companyData != null) {
-                    getRepresentativeName = await helpers.findCompanyName(req.connection_db, [companyData.representative_id])
-                }
-
-            } else if(typeof search != 'undefined' && search == 'all') {
+                where.activityID = type == 'lenders' ? [5, 12] : [3, 4]
+                where.layoutID = 15
                 subQuery = `SELECT appno_doc_num FROM assets WHERE organisation_id = :organisationID AND company_id IN (:selectedCompanies) AND layout_id = :layoutID`;
+            }  else {
+                subQuery = `SELECT application COLLATE utf8mb4_0900_ai_ci FROM dashboard_items WHERE organisation_id = :organisationID AND representative_id IN (:selectedCompanies) AND type = :layoutID` 
+                if(layoutID == 15 && total == list.length) {    
+                    subQuery = `:list`;
+                    where.list = list;
+    
+    
+                    const findCompanyQuery = `SELECT representative_id, COUNT(representative_id) AS counter FROM dashboard_items WHERE organisation_id = :organisationID AND application IN (:list) ORDER BY counter desc limit 1`
+                    const companyData = await connection.applicationNew.query(findCompanyQuery,{
+                        type: connection.Sequelize.QueryTypes.SELECT,
+                        raw: true,
+                        plain: true,
+                        logging: console.log,
+                        replacements: where
+                    })
+    
+                    if(companyData != null) {
+                        getRepresentativeName = await helpers.findCompanyName(req.connection_db, [companyData.representative_id])
+                    }
+    
+                } else if(typeof search != 'undefined' && search == 'all') {
+                    subQuery = `SELECT appno_doc_num FROM assets WHERE organisation_id = :organisationID AND company_id IN (:selectedCompanies) AND layout_id = :layoutID`;
+                }
             }
+            
 
             let query = '' 
             if(typeof type != 'undefined' && type == 'filled') {
@@ -390,7 +398,7 @@ route.post('/parties', [authJWT.verifyToken, clientDBConnection.connect], async(
                     query += ` AND apt.company_id IN (:selectedCompanies) `
                 }
 
-                query += ` AND activity_id IN (:acitivityID) AND date_format(doc.appno_date, '%Y') > :year AND appno_doc_num IN (${subQuery})
+                query += ` AND activity_id IN (:activityID) AND date_format(doc.appno_date, '%Y') > :year AND appno_doc_num IN (${subQuery})
                 GROUP BY aaa.assignor_and_assignee_id) AS temp GROUP BY name HAVING assignee <> name ORDER BY number DESC, name ASC ` 
             } 
 
