@@ -385,7 +385,7 @@ route.get("/timeline/filling_assets", [authJWT.verifyToken, clientDBConnection.c
             replacements.rf_ids = rf_ids
         }
 
-        const allAssets =  await helpers.findFillingAssets(req)
+        const allAssets =  await helpers.findFillingAssets(req, 1)
 
         console.log(replacements)
   

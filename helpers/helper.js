@@ -4591,8 +4591,8 @@ const findCompanyName = async(DBConnection, selectedCompanies) => {
 }
 
 
-const findFillingAssets = async (req) => {
-    let {companies } = req.query;
+const findFillingAssets = async (req, type) => {
+    let {companies, start, end } = req.query;
     let {selectedCompanies, lawfirm} = req.body
     const replacements = { organisation_id: req.orgId, year: connection.DEFAULT_YEAR }
 
@@ -4637,15 +4637,21 @@ const findFillingAssets = async (req) => {
 
         await Promise.all(promisesRepresenative)
 
-        let findAllAssigneeAssets = `SELECT appno_doc_num FROM db_patent_application_bibliographic.assignee AS a INNER JOIN db_patent_application_bibliographic.assignor_and_assignee AS aaa ON aaa.assignor_and_assignee_id = a.assignor_and_assignee_id WHERE (aaa.name IN (:companyNames) `
+        let findAllAssigneeAssets = `SELECT a.appno_doc_num FROM db_patent_application_bibliographic.assignee AS a INNER JOIN db_patent_application_bibliographic.assignor_and_assignee AS aaa ON aaa.assignor_and_assignee_id = a.assignor_and_assignee_id WHERE (aaa.name IN (:companyNames) `
+
+        if(typeof type != 'undefined') {
+            findAllAssigneeAssets = ` SELECT a.appno_doc_num FROM db_patent_application_bibliographic.assignee AS a INNER JOIN db_patent_application_bibliographic.assignor_and_assignee AS aaa ON aaa.assignor_and_assignee_id = a.assignor_and_assignee_id INNER JOIN db_patent_grant_bibliographic.application_publication AS ap ON ap.appno_doc_num = a.appno_doc_num WHERE (aaa.name IN (:companyNames) `
+        }
 
         if(representativeIDs.length > 0) {
             findAllAssigneeAssets += `  OR aaa.representative_id IN (:representativeIDs) `
         } 
         
-        findAllAssigneeAssets += ` ) AND appno_doc_num IN (SELECT application FROM dashboard_items WHERE organisation_id = :organisation_id  AND representative_id IN (:companies) AND type = :type `
+        findAllAssigneeAssets += ` ) `
 
         if(typeof lawfirm != 'undefined' && lawfirm > 0) {  
+
+            
 
             const findLawFirm = `SELECT  cname, lf.name, rlf.representative_id, rlf.representative_name FROM db_uspto.correspondent AS c LEFT JOIN db_uspto.law_firm  as lf ON c.cname = lf.name
             LEFT JOIN db_uspto.representative_law_firm AS rlf ON rlf.representative_id = lf.representative_id WHERE c.rf_id = :rfID`
@@ -4659,6 +4665,7 @@ const findFillingAssets = async (req) => {
             }) 
 
             if(getLawFirmData != null ) { 
+                findAllAssigneeAssets += ` ) AND appno_doc_num IN (SELECT application FROM dashboard_items WHERE organisation_id = :organisation_id  AND representative_id IN (:companies) AND type = :type `
                 if(getLawFirmData.representative_id > 0) {
                     replacements.representative_id = getLawFirmData.representative_id 
                 } else {
@@ -4676,10 +4683,26 @@ const findFillingAssets = async (req) => {
                 tempQuery += ` GROUP BY  lf.law_firm_id` 
 
                 findAllAssigneeAssets += ` AND application IN ( SELECT appno_doc_num FROM db_patent_application_bibliographic.lawfirm AS l WHERE name IN (${tempQuery}) AND appno_doc_num IN (SELECT application FROM dashboard_items WHERE organisation_id = :organisation_id  AND representative_id IN (:companies) AND type = :type)) `  
+                findAllAssigneeAssets += `  GROUP BY application )  `
             }  
+        } 
+
+        if(typeof type != 'undefined') {
+            if(typeof start != 'undefined' && start != '' && typeof end != 'undefined' && end != '') {
+                replacements.start = start
+                replacements.end = end
+                queryFillingLawFirm += " AND appno_date BETWEEN :start AND :end "
+            }
         }
         
-        findAllAssigneeAssets += `  GROUP BY application) GROUP BY appno_doc_num`
+        findAllAssigneeAssets += `  GROUP BY a.appno_doc_num `
+
+        if(typeof type != 'undefined') {
+            if(typeof start != 'undefined' && start != '' && typeof end != 'undefined' && end != '') {
+                findAllAssigneeAssets += ` ORDER BY appno_date DESC `
+            }
+            findAllAssigneeAssets += `  LIMIT 500 `
+        }
 
         replacements.companyNames = allCompanyNames
         replacements.companies = companies
