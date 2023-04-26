@@ -1560,26 +1560,14 @@ route.delete("/subcompanies", [authJWT.verifyToken, clientDBConnection.connect],
                                         console.log(stderr);
                                         //console.log(`php -f /var/www/html/trash/tree_script_client.php "${req.orgId}"  "${company.original_name}"`);
 
-                                        exec(`php -f /var/www/html/trash/create_data_for_company_db_application.php "${req.orgId}" "${company.original_name}"`, (error, stdd, stderr)=> {
-                                            console.log("fill database ....")
-                                            console.log(error); 
-                                            console.log(stderr);
-                                            console.log(stdd);
-                                            console.log("DONE");
+                                        exec(`php -f /var/www/html/trash/create_data_for_company_db_application.php "${req.orgId}" "${company.original_name}" 1`, (error, stdd, stderr)=> {
+                                             
 
                                         });
                                         exec(`php -f /var/www/html/trash/admin_report_represetative_assets_transactions_by_account.php "${req.orgId}" "${company.original_name}"`, (error, stdd, stderr)=> {
-                                            console.log("fill admin_report_represetative_assets_transactions_by_account.php ....")
-                                            console.log(error); 
-                                            console.log(stderr);
-                                            console.log(stdd);
-                                            console.log("DONE");
+                                             
                                             exec(`php -f /var/www/html/trash/report_represetative_assets_transactions_by_account.php "${req.orgId}" "${company.original_name}"`, (error, stdd, stderr)=> {
-                                                console.log("fill report_represetative_assets_transactions_by_account.php ....")
-                                                console.log(error); 
-                                                console.log(stderr);
-                                                console.log(stdd);
-                                                console.log("DONE");
+                                                
                                             });
                                         });
                                         
