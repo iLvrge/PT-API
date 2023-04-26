@@ -1076,21 +1076,25 @@ route.post("/asset_types/assets/agents", [authJWT.verifyToken, clientDBConnectio
                                 })  
                                 if(getLawFirmData != null ) { 
                                     if(getLawFirmData.representative_id > 0) {
-                                        where.representative_id = getLawFirmData.representative_id 
+                                        query += ` AND l.representative_id  IN (:lrepresentative) ` 
+                                        where.lrepresentative = getLawFirmData.representative_id 
                                     } else {
-                                        where.name = getLawFirmData.cname
-                                    }
+                                        query += ` AND l.name  IN (:lname) ` 
+                                        where.lname = getLawFirmData.cname
+                                    }/* 
+
+
                     
                                     let tempQuery = `SELECT lf.law_firm_id  FROM db_uspto.correspondent AS c LEFT JOIN db_uspto.law_firm  as lf ON c.cname = lf.name
-                                    LEFT JOIN db_uspto.representative_law_firm AS rlf ON rlf.representative_id = lf.representative_id WHERE c.rf_id IN (SELECT rf_id FROM db_new_application.activity_parties_transactions WHERE organisation_id = :organisationID AND company_id IN (:company_id)) `
+                                    LEFT JOIN db_uspto.representative_law_firm AS rlf ON rlf.representative_id = lf.representative_id WHERE c.rf_id IN (SELECT rf_id FROM db_new_application.activity_parties_transactions WHERE organisation_id = :organisationID AND company_id IN (:company_id) GROUP BY rf_id) `
                     
                                     if(typeof where.representative_id != 'undefined') {
                                         tempQuery += ` AND rlf.representative_id = :representative_id`
                                     } else {
                                         tempQuery += ` AND c.cname = :name`
                                     }
-                                    tempQuery += ` GROUP BY  c.rf_id`
-                                    query += ` AND di.lawfirm_id IN (${tempQuery}) ` 
+                                    tempQuery += ` GROUP BY lf.law_firm_id`
+                                    query += ` AND di.lawfirm_id IN (${tempQuery}) `  */
                                 }  
                             } 
                             query += `   GROUP BY di.rf_id
