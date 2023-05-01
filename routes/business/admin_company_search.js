@@ -2432,7 +2432,7 @@ route.put("/company/assignments", [authJWT.verifyToken, authJWT.isAdmin], async 
             });
     
             if(getData != null && getData.rf_id > 0) {
-                
+                const CNAME = getData.cname, CADDRESS_1 = getData.caddress_1
                 const preCAddress1 = getData.caddress_1, preCName = getData.cname;
                 getData.cname = cname
                 getData.caddress_1 = caddress_1
@@ -2454,7 +2454,11 @@ route.put("/company/assignments", [authJWT.verifyToken, authJWT.isAdmin], async 
                     switch(parseInt(flag)) {
                         case 1:
                             whereConstraint.caddress_1 = cname;
-                            where = ` AND caddress_1 = :caddress_1`
+                            if(caddress_1 == '') {
+                                where = ` AND caddress_1 = :caddress_1 AND cname = ''`
+                            } else if (caddress_1 != '') {
+                                where = ` AND caddress_1 = :caddress_1`
+                            }
                             break;
                         case 2:
                             whereConstraint.caddress_2 = cname;
