@@ -1996,7 +1996,7 @@ route.post("/events/assets", [authJWT.verifyToken], async(req, res, next) => {
                 }
                 
 
-                const replacements = {list, year: connection.DEFAULT_YEAR, typeDevstiture: 34, ...where }
+                const replacements = {list, year: connection.DEFAULT_YEAR, typeDevstiture: 33, ...where }
                 getList = await connection.applicationNew.query(query, {
                     type: connection.Sequelize.QueryTypes.SELECT,
                     replacements: replacements,

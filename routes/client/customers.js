@@ -348,6 +348,10 @@ route.get("/timeline", [authJWT.verifyToken], async(req, res, next) => {
  
         if(query != '') {
 
+            if(['acquisition_transactions', 'divestitures_transactions', 'licensing_transactions', 'collateralization_transactions', 'litigation_transactions'].includes(layout)) {
+                query = `SELECT temp.*, ao.logo_optimize AS logo FROM (${query}) AS temp LEFT JOIN db_new_application.organisations AS ao ON ao.organisation_name COLLATE utf8mb4_general_ci = temp.customerName COLLATE utf8mb4_general_ci`
+            } 
+
             list =  await connection.applicationNew.query(query, {
                     type: connection.Sequelize.QueryTypes.SELECT,
                     raw: true,
@@ -1703,8 +1707,7 @@ route.get("/:layout/assets", [authJWT.verifyToken, clientDBConnection.connect], 
 
                             query += ` WHERE organisation_id = :organisationID and company_id  IN (:companies) and layout_id = 15 AND date_format(assets.appno_date, '%Y') > :date AND appno_doc_num IN ( select appno_doc_num
                                 from db_uspto.documentid where rf_id IN (
-                                select rf_id from db_new_application.dashboard_items
-                                where organisation_id = :organisationID and representative_id IN (:companies) and type = :layoutID `
+                                `
 
                             if(assignments && assignments != '') {
                                 assignments = JSON.parse( assignments )
@@ -1712,7 +1715,11 @@ route.get("/:layout/assets", [authJWT.verifyToken, clientDBConnection.connect], 
                             } 
 
                             if(Array.isArray(assignments) && assignments.length > 0) {
-                                query += ` AND rf_id IN (:assignments) `
+                                /* query += ` AND rf_id IN (:assignments) ` */
+                                query += ` :assignments `
+                            } else  {
+                                query += ` SELECT rf_id FROM db_new_application.dashboard_items
+                                WHERE organisation_id = :organisationID AND representative_id IN (:companies) AND type = :layoutID `
                             }
 
                             if(lawyers != '' && lawyers != null && lawyers != undefined && parseInt(lawyers) > 0) {
@@ -1870,13 +1877,7 @@ route.get("/:layout/assets", [authJWT.verifyToken, clientDBConnection.connect], 
                                 if(assignments.length > 0) {
                                     query += ` AND application IN (
                                             SELECT documentid.appno_doc_num FROM db_uspto.documentid 
-                                            WHERE rf_id  IN ( 
-                                                SELECT activity_parties_transactions.rf_id  FROM db_new_application.activity_parties_transactions 
-                                                WHERE activity_parties_transactions.organisation_id = :organisationID 
-                                                AND activity_parties_transactions.company_id IN (:companies)  
-                                                AND activity_parties_transactions.rf_id IN (:assignments) 
-                                                GROUP BY activity_parties_transactions.rf_id
-                                            ) 
+                                            WHERE rf_id  IN ( :assignments ) 
                                             GROUP BY documentid.appno_doc_num
                                     )  `
                                 }
