@@ -1875,13 +1875,17 @@ route.post("/events/assets", [authJWT.verifyToken], async(req, res, next) => {
 
         if( list != '' ) {
             list = JSON.parse(list)
-                
+            const where = { year: connection.DEFAULT_YEAR, organisationID: req.orgId}  
+            const companies = JSON.parse(selectedCompanies)
+            if(companies.length > 0) {
+                where.company_id = companies
+            }
             if(parseInt(total) != list.length || (list.length == 0 && parseInt(total) == 0)) {
                 /**
                  * Get List
                  */
 
-                const where = { year: connection.DEFAULT_YEAR, organisationID: req.orgId}  
+                
                 let query = '' 
                 if(typeof other_mode != 'undefined' && other_mode == 'true') {
                     query = `SELECT appno_doc_num FROM db_new_application.assets_for_sale AS assets WHERE assets.organisation_id = :organisationID  GROUP BY appno_doc_num`
@@ -1891,10 +1895,7 @@ route.post("/events/assets", [authJWT.verifyToken], async(req, res, next) => {
                     } else {
                         where.layoutID = 15
                     }
-                    const companies = JSON.parse(selectedCompanies)
-                    if(companies.length > 0) {
-                        where.company_id = companies
-                    }
+                    
 
                     if(where.layoutID > 15) {
                         query = `SELECT application AS appno_doc_num FROM db_new_application.dashboard_items AS assets WHERE assets.organisation_id = :organisationID AND representative_id IN (:company_id) AND type = :layoutID `
@@ -1989,12 +1990,13 @@ route.post("/events/assets", [authJWT.verifyToken], async(req, res, next) => {
             if( list.length > 0 ) {
                 let query = ''
                 if(type == 'missed_monetization') {
-                    query = "SELECT ag.appno_doc_num AS application, ag.grant_doc_num AS patent, 0 AS `status`,  ag.appno_date AS appno_date FROM db_patent_application_bibliographic.application_grant AS ag WHERE ag.appno_doc_num IN (:list) AND date_format(ag.appno_date, '%Y') > :year GROUP BY ag.appno_doc_num"
+                    query = "SELECT ag.appno_doc_num AS application, ag.grant_doc_num AS patent, 0 AS `status`,  ag.appno_date AS appno_date FROM db_patent_application_bibliographic.application_grant AS ag WHERE ag.appno_doc_num IN (:list) AND date_format(ag.appno_date, '%Y') > :year AND application NOT IN ( SELECT appno_doc_num FROM db_new_application.assets_with_bank_expired_status WHERE appno_doc_num IN (:list)) AND application NOT IN (SELECT application FROM db_new_application.dashboard_items WHERE type = :typeDevstiture AND organisation_id = :organisationID AND representative_id IN (:company_id))  GROUP BY ag.appno_doc_num"
                 } else { 
-                    query = "SELECT documentid.appno_doc_num AS application, documentid.grant_doc_num AS patent, documentid.status AS `status`,  documentid.appno_date AS appno_date FROM   db_uspto.documentid AS documentid   WHERE documentid.appno_doc_num IN (:list) AND date_format(documentid.appno_date, '%Y') > :year AND documentid.grant_doc_num <> '' GROUP BY documentid.appno_doc_num"
+                    query = "SELECT documentid.appno_doc_num AS application, documentid.grant_doc_num AS patent, documentid.status AS `status`,  documentid.appno_date AS appno_date FROM   db_uspto.documentid AS documentid   WHERE documentid.appno_doc_num IN (:list) AND date_format(documentid.appno_date, '%Y') > :year AND documentid.grant_doc_num <> '' AND appno_doc_num NOT IN ( SELECT appno_doc_num FROM db_new_application.assets_with_bank_expired_status WHERE appno_doc_num IN (:list)  GROUP BY appno_doc_num) AND appno_doc_num NOT IN (SELECT application FROM db_new_application.dashboard_items WHERE type = :typeDevstiture AND organisation_id = :organisationID AND representative_id IN (:company_id) GROUP BY application)  GROUP BY documentid.appno_doc_num"
                 }
+                
 
-                const replacements = {list, year: connection.DEFAULT_YEAR}
+                const replacements = {list, year: connection.DEFAULT_YEAR, typeDevstiture: 34, ...where }
                 getList = await connection.applicationNew.query(query, {
                     type: connection.Sequelize.QueryTypes.SELECT,
                     replacements: replacements,
