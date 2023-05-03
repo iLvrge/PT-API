@@ -147,7 +147,7 @@ route.post('/collateral', [authJWT.verifyToken], async(req, res, next) => {
 
 route.post('/parties/assignor', [authJWT.verifyToken, clientDBConnection.connect], async(req, res, next) => {
     try {
-        let {selectedCompanies, search} = req.body, getList = [];
+        let {selectedCompanies, search, type} = req.body, getList = [];
         if(selectedCompanies != '' && typeof selectedCompanies != 'undefined' && selectedCompanies != null) {
             selectedCompanies = JSON.parse(selectedCompanies)
         }
@@ -208,7 +208,7 @@ route.post('/parties/assignor', [authJWT.verifyToken, clientDBConnection.connect
                         organisationID: req.orgId,
                         selectedCompanies,
                         layoutID: 15,
-                        activityID: [2, 7],
+                        activityID: type == 'license_in' ? [3, 4] : [2, 7],
                         year: connection.DEFAULT_YEAR,
                         type: 33
                     }

@@ -2432,7 +2432,7 @@ route.put("/company/assignments", [authJWT.verifyToken, authJWT.isAdmin], async 
             });
     
             if(getData != null && getData.rf_id > 0) {
-                
+                const CNAME = getData.cname, CADDRESS_1 = getData.caddress_1
                 const preCAddress1 = getData.caddress_1, preCName = getData.cname;
                 getData.cname = cname
                 getData.caddress_1 = caddress_1
@@ -2454,7 +2454,11 @@ route.put("/company/assignments", [authJWT.verifyToken, authJWT.isAdmin], async 
                     switch(parseInt(flag)) {
                         case 1:
                             whereConstraint.caddress_1 = cname;
-                            where = ` AND caddress_1 = :caddress_1`
+                            if(caddress_1 == '') {
+                                where = ` AND caddress_1 = :caddress_1 AND cname = ''`
+                            } else if (caddress_1 != '') {
+                                where = ` AND caddress_1 = :caddress_1`
+                            }
                             break;
                         case 2:
                             whereConstraint.caddress_2 = cname;
@@ -3778,13 +3782,13 @@ route.post("/company/cited/:id", [authJWT.verifyToken, authJWT.isAdmin, authJWT.
         const representativeIDs = JSON.parse(portfolios != undefined ? portfolios : "[]");
         let list = [],   total_records = 0;
         if(customerID > 0) { 
-            let queryParties = `Select partyName FROM (SELECT IF(r.representative_name <> '', r.representative_name, aaa.name) AS partyName FROM (  SELECT apt.assignor_and_assignee_id FROM db_new_application.activity_parties_transactions AS apt WHERE activity_id IN (:activityID) AND organisation_id = :organisationID `;
+            let queryParties = `Select partyName FROM (SELECT IF(r.representative_name <> '', r.representative_name, aaa.name) AS partyName FROM (  SELECT apt.assignor_and_assignee_id FROM db_new_application.activity_parties_transactions AS apt LEFT JOIN db_uspto.inventors AS inv ON inv.assignor_and_assignee_id = apt.assignor_and_assignee_id WHERE activity_id IN (:activityID) AND organisation_id = :organisationID `;
 
             if(representativeIDs.length > 0) {
                 queryParties += `AND company_id IN (:representativeIDs) `
             }
 
-            queryParties += ` AND date_format(apt.exec_dt, '%Y') > :year AND apt.assignor_and_assignee_id NOT IN (SELECT inventors.assignor_and_assignee_id FROM db_uspto.inventors) GROUP BY apt.assignor_and_assignee_id ) AS temp INNER JOIN db_uspto.assignor_and_assignee AS aaa ON aaa.assignor_and_assignee_id = temp.assignor_and_assignee_id LEFT JOIN db_uspto.representative AS r ON r.representative_id = aaa.representative_id ) AS temp GROUP BY partyName`; 
+            queryParties += ` AND date_format(apt.exec_dt, '%Y') > :year AND inv.assignor_and_assignee_id IS NULL GROUP BY apt.assignor_and_assignee_id ) AS temp INNER JOIN db_uspto.assignor_and_assignee AS aaa ON aaa.assignor_and_assignee_id = temp.assignor_and_assignee_id LEFT JOIN db_uspto.representative AS r ON r.representative_id = aaa.representative_id ) AS temp GROUP BY partyName`; 
 
             const partiesResult = await connection.applicationNew.query( queryParties,{
                 type: connection.Sequelize.QueryTypes.SELECT,
@@ -3857,13 +3861,13 @@ route.post("/company/cited/:id", [authJWT.verifyToken, authJWT.isAdmin, authJWT.
         const representativeIDs = JSON.parse(portfolios != undefined ? portfolios : "[]");
         let list = [],   total_records = 0;
         if(customerID > 0) { 
-            let queryParties = `Select partyName FROM (SELECT IF(r.representative_name <> '', r.representative_name, aaa.name) AS partyName FROM (  SELECT apt.assignor_and_assignee_id FROM db_new_application.activity_parties_transactions AS apt WHERE activity_id <> :activityID AND organisation_id = :organisationID `;
+            let queryParties = `Select partyName FROM (SELECT IF(r.representative_name <> '', r.representative_name, aaa.name) AS partyName FROM (  SELECT apt.assignor_and_assignee_id FROM db_new_application.activity_parties_transactions AS apt LEFT JOIN db_uspto.inventors AS inv ON inv.assignor_and_assignee_id = apt.assignor_and_assignee_id WHERE activity_id <> :activityID AND organisation_id = :organisationID `;
 
             if(representativeIDs.length > 0) {
                 queryParties += `AND company_id IN (:representativeIDs) `
             }
 
-            queryParties += ` AND date_format(apt.exec_dt, '%Y') > :year AND apt.assignor_and_assignee_id NOT IN (SELECT inventors.assignor_and_assignee_id FROM db_uspto.inventors) GROUP BY apt.assignor_and_assignee_id ) AS temp INNER JOIN db_uspto.assignor_and_assignee AS aaa ON aaa.assignor_and_assignee_id = temp.assignor_and_assignee_id LEFT JOIN db_uspto.representative AS r ON r.representative_id = aaa.representative_id ) AS temp GROUP BY partyName`; 
+            queryParties += ` AND date_format(apt.exec_dt, '%Y') > :year AND inv.assignor_and_assignee_id IS NULL GROUP BY apt.assignor_and_assignee_id ) AS temp INNER JOIN db_uspto.assignor_and_assignee AS aaa ON aaa.assignor_and_assignee_id = temp.assignor_and_assignee_id LEFT JOIN db_uspto.representative AS r ON r.representative_id = aaa.representative_id ) AS temp GROUP BY partyName`; 
 
             const partiesResult = await connection.applicationNew.query( queryParties,{
                 type: connection.Sequelize.QueryTypes.SELECT,
