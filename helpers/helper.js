@@ -4665,7 +4665,7 @@ const findFillingAssets = async (req, type) => {
             }) 
 
             if(getLawFirmData != null ) { 
-                findAllAssigneeAssets += ` ) AND appno_doc_num IN (SELECT application FROM dashboard_items WHERE organisation_id = :organisation_id  AND representative_id IN (:companies) AND type = :type `
+                findAllAssigneeAssets += `  AND appno_doc_num IN (SELECT application FROM dashboard_items WHERE organisation_id = :organisation_id  AND representative_id IN (:companies) AND type = :type `
                 if(getLawFirmData.representative_id > 0) {
                     replacements.representative_id = getLawFirmData.representative_id 
                 } else {
