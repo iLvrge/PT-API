@@ -410,7 +410,7 @@ route.get("/timeline/filling_assets", [authJWT.verifyToken, clientDBConnection.c
 
             replacements.lawfirmName = lawfirmName
 
-            let queryFillingLawFirm = `SELECT temp.*, IF(exec_dt IS NULL,  another_exec_dt, exec_dt) AS exec_dt FROM ( SELECT l.id, l.id AS name_id, l.id AS law_firm_id, l.name AS lawfirm, 0 AS repID, l.appno_doc_num,  (SELECT appno_date FROM db_patent_grant_bibliographic.application_publication AS ap WHERE ap.appno_doc_num = l.appno_doc_num LIMIT 1) AS exec_dt, (SELECT appno_date FROM db_patent_application_bibliographic.application_grant AS ap WHERE ap.appno_doc_num = l.appno_doc_num LIMIT 1) AS another_exec_dt, '' AS release_rf_id, '' AS release_exec_dt, '' AS partial_transaction, '' AS all_release_ids, 0 AS releaseAssets, '' AS customerName, 0 AS tab_id, '' AS 'group', '' AS company, 0 AS asset, 1 AS type, '' AS patent, '' AS title FROM db_patent_application_bibliographic.lawfirm AS l  WHERE l.appno_doc_num IN (:applications) AND TRIM(BOTH  '.' FROM l.name) IN (:lawfirmName) GROUP BY l.appno_doc_num ) AS temp `
+            let queryFillingLawFirm = `SELECT temp.*, IF(exec_dt IS NULL,  another_exec_dt, exec_dt) AS exec_dt FROM ( SELECT l.id, l.id AS name_id, l.id AS law_firm_id, l.name AS lawfirm, 0 AS repID, l.appno_doc_num,  (SELECT appno_date FROM db_patent_grant_bibliographic.application_publication AS ap WHERE ap.appno_doc_num = l.appno_doc_num LIMIT 1) AS exec_dt, (SELECT appno_date FROM db_patent_application_bibliographic.application_grant AS ap WHERE ap.appno_doc_num = l.appno_doc_num LIMIT 1) AS another_exec_dt, '' AS release_rf_id, '' AS release_exec_dt, '' AS partial_transaction, '' AS all_release_ids, 0 AS releaseAssets, '' AS customerName, 0 AS tab_id, '' AS 'group', '' AS company, 0 AS asset, 1 AS type, '' AS patent, '' AS title FROM db_patent_application_bibliographic.lawfirm AS l  WHERE l.appno_doc_num IN (:applications) AND ( TRIM(BOTH  '.' FROM l.name) IN (:lawfirmName) OR l.name IN (:lawfirmName) ) GROUP BY l.appno_doc_num ) AS temp `
 
             if(typeof start != 'undefined' && start != '' && typeof end != 'undefined' && end != '') {
                 replacements.start = start
@@ -947,7 +947,7 @@ route.post("/asset_types/assets/agents", [authJWT.verifyToken, clientDBConnectio
                     * Filling 
                     */
                     query += `SELECT name, year, COUNT(appno_doc_num) AS counter FROM ( 
-                        SELECT name, appno_doc_num, /*IF(appYear = null, grantyear, appYear)*/ appYear AS year FROM (  SELECT l.name, l.appno_doc_num, /*date_format(ag.appno_date, '%Y') AS grantyear,*/ date_format(ap.appno_date, '%Y') AS appYear  FROM db_patent_application_bibliographic.lawfirm AS l /*LEFT JOIN  db_patent_application_bibliographic.application_grant AS ag ON ag.appno_doc_num = l.appno_doc_num*/ LEFT JOIN  db_patent_grant_bibliographic.application_publication AS ap ON ap.appno_doc_num = l.appno_doc_num WHERE l.name IN (SELECT lawfirm FROM db_new_application.dashboard_items WHERE organisation_id = :organisationID AND representative_id = :company_id AND type = :lawfirmType GROUP BY lawfirm) ` 
+                        SELECT name, appno_doc_num, /*IF(appYear = null, grantyear, appYear)*/ appYear AS year FROM (  SELECT l.name, l.appno_doc_num, /*date_format(ag.appno_date, '%Y') AS grantyear,*/ date_format(ap.appno_date, '%Y') AS appYear  FROM db_patent_application_bibliographic.lawfirm AS l /*LEFT JOIN  db_patent_application_bibliographic.application_grant AS ag ON ag.appno_doc_num = l.appno_doc_num*/ LEFT JOIN  db_patent_grant_bibliographic.application_publication AS ap ON ap.appno_doc_num = l.appno_doc_num WHERE ( TRIM(BOTH  '.' FROM l.name) IN (SELECT lawfirm FROM db_new_application.dashboard_items WHERE organisation_id = :organisationID AND representative_id = :company_id AND type = :lawfirmType GROUP BY lawfirm) OR l.name IN (SELECT lawfirm FROM db_new_application.dashboard_items WHERE organisation_id = :organisationID AND representative_id = :company_id AND type = :lawfirmType GROUP BY lawfirm))` 
                     /* query = `SELECT name, year, COUNT(appno_doc_num) AS counter FROM (  SELECT l.name, l.appno_doc_num, date_format(ag.appno_date, '%Y') AS year  FROM db_patent_examiner_data.application_correspondence AS l INNER JOIN  db_patent_examiner_data.application_publication_grant AS ag ON ag.appno_doc_num = l.appno_doc_num WHERE l.name IN (SELECT lawfirm FROM db_new_application.dashboard_items WHERE organisation_id = :organisationID AND representative_id = :company_id AND type = :lawfirmType GROUP BY lawfirm) ` */
 
 
@@ -982,7 +982,7 @@ route.post("/asset_types/assets/agents", [authJWT.verifyToken, clientDBConnectio
                                 }
                             })
                             await Promise.all(promise)
-                            query += ` AND TRIM(BOTH  '.' FROM l.name) IN (:lawfirms) `
+                            query += ` AND (TRIM(BOTH  '.' FROM l.name) IN (:lawfirms) OR l.name IN (:lawfirms)) `
 
                             console.log('query', query)
                             where.lawfirms = lawfirmNames

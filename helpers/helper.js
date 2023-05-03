@@ -4682,7 +4682,7 @@ const findFillingAssets = async (req, type) => {
                 }
                 tempQuery += ` GROUP BY  lf.law_firm_id` 
 
-                findAllAssigneeAssets += ` AND application IN ( SELECT appno_doc_num FROM db_patent_application_bibliographic.lawfirm AS l WHERE name IN (${tempQuery}) AND appno_doc_num IN (SELECT application FROM dashboard_items WHERE organisation_id = :organisation_id  AND representative_id IN (:companies) AND type = :type)) `  
+                findAllAssigneeAssets += ` AND application IN ( SELECT appno_doc_num FROM db_patent_application_bibliographic.lawfirm AS l WHERE ( TRIM(BOTH  '.' FROM name) IN (${tempQuery}) OR name IN (${tempQuery}) ) AND appno_doc_num IN (SELECT application FROM dashboard_items WHERE organisation_id = :organisation_id  AND representative_id IN (:companies) AND type = :type)) `  
                 findAllAssigneeAssets += `  GROUP BY application )  `
             }  
         } 
