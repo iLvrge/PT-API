@@ -2213,10 +2213,15 @@ const findEventList = async(req, res) => {
             });
 
             if(findData.length == 0) {
-                assetData = await Documentid.findOne({
-                    attributes: ['appno_doc_num', 'grant_doc_num', 'grant_date'],
-                    where:{[connection.Op.or]: [{appno_doc_num: applicationNumber}, {grant_doc_num: patentNumber}]}
-                })
+                const queryDoc = `SELECT appno_doc_num, MAX(grant_doc_num) AS grant_doc_num, MAX(grant_date) AS grant_date FROM db_uspto.documentid WHERE appno_doc_num = :appno_doc_num OR grant_doc_num = :grant_doc_num `
+                assetData = await connection.applicationNew.query(queryDoc,{
+                        type: connection.Sequelize.QueryTypes.SELECT,
+                        raw: true,
+                        plain: true,
+                        logging: console.log,
+                        replacements: {appno_doc_num: applicationNumber, grant_doc_num: patentNumber}
+                    }
+                ); 
                 if(assetData != null && assetData.appno_doc_num != '') {
                     where = {appno_doc_num: assetData.appno_doc_num}
                     findData = await MaintainenceFees.findAll({
