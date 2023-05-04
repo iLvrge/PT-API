@@ -1990,9 +1990,9 @@ route.post("/events/assets", [authJWT.verifyToken], async(req, res, next) => {
             if( list.length > 0 ) {
                 let query = ''
                 if(type == 'missed_monetization') {
-                    query = "SELECT ag.appno_doc_num AS application, ag.grant_doc_num AS patent, 0 AS `status`,  ag.appno_date AS appno_date FROM db_patent_application_bibliographic.application_grant AS ag WHERE ag.appno_doc_num IN (:list) AND date_format(ag.appno_date, '%Y') > :year AND application NOT IN ( SELECT appno_doc_num FROM db_new_application.assets_with_bank_expired_status WHERE appno_doc_num IN (:list)) AND application NOT IN (SELECT application FROM db_new_application.dashboard_items WHERE type = :typeDevstiture AND organisation_id = :organisationID AND representative_id IN (:company_id))  GROUP BY ag.appno_doc_num"
+                    query = "SELECT ag.appno_doc_num AS application, ag.grant_doc_num AS patent, 0 AS `status`,  ag.appno_date AS appno_date FROM db_patent_application_bibliographic.application_grant AS ag WHERE ag.appno_doc_num IN (:list) AND date_format(ag.appno_date, '%Y') > :year AND ag.appno_doc_num NOT IN ( SELECT appno_doc_num FROM db_new_application.assets_with_bank_expired_status WHERE appno_doc_num IN (:list)) AND ag.appno_doc_num NOT IN (SELECT application FROM db_new_application.dashboard_items WHERE type = :typeDevstiture AND organisation_id = :organisationID AND representative_id IN (:company_id))  GROUP BY ag.appno_doc_num"
                 } else { 
-                    query = "SELECT documentid.appno_doc_num AS application, documentid.grant_doc_num AS patent, documentid.status AS `status`,  documentid.appno_date AS appno_date FROM   db_uspto.documentid AS documentid   WHERE documentid.appno_doc_num IN (:list) AND date_format(documentid.appno_date, '%Y') > :year AND documentid.grant_doc_num <> '' AND appno_doc_num NOT IN ( SELECT appno_doc_num FROM db_new_application.assets_with_bank_expired_status WHERE appno_doc_num IN (:list)  GROUP BY appno_doc_num) AND appno_doc_num NOT IN (SELECT application FROM db_new_application.dashboard_items WHERE type = :typeDevstiture AND organisation_id = :organisationID AND representative_id IN (:company_id) GROUP BY application)  GROUP BY documentid.appno_doc_num"
+                    query = "SELECT * FROM (SELECT documentid.appno_doc_num AS application, documentid.grant_doc_num AS patent, documentid.status AS `status`,  documentid.appno_date AS appno_date FROM db_uspto.documentid AS documentid WHERE documentid.appno_doc_num IN (:list) AND date_format(documentid.appno_date, '%Y') > :year AND documentid.grant_doc_num <> '' AND appno_doc_num NOT IN ( SELECT appno_doc_num FROM db_new_application.assets_with_bank_expired_status WHERE appno_doc_num IN (:list)  GROUP BY appno_doc_num) AND appno_doc_num NOT IN (SELECT application FROM db_new_application.dashboard_items WHERE type = :typeDevstiture AND organisation_id = :organisationID AND representative_id IN (:company_id) GROUP BY application)  GROUP BY documentid.appno_doc_num UNION SELECT ag.appno_doc_num AS application, ag.grant_doc_num AS patent, 0 AS `status`,  ag.appno_date AS appno_date FROM db_patent_application_bibliographic.application_grant AS ag WHERE ag.appno_doc_num IN (:list) AND date_format(ag.appno_date, '%Y') > :year AND ag.appno_doc_num NOT IN ( SELECT appno_doc_num FROM db_new_application.assets_with_bank_expired_status WHERE appno_doc_num IN (:list)) AND ag.appno_doc_num NOT IN (SELECT application FROM db_new_application.dashboard_items WHERE type = :typeDevstiture AND organisation_id = :organisationID AND representative_id IN (:company_id))  GROUP BY ag.appno_doc_num) AS temp GROUP BY application"
                 }
                 
 
@@ -2033,6 +2033,7 @@ route.post("/events/assets", [authJWT.verifyToken], async(req, res, next) => {
                     
                     const timelineSpan = [], applicationNumberAdded = [], dateAdded = [];
                     console.log(getList.length)
+                    const tabItems = []
                     const promises = getList.map( async item => {
                         if(!applicationNumberAdded.includes(item.application)){
                             const startYear = moment(new Date(item.appno_date)).format(ASSETS_LIFE_SPAN_DATE_FORMAT);
@@ -2055,6 +2056,8 @@ route.post("/events/assets", [authJWT.verifyToken], async(req, res, next) => {
                             
                             endYear = endYear.format(ASSETS_LIFE_SPAN_DATE_FORMAT);
 
+                            tabItems.push({...item,startYear: parseInt(startYear), endYear: parseInt(endYear)})
+
                             for(let i = parseInt(startYear); i <= parseInt(endYear); i++) {
                                 timelineSpan.push({year: i, count: 1, application: item.application});
                             }
@@ -2064,8 +2067,30 @@ route.post("/events/assets", [authJWT.verifyToken], async(req, res, next) => {
                         return item;                            
                     });            
                     await Promise.all(promises);
+                   
                     assetsLifeSpan = await helpers.findMaxMinLifeSpan(timelineSpan)        
-                    console.log(assetsLifeSpan)
+                    /*console.log(assetsLifeSpan) */
+                   /*  const np = []
+                    for(i = 0; i<slp.length;i++){
+                        if(!dl.includes(slp[i])){
+                            np.push(slp[i])
+                        }
+                    }
+
+                    slp.map(item => { 
+                        console.log(`${item}`);
+                        const filter = dl.filter(item1 => {
+                            console.log
+                            if(parseInt(item) == parseInt(item1)){
+                                return true
+                            } else {
+                                return false
+                            }
+                        )
+                        if(filter.length == 0){
+                            rem.push(item)
+                        }
+                    }); */
                 }
             }
         }
