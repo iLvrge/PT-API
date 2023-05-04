@@ -2034,6 +2034,7 @@ route.post("/events/assets", [authJWT.verifyToken], async(req, res, next) => {
                     const timelineSpan = [], applicationNumberAdded = [], dateAdded = [];
                     console.log(getList.length)
                     const tabItems = []
+                    let cp = 0
                     const promises = getList.map( async item => {
                         if(!applicationNumberAdded.includes(item.application)){
                             const startYear = moment(new Date(item.appno_date)).format(ASSETS_LIFE_SPAN_DATE_FORMAT);
@@ -2041,6 +2042,7 @@ route.post("/events/assets", [authJWT.verifyToken], async(req, res, next) => {
 
                             if(item.patent.indexOf('D') !== -1) {
                                 addYear = 15
+                                //cp++;
                             }
 
                             let endYear = moment(new Date(item.appno_date)).add(addYear, 'years')
@@ -2055,6 +2057,9 @@ route.post("/events/assets", [authJWT.verifyToken], async(req, res, next) => {
                             }
                             
                             endYear = endYear.format(ASSETS_LIFE_SPAN_DATE_FORMAT);
+                            /* if(item.patent.indexOf('D') !== -1) {
+                                console.log({...item, startYear: parseInt(startYear), endYear: parseInt(endYear)})
+                            } */ 
 
                             tabItems.push({...item,startYear: parseInt(startYear), endYear: parseInt(endYear)})
 
@@ -2067,7 +2072,7 @@ route.post("/events/assets", [authJWT.verifyToken], async(req, res, next) => {
                         return item;                            
                     });            
                     await Promise.all(promises);
-                   
+                    //console.log('cp', cp)
                     assetsLifeSpan = await helpers.findMaxMinLifeSpan(timelineSpan)        
                     /*console.log(assetsLifeSpan) */
                    /*  const np = []
