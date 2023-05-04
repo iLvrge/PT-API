@@ -4121,13 +4121,13 @@ const findMaxMinLifeSpan = async(timelineSpan) => {
     const {max, min} = await minMax2DArray(timelineSpan, 'year');
     const currentYear = moment(new Date()).format('YYYY');
     let entered = false
-    console.log(max, min)
+    console.log(max, min, timelineSpan.length)
     for(let i = min; i < max; i++) {
 
         let getList = await timelineSpan.filter( item => {
             return i == parseInt(item.year) ? item : undefined;
         });
-        console.log(getList)
+        console.log(i, getList.length)
         if(getList != undefined && getList.length > 0) {
             
             let Counter = await getList.reduce((a, b) => +a + +b.count, 0);
