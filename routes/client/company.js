@@ -905,7 +905,7 @@ route.post("/", [authJWT.verifyToken, clientDBConnection.connect], async(req, re
                 const activityLogs = [], currentDate = moment(new Date()).format('YYYY-MM-DD hh:mm:ss');
 
                 if(parentCompany != undefined && parentCompany > 0) {   
-                    const parentCompanyQuery = "SELECT representative_id, original_name, representative_name FROM representative as r WHERE representative_id = :parentCompany AND r.parent_id =  0";
+                    const parentCompanyQuery = "SELECT representative_id, original_name, representative_name, type, status FROM representative as r WHERE representative_id = :parentCompany AND r.parent_id =  0";
                     
                     const findName = await req.connection_db.query(parentCompanyQuery,{
                         type: connection.Sequelize.QueryTypes.SELECT,
@@ -917,7 +917,10 @@ route.post("/", [authJWT.verifyToken, clientDBConnection.connect], async(req, re
                     ); 
                    
 
-                    if(findName != null && findName.representative_id > 0) { 
+                    if(findName != null && findName.representative_id > 0) {
+                        if(findName.type == 1 && findName.status == 0) {
+                            await Representative.update({status: 1}, {representative_id: findName.representative_id});
+                        }
                         const Representative = req.connection_db.define('Representatives', Representatives.mainStructure, Representatives.options);
                         const findCompanies = await Representative.findAll({
                             where: {parent_id: findName.representative_id}

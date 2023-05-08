@@ -348,7 +348,7 @@ route.get("/timeline", [authJWT.verifyToken], async(req, res, next) => {
  
         if(query != '') {
 
-            if(['acquisition_transactions', 'divestitures_transactions', 'licensing_transactions', 'collateralization_transactions', 'litigation_transactions'].includes(layout)) {
+            if(['acquisition_transactions', 'divestitures_transactions', 'licensing_transactions', 'collateralization_transactions', 'litigation_transactions', 'due_dilligence'].includes(layout)) {
                 query = `SELECT temp.*, ao.logo_optimize AS logo FROM (${query}) AS temp LEFT JOIN db_new_application.organisations AS ao ON ao.organisation_name COLLATE utf8mb4_general_ci = temp.customerName COLLATE utf8mb4_general_ci`
             } 
 
