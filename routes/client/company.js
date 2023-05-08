@@ -159,7 +159,18 @@ route.put("/:companyID", [authJWT.verifyToken, clientDBConnection.connect], asyn
                         }
                     })
                     if (typeof parent_id !== 'undefined' && parent_id != null && parent_id >= 0) {
-                        await Representative.update({status: 1}, {
+                        const childCount = await Representative.count({
+                            where: {
+                                parent_id: parent_id
+                            }
+                        }) 
+                        const updateItem = {status: 1}
+
+                        if(childCount == 0) {
+                            updateItem.status = 0
+                        }
+
+                        await Representative.update(updateItem, {
                             where: {
                                 representative_id: parent_id
                             }
