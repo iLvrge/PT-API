@@ -158,10 +158,17 @@ route.put("/:companyID", [authJWT.verifyToken, clientDBConnection.connect], asyn
                             representative_id: companyID
                         }
                     })
-                    if (typeof parent_id !== 'undefined' && parent_id != null && parent_id >= 0) {
+                    if (typeof parent_id !== 'undefined' && parent_id != null && parent_id >= 0) { 
+                        await Representative.update({status: 1}, {
+                            where: {
+                                representative_id: parent_id
+                            }
+                        })
+                    }
+                    if(company.parent_id > 0) {
                         const childCount = await Representative.count({
                             where: {
-                                parent_id: parent_id
+                                parent_id: company.parent_id
                             }
                         }) 
                         const updateItem = {status: 1}
@@ -172,7 +179,7 @@ route.put("/:companyID", [authJWT.verifyToken, clientDBConnection.connect], asyn
                         console.log(childCount, updateItem)
                         await Representative.update(updateItem, {
                             where: {
-                                representative_id: parent_id
+                                representative_id: company.parent_id
                             }
                         })
                     }
