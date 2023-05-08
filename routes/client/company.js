@@ -158,6 +158,13 @@ route.put("/:companyID", [authJWT.verifyToken, clientDBConnection.connect], asyn
                             representative_id: companyID
                         }
                     })
+                    if (typeof parent_id !== 'undefined' && parent_id != null && parent_id >= 0) {
+                        await Representative.update({status: 1}, {
+                            where: {
+                                representative_id: parent_id
+                            }
+                        })
+                    }
                     const getCompaniesList = await helpers.getCompaniesWithChildren(req.connection_db, req.orgId);
                     res.status(200).json(getCompaniesList); 
                 }
