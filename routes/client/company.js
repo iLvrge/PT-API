@@ -1388,20 +1388,22 @@ route.delete("/", [authJWT.verifyToken, clientDBConnection.connect], async(req, 
                 }
 
 
-                if(deleteCompanies.length > 0) {
-                    let destroyAllCompanies = null
+                if(deleteCompanies.length > 0) { 
                     if(typeof type != 'undefined' && type == 1) {
                         /**
                          * Keep all the companies outside group and delete group
                          */
-                        destroyAllCompanies = await  Representative.update({parent_id: 0},{
-                            where: {representative_id: deleteCompanies},
-                        })
+                        await  Representative.update({parent_id: 0},{
+                            where: {parent_id: deleteCompanies},
+                        }) 
                     } else {
-                        destroyAllCompanies = await  Representative.destroy({
-                            where: {representative_id: deleteCompanies},
-                        })
+                        await  Representative.destroy( {
+                            where: {parent_id: deleteCompanies},
+                        }) 
                     }
+                    let destroyAllCompanies =  await Representative.destroy({
+                        where: {representative_id: deleteCompanies},
+                    }) 
                       
                     
 
