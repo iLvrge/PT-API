@@ -1901,10 +1901,12 @@ route.post("/events/assets", [authJWT.verifyToken], async(req, res, next) => {
                         query = `SELECT application AS appno_doc_num FROM db_new_application.dashboard_items AS assets WHERE assets.organisation_id = :organisationID AND representative_id IN (:company_id) AND type = :layoutID `
                         
                         
-                        if(assignments && assignments != '' && where.layoutID == 40) {
+                        if(assignments && assignments != '') {
                             assignments = JSON.parse( assignments )
-                            where.assignments = assignments
-                            query += ` AND rf_id IN (:assignments) `
+                            if(assignments.length > 0) {
+                                where.assignments = assignments
+                                query += ` AND rf_id IN (:assignments) `
+                            }
                         }
 
                         query += ` GROUP BY application`
@@ -1957,6 +1959,7 @@ route.post("/events/assets", [authJWT.verifyToken], async(req, res, next) => {
                             }
 
                             query += ` GROUP BY activity_parties_transactions.rf_id ) GROUP BY documentid.appno_doc_num) `
+                            query += ` GROUP BY appno_doc_num`;
                         } else  if(Array.isArray(tabs) && tabs.length === 0) {
                             /**exclude employees */
                             query += ` AND assets.appno_doc_num IN (  SELECT documentid.appno_doc_num FROM db_uspto.documentid WHERE rf_id  IN ( SELECT activity_parties_transactions.rf_id  FROM db_new_application.activity_parties_transactions WHERE activity_parties_transactions.organisation_id = :organisationID   ` 
@@ -1993,7 +1996,7 @@ route.post("/events/assets", [authJWT.verifyToken], async(req, res, next) => {
                     query = "SELECT ag.appno_doc_num AS application, ag.grant_doc_num AS patent, 0 AS `status`,  ag.appno_date AS appno_date FROM db_patent_application_bibliographic.application_grant AS ag WHERE ag.appno_doc_num IN (:list) AND date_format(ag.appno_date, '%Y') > :year AND ag.appno_doc_num NOT IN ( SELECT appno_doc_num FROM db_new_application.assets_with_bank_expired_status WHERE appno_doc_num IN (:list)) AND ag.appno_doc_num NOT IN (SELECT application FROM db_new_application.dashboard_items WHERE type = :typeDevstiture AND organisation_id = :organisationID AND representative_id IN (:company_id))  GROUP BY ag.appno_doc_num"
                 } else { 
                     if(type == 'divested') {
-                        query = "SELECT * FROM (SELECT documentid.appno_doc_num AS application, documentid.grant_doc_num AS patent, documentid.status AS `status`,  documentid.appno_date AS appno_date FROM db_uspto.documentid AS documentid WHERE documentid.appno_doc_num IN (:list) AND date_format(documentid.appno_date, '%Y') > :year AND documentid.grant_doc_num <> '' AND appno_doc_num NOT IN ( SELECT appno_doc_num FROM db_new_application.assets_with_bank_expired_status WHERE appno_doc_num IN (:list)  GROUP BY appno_doc_num)  GROUP BY documentid.appno_doc_num UNION SELECT ag.appno_doc_num AS application, ag.grant_doc_num AS patent, 0 AS `status`,  ag.appno_date AS appno_date FROM db_patent_application_bibliographic.application_grant AS ag WHERE ag.appno_doc_num IN (:list) AND date_format(ag.appno_date, '%Y') > :year AND ag.appno_doc_num NOT IN ( SELECT appno_doc_num FROM db_new_application.assets_with_bank_expired_status WHERE appno_doc_num IN (:list)) GROUP BY ag.appno_doc_num) AS temp GROUP BY application"
+                        query = "SELECT * FROM (SELECT documentid.appno_doc_num AS application, documentid.grant_doc_num AS patent, documentid.status AS `status`,  documentid.appno_date AS appno_date FROM db_uspto.documentid AS documentid WHERE documentid.appno_doc_num IN (:list) AND date_format(documentid.appno_date, '%Y') > :year AND documentid.grant_doc_num <> '' GROUP BY documentid.appno_doc_num UNION SELECT ag.appno_doc_num AS application, ag.grant_doc_num AS patent, 0 AS `status`,  ag.appno_date AS appno_date FROM db_patent_application_bibliographic.application_grant AS ag WHERE ag.appno_doc_num IN (:list) AND date_format(ag.appno_date, '%Y') > :year  GROUP BY ag.appno_doc_num) AS temp GROUP BY application"
                     } else {
 
                         query = "SELECT * FROM (SELECT documentid.appno_doc_num AS application, documentid.grant_doc_num AS patent, documentid.status AS `status`,  documentid.appno_date AS appno_date FROM db_uspto.documentid AS documentid WHERE documentid.appno_doc_num IN (:list) AND date_format(documentid.appno_date, '%Y') > :year AND documentid.grant_doc_num <> '' AND appno_doc_num NOT IN ( SELECT appno_doc_num FROM db_new_application.assets_with_bank_expired_status WHERE appno_doc_num IN (:list)  GROUP BY appno_doc_num) AND appno_doc_num NOT IN (SELECT application FROM db_new_application.dashboard_items WHERE type = :typeDevstiture AND organisation_id = :organisationID AND representative_id IN (:company_id) GROUP BY application)  GROUP BY documentid.appno_doc_num UNION SELECT ag.appno_doc_num AS application, ag.grant_doc_num AS patent, 0 AS `status`,  ag.appno_date AS appno_date FROM db_patent_application_bibliographic.application_grant AS ag WHERE ag.appno_doc_num IN (:list) AND date_format(ag.appno_date, '%Y') > :year AND ag.appno_doc_num NOT IN ( SELECT appno_doc_num FROM db_new_application.assets_with_bank_expired_status WHERE appno_doc_num IN (:list)) AND ag.appno_doc_num NOT IN (SELECT application FROM db_new_application.dashboard_items WHERE type = :typeDevstiture AND organisation_id = :organisationID AND representative_id IN (:company_id))  GROUP BY ag.appno_doc_num) AS temp GROUP BY application"

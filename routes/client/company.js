@@ -158,6 +158,32 @@ route.put("/:companyID", [authJWT.verifyToken, clientDBConnection.connect], asyn
                             representative_id: companyID
                         }
                     })
+                    if (typeof parent_id !== 'undefined' && parent_id != null && parent_id > 0) { 
+                        console.log("Parent", parent_id)
+                        await Representative.update({status: 1}, {
+                            where: {
+                                representative_id: parent_id
+                            }
+                        })
+                    }
+                    if(company.parent_id > 0) {
+                        const childCount = await Representative.count({
+                            where: {
+                                parent_id: company.parent_id
+                            }
+                        }) 
+                        const updateItem = {status: 1}
+
+                        if(childCount == 0) {
+                            updateItem.status = 0
+                        }
+                        console.log(childCount, updateItem)
+                        await Representative.update(updateItem, {
+                            where: {
+                                representative_id: company.parent_id
+                            }
+                        })
+                    }
                     const getCompaniesList = await helpers.getCompaniesWithChildren(req.connection_db, req.orgId);
                     res.status(200).json(getCompaniesList); 
                 }
@@ -905,7 +931,7 @@ route.post("/", [authJWT.verifyToken, clientDBConnection.connect], async(req, re
                 const activityLogs = [], currentDate = moment(new Date()).format('YYYY-MM-DD hh:mm:ss');
 
                 if(parentCompany != undefined && parentCompany > 0) {   
-                    const parentCompanyQuery = "SELECT representative_id, original_name, representative_name FROM representative as r WHERE representative_id = :parentCompany AND r.parent_id =  0";
+                    const parentCompanyQuery = "SELECT representative_id, original_name, representative_name, type, status FROM representative as r WHERE representative_id = :parentCompany AND r.parent_id =  0";
                     
                     const findName = await req.connection_db.query(parentCompanyQuery,{
                         type: connection.Sequelize.QueryTypes.SELECT,
@@ -917,7 +943,10 @@ route.post("/", [authJWT.verifyToken, clientDBConnection.connect], async(req, re
                     ); 
                    
 
-                    if(findName != null && findName.representative_id > 0) { 
+                    if(findName != null && findName.representative_id > 0) {
+                        if(findName.type == 1 && findName.status == 0) {
+                            await Representative.update({status: 1}, {representative_id: findName.representative_id});
+                        }
                         const Representative = req.connection_db.define('Representatives', Representatives.mainStructure, Representatives.options);
                         const findCompanies = await Representative.findAll({
                             where: {parent_id: findName.representative_id}
@@ -1305,17 +1334,20 @@ route.post("/", [authJWT.verifyToken, clientDBConnection.connect], async(req, re
  */
 route.delete("/", [authJWT.verifyToken, clientDBConnection.connect], async(req, res, next) => {
     try{
-        let IDs = req.query.companies;
-        if(IDs.length > 0) {
-            IDs = JSON.parse(IDs)
+        let {companies, type}  = req.query;
+        
+        if(companies.length > 0) {
+            companies = JSON.parse(companies)
             const Representative = req.connection_db.define('Representatives', Representatives.mainStructure, Representatives.options);
+            
             const findCompanies = await Representative.findAll({
-                attributes:['representative_id', 'parent_id', 'original_name'],
-                where:{representative_id: IDs},
+                attributes:['representative_id', 'parent_id', 'original_name', 'type'],
+                where:{representative_id: companies},
                 group:['representative_id','parent_id']
             });
             const updateKPICompanies=[],  deleteParentCompanies = [], reUpdateCompanies = [], deleteCompanies = [], activityLogs = [], currentDate = moment(new Date()).format('YYYY-MM-DD hh:mm:ss');
             if(findCompanies.length > 0) {
+                
                 const promise = findCompanies.map(c => {
                     if(c.parent_id == 0) {
                         deleteParentCompanies.push(c.representative_id);
@@ -1323,7 +1355,7 @@ route.delete("/", [authJWT.verifyToken, clientDBConnection.connect], async(req, 
                     } else {
                         if(!updateKPICompanies.includes(c.parent_id)){
                             updateKPICompanies.push(c.parent_id); 
-                            reUpdateCompanies(c.parent_id);
+                            reUpdateCompanies.push(c.parent_id);
                         }
                     }
                     deleteCompanies.push(c.representative_id);
@@ -1337,6 +1369,8 @@ route.delete("/", [authJWT.verifyToken, clientDBConnection.connect], async(req, 
                 });
 
                 await Promise.all(promise);
+
+                
 
                 if(deleteParentCompanies.length > 0) {
                     const findParentSubCompanies = await Representative.findAll({
@@ -1354,11 +1388,23 @@ route.delete("/", [authJWT.verifyToken, clientDBConnection.connect], async(req, 
                 }
 
 
-                if(deleteCompanies.length > 0) {
-                    
-                    const destroyAllCompanies = await  Representative.destroy({
-                        where: {representative_id: deleteCompanies},
-                    })
+                if(deleteCompanies.length > 0) { 
+                    const where = {representative_id: deleteCompanies}
+                    if(typeof type != 'undefined' && type == 1) {
+                        /**
+                         * Keep all the companies outside group and delete group
+                         */
+                        await  Representative.update({parent_id: 0},{
+                            where: {parent_id: deleteCompanies, type: 0, child: 1},
+                        }) 
+                        where.type = 1
+                    } 
+
+                    console.log(deleteCompanies);
+                    let destroyAllCompanies =  await Representative.destroy({
+                        where: where
+                    }) 
+                      
 
                     if(destroyAllCompanies != null) {
                         ActivityLogs.bulkCreate(activityLogs);
@@ -1367,32 +1413,6 @@ route.delete("/", [authJWT.verifyToken, clientDBConnection.connect], async(req, 
                                 where: {representative_id: deleteParentCompanies, organisation_id: req.orgId},
                             });
                             console.log("destroyAllTransactions", destroyAllTransactions);
-                            if(destroyAllTransactions) {
-                                /**
-                                 * Delete KPI counter, Tree, Timeline, Error
-                                 */
-                                //remove from list 1, list 2, assets, transactions
-
-                                /* await Validity.destroy({
-                                    where: {representative_id: deleteParentCompanies, organisation_id: req.orgId},
-                                });
-                                await Transactions.destroy({
-                                    where: {representative_id: deleteParentCompanies, organisation_id: req.orgId},
-                                });
-                                await TreeParties.destroy({
-                                    where: {representative_id: deleteParentCompanies, organisation_id: req.orgId},
-                                });
-                                await TreePartiesCollections.destroy({
-                                    where: {representative_id: deleteParentCompanies, organisation_id: req.orgId},
-                                });
-                                await Errors.destroy({
-                                    where: {representative_id: deleteParentCompanies, organisation_id: req.orgId},
-                                });
-
-                                await Timelines.destroy({
-                                    where: {representative_id: deleteParentCompanies, organisation_id: req.orgId},
-                                }); */
-                            }
                         }
 
 
