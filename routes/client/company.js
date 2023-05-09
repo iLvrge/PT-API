@@ -1389,23 +1389,22 @@ route.delete("/", [authJWT.verifyToken, clientDBConnection.connect], async(req, 
 
 
                 if(deleteCompanies.length > 0) { 
+                    const where = {representative_id: deleteCompanies}
                     if(typeof type != 'undefined' && type == 1) {
                         /**
                          * Keep all the companies outside group and delete group
                          */
                         await  Representative.update({parent_id: 0},{
-                            where: {parent_id: deleteCompanies},
+                            where: {parent_id: deleteCompanies, type: 0, child: 1},
                         }) 
-                    } else {
-                        await  Representative.destroy( {
-                            where: {parent_id: deleteCompanies},
-                        }) 
-                    }
+                        where.type = 1
+                    } 
+
+                    console.log(deleteCompanies);
                     let destroyAllCompanies =  await Representative.destroy({
-                        where: {representative_id: deleteCompanies},
+                        where: where
                     }) 
                       
-                    
 
                     if(destroyAllCompanies != null) {
                         ActivityLogs.bulkCreate(activityLogs);
