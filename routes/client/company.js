@@ -1402,7 +1402,7 @@ route.delete("/", [authJWT.verifyToken, clientDBConnection.connect], async(req, 
                             where: {representative_id: deleteCompanies},
                         })
                     }
-                    
+                      
                     
 
                     if(destroyAllCompanies != null) {
