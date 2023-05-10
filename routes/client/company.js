@@ -333,6 +333,7 @@ route.get("/:companyID/list", [authJWT.verifyToken, clientDBConnection.connect],
             const total_records = await Representative.count( where );
 
             where.order = [
+                ['type', 'ASC'],
                 ['status', 'DESC'],
                 ['original_name', 'ASC'],
                 ['representative_name', 'ASC']
@@ -470,6 +471,7 @@ route.get("/list", [authJWT.verifyToken, clientDBConnection.connect], async(req,
             /*where.limit = limit > 0 ? parseInt(limit) : connection.DEFAULT_LIMIT;
             where.offset = offset > 0 ? parseInt(offset) : 0;*/
             where.order = [
+                ['type', 'ASC'],
                 ['status', 'DESC'],
                 ['original_name', 'ASC'],
                 ['representative_name', 'ASC']
@@ -477,6 +479,7 @@ route.get("/list", [authJWT.verifyToken, clientDBConnection.connect], async(req,
 
             if(typeof column !== 'undefined' && typeof direction !== 'undefined') {
                 where.order = [
+                    ['type', 'ASC'],
                     ['status', 'DESC'],
                     [column, direction]
                 ];
@@ -508,6 +511,7 @@ route.get("/list", [authJWT.verifyToken, clientDBConnection.connect], async(req,
                         child: 1
                     },
                     order: [
+                        ['type', 'ASC'],
                         ['status', 'DESC'],
                         ['original_name', 'ASC'],
                         ['representative_name', 'ASC']

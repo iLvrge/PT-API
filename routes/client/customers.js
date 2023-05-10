@@ -93,7 +93,7 @@ route.get("/timeline", [authJWT.verifyToken], async(req, res, next) => {
     let {companies, tabs, customers, rf_ids, layout, exclude, start, end, limit, offset } = req.query, list = [], groups = []
     try {                
         
-        const replacements = { organisation_id: req.orgId, year: 1999 }
+        const replacements = { organisation_id: req.orgId, year: 1999, yearAsset: 1997 }
 
         if(typeof companies != 'undefined' && companies != '') {            
             companies = JSON.parse(companies)
@@ -312,9 +312,9 @@ route.get("/timeline", [authJWT.verifyToken], async(req, res, next) => {
                 groupQuery += " AND activity_parties_transactions.rf_id IN (:rf_ids)"
                 replacements.rf_ids = rf_ids
             } else {                
-                query += " AND activity_parties_transactions.rf_id IN (SELECT documentid.rf_id FROM db_uspto.documentid AS documentid WHERE date_format(documentid.appno_date, '%Y') > :year AND documentid.appno_doc_num IN (SELECT assets.appno_doc_num FROM assets WHERE assets.organisation_id = :organisation_id "
+                query += " AND activity_parties_transactions.rf_id IN (SELECT documentid.rf_id FROM db_uspto.documentid AS documentid WHERE /*date_format(documentid.appno_date, '%Y') > :yearAsset AND*/ documentid.appno_doc_num IN (SELECT assets.appno_doc_num FROM assets WHERE assets.organisation_id = :organisation_id "
 
-                groupQuery += " AND activity_parties_transactions.rf_id IN (SELECT documentid.rf_id FROM db_uspto.documentid AS documentid WHERE date_format(documentid.appno_date, '%Y') > :year AND documentid.appno_doc_num IN (SELECT assets.appno_doc_num FROM assets WHERE assets.organisation_id = :organisation_id "
+                groupQuery += " AND activity_parties_transactions.rf_id IN (SELECT documentid.rf_id FROM db_uspto.documentid AS documentid WHERE /*date_format(documentid.appno_date, '%Y') > :yearAsset AND*/ documentid.appno_doc_num IN (SELECT assets.appno_doc_num FROM assets WHERE assets.organisation_id = :organisation_id "
     
     
                 if( typeof layout != 'undefined' ) {

@@ -1194,11 +1194,12 @@ let downloadImageFromUrl = async (org, res, url, filename, contentType, callback
     try{
 
         request.head(url, (err, response, body) => {
-            const path = url.split('/').pop(), pathDirectory = '/var/www/html/betapp/'
+            const path = url.split('/').pop(), pathDirectory = '/var/www/html/betapp/'  
             request(url)
             .pipe(fs.createWriteStream(`${pathDirectory}${path}`))
             .on('close', () => {
                 const imageData = fs.readFileSync(`${pathDirectory}${path}`, {flag:'r'});
+                console.log('imageData', imageData)
                 if(imageData){
                     const bucketConfig = config.bucketConfig;  
                 
@@ -1238,7 +1239,7 @@ let downloadImageFromUrl = async (org, res, url, filename, contentType, callback
             })
         })
     } catch (e) {
-        
+        console.log('Error', e)
     }
 };
 
