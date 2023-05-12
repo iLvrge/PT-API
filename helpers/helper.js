@@ -4680,7 +4680,7 @@ const findFillingAssets = async (req, type) => {
                 if(getLawFirmData.representative_id > 0) {
                     replacements.representative_id = getLawFirmData.representative_id 
                 } else {
-                    replacements.name = getLawFirmData.cname
+                    replacements.name = getLawFirmData.cname 
                 }
 
                 let tempQuery = `SELECT lf.name  FROM db_uspto.law_firm  as lf  
