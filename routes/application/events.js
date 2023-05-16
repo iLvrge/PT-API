@@ -2384,7 +2384,7 @@ route.get("/events/all/assets/:category_type", [authJWT.verifyToken], async (req
             companies = JSON.parse(companies)
         }
 
-        if(customers != '') {
+        if(typeof customers != 'undefined' && customers != '' ) {
             customers = JSON.parse(customers)
         }
 

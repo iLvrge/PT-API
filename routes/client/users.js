@@ -461,9 +461,27 @@ route.delete("/:user_id", [authJWT.verifyToken, clientDBConnection.connect], asy
                             const checkActivities = await Activity.count({
                                 where: {user_id: updateUserID}
                             })
+                            if(checkActivities > 0) {
+                                await Activity.destroy({where: {user_id: updateUserID}});
+                            }
 
-                            if(checkActivities == 0) {
-                                /** Add transaction so that it will roll back incase if any error comes */
+                            /** Add transaction so that it will roll back incase if any error comes */
+                            User.destroy({
+                                where: {user_id: findUser.user_id},
+                            })
+                            .then(u => {
+                                if(u) {
+                                    (async () => {
+                                        await LoginUsers.destroy({where: {user_id: findUser.user_id}});
+                                        res.status(200).send("User deleted.");
+                                    })();
+                                }
+                            })
+                            .catch(err => {
+                                console.log(err);
+                                res.status(401).send("Not found");
+                            })
+                            /* if(checkActivities == 0) {
                                 User.destroy({
                                     where: {user_id: findUser.user_id},
                                 })
@@ -473,15 +491,6 @@ route.delete("/:user_id", [authJWT.verifyToken, clientDBConnection.connect], asy
                                             await LoginUsers.destroy({where: {user_id: findUser.user_id}});
                                             res.status(200).send("User deleted.");
                                         })();
-                                        
-                                        /*
-                                        if(loggedUser) {
-                                            //const Professional = req.connection_db.define('Professionals', ProfessionalUsers.mainStructure, ProfessionalUsers.options); 
-                                            
-                                        } else {
-                                            res.status(401).send("Not found");
-                                        } 
-                                        */
                                     }
                                 })
                                 .catch(err => {
@@ -495,7 +504,7 @@ route.delete("/:user_id", [authJWT.verifyToken, clientDBConnection.connect], asy
 
                                     res.status(200).send("User blocked successfully");
                                 }
-                            }                      
+                            } */                      
                         } else {
                             res.status(400).send("Invalid inputs");
                         }
