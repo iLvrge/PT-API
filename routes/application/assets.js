@@ -115,8 +115,31 @@ const findLawFirmName = async (props) => {
 
         await Promise.all(promise)
     }
-    return lawFirm;
+    return lawFirm; 
 }
+
+route.post("/assets/categories_products", [authJWT.verifyToken, clientDBConnection.connect], async(req, res, next) => { 
+    try {
+        let { list } = req.body, getList = []
+
+        if( list != '' ) {
+            list = JSON.parse(list)
+
+            if(list.length > 0) {
+                const query = "SELECT * FROM (SELECT grant_doc_num, date_format(appno_date, '%Y') AS year FROM db_patent_application_bibliographic.application_grant WHERE grant_doc_num IN (:list) GROUP BY grant_doc_num UNION SELECT MAX(grant_doc_num) AS grant_doc_num, date_format(MAX(appno_date), '%Y') AS year FROM db_uspto.documentid WHERE grant_doc_num IN (:list) GROUP BY grant_doc_num) AS temp GROUP BY grant_doc_num "
+                getList = await connection.application.query(query,{
+                    type: connection.Sequelize.QueryTypes.SELECT,
+                    raw: true,
+                    logging: console.log,
+                    replacements: {list},
+                }); 
+            }
+        }
+        res.status(200).json({list: getList});
+    } catch (e) {
+        console.log(e)
+    }
+});
 
 route.post("/assets/cpc", [authJWT.verifyToken, clientDBConnection.connect], async(req, res, next) => {
     try{
