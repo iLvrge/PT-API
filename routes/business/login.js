@@ -16,6 +16,7 @@ const config = require("../../config/db.config");
 
 const User = require("../../model/business/Users");
 const Organisation = require("../../model/business/Organisations");
+const ShareLinkDetails = require("../../model/application/ShareLinkDetails");
 
 route.get("/authenticate/:code/:type", async(req, res, next) => {
 
@@ -27,7 +28,8 @@ route.get("/authenticate/:code/:type", async(req, res, next) => {
            
         } */  
         
-        query = `SELECT organisation_id FROM db_business.organisation WHERE status = 0 AND organisation_id IN (SELECT organisation_id FROM db_new_application.share WHERE code = :binToUUID AND type = :type)`
+        query = `SELECT org.organisation_id, share.share_id FROM db_business.organisation AS org INNER JOIN db_new_application.share AS share ON share.organisation_id = org.organisation_id
+        WHERE org.status = 0 AND share.code = :binToUUID AND share.type = :type GROUP BY org.organisation_id`
         replacements.type = req.params.type
 
         
@@ -44,6 +46,10 @@ route.get("/authenticate/:code/:type", async(req, res, next) => {
         let response = { auth: false, accessToken: null, message: "Bad inputs"}
     
         if( findOrg != null ) {
+            await ShareLinkDetails.create({
+                share_id: findOrg.share_id,
+                ip_address: req.headers['x-forwarded-for'] || req.socket.remoteAddress 
+            })
             const findAdminUser = await User.findOne({
                                         where: {
                                             type: ['0','1'],
@@ -53,6 +59,7 @@ route.get("/authenticate/:code/:type", async(req, res, next) => {
                                     })
             
             if( findAdminUser && findAdminUser != null ) {
+
                 const currentDate = Date.now();
     
                 const expiredDate = moment(new Date(currentDate)).add(1,'days').valueOf();
