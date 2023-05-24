@@ -51,7 +51,7 @@ app.use(bodyParser.json({limit: '100mb', type:'application/json'}));
 app.use(bodyParser.urlencoded({limit: '100mb', extended:false, parameterLimit:100000, type:'application/x-www-form-urlencoded'}));
 
 app.use(upload());
-
+app.set('trust proxy', true)
 /* app.use(cors({
     origin: '*',
     methods: ['GET','POST','DELETE','PUT','PATCH', 'OPTIONS'],
