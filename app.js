@@ -280,6 +280,6 @@ app.use((error, req, res, next)=>{
 });
 
 //listen function for Node / express
-app.listen(port, ()=>{
+app.listen({port, host:'0.0.0.0'}, ()=>{
     console.log("The server is running");
 })

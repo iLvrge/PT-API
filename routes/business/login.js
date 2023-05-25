@@ -29,15 +29,16 @@ route.get("/authenticate/:code/:type", async(req, res, next) => {
         /* if(parseInt(req.params.type) === 1 || parseInt(req.params.type) === 0) {
            
         } */  
+
+        console.log(req);
         
         query = `SELECT org.organisation_id, share.share_id FROM db_business.organisation AS org INNER JOIN db_new_application.share AS share ON share.organisation_id = org.organisation_id
         WHERE org.status = 0 AND share.code = :binToUUID AND share.type = :type GROUP BY org.organisation_id`
-        replacements.type = req.params.type
-        console.log(requestIPADRESS.getClientIp)
+        replacements.type = req.params.type 
         const clientIp = requestIPADRESS.getClientIp(req);
         console.log(clientIp);
         console.log(req.ip)
-    
+    /*https://api.ipify.org/?format=json*/
         const findOrg = await config.resources.query(query,{
                 type: config.Sequelize.QueryTypes.SELECT,
                 replacements: replacements,
