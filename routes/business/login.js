@@ -32,7 +32,7 @@ route.get("/authenticate/:code/:type", async(req, res, next) => {
 
         console.log(req.socket);
         console.log(req.headers);
-        
+        console.log(req.headers['x-real-ip']);
         query = `SELECT org.organisation_id, share.share_id FROM db_business.organisation AS org INNER JOIN db_new_application.share AS share ON share.organisation_id = org.organisation_id
         WHERE org.status = 0 AND share.code = :binToUUID AND share.type = :type GROUP BY org.organisation_id`
         replacements.type = req.params.type 
