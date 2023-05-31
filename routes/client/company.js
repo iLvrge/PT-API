@@ -1536,6 +1536,9 @@ route.delete("/", [authJWT.verifyToken, clientDBConnection.connect], async(req, 
 route.delete("/subcompanies", [authJWT.verifyToken, clientDBConnection.connect], async(req, res, next) => {
     try{
         let IDs = req.query.companies;
+        if(IDs.length == 0) {
+            IDs = req.payload.companies;
+        }
         if(IDs.length > 0) {
             IDs = JSON.parse(IDs)
             const Representative = req.connection_db.define('Representatives', Representatives.mainStructure, Representatives.options);
