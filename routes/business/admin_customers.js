@@ -654,10 +654,8 @@ route.get("/customers/:id/companies", [authJWT.verifyToken, authJWT.isAdmin, aut
 route.delete("/customers/:id/companies", [authJWT.verifyToken, authJWT.isAdmin, authJWT.addClientID, clientDBConnection.connect], async(req, res, next) => {
     try{
         let IDs = req.query.companies;
-        if(IDs === undefined || IDs.length == 0) {
-            console.log(req.payload);
-            console.log(req.body);
-            IDs = req.payload.companies;
+        if(IDs === undefined || IDs.length == 0) { 
+            IDs = req.body.companies;
         }
         if(IDs.length > 0) {
             IDs = JSON.parse(IDs)
