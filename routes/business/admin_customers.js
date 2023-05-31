@@ -655,6 +655,7 @@ route.delete("/customers/:id/companies", [authJWT.verifyToken, authJWT.isAdmin, 
     try{
         let IDs = req.query.companies;
         if(IDs === undefined || IDs.length == 0) {
+            console.log(req.payload);
             IDs = req.payload.companies;
         }
         if(IDs.length > 0) {
