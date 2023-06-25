@@ -893,13 +893,15 @@ route.post("/", [authJWT.verifyToken], async(req, res, next) => {
                 plain: parseInt(data_format) === 1 || typeList.includes(where.type) ? false : true
             })
             res.status(200).json(getData);
-        } else if(parseInt(qType) === 37 && (typeof format_type == 'undefined' || format_type.toLowerCase() != 'bank')) {
+        } else if(parseInt(qType) === 37 && (typeof format_type == 'undefined' || format_type.toLowerCase() != 'bank') && company != '') {
             let ownedAssets = await getOwnedAssets(req)
             if(ownedAssets.length > 0) {
 
                 const url = `https://developer.uspto.gov/ptab-api/proceedings?patentOwnerName=%22${company.replace(/ /g,'%20')}%22`
     
                 const firstRequest = url + `&recordTotalQuantity=1`
+
+                console.log(`Request URL for PTAB: ${firstRequest}`)
                 //require('https').globalAgent.options.ca = require('ssl-root-cas').create();
                 const option = {
                     method: 'GET',
@@ -941,6 +943,9 @@ route.post("/", [authJWT.verifyToken], async(req, res, next) => {
                     } else {
                         res.status(200).json(getData);
                     }
+                }).catch(error => {
+                    console.log(`Error: ${error}`);
+                    res.status(200).json(getData);
                 }) 
             } else {
                 res.status(200).json(getData);

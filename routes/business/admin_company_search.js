@@ -3052,9 +3052,9 @@ route.post("/company/:id/add_bulk_companies", [authJWT.verifyToken, authJWT.isAd
                             }
                         }
                         if(addRecord > 0) { 
-                            console.log(parentCompaniesID, mainCompanies);
+                            console.log(JSON.stringify(parentCompaniesID));
                             if(mainCompanies.length > 0){
-                                await exec(`php -f /var/www/html/trash/run_add_companies_script.php "${client_id}" '${JSON.stringify(parentCompaniesID)}'`, async (error, stdout, stderr) => {
+                                await exec(`screen -md php -f /var/www/html/trash/run_add_companies_script.php "${client_id}" '${JSON.stringify(parentCompaniesID)}'`, async (error, stdout, stderr) => {
                                     console.log(error);
                                     console.log(stdout);
                                     console.log(stderr);
@@ -3110,9 +3110,9 @@ route.post("/company/:id/add_bulk_companies", [authJWT.verifyToken, authJWT.isAd
                             }
                         }
                         if(addRecord > 0) {
-                            console.log(mainCompanies);
+                            console.log(JSON.stringify(parentCompaniesID));
                             if(mainCompanies.length > 0){
-                                await exec(`php -f /var/www/html/trash/run_add_companies_script.php "${client_id}" '${JSON.stringify(parentCompaniesID)}'`, async (error, stdout, stderr) => {
+                                await exec(`screen -md php -f /var/www/html/trash/run_add_companies_script.php "${client_id}" '${JSON.stringify(parentCompaniesID)}'`, async (error, stdout, stderr) => {
                                     console.log(error);
                                     console.log(stdout);
                                     console.log(stderr);
@@ -3130,14 +3130,16 @@ route.post("/company/:id/add_bulk_companies", [authJWT.verifyToken, authJWT.isAd
         } else {
             if(client_id > 0) {
                 
-                let query = `SELECT aaa.assignor_and_assignee_id, aaa.name AS name, r.representative_name, r.representative_id FROM assignor_and_assignee as aaa LEFT JOIN representative as r ON r.representative_id = aaa.representative_id WHERE  aaa.assignor_and_assignee_id IN (:IDs) OR  aaa.name IN (:IDs) `
+                let query = `SELECT aaa.assignor_and_assignee_id, aaa.name AS name, r.representative_name, r.representative_id FROM assignor_and_assignee as aaa LEFT JOIN representative as r ON r.representative_id = aaa.representative_id `
 
 
                 if(representative_ids != undefined && representative_ids != '') {
                     representative_ids = JSON.parse(representative_ids) 
+                    query += `WHERE aaa.assignor_and_assignee_id IN (:IDs)  `
                 } else {
                     if(representatives != undefined && representatives != '') {
                         representative_ids = JSON.parse(representatives) 
+                        query += `WHERE aaa.name IN (:IDs) `
                     }
                 }
 
@@ -3272,9 +3274,9 @@ route.post("/company/:id/add_bulk_companies", [authJWT.verifyToken, authJWT.isAd
                                     }
                                 }
                                 if(addRecord > 0) { 
-                                    console.log(mainCompanies);
+                                    console.log(JSON.stringify(parentCompaniesID));
                                     if(mainCompanies.length > 0){
-                                        await exec(`php -f /var/www/html/trash/run_add_companies_script.php "${client_id}" "${JSON.stringify(parentCompaniesID)}"`, async (error, stdout, stderr) => {
+                                        await exec(`screen -md php -f /var/www/html/trash/run_add_companies_script.php "${client_id}" "${JSON.stringify(parentCompaniesID)}"`, async (error, stdout, stderr) => {
                                             console.log(error);
                                             console.log(stdout);
                                             console.log(stderr);
@@ -3330,9 +3332,9 @@ route.post("/company/:id/add_bulk_companies", [authJWT.verifyToken, authJWT.isAd
                                     }
                                 }
                                 if(addRecord > 0) {
-                                    console.log(mainCompanies);
+                                    console.log(JSON.stringify(parentCompaniesID));
                                     if(mainCompanies.length > 0){
-                                        await exec(`php -f /var/www/html/trash/run_add_companies_script.php "${client_id}" "${JSON.stringify(parentCompaniesID)}"`, async (error, stdout, stderr) => {
+                                        await exec(`screen -md php -f /var/www/html/trash/run_add_companies_script.php "${client_id}" "${JSON.stringify(parentCompaniesID)}"`, async (error, stdout, stderr) => {
                                             console.log(error);
                                             console.log(stdout);
                                             console.log(stderr);
