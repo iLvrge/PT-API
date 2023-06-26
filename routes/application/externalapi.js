@@ -59,6 +59,8 @@ route.get("/ptab/:asset", [authJWT.verifyToken], async (req, res) => {
                             })
                         })
                     }
+                }).catch(error => {
+                    console.log("Error", error)
                 })/* ,
                 rp(optionDocuments)
                 .then( body => {
@@ -119,6 +121,9 @@ route.get("/ptab/document/:identifier",  async (req, res) => {
                         res.send(body)
                     }
                 })
+            }).catch( error => {
+                console.log('ERROR => /ptab/', error)
+                res.send('')
             })
 
             
@@ -484,6 +489,8 @@ route.get('/generate_thumbnail', async (req, res) => {
         console.error(err);
     }
 })
+
+
 
 
 module.exports = route;
