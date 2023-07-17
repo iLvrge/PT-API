@@ -617,7 +617,7 @@ route.get("/customers/static_file/read_entity_file", [authJWT.verifyToken, authJ
         let list = [];
         console.log(fileName)
         if(fileName != '') {
-            const fullPath = _`/var/www/html/script/${fileName}`
+            const fullPath = `/var/www/html/script/${fileName}`
             fs.readFile(fullPath, async function(err, data) {
                 if (!err) {
                     try {            
