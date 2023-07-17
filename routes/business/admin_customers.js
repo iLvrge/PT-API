@@ -585,11 +585,10 @@ route.get("/customers/customers/:id/:type", [authJWT.verifyToken, authJWT.isAdmi
         /*const companyName = req.params.company_name, type = req.params.type;*/
         const organisationID = req.params.id, type = req.params.type;
         const {suggestions, fixed_identicals} = req.query
-        console.log(req.query)
         let list = [];
 
         if(typeof req.connection_db != "undefined" && req.connection_db != null ) {
-            if(typeof suggestions != 'undefined' && typeof fixed_identicals != 'undefined') { 
+            if(typeof suggestions == 'undefined' && typeof fixed_identicals == 'undefined') { 
                 list = await helpers.findCompanyEntitiesByAccountID(organisationID, type, req.connection_db, suggestions, fixed_identicals); 
             } else { 
                 exec(`./node_modules/.bin/env-cmd node /var/www/html/script/normalize_names.js ${req.orgId} '[]' ${type} ${suggestions} ${fixed_identicals}`);
@@ -652,7 +651,7 @@ route.get("/customers/customers/:id/:representativeID/:type", [authJWT.verifyTok
 
         if(typeof req.connection_db != "undefined" && req.connection_db != null ) {
             
-            if(typeof suggestions != 'undefined' && typeof fixed_identicals != 'undefined') { 
+            if(typeof suggestions == 'undefined' && typeof fixed_identicals == 'undefined') { 
                 list = await helpers.findCompanyEntitiesByAccountIDByRepresentativeIDs(organisationID, representativeIDs, type, req.connection_db, suggestions, fixed_identicals);
             } else { 
                 exec(`./node_modules/.bin/env-cmd node /var/www/html/script/normalize_names.js ${req.orgId} ${req.params.representativeID}  ${type} ${suggestions} ${fixed_identicals}`);
