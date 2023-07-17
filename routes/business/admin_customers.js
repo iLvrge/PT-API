@@ -592,7 +592,13 @@ route.get("/customers/customers/:id/:type", [authJWT.verifyToken, authJWT.isAdmi
                 list = await helpers.findCompanyEntitiesByAccountID(organisationID, type, req.connection_db, suggestions, fixed_identicals); 
             } else { 
                 console.log('Run File Account')
-                exec(`/var/www/html/script/node_modules/.bin/env-cmd node /var/www/html/script/normalize_names.js ${req.orgId} '[]' ${type} ${suggestions} ${fixed_identicals}`);
+                await exec(`/var/www/html/script/node_modules/.bin/env-cmd node /var/www/html/script/normalize_names.js ${req.orgId} '[]' ${type} ${suggestions} ${fixed_identicals}`, async (error, std, stderr) => {
+                    console.log('Accound Suggestion')
+                    console.log('Err', error)
+                    console.log('std', std)
+                    console.log('stderr', stderr)
+                    return []
+                }) 
             }
         }
         res.status(200).json(list); 
