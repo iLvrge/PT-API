@@ -608,14 +608,14 @@ route.get("/customers/customers/:id/:type", [authJWT.verifyToken, authJWT.isAdmi
     }
 });
 
-route.get("/customers/read_entity_file", [authJWT.verifyToken, authJWT.isAdmin], async (req, res, next) => {
+route.get("/customers/static_file/read_entity_file", [authJWT.verifyToken, authJWT.isAdmin], async (req, res, next) => {
     try{            
         /*const companyName = req.params.company_name, type = req.params.type;*/
         
         const {fileName} = req.query
        
         let list = [];
-
+        console.log(fileName)
         if(fileName != '') {
             const fullPath = _`/var/www/html/script/${fileName}`
             fs.readFile(fullPath, async function(err, data) {
