@@ -589,8 +589,11 @@ route.get("/customers/customers/:id/:type", [authJWT.verifyToken, authJWT.isAdmi
         let list = [];
 
         if(typeof req.connection_db != "undefined" && req.connection_db != null ) {
-           /*  list = await helpers.findCompanyEntitiesByAccountID(organisationID, type, req.connection_db, suggestions, fixed_identicals); */
-            exec(`./node_modules/.bin/env-cmd node /var/www/html/script/normalize_names.js ${req.orgId} '[]' ${type} ${suggestions} ${fixed_identicals}`);
+            if(typeof suggestions != 'undefined' && typeof fixed_identicals != 'undefined') { 
+                list = await helpers.findCompanyEntitiesByAccountID(organisationID, type, req.connection_db, suggestions, fixed_identicals); 
+            } else { 
+                exec(`./node_modules/.bin/env-cmd node /var/www/html/script/normalize_names.js ${req.orgId} '[]' ${type} ${suggestions} ${fixed_identicals}`);
+            }
         }
         res.status(200).json(list); 
     } catch (e){
@@ -648,8 +651,12 @@ route.get("/customers/customers/:id/:representativeID/:type", [authJWT.verifyTok
         let list = [];
 
         if(typeof req.connection_db != "undefined" && req.connection_db != null ) {
-            exec(`./node_modules/.bin/env-cmd node /var/www/html/script/normalize_names.js ${req.orgId} ${req.params.representativeID}  ${type} ${suggestions} ${fixed_identicals}`);
-            /* list = await helpers.findCompanyEntitiesByAccountIDByRepresentativeIDs(organisationID, representativeIDs, type, req.connection_db, suggestions, fixed_identicals); */
+            
+            if(typeof suggestions != 'undefined' && typeof fixed_identicals != 'undefined') { 
+                list = await helpers.findCompanyEntitiesByAccountIDByRepresentativeIDs(organisationID, representativeIDs, type, req.connection_db, suggestions, fixed_identicals);
+            } else { 
+                exec(`./node_modules/.bin/env-cmd node /var/www/html/script/normalize_names.js ${req.orgId} ${req.params.representativeID}  ${type} ${suggestions} ${fixed_identicals}`);
+            } 
         }
         res.status(200).json(list);
     } catch (e){
