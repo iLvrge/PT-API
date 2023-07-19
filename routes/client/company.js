@@ -210,64 +210,96 @@ route.get("/summary", [authJWT.verifyToken, clientDBConnection.connect], async(r
      * Total Third Parties
      * Total Assets
      */
-    const { access_token, user_account } = req.query
-    /* const companies = await helpers.getCompaniesAllList(req.connection_db);
-
-    console.log(companies);
-
-    const allCompanies = []
-
-    const promises = companies.map( row => allCompanies.push(row.representative_name))
-
-    await Promise.all(promises) */
-
-    /* const query = `SELECT ${allCompanies.length} as companies, count(DISTINCT no_of_activities) as activites, sum(no_of_parties) as parties,  sum(no_of_inventor) as employees, sum(no_of_transactions) as transactions, sum(no_of_assets) as assets, (SELECT SUM(arrows) FROM assignment_arrows WHERE rf_id IN (SELECT rf_id FROM report_representative_assets_transactions WHERE representative_name IN (:representativeName))) as rights, 0 as documents  FROM representative_reports WHERE representative_name IN (:representativeName)` */
-
-    /* const query = `SELECT companies, activities AS activites, entities, parties, entities, employees, transactions, assets, arrows AS rights, 0 AS documents FROM db_uspto.summary WHERE organisation_id = :organisationID AND company_id = 0`; */
-    const query = `SELECT companies, activities AS activites, entities, parties, entities, employees, transactions, assets, arrows AS rights  FROM db_uspto.summary WHERE organisation_id = :organisationID AND company_id = 0`;
-
-    report = await connection.resources.query(query,{
-        type: connection.Sequelize.QueryTypes.SELECT,
-        replacements: { organisationID: req.orgId },
-        raw: true,
-        plain: true,
-        logging: console.log,
-    })
-
-
-    /* if(typeof user_account != 'undefined' && typeof access_token !== 'undefined' && access_token != '' && user_account != '') {
-        let getRepo = await Repository.findOne({
-            where: { organisation_id: req.orgId, user_account: user_account}
-        })     
-
-        if(getRepo != null && getRepo.container_id != '') {
-            let credentials = {"scope": process.env.GOOGLE_SCOPE}
-            credentials.access_token = access_token
-            oauth2Client.setCredentials(credentials)
-            try{
-                const drive = google.drive({version: 'v3', auth:oauth2Client});
-
-                if(drive != null && drive != undefined) {
-            
-                    const params = {
-                        pageSize: 1000,
-                        fields: 'nextPageToken, files(id)',
-                        q: `'${getRepo.container_id}' in parents and mimeType != 'application/vnd.google-apps.folder'`,
-                        orderBy: 'folder,name'
-                    }
+    try {
+        const { access_token, user_account } = req.query
     
-                    const getList = await retrieveAllFilesInFolder(drive, params)
-    
-                    console.log('getList', getList)
-                    report.documents =  getList.length
-                    
+        const query = `SELECT companies, activities AS activites, entities, parties, entities, employees, transactions, assets, arrows AS rights FROM db_uspto.summary WHERE organisation_id = :organisationID AND company_id = 0`;
+
+        let report = await connection.resources.query(query,{
+            type: connection.Sequelize.QueryTypes.SELECT,
+            replacements: { organisationID: req.orgId },
+            raw: true,
+            plain: true,
+            logging: console.log,
+        })
+
+        let reportActive = []
+
+        if(req.orgId != null) {
+            const Representative = req.connection_db.define('Representatives', Representatives.mainStructure, Representatives.options);
+
+            let list = await Representative.findAll({
+                attributes:['representative_id', 'original_name', 'representative_name'],
+                where: {
+                    type: 0,
+                    parent_id: 0,
+                    status: 1
                 }
-            } catch(err) {
-                console.log('Company Summary Document error', err)
-            }            
-        }
-    } */
-    res.status(200).json(report)
+            });
+            
+            if(list.length > 0) {
+                const companies = []
+                const promises = list.map( item => {
+                    companies.push(item.representative_id)
+                })
+
+                Promise.all(promises)
+
+
+                const groupList = await Representative.findAll({
+                    attributes:['representative_id', 'original_name', 'representative_name'],
+                    where: {
+                        type: 1,
+                        parent_id: 0,
+                        status: 1
+                    }
+                });
+
+                if(groupList.length > 0) {
+                    const groupIDs = []
+                    const promiseGroups = groupList.map( item => {
+                        groupIDs.push(item.representative_id)
+                    })
+        
+                    Promise.all(promiseGroups)
+
+
+                    list = await Representative.findAll({
+                        attributes:['representative_id', 'original_name', 'representative_name'],
+                        where: {
+                            type: 0,
+                            child: 1,
+                            parent_id: groupIDs,
+                            status: 1
+                        }
+                    });
+
+                    if(list.length > 0) {
+                        const promises = list.map( item => {
+                            companies.push(item.representative_id)
+                        })
+            
+                        Promise.all(promises)
+                    }
+                }
+
+
+                const queryActiveReport = `SELECT sum(arrows) AS rightsActive  FROM db_uspto.summary WHERE organisation_id = :organisationID AND company_id IN (:companyIDs) GROUP BY organisation_id`;
+
+                reportActive = await connection.resources.query(queryActiveReport,{
+                    type: connection.Sequelize.QueryTypes.SELECT,
+                    replacements: { organisationID: req.orgId, companyIDs: companies},
+                    raw: true,
+                    plain: true,
+                    logging: console.log,
+                })
+            } 
+        } 
+        res.status(200).json({report, reportActive})
+    } catch(error) {
+        console.log(error)
+        res.status(200).json({})
+    }
 })
 
 const  retrieveAllFilesInFolder = async (drive, params) => {

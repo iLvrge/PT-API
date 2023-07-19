@@ -585,17 +585,64 @@ route.get("/customers/customers/:id/:type", [authJWT.verifyToken, authJWT.isAdmi
         /*const companyName = req.params.company_name, type = req.params.type;*/
         const organisationID = req.params.id, type = req.params.type;
         const {suggestions, fixed_identicals} = req.query
-        console.log(req.query)
         let list = [];
 
         if(typeof req.connection_db != "undefined" && req.connection_db != null ) {
-            list = await helpers.findCompanyEntitiesByAccountID(organisationID, type, req.connection_db, suggestions, fixed_identicals);
+            list = await helpers.findCompanyEntitiesByAccountID(organisationID, type, req.connection_db, suggestions, fixed_identicals); 
+            /* if(typeof suggestions == 'undefined' && typeof fixed_identicals == 'undefined') { 
+                list = await helpers.findCompanyEntitiesByAccountID(organisationID, type, req.connection_db, suggestions, fixed_identicals); 
+            } else { 
+                console.log('Run File Account')
+                exec(`/var/www/html/script/node_modules/.bin/env-cmd node /var/www/html/script/normalize_names.js ${req.orgId} '[]' ${type} ${suggestions} ${fixed_identicals}`, async (error, std, stderr) => {
+                    console.log('Accound Suggestion')
+                    console.log('Err', error)
+                    console.log('std', std)
+                    console.log('stderr', stderr)
+                    return []
+                }) 
+            } */
         }
         res.status(200).json(list); 
     } catch (e){
         console.log(e);
         res.status(402).send("No customers found");
     }
+});
+
+route.get("/customers/static_file/read_entity_file", [authJWT.verifyToken, authJWT.isAdmin], async (req, res, next) => {
+    try{            
+        /*const companyName = req.params.company_name, type = req.params.type;*/
+        
+        const {fileName} = req.query
+       
+        let list = [];
+        console.log(fileName)
+        if(fileName != '') {
+            const fullPath = `/var/www/html/script/${fileName}`
+            fs.readFile(fullPath, async function(err, data) {
+                if (!err) {
+                    try {            
+                        if(data != '') {
+                            list = JSON.parse(data)
+                            res.status(200).json(list);
+                        }
+                    } catch( e ) { 
+                        console.log("Error while reading entity file", e) 
+                        res.status(200).json(list);
+                    } 
+                } else {
+                    console.log("Error while reading entity file", err) 
+                    res.status(200).json(list);
+                }
+            })
+        } else { 
+            res.status(200).json(list);
+        }
+    } catch (e){
+        console.log(e);
+        res.status(402).send("No customers found");
+    }
+
 });
 
 /**
@@ -612,6 +659,14 @@ route.get("/customers/customers/:id/:representativeID/:type", [authJWT.verifyTok
 
         if(typeof req.connection_db != "undefined" && req.connection_db != null ) {
             list = await helpers.findCompanyEntitiesByAccountIDByRepresentativeIDs(organisationID, representativeIDs, type, req.connection_db, suggestions, fixed_identicals);
+
+            
+            /* if(typeof suggestions == 'undefined' && typeof fixed_identicals == 'undefined') { 
+                list = await helpers.findCompanyEntitiesByAccountIDByRepresentativeIDs(organisationID, representativeIDs, type, req.connection_db, suggestions, fixed_identicals);
+            } else { 
+                console.log('Run File')
+                exec(`/var/www/html/script/node_modules/.bin/env-cmd node /var/www/html/script/normalize_names.js ${req.orgId} ${req.params.representativeID}  ${type} ${suggestions} ${fixed_identicals}`);
+            } */ 
         }
         res.status(200).json(list);
     } catch (e){
