@@ -4135,7 +4135,7 @@ const findMaxMinLifeSpan = async(timelineSpan) => {
             counterWithYear.push(i)
             counterWithYear.push(Counter)
             counterWithYear.push('stroke-width:1;stroke-color:#2196f3;fill-color:#1565C0;')
-            counterWithYear.push(`Year: ${i}\nAssets Alive: ${Counter}`)
+            counterWithYear.push(`Year: ${i}\nPatents Alive: ${Counter}`)
             if(i >= currentYear) { 
                 assetsLifeSpan.push(counterWithYear)
             }
