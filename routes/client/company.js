@@ -236,54 +236,54 @@ route.get("/summary", [authJWT.verifyToken, clientDBConnection.connect], async(r
                     status: 1
                 }
             });
-            
+            const companies = []
             if(list.length > 0) {
-                const companies = []
+                
                 const promises = list.map( item => {
                     companies.push(item.representative_id)
                 })
 
                 Promise.all(promises)
+            }
+
+            const groupList = await Representative.findAll({
+                attributes:['representative_id', 'original_name', 'representative_name'],
+                where: {
+                    type: 1,
+                    parent_id: 0,
+                    status: 1
+                }
+            });
+
+            if(groupList.length > 0) {
+                const groupIDs = []
+                const promiseGroups = groupList.map( item => {
+                    groupIDs.push(item.representative_id)
+                })
+    
+                Promise.all(promiseGroups)
 
 
-                const groupList = await Representative.findAll({
+                list = await Representative.findAll({
                     attributes:['representative_id', 'original_name', 'representative_name'],
                     where: {
-                        type: 1,
-                        parent_id: 0,
+                        type: 0,
+                        child: 1,
+                        parent_id: groupIDs,
                         status: 1
                     }
                 });
 
-                if(groupList.length > 0) {
-                    const groupIDs = []
-                    const promiseGroups = groupList.map( item => {
-                        groupIDs.push(item.representative_id)
+                if(list.length > 0) {
+                    const promises = list.map( item => {
+                        companies.push(item.representative_id)
                     })
         
-                    Promise.all(promiseGroups)
-
-
-                    list = await Representative.findAll({
-                        attributes:['representative_id', 'original_name', 'representative_name'],
-                        where: {
-                            type: 0,
-                            child: 1,
-                            parent_id: groupIDs,
-                            status: 1
-                        }
-                    });
-
-                    if(list.length > 0) {
-                        const promises = list.map( item => {
-                            companies.push(item.representative_id)
-                        })
-            
-                        Promise.all(promises)
-                    }
+                    Promise.all(promises)
                 }
+            }
 
-
+            if(companies.length > 0) {
                 const queryActiveReport = `SELECT sum(arrows) AS rightsActive  FROM db_uspto.summary WHERE organisation_id = :organisationID AND company_id IN (:companyIDs) GROUP BY organisation_id`;
 
                 reportActive = await connection.resources.query(queryActiveReport,{
@@ -292,7 +292,7 @@ route.get("/summary", [authJWT.verifyToken, clientDBConnection.connect], async(r
                     raw: true,
                     plain: true,
                     logging: console.log,
-                })
+                }) 
             } 
         } 
         res.status(200).json({report, reportActive})
