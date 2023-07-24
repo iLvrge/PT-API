@@ -3710,7 +3710,10 @@ let getShareList = async (code, type) => {
             })
 
             if((grant.length > 0 || app.length > 0) && organisation_id > 0) { 
-                let queryAssets = `SELECT appno_doc_num, grant_doc_num, CASE WHEN grant_doc_num = '' THEN appno_doc_num ELSE grant_doc_num END AS asset, CASE WHEN grant_doc_num = '' THEN 1 ELSE 0 END AS asset_type, '' AS channel, 0 AS child_count  FROM db_new_application.assets WHERE  organisation_id = :organisation_id AND ( ` 
+                /* let queryAssets = `SELECT appno_doc_num, grant_doc_num, CASE WHEN grant_doc_num = '' THEN appno_doc_num ELSE grant_doc_num END AS asset, CASE WHEN grant_doc_num = '' THEN 1 ELSE 0 END AS asset_type, '' AS channel, 0 AS child_count  FROM db_new_application.assets WHERE  organisation_id = :organisation_id AND ( `  */
+
+
+                let queryAssets = `SELECT appno_doc_num, grant_doc_num, CASE WHEN grant_doc_num = '' THEN appno_doc_num ELSE grant_doc_num END AS asset, CASE WHEN grant_doc_num = '' THEN 1 ELSE 0 END AS asset_type, '' AS channel, 0 AS child_count  FROM db_uspto.documentid WHERE  ( ` 
 
                 if(grant.length > 0) {
                     queryAssets += `  grant_doc_num IN (:grant)  `
@@ -3724,7 +3727,16 @@ let getShareList = async (code, type) => {
                     queryAssets += `appno_doc_num IN (:app) `
                 }
                 
-                queryAssets += ` ) GROUP BY appno_doc_num`
+                queryAssets += ` ) GROUP BY appno_doc_num `
+
+                if(grant.length > 0) {
+                    queryAssets += ` UNION SELECT appno_doc_num, grant_doc_num, grant_doc_num AS asset, 0 AS asset_type, '' AS channel, 0 AS child_count  FROM db_patent_application_bibliographic.application_grant WHERE  grant_doc_num IN (:grant) GROUP BY appno_doc_num ` 
+                }
+
+                if(app.length > 0) {
+                    queryAssets += ` UNION SELECT appno_doc_num, '' AS grant_doc_num, appno_doc_num AS asset, 1 AS asset_type, '' AS channel, 0 AS child_count  FROM db_patent_grant_bibliographic.application_publication WHERE  appno_doc_num IN (:app) GROUP BY appno_doc_num ` 
+                }
+
 
                 const grantData = await connection.applicationNew.query(queryAssets,{
                     type: connection.Sequelize.QueryTypes.SELECT,
