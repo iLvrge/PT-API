@@ -3617,7 +3617,7 @@ let shareURL = async (params) => {
             if(assets.length > 0) {
                 assets.forEach(item => bulkData.push({asset: item.asset, type: item.flag, share_id: insertRecord.share_id}))
             } else if(transactions.length > 0) {
-                const query = "SELECT CASE WHEN patent = '' THEN application ELSE patent END AS asset, CASE WHEN patent = '' THEN 4 ELSE 5 END AS flag FROM (SELECT documentid.appno_doc_num AS application, MAX(documentid.grant_doc_num) AS patent  FROM assets INNER JOIN db_uspto.documentid AS doc ON assets.appno_doc_num = doc.appno_doc_num WHERE doc.rf_id IN (:rfIDs) AND organisation_id = :organisation_id GROUP BY doc.rf_id, assets.appno_doc_num) AS temp"
+                const query = "SELECT CASE WHEN patent = '' THEN application ELSE patent END AS asset, CASE WHEN patent = '' THEN 4 ELSE 5 END AS flag FROM (SELECT doc.appno_doc_num AS application, MAX(doc.grant_doc_num) AS patent  FROM assets INNER JOIN db_uspto.documentid AS doc ON assets.appno_doc_num = doc.appno_doc_num WHERE doc.rf_id IN (:rfIDs) AND organisation_id = :organisation_id GROUP BY doc.rf_id, assets.appno_doc_num) AS temp"
                 const getList = await connection.applicationNew.query(query,{
                     type: connection.Sequelize.QueryTypes.SELECT,
                     raw: true,
@@ -3702,7 +3702,7 @@ let getShareList = async (code, type) => {
                 if(organisation_id == 0) {
                     organisation_id = row.organisation_id
                 }
-                if(row.type === 4) {
+                if(row.type === 5) {
                     grant.push(row.asset)
                 } else {
                     app.push(row.asset)
@@ -3710,10 +3710,10 @@ let getShareList = async (code, type) => {
             })
 
             if((grant.length > 0 || app.length > 0) && organisation_id > 0) { 
-                let queryAssets = `SELECT application AS appno_doc_num, patent AS grant_doc_num, CASE WHEN patent = '' THEN application ELSE patent END AS asset, CASE WHEN patent = '' THEN 1 ELSE 0 END AS asset_type, '' AS channel, 0 AS child_count  FROM db_new_application.dashboard_items WHERE  organisation_id = :organisation_id AND ( ` 
+                let queryAssets = `SELECT appno_doc_num, grant_doc_num, CASE WHEN grant_doc_num = '' THEN appno_doc_num ELSE grant_doc_num END AS asset, CASE WHEN grant_doc_num = '' THEN 1 ELSE 0 END AS asset_type, '' AS channel, 0 AS child_count  FROM db_new_application.assets WHERE  organisation_id = :organisation_id AND ( ` 
 
                 if(grant.length > 0) {
-                    queryAssets += `  patent IN (:grant)  `
+                    queryAssets += `  grant_doc_num IN (:grant)  `
                 } 
 
                 
@@ -3721,10 +3721,10 @@ let getShareList = async (code, type) => {
                     if(grant.length > 0) {
                         queryAssets += ` OR ` 
                     }
-                    queryAssets += `application IN (:app) `
+                    queryAssets += `appno_doc_num IN (:app) `
                 }
                 
-                queryAssets += ` ) GROUP BY application`
+                queryAssets += ` ) GROUP BY appno_doc_num`
 
                 const grantData = await connection.applicationNew.query(queryAssets,{
                     type: connection.Sequelize.QueryTypes.SELECT,
