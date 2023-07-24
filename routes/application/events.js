@@ -1876,13 +1876,15 @@ route.post("/events/assets", [authJWT.verifyToken], async(req, res, next) => {
             if(companies.length > 0) {
                 where.company_id = companies
             }
-
+            let findList = true
+            if(type == 'due_dilligence' && (Array.isArray(companies) && companies.length == 0) && list.length == 0) {
+                findList = false
+            }  
             /* console.log('Abh', parseInt(total), list.length); */
-            if(parseInt(total) != list.length || (list.length == 0 && parseInt(total) == 0)) {
+            if(((parseInt(total) != list.length || (list.length == 0 && parseInt(total) == 0))) && findList === true) {
                 /**
                  * Get List
                  */
-
                 
                 let query = '' 
                 if(typeof other_mode != 'undefined' && other_mode == 'true') {
@@ -2039,6 +2041,9 @@ route.post("/events/assets", [authJWT.verifyToken], async(req, res, next) => {
                      */      
                     const extensionQuery = `Select appno_doc_num, extension FROM db_patent_application_bibliographic.grant_extension WHERE appno_doc_num IN (:list)`
 
+
+
+
                     const getExtensionList = await connection.applicationNew.query(extensionQuery, {
                         type: connection.Sequelize.QueryTypes.SELECT,
                         replacements: replacements,
@@ -2101,29 +2106,8 @@ route.post("/events/assets", [authJWT.verifyToken], async(req, res, next) => {
                     });            
                     await Promise.all(promises);
                     //console.log('cp', cp)
-                    assetsLifeSpan = await helpers.findMaxMinLifeSpan(timelineSpan)        
-                    /*console.log(assetsLifeSpan) */
-                   /*  const np = []
-                    for(i = 0; i<slp.length;i++){
-                        if(!dl.includes(slp[i])){
-                            np.push(slp[i])
-                        }
-                    }
+                    assetsLifeSpan = await helpers.findMaxMinLifeSpan(timelineSpan)   
 
-                    slp.map(item => { 
-                        console.log(`${item}`);
-                        const filter = dl.filter(item1 => {
-                            console.log
-                            if(parseInt(item) == parseInt(item1)){
-                                return true
-                            } else {
-                                return false
-                            }
-                        )
-                        if(filter.length == 0){
-                            rem.push(item)
-                        }
-                    }); */
                 }
             }
         }
