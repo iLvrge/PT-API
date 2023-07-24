@@ -149,8 +149,18 @@ route.post("/assets/cpc", [authJWT.verifyToken, clientDBConnection.connect], asy
         if(typeof selectedCompanies != 'undefined' && selectedCompanies != '') {            
             companies = JSON.parse(selectedCompanies)
         }
+
+        if(list != '' && total > 0) {
+            list = JSON.parse(list)
+            if(list.length != total) {
+                list = []
+            } else {
+                data_type = 1
+            }
+        }
+
         replacements.type = helpers.findLayout(type); 
-        if(typeof type !== 'undefined' && type != 'due_dilligence') {
+        if(typeof type !== 'undefined' && type != 'due_dilligence' && list.length == 0) {
             if(type == 'top_law_firms') { 
                 let getFiilingAssets = []
                 if(typeof primary != 'undefined'){ 
