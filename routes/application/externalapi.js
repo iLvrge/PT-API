@@ -379,7 +379,12 @@ route.post("/citation", [authJWT.verifyToken], async (req, res) => {
                     query = `SELECT grant_doc_num FROM db_new_application.assets AS assets `
                     query += ` WHERE date_format(assets.appno_date, '%Y') > :year AND assets.layout_id = :layoutID AND assets.organisation_id = :organisationID AND grant_doc_num <> "" `
                     query += ` AND assets.appno_doc_num IN (:list)`
-                    query += ` GROUP BY grant_doc_num`;
+                    query += ` GROUP BY grant_doc_num UNION `;
+
+                    query += `SELECT grant_doc_num COLLATE utf8mb4_general_ci FROM db_patent_application_bibliographic.application_grant AS assets `
+                    query += ` WHERE date_format(assets.appno_date, '%Y') > :year AND grant_doc_num <> "" `
+                    query += ` AND assets.appno_doc_num IN (:list)`
+                    query += ` GROUP BY grant_doc_num `;
     
                     where.layoutID = 15;
                 } else {
