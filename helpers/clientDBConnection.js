@@ -6,8 +6,8 @@ const helpers = require("./helper");
 
 let connect = async(req, res, next) => {
     console.log("connection");
-
-    if(req.orgId) {
+    let { check } = req.body
+    if(req.orgId && (typeof check == 'undefined' || (typeof check != 'undefined' && check == 0))) {
         
         /*if(req.orgId == 46) {
             req.orgId = 9
