@@ -880,7 +880,7 @@ route.get("/asset_types/assets", [authJWT.verifyToken, clientDBConnection.connec
     }
 })
 
-route.post("/asset_types/assets/agents", [authJWT.verifyToken ], async(req, res, next) => {
+route.post("/asset_types/assets/agents", [authJWT.verifyToken, clientDBConnection.connect ], async(req, res, next) => {
     try {
         let result = [['Year', 'Agent', 'filling']], getList = []
 
@@ -888,7 +888,7 @@ route.post("/asset_types/assets/agents", [authJWT.verifyToken ], async(req, res,
  
         const startDate = moment(new Date()).subtract(11, 'year').format('YYYY')
         
-        const where = { year: startDate, organisationID: req.orgId,}  
+        const where = { year: startDate, organisationID: req.orgId}  
 
         const companies = JSON.parse(selectedCompanies)
         if(companies.length > 0) {
@@ -904,11 +904,7 @@ route.post("/asset_types/assets/agents", [authJWT.verifyToken ], async(req, res,
         if( assignments.length > 0 ) {
             where.assignments = assignments
         }
-
-        if(check == 0) { 
-            await clientDBConnection.connect()
-        }
-
+ 
         
 
         where.ownedType = helpers.findLayout(type); 
@@ -951,11 +947,11 @@ route.post("/asset_types/assets/agents", [authJWT.verifyToken ], async(req, res,
             }
 
             
-
-            if(assets != null && assets.length > 0) {
-               
+            console.log(1)
+            if(assets != null && assets.length > 0) { 
 
                 if(data_type == 1) {
+                    console.log(2)
                     /** 
                     * Filling 
                     */
@@ -1003,15 +999,14 @@ route.post("/asset_types/assets/agents", [authJWT.verifyToken ], async(req, res,
                             })
                             await Promise.all(promise)
                             query += ` AND (TRIM(BOTH  '.' FROM l.name) IN (:lawfirms) OR l.name IN (:lawfirms)) `
-
-                            console.log('query', query)
+                            
                             where.lawfirms = lawfirmNames
                         }
                     }
                     query += ` AND l.appno_doc_num IN (:assets) AND date_format(ap.appno_date, '%Y') > :year) AS tempData
                     ) AS temp GROUP BY name, year `
                 } else {
-
+                    console.log(3)
                     if(data_type == 3) {
                         /**
                          * Lenders
@@ -1042,6 +1037,7 @@ route.post("/asset_types/assets/agents", [authJWT.verifyToken ], async(req, res,
 
                         where.activity_id = [5, 12, 11, 13]
                     }  else {
+                        console.log(4)
                         if(check == 1) {
                             query = `SELECT name, year, COUNT(DISTINCT rf_id) AS counter FROM (
                                 Select IF(MAX(rlf.representative_name) <> '' , MAX(rlf.representative_name), l.name) AS name, di.rf_id, date_format(MAX(apt.exec_dt), '%Y') AS year from db_new_application.activity_parties_transactions AS apt
@@ -1051,7 +1047,7 @@ route.post("/asset_types/assets/agents", [authJWT.verifyToken ], async(req, res,
                                 LEFT JOIN db_uspto.representative_law_firm AS rlf ON rlf.representative_id = l.representative_id
                                 Where di.application IN (:assets) AND date_format(apt.exec_dt, '%Y') > :year `
                         } else {
-                            
+                            console.log(5)
                             /**
                              * Assignments
                              */ 
@@ -1063,30 +1059,8 @@ route.post("/asset_types/assets/agents", [authJWT.verifyToken ], async(req, res,
                                     GROUP BY cor.convey_ty, apt.rf_id
                                 ) AS temp
                                 GROUP BY name, year `
-                            } else {
-                                /* query = `SELECT name, year, COUNT(rf_id) AS counter FROM (
-                                    Select rac.convey_ty AS name, date_format(apt.exec_dt, '%Y') AS year, apt.rf_id  from db_new_application.activity_parties_transactions AS apt
-                                    INNER JOIN db_uspto.correspondent as cor ON cor.rf_id = apt.rf_id
-                                    INNER JOIN db_uspto.representative_assignment_conveyance as rac ON rac.rf_id = apt.rf_id
-                                    INNER JOIN db_uspto.documentid AS doc ON doc.rf_id = apt.rf_id
-                                    INNER JOIN db_uspto.law_firm AS l ON l.name = cor.cname
-                                    LEFT JOIN db_uspto.representative_law_firm AS rlf ON rlf.representative_id = l.representative_id
-                                    Where apt.organisation_id = :organisationID and apt.company_id = :company_id and doc.appno_doc_num IN (:assets)
-                                    GROUP BY rac.convey_ty, apt.rf_id
-                                ) AS temp
-                                GROUP BY name, year` */
-                                /* query = `SELECT name, year, COUNT(appno_doc_num) AS counter FROM (
-                                    Select IF(rlf.representative_name <> '' , rlf.representative_name, l.name) AS name, doc.appno_doc_num, date_format(doc.appno_date, '%Y') AS year from db_new_application.activity_parties_transactions AS apt
-                                    INNER JOIN db_uspto.correspondent as cor ON cor.rf_id = apt.rf_id
-                                    INNER JOIN db_uspto.documentid AS doc ON doc.rf_id = apt.rf_id
-                                    INNER JOIN db_uspto.law_firm AS l ON l.name = cor.cname
-                                    LEFT JOIN db_uspto.representative_law_firm AS rlf ON rlf.representative_id = l.representative_id
-                                    Where apt.organisation_id = :organisationID and apt.company_id = :company_id and doc.appno_doc_num IN (:assets)
-                                ) AS temp
-                                GROUP BY name, year` */
-        
-                                
-        
+                            } else {  
+                                console.log(6)
                                 query = `SELECT name, year, COUNT(DISTINCT rf_id) AS counter FROM (
                                     Select IF(MAX(rlf.representative_name) <> '' , MAX(rlf.representative_name), l.name) AS name, di.rf_id, date_format(MAX(apt.exec_dt), '%Y') AS year from db_new_application.activity_parties_transactions AS apt
                                     INNER JOIN db_new_application.dashboard_items AS di ON di.rf_id = apt.rf_id
@@ -1121,32 +1095,17 @@ route.post("/asset_types/assets/agents", [authJWT.verifyToken ], async(req, res,
                                         } else {
                                             query += ` AND l.name  IN (:lname) ` 
                                             where.lname = getLawFirmData.cname
-                                        }/* 
-    
-    
-                        
-                                        let tempQuery = `SELECT lf.law_firm_id  FROM db_uspto.correspondent AS c LEFT JOIN db_uspto.law_firm  as lf ON c.cname = lf.name
-                                        LEFT JOIN db_uspto.representative_law_firm AS rlf ON rlf.representative_id = lf.representative_id WHERE c.rf_id IN (SELECT rf_id FROM db_new_application.activity_parties_transactions WHERE organisation_id = :organisationID AND company_id IN (:company_id) GROUP BY rf_id) `
-                        
-                                        if(typeof where.representative_id != 'undefined') {
-                                            tempQuery += ` AND rlf.representative_id = :representative_id`
-                                        } else {
-                                            tempQuery += ` AND c.cname = :name`
-                                        }
-                                        tempQuery += ` GROUP BY lf.law_firm_id`
-                                        query += ` AND di.lawfirm_id IN (${tempQuery}) `  */
+                                        } 
                                     }  
                                 } 
                             } 
-                        } 
-
+                        }  
                         query += `   GROUP BY di.rf_id
                         ) AS temp
                         where name IS NOT NULL
                         GROUP BY name, year`
                     }
-                } 
-
+                }  
                 getList = await connection.application.query(query,{
                         type: connection.Sequelize.QueryTypes.SELECT,
                         raw: true,
