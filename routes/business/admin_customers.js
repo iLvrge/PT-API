@@ -1909,6 +1909,7 @@ route.get("/customers/:organisation_id/publish", [authJWT.verifyToken, authJWT.i
 
                         if(companyNames.length > 0) {
                             companyNames.map( async company => { 
+                                console.log(`php -f /var/www/html/trash/create_data_for_company_db_application.php "${organisationID}"  "${company.representative_name}" "1"`)
                                 await exec(`php -f /var/www/html/trash/create_data_for_company_db_application.php "${organisationID}"  "${company.representative_name}" "1"`, async (error, stdout, stderr) => {   
                                                          
                                 });
