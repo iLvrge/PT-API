@@ -370,7 +370,7 @@ route.get("/:companyID/list", [authJWT.verifyToken, clientDBConnection.connect],
                 ['original_name', 'ASC'],
                 ['representative_name', 'ASC']
             ];
-            where.attributes = ['representative_id', 'original_name', 'representative_name', 'type', 'status'];
+            where.attributes = ['representative_id', 'company_id', 'original_name', 'representative_name', 'type', 'status'];
 
             const list = await Representative.findAll( where )
 
@@ -399,6 +399,10 @@ route.get("/:companyID/list", [authJWT.verifyToken, clientDBConnection.connect],
 
                 const promiseReport = list.map( representative => {
                     let representaitveJSON = representative.toJSON();
+                    if(representaitveJSON.company_id > 0) {
+                        representaitveJSON.representative_id = representaitveJSON.company_id
+                    }
+                    delete representaitveJSON.company_id
                     let product = 0, no_of_assets = 0, no_of_transactions = 0, no_of_parties = 0, no_of_inventor = 0, no_of_activities = 0;
                     if( findReports.length > 0 ) {
                         const findIndex = findReports.findIndex( r => r.representative_name == representative.representative_name)
@@ -498,13 +502,6 @@ route.get("/list", [authJWT.verifyToken, clientDBConnection.connect], async(req,
 
             const where = {where: {parent_id: 0}};
 
-            if(req.orgType == 2) {
-                /**
-                 * Bank Mode
-                 */
-                where.where['mode'] = 1;
-            }
-
             const total_records = await Representative.count( where );
 
             /*where.limit = limit > 0 ? parseInt(limit) : connection.DEFAULT_LIMIT;
@@ -527,7 +524,7 @@ route.get("/list", [authJWT.verifyToken, clientDBConnection.connect], async(req,
                 }
             }
 
-            where.attributes = ['representative_id', 'original_name', 'representative_name', 'type', 'status'];
+            where.attributes = ['representative_id', 'company_id', 'original_name', 'representative_name', 'type', 'status'];
 
             const list = await Representative.findAll( where )
 
@@ -537,8 +534,10 @@ route.get("/list", [authJWT.verifyToken, clientDBConnection.connect], async(req,
                 let representativeNames = [], representativeIDs = []
 
                 const promises = list.map( representative => {
-                    representativeNames.push(representative.representative_name != '' ? representative.representative_name : representative.original_name)
-                    representativeIDs.push(representative.representative_id)
+                    if(representative.company_id == 0) {
+                        representativeNames.push(representative.representative_name != '' ? representative.representative_name : representative.original_name)
+                        representativeIDs.push(representative.representative_id)
+                    }
                 })
     
                 await Promise.all(promises)
@@ -583,9 +582,10 @@ route.get("/list", [authJWT.verifyToken, clientDBConnection.connect], async(req,
                 for(let i = 0; i < list.length; i++) { 
                     let representative = list[i]
                     let representaitveJSON = representative.toJSON();
-                    if(representaitveJSON.type == 1) {
-                        representaitveJSON.original_name = representaitveJSON.representative_name;
+                    if(representaitveJSON.company_id > 0) {
+                        representaitveJSON.representative_id = representaitveJSON.company_id
                     }
+                    delete representaitveJSON.company_id
                     let child = [], childWithName = [], product = 0, no_of_assets = 0, no_of_transactions = 0, no_of_parties = 0, no_of_inventor = 0, no_of_activities = 0;
                     if(findChild.length > 0) {
                         child = findChild
@@ -835,7 +835,8 @@ route.post("/group", [authJWT.verifyToken, clientDBConnection.connect], async(re
         const { group_name } = req.body
 
         const findGroup = await Representative.findOne({
-            where: { 
+            where: {
+                original_name: group_name,
                 representative_name: group_name,
                 instances: 0,
                 type: 1
@@ -844,29 +845,27 @@ route.post("/group", [authJWT.verifyToken, clientDBConnection.connect], async(re
 
         if(findGroup === null) {
             const addGroup = await Representative.create({
-                original_name: '',
+                original_name: group_name,
                 representative_name: group_name,
                 instances: 0,
                 type: 1
             });
-            if(addGroup !== null) {     
-                /**
-                * Create new workspace in slack
-                */       
-                /* const organisation  = await helpers.findOrganisationbyID(req.orgId);
+            if(addGroup !== null) {            
+                const organisation  = await helpers.findOrganisationbyID(req.orgId);
                 
                 if(organisation != null && organisation.organisation_id > 0 && organisation.team !== '') {
-                    
+                    /**
+                    * Create new workspace in slack
+                    */
                     await createSlackWorkSpace(group_name, organisation)                
-                } */
+                }
             }
             res.status(200).json(addGroup);
         } else {
             res.status(200).json(findGroup);
         }
     } catch( err ) {
-        console.log(err)
-        res.status(500).send("Internal error");
+        res.status(500).send("Internal error", err);
     }
 })
 
