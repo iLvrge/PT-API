@@ -144,7 +144,7 @@ route.post("/assets/categories_products", [authJWT.verifyToken, clientDBConnecti
 route.post("/assets/cpc", [authJWT.verifyToken, clientDBConnection.connect], async(req, res, next) => { 
     try{
         let { list, total, type, selectedCompanies, tabs, customers, assignments, range, scope, year, other_mode, data_type, sale, license, primary, check, lawfirm } = req.body, getList = [], group = [], sales = []
-        const replacements = { organisation_id: req.orgId, year: 2000 }
+        const replacements = { organisation_id: 0 /* req.orgId */, year: 2000 }
         let companies = []
         if(typeof selectedCompanies != 'undefined' && selectedCompanies != '') {            
             companies = JSON.parse(selectedCompanies)
@@ -310,10 +310,10 @@ route.post("/assets/cpc", [authJWT.verifyToken, clientDBConnection.connect], asy
                  * Get List
                  */
 
-                const where = { year: 2000, organisationID: req.orgId}   
+                const where = { year: 2000, organisationID: 0 /* req.orgId */, otherORGID: req.orgId}   
 
                 if(typeof other_mode != 'undefined' && other_mode == 'true') {
-                    query = `SELECT appno_doc_num FROM db_new_application.assets_for_sale AS assets WHERE assets.organisation_id = :organisationID `
+                    query = `SELECT appno_doc_num FROM db_new_application.assets_for_sale AS assets WHERE assets.organisation_id = :otherORGID `
                 } else {
                     if(typeof type !== 'undefined' ) {
                         const layoutID = helpers.findLayout(type) 
@@ -352,7 +352,7 @@ route.post("/assets/cpc", [authJWT.verifyToken, clientDBConnection.connect], asy
                     query = `SELECT appno_doc_num FROM db_new_application.assets AS assets `
 
 
-                    query += ` WHERE date_format(assets.appno_date, '%Y') > :year AND assets.layout_id = :layoutID AND assets.organisation_id = :organisationID `
+                    query += ` WHERE date_format(assets.appno_date, '%Y') > :year AND assets.layout_id = :layoutID AND ( assets.organisation_id = :organisationID OR assets.organisation_id IS NULL ) `
                     
 
                     if(Array.isArray(companies) && companies.length > 0) {
@@ -360,7 +360,7 @@ route.post("/assets/cpc", [authJWT.verifyToken, clientDBConnection.connect], asy
                     }
 
                     if((Array.isArray(assignments) && assignments.length > 0 ) || (Array.isArray(tabs) && tabs.length > 0) || (Array.isArray(customers) && customers.length > 0)) {
-                        query += ` AND assets.appno_doc_num IN ( SELECT documentid.appno_doc_num FROM db_uspto.documentid WHERE rf_id  IN ( SELECT activity_parties_transactions.rf_id  FROM db_new_application.activity_parties_transactions WHERE activity_parties_transactions.organisation_id = :organisationID  `
+                        query += ` AND assets.appno_doc_num IN ( SELECT documentid.appno_doc_num FROM db_uspto.documentid WHERE rf_id  IN ( SELECT activity_parties_transactions.rf_id  FROM db_new_application.activity_parties_transactions WHERE ( activity_parties_transactions.organisation_id = :organisationID OR activity_parties_transactions.organisation_id IS NULL ) `
 
                         if(Array.isArray(companies) && companies.length > 0 ) {
                             query += ` AND activity_parties_transactions.company_id IN (:company_id) `
@@ -386,7 +386,7 @@ route.post("/assets/cpc", [authJWT.verifyToken, clientDBConnection.connect], asy
                         query += ` GROUP BY activity_parties_transactions.rf_id ) GROUP BY documentid.appno_doc_num) `
                     } else  if(Array.isArray(tabs) && tabs.length === 0 && (typeof type !== 'undefined' && type !== 'top_law_firms')) {
                         /**exclude employees */
-                        query += ` AND assets.appno_doc_num IN (  SELECT documentid.appno_doc_num FROM db_uspto.documentid WHERE rf_id  IN ( SELECT activity_parties_transactions.rf_id  FROM db_new_application.activity_parties_transactions WHERE activity_parties_transactions.organisation_id = :organisationID AND activity_parties_transactions.activity_id <> 10  ` 
+                        query += ` AND assets.appno_doc_num IN (  SELECT documentid.appno_doc_num FROM db_uspto.documentid WHERE rf_id  IN ( SELECT activity_parties_transactions.rf_id  FROM db_new_application.activity_parties_transactions WHERE activity_parties_transactions.organisation_id = :organisationID OR activity_parties_transactions.organisation_id IS NULL ) AND activity_parties_transactions.activity_id <> 10  ` 
 
                         if(Array.isArray(companies) && companies.length > 0 ) {
                             query += ` AND activity_parties_transactions.company_id IN (:company_id) `
@@ -414,7 +414,7 @@ route.post("/assets/cpc", [authJWT.verifyToken, clientDBConnection.connect], asy
                     if(typeof other_mode != 'undefined' && other_mode == 'true') {
                         sales = [...list]
                     } else {
-                        const salesQuery = `SELECT appno_doc_num FROM db_new_application.assets_for_sale AS assets WHERE appno_doc_num IN (:list) AND assets.organisation_id = :organisationID GROUP BY appno_doc_num`;
+                        const salesQuery = `SELECT appno_doc_num FROM db_new_application.assets_for_sale AS assets WHERE appno_doc_num IN (:list) AND assets.organisation_id = :organisationID  GROUP BY appno_doc_num`;
                         const salesList = await connection.applicationNew.query(salesQuery, {
                             type: connection.Sequelize.QueryTypes.SELECT,
                             replacements: {list, organisationID: req.orgId},
@@ -621,7 +621,7 @@ route.post("/assets/cpc", [authJWT.verifyToken, clientDBConnection.connect], asy
 route.post("/assets/cpc/:year/:cpcCode", [authJWT.verifyToken, clientDBConnection.connect], async(req, res, next) => {
     try {
         let { list, total, type, selectedCompanies, tabs, customers, assignments, range, scope, year, other_mode, data_type, sale, license, primary } = req.body, getList = []
-        const replacements = { organisation_id: req.orgId, year: 2000 }
+        const replacements = { organisation_id: 0 /* req.orgId */, year: 2000 }
         let companies = []
         if(typeof selectedCompanies != 'undefined' && selectedCompanies != '') {            
             companies = JSON.parse(selectedCompanies)
@@ -734,7 +734,7 @@ route.post("/assets/cpc/:year/:cpcCode", [authJWT.verifyToken, clientDBConnectio
 									[connection.Op.gte]: connection.DEFAULT_YEAR
 								}
 							),
-                            {organisation_id:  req.orgId}
+                            /* {organisation_id:  req.orgId} */
                         ]
                     }
                     const companies = JSON.parse(selectedCompanies)
@@ -878,13 +878,13 @@ route.get("/assets/:patentNumber/files/:channelID/slack/:token", [authJWT.verify
                 rfIDs = JSON.parse(rfIDs)
             }
 
-            const replacements = { organisation_id: req.orgId, year: connection.DEFAULT_YEAR }
+            const replacements = { organisation_id: 0 /* req.orgId */, year: connection.DEFAULT_YEAR }
 
             replacements.layout =  helpers.findLayout(layout); 
 
             let assetsList = []
             if( patents.length === 0 && activities.length === 0 && parties.length === 0 && rfIDs.length === 0 ) {
-                let replacementAssets = { organisation_id: req.orgId, layout: replacements.layout }
+                let replacementAssets = { organisation_id: 0 /* req.orgId */, layout: replacements.layout }
                 let queryFindAssets = `SELECT assets.application AS appno_doc_num FROM db_new_application.dashboard_items as assets WHERE type = :layout AND organisation_id = :organisation_id `
                 if(companies.length > 0) {
                     replacementAssets.companies = companies

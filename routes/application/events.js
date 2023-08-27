@@ -1680,7 +1680,7 @@ route.post("/events/abandoned/maintainence/assets", [authJWT.verifyToken], async
     try{
         let { list, total, type, selectedCompanies, tabs, customers, assignments, other_mode } = req.body, assetsLifeSpan = []
 
-        const where = { year: connection.DEFAULT_YEAR, organisationID: req.orgId, status: ['Patent Expired Due to NonPayment of Maintenance Fees Under 37 CFR 1.362', 'Provisional Application Expired', 'Final Rejection Mailed', 
+        const where = { year: connection.DEFAULT_YEAR, organisationID: 0 /* req.orgId */, status: ['Patent Expired Due to NonPayment of Maintenance Fees Under 37 CFR 1.362', 'Provisional Application Expired', 'Final Rejection Mailed', 
         'Expressly Abandoned  --  During Publication Process', 
         'Expressly Abandoned  --  During Examination', 
         'Abandoned  --  After Examiner\'s Answer or Board of Appeals Decision', 
@@ -1798,7 +1798,7 @@ route.post("/events/abandoned/yearly/assets", [authJWT.verifyToken], async(req, 
     try{
         let { list, total, type, selectedCompanies, tabs, customers, assignments, other_mode } = req.body, assetsLifeSpan = []
 
-        const where = { year: connection.DEFAULT_YEAR, organisationID: req.orgId, status: ['Patent Expired Due to NonPayment of Maintenance Fees Under 37 CFR 1.362', 'Provisional Application Expired', 'Final Rejection Mailed', 
+        const where = { year: connection.DEFAULT_YEAR, organisationID: 0 /* req.orgId */, status: ['Patent Expired Due to NonPayment of Maintenance Fees Under 37 CFR 1.362', 'Provisional Application Expired', 'Final Rejection Mailed', 
         'Expressly Abandoned  --  During Publication Process', 
         'Expressly Abandoned  --  During Examination', 
         'Abandoned  --  After Examiner\'s Answer or Board of Appeals Decision', 
@@ -1871,7 +1871,7 @@ route.post("/events/assets", [authJWT.verifyToken], async(req, res, next) => {
 
         if( list != '' ) {
             list = JSON.parse(list)
-            const where = { year: connection.DEFAULT_YEAR, organisationID: req.orgId}  
+            const where = { year: connection.DEFAULT_YEAR, organisationID: 0 /* req.orgId */, otherORGID: req.orgId}  
             const companies = JSON.parse(selectedCompanies)
             if(companies.length > 0) {
                 where.company_id = companies
@@ -1888,7 +1888,7 @@ route.post("/events/assets", [authJWT.verifyToken], async(req, res, next) => {
                 
                 let query = '' 
                 if(typeof other_mode != 'undefined' && other_mode == 'true') {
-                    query = `SELECT appno_doc_num FROM db_new_application.assets_for_sale AS assets WHERE assets.organisation_id = :organisationID  GROUP BY appno_doc_num`
+                    query = `SELECT appno_doc_num FROM db_new_application.assets_for_sale AS assets WHERE assets.organisation_id = :otherORGID  GROUP BY appno_doc_num`
                 } else { 
                     if(typeof type !== 'undefined') {
                         where.layoutID = helpers.findLayout(type)        
@@ -2124,7 +2124,7 @@ route.get("/events/tabs", [authJWT.verifyToken], async(req, res, next) => {
         
         const replacements =  { 
             companies: '', 
-            organisationID: req.orgId, 
+            organisationID: 0 /* req.orgId */, 
             tabs: '',
             customers: '',
             assignments: '',
@@ -2393,7 +2393,7 @@ route.get("/events/all/assets/:category_type", [authJWT.verifyToken], async (req
         }
 
         if(companies.length > 0) {
-            const replacements = { organisationID: req.orgId, companies }
+            const replacements = { organisationID: 0 /* req.orgId */, companies }
             if( category_type == 'to_record' ) {
                 replacements.type =  22
                 let queryToRecord = `SELECT application, patent, '' AS eventdate, '13' AS event_code, '' AS event_icon, IF(patent <> '' , FORMAT(patent, 0), CONCAT(SUBSTRING(application, 1, 2), '/', FORMAT(SUBSTRING(application, 3), 0))) AS template_string FROM dashboard_items WHERE organisation_id = :organisationID AND representative_id IN (:companies) AND type = :type ` 
