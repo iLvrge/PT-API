@@ -543,7 +543,7 @@ route.get("/list", [authJWT.verifyToken, clientDBConnection.connect], async(req,
                 await Promise.all(promises)
 
                 const findChild = await Representative.findAll({
-                    attributes: ['representative_id', 'parent_id', 'representative_name', 'original_name', 'status'],
+                    attributes: ['representative_id', 'company_id', 'parent_id', 'representative_name', 'original_name', 'status'],
                     where: {                            
                         parent_id: representativeIDs, 
                         child: 1
@@ -594,10 +594,10 @@ route.get("/list", [authJWT.verifyToken, clientDBConnection.connect], async(req,
                                     childWithName.push({
                                         original_name: obj.original_name,
                                         representative_name: obj.representative_name,
-                                        representative_id: obj.representative_id,
+                                        representative_id: obj.company_id > 0 ? obj.company_id : obj.representative_id,
                                         status: obj.status,
                                     })
-                                    return obj.representative_id
+                                    return obj.company_id > 0 ? obj.company_id : obj.representative_id
                                 })
                     }
 
