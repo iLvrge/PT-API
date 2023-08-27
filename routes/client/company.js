@@ -370,7 +370,7 @@ route.get("/:companyID/list", [authJWT.verifyToken, clientDBConnection.connect],
                 ['original_name', 'ASC'],
                 ['representative_name', 'ASC']
             ];
-            where.attributes = ['representative_id', 'original_name', 'representative_name', 'type', 'status'];
+            where.attributes = ['representative_id', 'company_id', 'original_name', 'representative_name', 'type', 'status'];
 
             const list = await Representative.findAll( where )
 
@@ -399,6 +399,10 @@ route.get("/:companyID/list", [authJWT.verifyToken, clientDBConnection.connect],
 
                 const promiseReport = list.map( representative => {
                     let representaitveJSON = representative.toJSON();
+                    if(representaitveJSON.company_id > 0) {
+                        representaitveJSON.representative_id = representaitveJSON.company_id
+                    }
+                    delete representaitveJSON.company_id
                     let product = 0, no_of_assets = 0, no_of_transactions = 0, no_of_parties = 0, no_of_inventor = 0, no_of_activities = 0;
                     if( findReports.length > 0 ) {
                         const findIndex = findReports.findIndex( r => r.representative_name == representative.representative_name)
@@ -520,7 +524,7 @@ route.get("/list", [authJWT.verifyToken, clientDBConnection.connect], async(req,
                 }
             }
 
-            where.attributes = ['representative_id', 'original_name', 'representative_name', 'type', 'status'];
+            where.attributes = ['representative_id', 'company_id', 'original_name', 'representative_name', 'type', 'status'];
 
             const list = await Representative.findAll( where )
 
@@ -530,8 +534,10 @@ route.get("/list", [authJWT.verifyToken, clientDBConnection.connect], async(req,
                 let representativeNames = [], representativeIDs = []
 
                 const promises = list.map( representative => {
-                    representativeNames.push(representative.representative_name != '' ? representative.representative_name : representative.original_name)
-                    representativeIDs.push(representative.representative_id)
+                    if(representative.company_id == 0) {
+                        representativeNames.push(representative.representative_name != '' ? representative.representative_name : representative.original_name)
+                        representativeIDs.push(representative.representative_id)
+                    }
                 })
     
                 await Promise.all(promises)
@@ -576,6 +582,10 @@ route.get("/list", [authJWT.verifyToken, clientDBConnection.connect], async(req,
                 for(let i = 0; i < list.length; i++) { 
                     let representative = list[i]
                     let representaitveJSON = representative.toJSON();
+                    if(representaitveJSON.company_id > 0) {
+                        representaitveJSON.representative_id = representaitveJSON.company_id
+                    }
+                    delete representaitveJSON.company_id
                     let child = [], childWithName = [], product = 0, no_of_assets = 0, no_of_transactions = 0, no_of_parties = 0, no_of_inventor = 0, no_of_activities = 0;
                     if(findChild.length > 0) {
                         child = findChild
