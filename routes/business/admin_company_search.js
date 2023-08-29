@@ -2988,7 +2988,7 @@ route.post("/company/:id/add_bulk_companies", [authJWT.verifyToken, authJWT.isAd
                                 /**
                                  * Find Normalize companies
                                  */
-                                parentCompaniesID.push(companies[i].company_id);
+                                parentCompaniesID.push(companies[i].representative_id);
                                 let nameR = companies[i].representative_id > 0 ? companies[i].representative_name : companies[i].original_name;
 
                                 mainCompanies.push(nameR);
