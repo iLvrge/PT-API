@@ -3787,7 +3787,8 @@ route.post("/company/cited/:id", [authJWT.verifyToken, authJWT.isAdmin, authJWT.
             if(representativeIDs.length == 0) {
                 representativeIDs = await getAllCompanyIDs(req)
             }
-            let queryParties = `Select partyName FROM (SELECT IF(r.representative_name <> '', r.representative_name, aaa.name) AS partyName FROM (  SELECT apt.assignor_and_assignee_id FROM db_new_application.activity_parties_transactions AS apt LEFT JOIN db_uspto.inventors AS inv ON inv.assignor_and_assignee_id = apt.assignor_and_assignee_id WHERE activity_id IN (:activityID) AND (organisation_id = :organisationID OR organisation_id IS NULL)`;
+            console.log("ALL", representativeIDs)
+            let queryParties = `Select partyName FROM (SELECT IF(r.representative_name <> '', r.representative_name, aaa.name) AS partyName FROM (  SELECT apt.assignor_and_assignee_id FROM db_new_application.activity_parties_transactions AS apt LEFT JOIN db_uspto.inventors AS inv ON inv.assignor_and_assignee_id = apt.assignor_and_assignee_id WHERE activity_id IN (:activityID) AND (organisation_id = :organisationID OR organisation_id IS NULL) `;
 
             if(representativeIDs.length > 0) {
                 queryParties += `AND company_id IN (:representativeIDs) `
@@ -3798,7 +3799,7 @@ route.post("/company/cited/:id", [authJWT.verifyToken, authJWT.isAdmin, authJWT.
             const partiesResult = await connection.applicationNew.query( queryParties,{
                 type: connection.Sequelize.QueryTypes.SELECT,
                 raw: true,
-                replacements: {organisationID: 0 /* customerID */, activityID: [1, 6, 2, 7, 3, 4, 5, 12, 9], representativeIDs, year: 1998},
+                replacements: {organisationID: 0 /* customerID */, activityID: [1, 6, 2, 7, 3, 4, 5, 12, 9, 14, 8, 11, 15, 16, 17, 18], representativeIDs, year: 1998},
                 logging: console.log,
             });
 
