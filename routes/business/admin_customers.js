@@ -686,6 +686,7 @@ route.get("/customers/:id/companies", [authJWT.verifyToken, authJWT.isAdmin, aut
             if(organisation != null && organisation.organisation_id > 0){
                 if(typeof req.connection_db != "undefined" && req.connection_db != null ) {
                     /*const getCompaniesList = await helpers.getCompaniesWithChildren(req.connection_db);*/
+                    console.log("I MA IN  a  sa s ")
                     const getCompaniesList = await helpers.getCompaniesListWithReports(req.connection_db, organisationID);
                     res.status(200).json(getCompaniesList);
                 } else {

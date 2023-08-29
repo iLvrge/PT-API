@@ -1616,7 +1616,7 @@ let getCompaniesListWithReports = async (DBConnection, organisationID) => {
     UNION
     SELECT representative_id, original_name, representative_name, status FROM representative 
     WHERE parent_id = :companyParentID AND type = :companyType ORDER BY original_name`
- */
+ */   
 
     const queryRepresentatives = `SELECT company_id AS representative_id, original_name, representative_name, status FROM representative WHERE company_id > 0 GROUP BY company_id`
     let getList = await DBConnection.query(queryRepresentatives,{
@@ -1626,12 +1626,11 @@ let getCompaniesListWithReports = async (DBConnection, organisationID) => {
             logging: console.log,
         }
     ); 
-
     if(getList.length > 0) {
         const allCompanies = []
         const promises = getList.map( company => {
-            if(company.company_id > 0) {
-                allCompanies.push(company.company_id)
+            if(company.representative_id > 0) {
+                allCompanies.push(company.representative_id)
             }
         })
         await Promise.all(promises)
