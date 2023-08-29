@@ -3028,6 +3028,7 @@ route.post("/company/:id/add_bulk_companies", [authJWT.verifyToken, authJWT.isAd
                         }
                         if(addRecord > 0) { 
                             console.log(JSON.stringify(parentCompaniesID));
+                            console.log(`screen -md php -f /var/www/html/scripts/run_add_companies_script.php "${client_id}" '${JSON.stringify(parentCompaniesID)}'`)
                             await exec(`screen -md php -f /var/www/html/scripts/run_add_companies_script.php "${client_id}" '${JSON.stringify(parentCompaniesID)}'`, async (error, stdout, stderr) => {
                                 console.log(error);
                                 console.log(stdout);
