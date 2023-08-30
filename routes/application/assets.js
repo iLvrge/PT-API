@@ -273,7 +273,7 @@ route.post("/assets/cpc", [authJWT.verifyToken, clientDBConnection.connect], asy
         
         if( list != '' || list.length == 0 ) {
             if((typeof data_type == 'undefined') || (typeof data_type !== 'undefined' && data_type == 0)) {
-                list = JSON.parse(list)
+                list = list != '' && list.length > 0 ? JSON.parse(list) : []
             }            
 
             let rangeConcat = 'CONCAT(section, class, sub_class)'
