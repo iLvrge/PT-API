@@ -576,6 +576,9 @@ route.get("/list", [authJWT.verifyToken, clientDBConnection.connect], async(req,
                 for(let i = 0; i < list.length; i++) { 
                     let representative = list[i]
                     let representaitveJSON = representative.toJSON();
+                    if(representaitveJSON.type == 1) {
+                        representaitveJSON.original_name = representaitveJSON.representative_name;
+                    }
                     let child = [], childWithName = [], product = 0, no_of_assets = 0, no_of_transactions = 0, no_of_parties = 0, no_of_inventor = 0, no_of_activities = 0;
                     if(findChild.length > 0) {
                         child = findChild
@@ -825,8 +828,7 @@ route.post("/group", [authJWT.verifyToken, clientDBConnection.connect], async(re
         const { group_name } = req.body
 
         const findGroup = await Representative.findOne({
-            where: {
-                original_name: group_name,
+            where: { 
                 representative_name: group_name,
                 instances: 0,
                 type: 1
@@ -835,27 +837,29 @@ route.post("/group", [authJWT.verifyToken, clientDBConnection.connect], async(re
 
         if(findGroup === null) {
             const addGroup = await Representative.create({
-                original_name: group_name,
+                original_name: '',
                 representative_name: group_name,
                 instances: 0,
                 type: 1
             });
-            if(addGroup !== null) {            
-                const organisation  = await helpers.findOrganisationbyID(req.orgId);
+            if(addGroup !== null) {     
+                /**
+                * Create new workspace in slack
+                */       
+                /* const organisation  = await helpers.findOrganisationbyID(req.orgId);
                 
                 if(organisation != null && organisation.organisation_id > 0 && organisation.team !== '') {
-                    /**
-                    * Create new workspace in slack
-                    */
+                    
                     await createSlackWorkSpace(group_name, organisation)                
-                }
+                } */
             }
             res.status(200).json(addGroup);
         } else {
             res.status(200).json(findGroup);
         }
     } catch( err ) {
-        res.status(500).send("Internal error", err);
+        console.log(err)
+        res.status(500).send("Internal error");
     }
 })
 

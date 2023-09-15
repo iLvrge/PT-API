@@ -258,6 +258,8 @@ route.post("/assets/cpc", [authJWT.verifyToken, clientDBConnection.connect], asy
                         replacements: replacements,
                     }
                 ); 
+
+                console.log(getAssetsData)
                 if(getAssetsData != null && getAssetsData.length > 0) {
                     list = []
                     const promise = getAssetsData.map( row => {
