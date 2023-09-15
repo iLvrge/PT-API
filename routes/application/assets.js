@@ -141,7 +141,7 @@ route.post("/assets/categories_products", [authJWT.verifyToken, clientDBConnecti
     }
 });
 
-route.post("/assets/cpc", [authJWT.verifyToken, clientDBConnection.connect], async(req, res, next) => {
+route.post("/assets/cpc", [authJWT.verifyToken, clientDBConnection.connect], async(req, res, next) => { 
     try{
         let { list, total, type, selectedCompanies, tabs, customers, assignments, range, scope, year, other_mode, data_type, sale, license, primary, check, lawfirm } = req.body, getList = [], group = [], sales = []
         const replacements = { organisation_id: req.orgId, year: 2000 }
@@ -157,10 +157,12 @@ route.post("/assets/cpc", [authJWT.verifyToken, clientDBConnection.connect], asy
             } else {
                 data_type = 1
             }
+        } else {
+            list = []
         }
 
-        replacements.type = helpers.findLayout(type); 
-        if(typeof type !== 'undefined' && type != 'due_dilligence' && list.length == 0) {
+        replacements.type = helpers.findLayout(type);  
+        if(typeof type !== 'undefined' && type != 'due_dilligence' && list.length == 0) { 
             if(type == 'top_law_firms') { 
                 let getFiilingAssets = []
                 if(typeof primary != 'undefined'){ 
@@ -256,6 +258,8 @@ route.post("/assets/cpc", [authJWT.verifyToken, clientDBConnection.connect], asy
                         replacements: replacements,
                     }
                 ); 
+
+                console.log(getAssetsData)
                 if(getAssetsData != null && getAssetsData.length > 0) {
                     list = []
                     const promise = getAssetsData.map( row => {
@@ -273,7 +277,7 @@ route.post("/assets/cpc", [authJWT.verifyToken, clientDBConnection.connect], asy
         
         if( list != '' || list.length == 0 ) {
             if((typeof data_type == 'undefined') || (typeof data_type !== 'undefined' && data_type == 0)) {
-                list = JSON.parse(list)
+                list = list != '' && list.length > 0 ? JSON.parse(list) : []
             }            
 
             let rangeConcat = 'CONCAT(section, class, sub_class)'
