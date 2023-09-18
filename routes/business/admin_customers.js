@@ -588,8 +588,8 @@ route.get("/customers/customers/:id/:type", [authJWT.verifyToken, authJWT.isAdmi
         let list = [];
 
         if(typeof req.connection_db != "undefined" && req.connection_db != null ) {
-            list = await helpers.findCompanyEntitiesByAccountID(organisationID, type, req.connection_db, suggestions, fixed_identicals); 
-            /* if(typeof suggestions == 'undefined' && typeof fixed_identicals == 'undefined') { 
+            //list = await helpers.findCompanyEntitiesByAccountID(organisationID, type, req.connection_db, suggestions, fixed_identicals); 
+            if(typeof suggestions == 'undefined' && typeof fixed_identicals == 'undefined') { 
                 list = await helpers.findCompanyEntitiesByAccountID(organisationID, type, req.connection_db, suggestions, fixed_identicals); 
             } else { 
                 console.log('Run File Account')
@@ -600,7 +600,7 @@ route.get("/customers/customers/:id/:type", [authJWT.verifyToken, authJWT.isAdmi
                     console.log('stderr', stderr)
                     return []
                 }) 
-            } */
+            } 
         }
         res.status(200).json(list); 
     } catch (e){
