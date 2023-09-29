@@ -74,9 +74,9 @@ const LogMessages = require("../../model/application/LogMessages");
 /**Get all documents */
 const logger = createLogger({
     format: format.combine(format.timestamp(), format.json()),
-    transports: [new transports.File({ filename: "/var/www/html/name_to_domain_api.log" })],
-    exceptionHandlers: [new transports.File({ filename: "/var/www/html/name_to_domain_api_exceptions.log" })],
-    rejectionHandlers: [new transports.File({ filename: "/var/www/html/name_to_domain_api_rejections.log" })],
+    transports: [new transports.File({ filename: "./name_to_domain_api.log" })],
+    exceptionHandlers: [new transports.File({ filename: "./name_to_domain_api_exceptions.log" })],
+    rejectionHandlers: [new transports.File({ filename: "./name_to_domain_api_rejections.log" })],
 });
 
 route.put("/customers/:organisation_id/buttons", [authJWT.verifyToken, authJWT.isAdmin], async(req, res, next) => {
@@ -585,11 +585,10 @@ route.get("/customers/customers/:id/:type", [authJWT.verifyToken, authJWT.isAdmi
         /*const companyName = req.params.company_name, type = req.params.type;*/
         const organisationID = req.params.id, type = req.params.type;
         const {suggestions, fixed_identicals} = req.query
-        let list = [];
-
+        let list = []; 
         if(typeof req.connection_db != "undefined" && req.connection_db != null ) {
             //list = await helpers.findCompanyEntitiesByAccountID(organisationID, type, req.connection_db, suggestions, fixed_identicals); 
-            if(typeof suggestions == 'undefined' && typeof fixed_identicals == 'undefined') { 
+            if(typeof suggestions == 'undefined' && typeof fixed_identicals == 'undefined') {  
                 list = await helpers.findCompanyEntitiesByAccountID(organisationID, type, req.connection_db, suggestions, fixed_identicals); 
             } else { 
                 console.log('Run File Account')
@@ -655,18 +654,18 @@ route.get("/customers/customers/:id/:representativeID/:type", [authJWT.verifyTok
         const organisationID = req.params.id, type = req.params.type, representativeIDs = JSON.parse(req.params.representativeID);
         const {suggestions, fixed_identicals} = req.query
         console.log(req.query)
-        let list = [];
+        let list = []; 
 
         if(typeof req.connection_db != "undefined" && req.connection_db != null ) {
             list = await helpers.findCompanyEntitiesByAccountIDByRepresentativeIDs(organisationID, representativeIDs, type, req.connection_db, suggestions, fixed_identicals);
 
             
-            /* if(typeof suggestions == 'undefined' && typeof fixed_identicals == 'undefined') { 
+            if(typeof suggestions == 'undefined' && typeof fixed_identicals == 'undefined') { 
                 list = await helpers.findCompanyEntitiesByAccountIDByRepresentativeIDs(organisationID, representativeIDs, type, req.connection_db, suggestions, fixed_identicals);
             } else { 
                 console.log('Run File')
                 exec(`/var/www/html/script/node_modules/.bin/env-cmd node /var/www/html/script/normalize_names.js ${req.orgId} ${req.params.representativeID}  ${type} ${suggestions} ${fixed_identicals}`);
-            } */ 
+            }
         }
         res.status(200).json(list);
     } catch (e){
