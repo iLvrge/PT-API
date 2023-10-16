@@ -619,7 +619,7 @@ route.post("/count", [authJWT.verifyToken], async(req, res, next) => {
             parties = JSON.parse(customers) 
             if(parties.length > 0) {
                 where.assignor_id = parties
-            }
+            } 
         }
 
         
