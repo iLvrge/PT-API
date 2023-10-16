@@ -616,7 +616,7 @@ route.post("/count", [authJWT.verifyToken], async(req, res, next) => {
         let parties = [];
         let qType = parseInt(type);
         if(typeof format_type != 'undefined' && format_type.toLowerCase() == 'bank') {
-            parties = JSON.parse(customers)
+            parties = JSON.parse(customers) 
             if(parties.length > 0) {
                 where.assignor_id = parties
             }
