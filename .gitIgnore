@@ -2,6 +2,6 @@
 /src
 .env*
 .log*
-
+.DS_Store
 newrelic_agent.log
 package-lock.json

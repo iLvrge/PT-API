@@ -6,7 +6,11 @@ const ClientRepresentatives = {
             type: Sequelize.INTEGER,
             primaryKey: true,
             autoIncrement: true
-        },        
+        },   
+        company_id: {
+            type: Sequelize.INTEGER,  
+            allowNull: false,
+        },       
         representative_name:{
             type: Sequelize.STRING,
             allowNull: true,

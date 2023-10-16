@@ -107,7 +107,7 @@ app.options('*', (req, res) => {
 
 /**nginx client_max_body_size 100M; #100mb */
 
-const port = process.env.PORT || 3600;
+const port = process.env.PORT || 4200;
 /**
  * Route for Applications database
  */

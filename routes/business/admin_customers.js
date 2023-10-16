@@ -715,20 +715,20 @@ route.delete("/customers/:id/companies", [authJWT.verifyToken, authJWT.isAdmin, 
             IDs = JSON.parse(IDs)
             const Representative = req.connection_db.define('ClientRepesentative', ClientRepesentative.mainStructure, ClientRepesentative.options);
             const findCompanies = await Representative.findAll({
-                attributes:['representative_id', 'parent_id', 'original_name'],
+                attributes:['representative_id', 'parent_id', 'original_name', 'company_id'],
                 where:{representative_id: IDs},
-                group:['representative_id','parent_id']
+                group:['company_id']
             });
             const updateKPICompanies=[],  deleteParentCompanies = [], reUpdateCompanies = [], deleteCompanies = [], activityLogs = [], currentDate = moment(new Date()).format('YYYY-MM-DD hh:mm:ss');
             if(findCompanies.length > 0) {
                 const promise = findCompanies.map(c => {
                     if(c.parent_id == 0) {
                         deleteParentCompanies.push(c.representative_id);
-                        updateKPICompanies.push(c.representative_id);
+                        updateKPICompanies.push(c.company_id);
                     } else {
-                        if(!updateKPICompanies.includes(c.parent_id)){
-                            updateKPICompanies.push(c.parent_id); 
-                            reUpdateCompanies.push(c.parent_id);
+                        if(!updateKPICompanies.includes(c.company_id)){
+                            updateKPICompanies.push(c.company_id); 
+                            reUpdateCompanies.push(c.company_id);
                         }
                     }
                     deleteCompanies.push(c.representative_id);                   
@@ -805,14 +805,14 @@ route.delete("/customers/:id/companies", [authJWT.verifyToken, authJWT.isAdmin, 
 
                             if(destroyAllTransactions) {
                                 const findPCompanies = await Representative.findAll({
-                                    attributes:['original_name'],
+                                    attributes:['company_id'],
                                     where:{representative_id: reUpdateCompanies, type: 0}                        
                                 });
 
                                 if(findPCompanies.length > 0) {
                                     const promiseAddRFIDs = findPCompanies.map(async (company, index) => {
-                                        console.log(`php -f /var/www/html/trash/add_representative_rfids.php "${req.orgId}" "${company.original_name}"`);
-                                        await exec(`php -f /var/www/html/trash/add_representative_rfids.php "${req.orgId}" "${company.original_name}"`, async (error, std, stderr) => {
+                                        console.log(`php -f /var/www/html/scripts/add_representative_rfids.php "${req.orgId}" "${company.company_id}"`);
+                                        await exec(`php -f /var/www/html/scripts/add_representative_rfids.php "${req.orgId}" "${company.company_id}"`, async (error, std, stderr) => {
                                             /*await exec(`php -f /var/www/html/trash/tree_script_client.php "${company.original_name}"`, async (error, stdout, stderr) => {
 
                                             });*/
@@ -821,7 +821,7 @@ route.delete("/customers/:id/companies", [authJWT.verifyToken, authJWT.isAdmin, 
                                             console.log(stderr);
 
 
-                                            exec(`php -f /var/www/html/trash/create_data_for_company_db_application.php "${req.orgId}" "${company.original_name}"`, (error, stdd, stderr)=> {
+                                            exec(`php -f /var/www/html/scripts/create_data_for_company_db_application.php "${req.orgId}" "${company.company_id}"`, (error, stdd, stderr)=> {
                                                 console.log("fill database ....")
                                                 console.log(error); 
                                                 console.log(stderr);
@@ -850,7 +850,7 @@ route.delete("/customers/:id/companies", [authJWT.verifyToken, authJWT.isAdmin, 
                              * Recreate KPI and Tree
                              */
                             console.log("DELETE");
-                            exec(`php -f /var/www/html/trash/create_data_for_company_db_application.php "${req.orgId}" ""`, (error, stdd, stderr)=> {
+                            exec(`php -f /var/www/html/scripts/create_data_for_company_db_application.php "${req.orgId}" ""`, (error, stdd, stderr)=> {
                                 console.log("fill database ....")
                                 console.log(error); 
                                 console.log(stderr);
@@ -1621,8 +1621,8 @@ route.post("/customers", [authJWT.verifyToken, authJWT.isAdmin], async (req, res
                     }
                 })
                
-                console.log(`php -f /var/www/html/trash/script_create_customer_db.php "${organisationID}"`);
-                exec(`php -f /var/www/html/trash/script_create_customer_db.php "${organisationID}"`, async (error, std, stderr) => {
+                console.log(`php -f /var/www/html/scripts/script_create_customer_db.php "${organisationID}"`);
+                exec(`php -f /var/www/html/scripts/script_create_customer_db.php "${organisationID}"`, async (error, std, stderr) => {
                     console.log("script_create_customer_db");
                     console.log(error);
                     console.log(stderr);
@@ -1728,8 +1728,8 @@ route.get("/customers/:organisation_id/flag_automatic", [authJWT.verifyToken, au
             let org = await helpers.findOrganisationbyID( organisationID );
             if(org != null && org.organisation_id > 0) {
                 
-                console.log(`php -f /var/www/html/trash/update_flag.php "${organisationID}" "${companyID}"`);
-                exec(`php -f /var/www/html/trash/update_flag.php "${organisationID}" "${companyID}"`, (error, stdout, stderr) => {  
+                console.log(`php -f /var/www/html/scripts/update_flag.php "${organisationID}" "${companyID}"`);
+                exec(`php -f /var/www/html/scripts/update_flag.php "${organisationID}" "${companyID}"`, (error, stdout, stderr) => {  
                     console.log(error, stdout, stderr);
                 });
                 res.status(200).send("Fixing flag in process");
@@ -1752,8 +1752,8 @@ route.get("/customers/:organisation_id/transaction_missing_conveyance", [authJWT
             let org = await helpers.findOrganisationbyID( organisationID );
             if(org != null && org.organisation_id > 0) {
                 
-                console.log(`php -f /var/www/html/trash/update_missing_type.php "${organisationID}" "${companyID}"`);
-                exec(`php -f /var/www/html/trash/update_missing_type.php "${organisationID}" "${companyID}"`, (error, stdout, stderr) => {  
+                console.log(`php -f /var/www/html/scripts/update_missing_type.php "${organisationID}" "${companyID}"`);
+                exec(`php -f /var/www/html/scripts/update_missing_type.php "${organisationID}" "${companyID}"`, (error, stdout, stderr) => {  
                     console.log(error, stdout, stderr);
                 });
                 res.status(200).send("Fixing flag in process");
@@ -1891,16 +1891,16 @@ route.get("/customers/:organisation_id/publish", [authJWT.verifyToken, authJWT.i
                 });
                 if(findUsers > 0) {
                     if(company_id.length == 0) {
-                        console.log(`php -f /var/www/html/trash/create_data_for_company_db_application.php "${organisationID}"  ""`);
-                        await exec(`php -f /var/www/html/trash/create_data_for_company_db_application.php "${organisationID}"  ""`, async (error, stdout, stderr) => {  
+                        console.log(`php -f /var/www/html/scripts/create_data_for_company_db_application.php "${organisationID}"  ""`);
+                        await exec(`php -f /var/www/html/scripts/create_data_for_company_db_application.php "${organisationID}"  ""`, async (error, stdout, stderr) => {  
                                                 
                         });
                         res.status(200).send("UPDATED!");   
                     } else {
-                        const queryRepresentativeName = `SELECT representative_name FROM db_uspto.list1 WHERE company_id IN (:company_id) AND organisation_id = :organisationID GROUP BY representative_name`;
+                        const queryRepresentativeName = `SELECT company_id FROM db_uspto.list1 WHERE company_id IN (:company_id) AND (organisation_id = :organisationID OR organisation_id IS NULL) GROUP BY company_id`;
                         const companyNames =  await connection.applicationNew.query(queryRepresentativeName,{
                             type: connection.Sequelize.QueryTypes.SELECT,
-                            replacements: { organisationID, company_id  },
+                            replacements: { organisationID: 0, company_id  },
                             raw: true,
                             logging: console.log,
                             }
@@ -1908,8 +1908,7 @@ route.get("/customers/:organisation_id/publish", [authJWT.verifyToken, authJWT.i
 
                         if(companyNames.length > 0) {
                             companyNames.map( async company => { 
-                                console.log(`php -f /var/www/html/trash/create_data_for_company_db_application.php "${organisationID}"  "${company.representative_name}" "1"`)
-                                await exec(`php -f /var/www/html/trash/create_data_for_company_db_application.php "${organisationID}"  "${company.representative_name}" "1"`, async (error, stdout, stderr) => {   
+                                await exec(`php -f /var/www/html/scripts/create_data_for_company_db_application.php "${organisationID}"  "${company.company_id}" "1"`, async (error, stdout, stderr) => {   
                                                          
                                 });
                             })
@@ -1942,8 +1941,8 @@ route.get("/customers/:organisation_id/address/publish", [authJWT.verifyToken, a
         if(organisationID > 0){
             let org = await helpers.findOrganisationbyID( organisationID );
             if(org != null && org.organisation_id > 0) {
-                console.log(`php -f /var/www/html/trash/update_client_companies_address.php "${organisationID}"  ""`);
-                    await exec(`php -f /var/www/html/trash/update_client_companies_address.php "${organisationID}"  ""`, async (error, stdout, stderr) => {    
+                console.log(`php -f /var/www/html/scripts/update_client_companies_address.php "${organisationID}"  ""`);
+                    await exec(`php -f /var/www/html/scripts/update_client_companies_address.php "${organisationID}"  ""`, async (error, stdout, stderr) => {    
                         console.log("tree_script");
                         console.log(error);
                         console.log(stderr);
