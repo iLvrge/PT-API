@@ -615,12 +615,12 @@ route.post("/count", [authJWT.verifyToken], async(req, res, next) => {
 
         let parties = [];
         let qType = parseInt(type);
-        if(typeof format_type != 'undefined' && format_type.toLowerCase() == 'bank') {
+       /*  if(typeof format_type != 'undefined' && format_type.toLowerCase() == 'bank') {
             parties = JSON.parse(customers) 
             if(parties.length > 0) {
                 where.assignor_id = parties
             } 
-        }
+        } */
 
         
         query = `SELECT type, number, other_number, total, other FROM dashboard_items_count WHERE type IN (:type) AND organisation_id = :organisationID ${parties.length > 0 ? ' AND assignor_id IN (:assignor_id) ' : ''} ${companies.length > 0 ? ' AND representative_id IN (:company_id) ' : ''} ${req.orgType == 2 ? ' AND mode IN (:mode) ' : ''}`;
