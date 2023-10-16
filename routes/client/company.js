@@ -498,6 +498,13 @@ route.get("/list", [authJWT.verifyToken, clientDBConnection.connect], async(req,
 
             const where = {where: {parent_id: 0}};
 
+            if(req.orgType == 2) {
+                /**
+                 * Bank Mode
+                 */
+                where.where['mode'] = 1;
+            }
+
             const total_records = await Representative.count( where );
 
             /*where.limit = limit > 0 ? parseInt(limit) : connection.DEFAULT_LIMIT;

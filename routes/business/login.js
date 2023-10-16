@@ -179,7 +179,7 @@ route.post("/signin", (req, res, next) => {
             {
               model: Organisation,
               as: "organisation",
-              attributes: ['subscribtion'],
+              attributes: ['subscribtion', 'organisation_type'],
             }
         ],
         where: {
@@ -200,8 +200,10 @@ route.post("/signin", (req, res, next) => {
         const currentDate = Date.now();
 
         const expiredDate = moment(new Date(currentDate)).add(1,'days').valueOf();
+
+        console.log(user.organisation)
         
-        let token = jwt.sign({ id: user.user_id, orgId:user.organisation_id, subscription: user.organisation.subscribtion, iat: currentDate, expired: expiredDate }, config.config.secret, {
+        let token = jwt.sign({ id: user.user_id, orgId:user.organisation_id, org_type: user.organisation.organisation_type , subscription: user.organisation.subscribtion, iat: currentDate, expired: expiredDate }, config.config.secret, {
             expiresIn: 86400 // expires in 24 hours,
         });
 

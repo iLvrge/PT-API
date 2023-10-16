@@ -31,6 +31,10 @@ const ClientRepresentatives = {
             type: Sequelize.INTEGER,
             allowNull: true,
         },
+        mode:{
+            type: Sequelize.INTEGER,
+            allowNull: true,
+        },
         status:{
             type: Sequelize.INTEGER,
             allowNull: true,

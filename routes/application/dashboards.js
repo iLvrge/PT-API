@@ -54,18 +54,22 @@ const getOwnedAssets = async( req ) => {
         if(selectedCompanies != '' && typeof selectedCompanies != 'undefined' && selectedCompanies != null) {
             selectedCompanies = JSON.parse(selectedCompanies)
         }
+        const replacements = {
+            organisationID: req.orgId,
+            selectedCompanies,
+            type: 30
+        }
+        if(req.orgType == 2) {
+            replacements.mode = 1
+        }
         /* const query = `SELECT appno_doc_num FROM owned_assets WHERE organisation_id = :organisationID AND company_id IN (:selectedCompanies)` */
-        const query = `SELECT application FROM dashboard_items WHERE organisation_id = :organisationID AND representative_id IN (:selectedCompanies) AND type = :type AND application <> '' GROUP BY application`
+        const query = `SELECT application FROM dashboard_items WHERE organisation_id = :organisationID AND representative_id IN (:selectedCompanies) AND type = :type AND application <> ''  ${req.orgType == 2 ? ' AND mode IN (:mode) ' : ''} GROUP BY application`
 
         const list =  await connection.applicationNew.query(query,{
             type: connection.Sequelize.QueryTypes.SELECT,
             raw: true,
             logging: console.log,
-            replacements: {
-                organisationID: req.orgId,
-                selectedCompanies,
-                type: 30
-            }
+            replacements 
         })
 
         if(list !== null && list.length > 0) {
@@ -586,40 +590,49 @@ route.post("/timeline", [authJWT.verifyToken, clientDBConnection.connect], async
 })
 
 route.post("/count", [authJWT.verifyToken], async(req, res, next) => {
-    try{
+    try {
 
         let {selectedCompanies, customers, type, data_format, format_type, company} = req.body, getData = {}
-            const where = { year: connection.DEFAULT_YEAR, organisationID: req.orgId}, typeList = [38, 39, 40, 41]
-            let query = '';
-            const companies = JSON.parse(selectedCompanies) 
+        const where = { year: connection.DEFAULT_YEAR, organisationID: req.orgId}, typeList = [38, 39, 40, 41]
+        let query = '';
+        const companies = JSON.parse(selectedCompanies) 
 
-            if(companies.length > 0) {
-                where.company_id = companies
+        if(companies.length > 0) {
+            where.company_id = companies
+        }
+
+        if(type != '') {
+            where.type = JSON.parse(type)
+        }
+        if(req.orgType == 2) {
+            /**
+             * Bank Mode
+             */
+            where.mode = 1
+        }
+
+        console.log(req)
+
+        let parties = [];
+        let qType = parseInt(type);
+        if(typeof format_type != 'undefined' && format_type.toLowerCase() == 'bank') {
+            parties = JSON.parse(customers)
+            if(parties.length > 0) {
+                where.assignor_id = parties
             }
+        }
 
-            if(type != '') {
-                where.type = JSON.parse(type)
-            }
-            let parties = [];
-            let qType = parseInt(type);
-            if(typeof format_type != 'undefined' && format_type.toLowerCase() == 'bank') {
-                parties = JSON.parse(customers)
-                if(parties.length > 0) {
-                    where.assignor_id = parties
-                }
-            }
+        
+        query = `SELECT type, number, other_number, total, other FROM dashboard_items_count WHERE type IN (:type) AND organisation_id = :organisationID ${parties.length > 0 ? ' AND assignor_id IN (:assignor_id) ' : ''} ${companies.length > 0 ? ' AND representative_id IN (:company_id) ' : ''} ${req.orgType == 2 ? ' AND mode IN (:mode) ' : ''}`;
 
-            
-            query = `SELECT type, number, other_number, total, other FROM dashboard_items_count WHERE type IN (:type) AND organisation_id = :organisationID ${parties.length > 0 ? ' AND assignor_id IN (:assignor_id) ' : ''} ${companies.length > 0 ? ' AND representative_id IN (:company_id) ' : ''}`;
+        getData =  await connection.applicationNew.query(query,{
+            type: connection.Sequelize.QueryTypes.SELECT,
+            raw: true,
+            logging: console.log,
+            replacements: where,
+        })
 
-            getData =  await connection.applicationNew.query(query,{
-                type: connection.Sequelize.QueryTypes.SELECT,
-                raw: true,
-                logging: console.log,
-                replacements: where,
-            })
-
-            res.status(200).json(getData);
+        res.status(200).json(getData);
 
 
     } catch (err){
@@ -681,6 +694,13 @@ route.post("/", [authJWT.verifyToken], async(req, res, next) => {
         if(companies.length > 0) {
             where.company_id = companies
         }
+        if(req.orgType == 2) {
+            /**
+             * Bank Mode
+             */
+            where.mode = 1
+        }
+        
         let qType = parseInt(type);
         if(typeof format_type != 'undefined' && format_type.toLowerCase() == 'bank') {
             const parties = JSON.parse(customers)
@@ -721,7 +741,7 @@ route.post("/", [authJWT.verifyToken], async(req, res, next) => {
                         }
                         
                         query += `FROM (SELECT application, patent, rf_id, total FROM dashboard_items 
-                            WHERE type = :type AND organisation_id = :organisationID  ${parties.length > 0 ? ' AND assignor_id IN (:assignor_id) ' : ''} ${companies.length > 0 ? ' AND representative_id IN (:company_id) ' : ''}  `;
+                            WHERE type = :type AND organisation_id = :organisationID  ${parties.length > 0 ? ' AND assignor_id IN (:assignor_id) ' : ''} ${companies.length > 0 ? ' AND representative_id IN (:company_id) ' : ''} ${req.orgType == 2 ? ' AND mode IN (:mode) ' : ''} `;
                             
                         if(transactions.length > 0) { 
                             query += ` AND application IN (SELECT appno_doc_num FROM db_uspto.documentid WHERE rf_id IN (:rf_id))`
@@ -742,7 +762,7 @@ route.post("/", [authJWT.verifyToken], async(req, res, next) => {
                         INNER JOIN db_uspto.assignment AS assign ON assign.rf_id = apt.rf_id
                         LEFT JOIN db_uspto.assignment AS assign1 ON assign1.rf_id = apt.release_rf_id
                         INNER JOIN db_uspto.assignor_and_assignee AS aaa ON aaa.assignor_and_assignee_id = apt.assignor_and_assignee_id LEFT JOIN db_uspto.representative AS r ON r.representative_id = aaa.representative_id WHERE apt.organisation_id = :organisationID AND company_id IN (:company_id) AND apt.rf_id IN (
-                            SELECT di.rf_id FROM dashboard_items AS di WHERE organisation_id = :organisationID AND representative_id IN (:company_id) AND type = :type ${parties.length > 0 ? ' AND assignor_id IN (:assignor_id) ' : ''}  `
+                            SELECT di.rf_id FROM dashboard_items AS di WHERE organisation_id = :organisationID AND representative_id IN (:company_id) AND type = :type ${parties.length > 0 ? ' AND assignor_id IN (:assignor_id) ' : ''} ${req.orgType == 2 ? ' AND mode IN (:mode) ' : ''} `
                             
                     if(transactions.length > 0) { 
                         query += ` AND di.rf_id IN (:rf_id) `
@@ -757,7 +777,7 @@ route.post("/", [authJWT.verifyToken], async(req, res, next) => {
                      * Collaterialized Assets
                      * Client Current Assets
                      */
-                    query = `SELECT COUNT(IF(patent <> '', patent, null)) AS number, COUNT(IF(patent = '', application, null)) AS other_number, COUNT(*) AS total, patent, application, '' AS rf_id, type FROM dashboard_items WHERE type = :type AND organisation_id = :organisationID  ${parties.length > 0 ? ' AND assignor_id IN (:assignor_id) ' : ''}  ${companies.length > 0 ? ' AND representative_id IN (:company_id) ' : ''} `
+                    query = `SELECT COUNT(IF(patent <> '', patent, null)) AS number, COUNT(IF(patent = '', application, null)) AS other_number, COUNT(*) AS total, patent, application, '' AS rf_id, type FROM dashboard_items WHERE type = :type AND organisation_id = :organisationID  ${parties.length > 0 ? ' AND assignor_id IN (:assignor_id) ' : ''}  ${companies.length > 0 ? ' AND representative_id IN (:company_id) ' : ''}  ${req.orgType == 2 ? ' AND mode IN (:mode) ' : ''} `
 
                     if(transactions.length > 0) { 
                         query += ` AND application IN (SELECT appno_doc_num FROM db_uspto.documentid WHERE rf_id IN (:rf_id))`
@@ -795,7 +815,7 @@ route.post("/", [authJWT.verifyToken], async(req, res, next) => {
                             SELECT year, COUNT(year) AS number, application, patent, '' AS rf_id FROM( SELECT assets.appno_doc_num AS application, assets.grant_doc_num AS patent, date_format(assets.appno_date, '%Y') AS year FROM db_new_application.dashboard_items AS dt
                         ${innerJOIN}
                         WHERE dt.organisation_id = :organisationID AND dt.type = :type
-                        AND dt.representative_id IN (:company_id)`
+                        AND dt.representative_id IN (:company_id)  ${req.orgType == 2 ? ' AND dt.mode IN (:mode) ' : ''} `
                         if(parseInt(qType) != 22) {
                             query += `AND assets.organisation_id = :organisationID 
                             AND assets.layout_id = :layoutID AND assets.company_id IN (:company_id)  `
@@ -808,7 +828,7 @@ route.post("/", [authJWT.verifyToken], async(req, res, next) => {
                             countQ = `COUNT(patent) AS number`, groupBy = `GROUP BY patent`, condition = ` AND patent <> ''`
                         }
                         query = `SELECT ${countQ}, application, patent, rf_id, total FROM (SELECT application, patent, rf_id, total FROM dashboard_items 
-                            WHERE type = :type AND organisation_id = :organisationID ${companies.length > 0 ? ' AND representative_id IN (:company_id) ' : ''} ${condition} ${groupBy}) AS temp`
+                            WHERE type = :type AND organisation_id = :organisationID ${companies.length > 0 ? ' AND representative_id IN (:company_id) ' : ''}  ${req.orgType == 2 ? ' AND mode IN (:mode) ' : ''} ${condition} ${groupBy}) AS temp`
                     }                    
                     break;                    
                 case 17:
@@ -831,11 +851,11 @@ route.post("/", [authJWT.verifyToken], async(req, res, next) => {
                             AND apt.company_id IN (:company_id)
                             AND dt.representative_id IN (:company_id)
                             AND dt.type = :type
-                            AND date_format(apt.exec_dt, '%Y') > :year
+                            AND date_format(apt.exec_dt, '%Y') > :year  ${req.orgType == 2 ? ' AND dt.mode IN (:mode) ' : ''}
                             GROUP BY dt.rf_id) AS temp GROUP BY year) AS temp1`;
                     } else {
                         query = `SELECT COUNT(rf_id) AS number, '' AS application, '' AS patent, rf_id, total FROM (SELECT rf_id, total FROM dashboard_items 
-                            WHERE type = :type AND organisation_id = :organisationID ${companies.length > 0 ? ' AND representative_id IN (:company_id) ' : ''} GROUP BY rf_id) AS temp`
+                            WHERE type = :type AND organisation_id = :organisationID ${companies.length > 0 ? ' AND representative_id IN (:company_id) ' : ''}  ${req.orgType == 2 ? ' AND mode IN (:mode) ' : ''} GROUP BY rf_id) AS temp`
                     }
                     break;
                 case 30:
@@ -844,10 +864,10 @@ route.post("/", [authJWT.verifyToken], async(req, res, next) => {
                 case 33:
                 case 34:
                 case 36:
-                    query = `SELECT COUNT(IF(patent <> '', patent, null)) AS number, COUNT(IF(patent = '', application, null)) AS other_number, COUNT(*) AS total, patent, application, '' AS rf_id, type FROM dashboard_items WHERE type = :type AND organisation_id = :organisationID ${companies.length > 0 ? ' AND representative_id IN (:company_id) ' : ''}`
+                    query = `SELECT COUNT(IF(patent <> '', patent, null)) AS number, COUNT(IF(patent = '', application, null)) AS other_number, COUNT(*) AS total, patent, application, '' AS rf_id, type FROM dashboard_items WHERE type = :type AND organisation_id = :organisationID ${companies.length > 0 ? ' AND representative_id IN (:company_id) ' : ''}  ${req.orgType == 2 ? ' AND mode IN (:mode) ' : ''} `
                     break;   
                 case 35:
-                    query = `SELECT SUM(total) AS number, application, patent, '' AS rf_id, 0 AS total, type FROM dashboard_items WHERE type = :type AND organisation_id = :organisationID ${companies.length > 0 ? ' AND representative_id IN (:company_id) ' : ''}`
+                    query = `SELECT SUM(total) AS number, application, patent, '' AS rf_id, 0 AS total, type FROM dashboard_items WHERE type = :type AND organisation_id = :organisationID ${companies.length > 0 ? ' AND representative_id IN (:company_id) ' : ''}  ${req.orgType == 2 ? ' AND mode IN (:mode) ' : ''} `
                     break;
                 /* case 36:            
                 case 37: */
@@ -873,16 +893,16 @@ route.post("/", [authJWT.verifyToken], async(req, res, next) => {
                     /**
                      * Lender or inventor
                      */
-                    query = `SELECT inventorName AS name, COUNT(rf_id) AS number, application, '' As patent, '' AS rf_id, 0 AS total FROM (SELECT aaa.assignor_and_assignee_id, IF(aaa.representative_id <> '', r.representative_name, aaa.name) AS inventorName, application, rf_id FROM dashboard_items AS di INNER JOIN db_uspto.assignor_and_assignee AS aaa ON aaa.assignor_and_assignee_id = di.assignor_id LEFT JOIN db_uspto.representative AS r ON r.representative_id = aaa.representative_id WHERE di.type = :type AND di.organisation_id = :organisationID ${companies.length > 0 ? ' AND di.representative_id IN (:company_id) ' : ''} ) AS temp GROUP BY inventorName ORDER BY number DESC, name ASC `
+                    query = `SELECT inventorName AS name, COUNT(rf_id) AS number, application, '' As patent, '' AS rf_id, 0 AS total FROM (SELECT aaa.assignor_and_assignee_id, IF(aaa.representative_id <> '', r.representative_name, aaa.name) AS inventorName, application, rf_id FROM dashboard_items AS di INNER JOIN db_uspto.assignor_and_assignee AS aaa ON aaa.assignor_and_assignee_id = di.assignor_id LEFT JOIN db_uspto.representative AS r ON r.representative_id = aaa.representative_id WHERE di.type = :type AND di.organisation_id = :organisationID ${companies.length > 0 ? ' AND di.representative_id IN (:company_id) ' : ''}  ${req.orgType == 2 ? ' AND di.mode IN (:mode) ' : ''}  ) AS temp GROUP BY inventorName ORDER BY number DESC, name ASC `
                     if(parseInt(qType) == 39) {
                         query += ` LIMIT 50 `
                     }
                     break;
                 case 40:
-                    query = `SELECT lawfirm AS name, COUNT(rf_id) AS number, application, '' As patent, '' AS rf_id, 0 AS total, type  FROM dashboard_items WHERE type = :type AND organisation_id = :organisationID ${companies.length > 0 ? ' AND representative_id IN (:company_id) ' : ''} GROUP BY lawfirm ORDER BY number DESC, name ASC`
+                    query = `SELECT lawfirm AS name, COUNT(rf_id) AS number, application, '' As patent, '' AS rf_id, 0 AS total, type  FROM dashboard_items WHERE type = :type AND organisation_id = :organisationID ${companies.length > 0 ? ' AND representative_id IN (:company_id) ' : ''}  ${req.orgType == 2 ? ' AND mode IN (:mode) ' : ''} GROUP BY lawfirm ORDER BY number DESC, name ASC`
                     break;
             }
-        }
+        } 
         
         if(query != '') {
             getData =  await connection.applicationNew.query(query,{
