@@ -762,7 +762,7 @@ route.post("/", [authJWT.verifyToken], async(req, res, next) => {
                         INNER JOIN db_uspto.assignment AS assign ON assign.rf_id = apt.rf_id
                         LEFT JOIN db_uspto.assignment AS assign1 ON assign1.rf_id = apt.release_rf_id
                         INNER JOIN db_uspto.assignor_and_assignee AS aaa ON aaa.assignor_and_assignee_id = apt.assignor_and_assignee_id LEFT JOIN db_uspto.representative AS r ON r.representative_id = aaa.representative_id WHERE (apt.organisation_id = :organisationID  OR apt.organisation_id IS NULL)  AND company_id IN (:company_id) AND apt.rf_id IN (
-                            SELECT di.rf_id FROM dashboard_items AS di WHERE organisation_id = :organisationID AND representative_id IN (:company_id) AND type = :type ${parties.length > 0 ? ' AND assignor_id IN (:assignor_id) ' : ''} ${req.orgType == 2 ? ' AND mode IN (:mode) ' : ''}  `
+                            SELECT di.rf_id FROM dashboard_items AS di WHERE organisation_id = :organisationID AND representative_id IN (:company_id) AND type = :type ${parties.length > 0 ? ' AND assignor_id IN (:assignor_id) ' : ''} ${req.orgType == 2 ? ' AND mode = (:mode) ' : ''}  `
                             
                     if(transactions.length > 0) { 
                         query += ` AND di.rf_id IN (:rf_id) `
