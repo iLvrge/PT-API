@@ -66,10 +66,10 @@ route.get("/events/", [authJWT.verifyToken, clientDBConnection.connect], async(r
     }
 });
 
-const findCollateralizedAssets = async(replacements) => {
+const findCollateralizedAssets = async(replacements, req) => {
     const getList = []
     try {
-        const query = 'SELECT di.application FROM dashboard_items AS di WHERE di.organisation_id = :organisation_id AND di.representative_id IN (:companies) AND di.type = :layout '
+        const query = `SELECT di.application FROM dashboard_items AS di WHERE di.organisation_id = :organisation_id AND di.representative_id IN (:companies) AND di.type = :layout  ${req.orgType == 2 ? ' AND mode IN (:mode) ' : ''}  `
          
         const list =  await connection.applicationNew.query(query,{
             type: connection.Sequelize.QueryTypes.SELECT,
@@ -113,6 +113,14 @@ route.get("/timeline", [authJWT.verifyToken], async(req, res, next) => {
         }
 
         replacements.layout = helpers.findLayout(layout)  
+
+        if(req.orgType == 2) {
+            /**
+             * Bank Mode
+             */
+            replacements.mode = 1
+        }
+        
        
         /*let transactionQuery = "SELECT documentid.appno_doc_num FROM db_uspto.documentid AS documentid WHERE documentid.rf_id =  activity_parties_transactions.rf_id ) AND assets.organisation_id = :organisation_id  "
 
@@ -143,7 +151,7 @@ route.get("/timeline", [authJWT.verifyToken], async(req, res, next) => {
         if(replacements.layout != 15) {
             replacements.companies = companies
             if(replacements.layout == 34) { 
-                const findList = await findCollateralizedAssets(replacements)
+                const findList = await findCollateralizedAssets(replacements, req)
                 replacements.convey_ty = ['security', 'restatedsecurity'];
                 replacements.assets = findList;
                 
@@ -171,7 +179,7 @@ route.get("/timeline", [authJWT.verifyToken], async(req, res, next) => {
 
                 /* query = "Select cor.rf_id as id, apt.exec_dt, release_rf_id, release_exec_dt, full_match AS partial_transaction, all_release_ids, total_assets AS releaseAssets, IF(cor.cname <> '', cor.cname, cor.caddress_1) AS lawfirm, cor.law_firm_id, cor.law_firm_id AS name_id, 0 AS repID, '' AS customerName,  0 AS tab_id, '' AS `group`, '' AS `company`, 0 AS totalAssets  FROM db_new_application.activity_parties_transactions AS apt  INNER JOIN db_uspto.assignee AS ass ON ass.rf_id = apt.rf_id INNER JOIN db_uspto.correspondent AS cor ON cor.rf_id = ass.rf_id WHERE apt.organisation_id = :organisation_id AND apt.company_id IN (:companies) AND ass.assignor_and_assignee_id IN (SELECT assignor_and_assignee_id FROM db_uspto.list1 WHERE organisation_id = :organisation_id AND company_id IN (:companies)) AND date_format(apt.exec_dt, '%Y') >= :year"; */
                 
-                query = "Select apt.rf_id as id, MAX(apt.exec_dt) AS exec_dt, release_rf_id, release_exec_dt, full_match AS partial_transaction, all_release_ids, total_assets AS releaseAssets, di.lawfirm, lf.law_firm_id AS name_id, rlf.representative_id AS repID, '' AS customerName, apt.activity_id AS tab_id,  '' AS `group`, '' AS `company`, 0 AS totalAssets FROM db_new_application.activity_parties_transactions AS apt INNER JOIN db_new_application.dashboard_items AS di ON di.rf_id = apt.rf_id INNER JOIN db_uspto.correspondent AS c ON c.rf_id = apt.rf_id LEFT JOIN db_uspto.law_firm  as lf ON c.cname = lf.name LEFT JOIN db_uspto.representative_law_firm AS rlf ON rlf.representative_id = lf.representative_id  WHERE (apt.organisation_id = :organisation_id OR apt.organisation_id IS NULL ) AND apt.company_id IN(:companies) AND di.organisation_id = :organisation_id AND di.representative_id IN(:companies) AND di.type = :layout "
+                query = `Select apt.rf_id as id, MAX(apt.exec_dt) AS exec_dt, release_rf_id, release_exec_dt, full_match AS partial_transaction, all_release_ids, total_assets AS releaseAssets, di.lawfirm, lf.law_firm_id AS name_id, rlf.representative_id AS repID, '' AS customerName, apt.activity_id AS tab_id,  '' AS group, '' AS company, 0 AS totalAssets FROM db_new_application.activity_parties_transactions AS apt INNER JOIN db_new_application.dashboard_items AS di ON di.rf_id = apt.rf_id INNER JOIN db_uspto.correspondent AS c ON c.rf_id = apt.rf_id LEFT JOIN db_uspto.law_firm  as lf ON c.cname = lf.name LEFT JOIN db_uspto.representative_law_firm AS rlf ON rlf.representative_id = lf.representative_id  WHERE (apt.organisation_id = :organisation_id OR apt.organisation_id IS NULL ) AND apt.company_id IN(:companies) AND di.organisation_id = :organisation_id AND di.representative_id IN(:companies) AND di.type = :layout  ${req.orgType == 2 ? ' AND mode IN (:mode) ' : ''} `
                 
                 if(typeof start != 'undefined' && start != '' && typeof end != 'undefined' && end != '') {
                     replacements.start = start
@@ -232,7 +240,7 @@ route.get("/timeline", [authJWT.verifyToken], async(req, res, next) => {
 
                 /* query = "SELECT assignment.rf_id as id, MAX(aor.exec_dt) AS exec_dt, release_rf_id, release_exec_dt, full_match AS partial_transaction, all_release_ids, total_assets AS releaseAssets, IF(representative.representative_name <> '', representative.representative_name, assignor_and_assignee.name)  AS customerName, assignor_and_assignee.assignor_and_assignee_id AS name_id,representative.representative_id as repID, apt.activity_id AS tab_id, '' AS `group`, '' AS `company`, (SELECT count(asset) FROM ( SELECT IF(dd.grant_doc_num <> '', dd.grant_doc_num, dd.appno_doc_num) AS asset FROM db_uspto.documentid AS dd WHERE dd.rf_id = assignment.rf_id GROUP BY asset ) AS temp) AS totalAssets FROM db_uspto.assignment INNER JOIN activity_parties_transactions AS apt ON apt.rf_id = assignment.rf_id INNER JOIN db_uspto.assignor AS aor ON aor.rf_id = assignment.rf_id INNER JOIN db_uspto.assignor_and_assignee AS assignor_and_assignee ON assignor_and_assignee.assignor_and_assignee_id = aor.assignor_and_assignee_id LEFT JOIN db_uspto.representative AS representative ON representative.representative_id = assignor_and_assignee.representative_id WHERE assignment.rf_id IN (SELECT rf_id FROM dashboard_items WHERE organisation_id = :organisation_id  AND representative_id IN (:companies) AND type = :layout " */
                 
-                query = " Select di.application AS id, di.application, di.patent, IF (ag.appno_date = null, ap.appno_date, ag.appno_date) AS exec_dt, '' AS release_rf_id, '' AS release_exec_dt, 0 AS partial_transaction, '' AS all_release_ids, 0 AS releaseAssets, IF(representative.representative_name <> '', representative.representative_name, assignor_and_assignee.name) AS customerName, assignor_and_assignee.assignor_and_assignee_id AS name_id,representative.representative_id as repID, 10 AS tab_id, '' AS `group`, '' AS company, 0 AS totalAssets, GROUP_CONCAT(IF(representative.representative_name <> '', representative.representative_name, assignor_and_assignee.name)) AS all_inventors  FROM db_new_application.dashboard_items AS di LEFT JOIN db_patent_application_bibliographic.application_grant AS ag ON ag.appno_doc_num = di.application LEFT JOIN db_patent_grant_bibliographic.application_publication AS ap ON ap.appno_doc_num = di.application INNER JOIN db_patent_application_bibliographic.assignor_and_assignee AS assignor_and_assignee ON assignor_and_assignee.assignor_and_assignee_id = di.assignor_id LEFT JOIN db_uspto.representative AS representative ON representative.representative_id = assignor_and_assignee.representative_id WHERE di.organisation_id = :organisation_id  AND di.representative_id IN (:companies) AND di.type = :layout  "
+                query = ` Select di.application AS id, di.application, di.patent, IF (ag.appno_date = null, ap.appno_date, ag.appno_date) AS exec_dt, '' AS release_rf_id, '' AS release_exec_dt, 0 AS partial_transaction, '' AS all_release_ids, 0 AS releaseAssets, IF(representative.representative_name <> '', representative.representative_name, assignor_and_assignee.name) AS customerName, assignor_and_assignee.assignor_and_assignee_id AS name_id,representative.representative_id as repID, 10 AS tab_id, '' AS group, '' AS company, 0 AS totalAssets, GROUP_CONCAT(IF(representative.representative_name <> '', representative.representative_name, assignor_and_assignee.name)) AS all_inventors  FROM db_new_application.dashboard_items AS di LEFT JOIN db_patent_application_bibliographic.application_grant AS ag ON ag.appno_doc_num = di.application LEFT JOIN db_patent_grant_bibliographic.application_publication AS ap ON ap.appno_doc_num = di.application INNER JOIN db_patent_application_bibliographic.assignor_and_assignee AS assignor_and_assignee ON assignor_and_assignee.assignor_and_assignee_id = di.assignor_id LEFT JOIN db_uspto.representative AS representative ON representative.representative_id = assignor_and_assignee.representative_id WHERE di.organisation_id = :organisation_id  AND di.representative_id IN (:companies) AND di.type = :layout   ${req.orgType == 2 ? ' AND di.mode IN (:mode) ' : ''} `
 
                 if(customers.length > 0) {
                     query += " AND di. assignor_id IN (:customers) "
@@ -251,7 +259,7 @@ route.get("/timeline", [authJWT.verifyToken], async(req, res, next) => {
                 query += " GROUP BY di.application ORDER BY exec_dt DESC  LIMIT 0, 500 "
             } else if (replacements.layout == 41) {
                 replacements.activity_id = [5, 12];
-                query = "SELECT assignment.rf_id as id, MAX(apt.exec_dt) AS exec_dt, release_rf_id, release_exec_dt, full_match AS partial_transaction, all_release_ids, total_assets AS releaseAssets, IF(representative.representative_name <> '', representative.representative_name, assignor_and_assignee.name)  AS customerName, assignor_and_assignee.assignor_and_assignee_id AS name_id,representative.representative_id as repID, apt.activity_id AS tab_id, '' AS `group`, '' AS `company`, (SELECT count(asset) FROM ( SELECT dd.appno_doc_num AS asset FROM db_uspto.documentid AS dd WHERE dd.rf_id = assignment.rf_id GROUP BY asset ) AS temp) AS totalAssets FROM db_uspto.assignment INNER JOIN activity_parties_transactions AS apt ON apt.rf_id = assignment.rf_id INNER JOIN dashboard_items AS di ON assignment.rf_id = di.rf_id INNER JOIN db_uspto.assignor_and_assignee AS assignor_and_assignee ON assignor_and_assignee.assignor_and_assignee_id = di.assignor_id LEFT JOIN db_uspto.representative AS representative ON representative.representative_id = assignor_and_assignee.representative_id WHERE apt.activity_id IN (:activity_id) AND di.organisation_id = :organisation_id AND di.representative_id IN (:companies) AND di.type = :layout " 
+                query = `SELECT assignment.rf_id as id, MAX(apt.exec_dt) AS exec_dt, release_rf_id, release_exec_dt, full_match AS partial_transaction, all_release_ids, total_assets AS releaseAssets, IF(representative.representative_name <> '', representative.representative_name, assignor_and_assignee.name)  AS customerName, assignor_and_assignee.assignor_and_assignee_id AS name_id,representative.representative_id as repID, apt.activity_id AS tab_id, '' AS group, '' AS company, (SELECT count(asset) FROM ( SELECT dd.appno_doc_num AS asset FROM db_uspto.documentid AS dd WHERE dd.rf_id = assignment.rf_id GROUP BY asset ) AS temp) AS totalAssets FROM db_uspto.assignment INNER JOIN activity_parties_transactions AS apt ON apt.rf_id = assignment.rf_id INNER JOIN dashboard_items AS di ON assignment.rf_id = di.rf_id INNER JOIN db_uspto.assignor_and_assignee AS assignor_and_assignee ON assignor_and_assignee.assignor_and_assignee_id = di.assignor_id LEFT JOIN db_uspto.representative AS representative ON representative.representative_id = assignor_and_assignee.representative_id WHERE apt.activity_id IN (:activity_id) AND di.organisation_id = :organisation_id AND di.representative_id IN (:companies) AND di.type = :layout  ${req.orgType == 2 ? ' AND di.mode IN (:mode) ' : ''} `
                 
                 if(typeof start != 'undefined' && start != '' && typeof end != 'undefined' && end != '') {
                     replacements.start = start
@@ -265,11 +273,11 @@ route.get("/timeline", [authJWT.verifyToken], async(req, res, next) => {
             } else {
                 query = `SELECT assignment.rf_id as id, CASE WHEN representative_law_firm.representative_name <> '' THEN representative_law_firm.representative_name WHEN law_firm.name <> '' THEN law_firm.name ELSE correspondent.cname END AS recorded_by, assignment.record_dt, ${replacements.layout == 25 ? ' MIN(aor.exec_dt) ' : ' MAX(aor.exec_dt) '} AS exec_dt, release_rf_id, release_exec_dt, full_match AS partial_transaction, all_release_ids, total_assets AS releaseAssets, IF(representative.representative_name <> '', representative.representative_name, assignor_and_assignee.name)  AS customerName, GROUP_CONCAT(DISTINCT aor.or_name) AS assignors, assignor_and_assignee.assignor_and_assignee_id AS name_id,representative.representative_id as repID, apt.activity_id AS tab_id, '' AS company, ` 
                 if(replacements.layout == 26) {
-                    query += ` (SELECT count(asset) FROM ( SELECT  dd.application AS asset FROM db_new_application.dashboard_items AS dd WHERE dd.rf_id = assignment.rf_id AND type = :layout AND organisation_id = :organisation_id  AND representative_id IN (:companies) GROUP BY asset ) AS temp) AS totalAssets `
+                    query += ` (SELECT count(asset) FROM ( SELECT  dd.application AS asset FROM db_new_application.dashboard_items AS dd WHERE dd.rf_id = assignment.rf_id AND type = :layout AND organisation_id = :organisation_id  ${req.orgType == 2 ? ' ANDdd. mode IN (:mode) ' : ''}   AND representative_id IN (:companies) GROUP BY asset ) AS temp) AS totalAssets `
                 } else {
                     query += `(SELECT count(asset) FROM ( SELECT  dd.appno_doc_num AS asset FROM db_uspto.documentid AS dd WHERE dd.rf_id = assignment.rf_id GROUP BY asset ) AS temp) AS totalAssets `
                 }
-                query +=  ` FROM db_uspto.assignment INNER JOIN activity_parties_transactions AS apt ON apt.rf_id = assignment.rf_id INNER JOIN db_uspto.correspondent AS correspondent ON correspondent.rf_id = assignment.rf_id LEFT JOIN db_uspto.law_firm AS law_firm ON law_firm.name = correspondent.cname LEFT JOIN db_uspto.representative_law_firm AS representative_law_firm ON representative_law_firm.representative_id = law_firm.representative_id INNER JOIN db_uspto.assignee AS ass ON ass.rf_id = assignment.rf_id INNER JOIN db_uspto.assignor AS aor ON aor.rf_id = assignment.rf_id INNER JOIN db_uspto.assignor_and_assignee AS assignor_and_assignee ON assignor_and_assignee.assignor_and_assignee_id = ass.assignor_and_assignee_id LEFT JOIN db_uspto.representative AS representative ON representative.representative_id = assignor_and_assignee.representative_id WHERE assignment.rf_id IN (SELECT rf_id FROM dashboard_items WHERE organisation_id = :organisation_id  AND representative_id IN (:companies) AND type = :layout GROUP BY rf_id) `
+                query +=  ` FROM db_uspto.assignment INNER JOIN activity_parties_transactions AS apt ON apt.rf_id = assignment.rf_id INNER JOIN db_uspto.correspondent AS correspondent ON correspondent.rf_id = assignment.rf_id LEFT JOIN db_uspto.law_firm AS law_firm ON law_firm.name = correspondent.cname LEFT JOIN db_uspto.representative_law_firm AS representative_law_firm ON representative_law_firm.representative_id = law_firm.representative_id INNER JOIN db_uspto.assignee AS ass ON ass.rf_id = assignment.rf_id INNER JOIN db_uspto.assignor AS aor ON aor.rf_id = assignment.rf_id INNER JOIN db_uspto.assignor_and_assignee AS assignor_and_assignee ON assignor_and_assignee.assignor_and_assignee_id = ass.assignor_and_assignee_id LEFT JOIN db_uspto.representative AS representative ON representative.representative_id = assignor_and_assignee.representative_id WHERE assignment.rf_id IN (SELECT rf_id FROM dashboard_items WHERE organisation_id = :organisation_id  ${req.orgType == 2 ? ' AND mode IN (:mode) ' : ''}   AND representative_id IN (:companies) AND type = :layout GROUP BY rf_id) `
 
                 if(typeof start != 'undefined' && start != '' && typeof end != 'undefined' && end != '') {
                     replacements.start = start
@@ -395,6 +403,13 @@ route.get("/timeline/filling_assets", [authJWT.verifyToken, clientDBConnection.c
             replacements.rf_ids = rf_ids
         }
 
+        if(req.orgType == 2) {
+            /**
+             * Bank Mode
+             */
+            replacements.mode = 1
+        }
+
         const allAssets =  await helpers.findFillingAssets(req, 1)
 
         console.log(replacements)
@@ -479,6 +494,12 @@ route.get("/timeline/security", [authJWT.verifyToken], async(req, res, next) => 
             rf_ids = JSON.parse(rf_ids);
         }
 
+        if(req.orgType == 2) {
+            /**
+             * Bank Mode
+             */
+            replacements.mode = 1
+        }
 
         let transactionQuery = " "
 
@@ -905,7 +926,12 @@ route.post("/asset_types/assets/agents", [authJWT.verifyToken, clientDBConnectio
             where.assignments = assignments
         }
  
-        
+        if(req.orgType == 2) {
+            /**
+             * Bank Mode
+             */
+            where.mode = 1
+        }
 
         where.ownedType = helpers.findLayout(type); 
         let query = '';
@@ -923,7 +949,7 @@ route.post("/asset_types/assets/agents", [authJWT.verifyToken, clientDBConnectio
                      */
                     assets =  await helpers.findFillingAssets(req) 
                 } else {
-                    let ownedAssets = `SELECT application FROM db_new_application.dashboard_items WHERE organisation_id = :organisationID AND representative_id = :company_id AND type = :ownedType `
+                    let ownedAssets = `SELECT application FROM db_new_application.dashboard_items WHERE organisation_id = :organisationID AND representative_id = :company_id AND type = :ownedType  ${req.orgType == 2 ? ' AND mode IN (:mode) ' : ''} `
     
     
     
@@ -962,7 +988,7 @@ route.post("/asset_types/assets/agents", [authJWT.verifyToken, clientDBConnectio
                     } else {
                         
                         query += `SELECT name, year, COUNT(appno_doc_num) AS counter FROM ( 
-                            SELECT name, appno_doc_num, /*IF(appYear = null, grantyear, appYear)*/ appYear AS year FROM (  SELECT l.name, l.appno_doc_num, /*date_format(ag.appno_date, '%Y') AS grantyear,*/ date_format(ap.appno_date, '%Y') AS appYear  FROM db_patent_application_bibliographic.lawfirm AS l /*LEFT JOIN  db_patent_application_bibliographic.application_grant AS ag ON ag.appno_doc_num = l.appno_doc_num*/ LEFT JOIN  db_patent_grant_bibliographic.application_publication AS ap ON ap.appno_doc_num = l.appno_doc_num WHERE ( TRIM(BOTH  '.' FROM l.name) IN (SELECT lawfirm FROM db_new_application.dashboard_items WHERE organisation_id = :organisationID AND representative_id = :company_id AND type = :lawfirmType GROUP BY lawfirm) OR l.name IN (SELECT lawfirm FROM db_new_application.dashboard_items WHERE organisation_id = :organisationID AND representative_id = :company_id AND type = :lawfirmType GROUP BY lawfirm))` 
+                            SELECT name, appno_doc_num, /*IF(appYear = null, grantyear, appYear)*/ appYear AS year FROM (  SELECT l.name, l.appno_doc_num, /*date_format(ag.appno_date, '%Y') AS grantyear,*/ date_format(ap.appno_date, '%Y') AS appYear  FROM db_patent_application_bibliographic.lawfirm AS l /*LEFT JOIN  db_patent_application_bibliographic.application_grant AS ag ON ag.appno_doc_num = l.appno_doc_num*/ LEFT JOIN  db_patent_grant_bibliographic.application_publication AS ap ON ap.appno_doc_num = l.appno_doc_num WHERE ( TRIM(BOTH  '.' FROM l.name) IN (SELECT lawfirm FROM db_new_application.dashboard_items WHERE organisation_id = :organisationID AND representative_id = :company_id  ${req.orgType == 2 ? ' AND mode IN (:mode) ' : ''}  AND type = :lawfirmType GROUP BY lawfirm) OR l.name IN (SELECT lawfirm FROM db_new_application.dashboard_items WHERE organisation_id = :organisationID AND representative_id = :company_id  ${req.orgType == 2 ? ' AND mode IN (:mode) ' : ''}  AND type = :lawfirmType GROUP BY lawfirm))` 
                     }
                     /* query = `SELECT name, year, COUNT(appno_doc_num) AS counter FROM (  SELECT l.name, l.appno_doc_num, date_format(ag.appno_date, '%Y') AS year  FROM db_patent_examiner_data.application_correspondence AS l INNER JOIN  db_patent_examiner_data.application_publication_grant AS ag ON ag.appno_doc_num = l.appno_doc_num WHERE l.name IN (SELECT lawfirm FROM db_new_application.dashboard_items WHERE organisation_id = :organisationID AND representative_id = :company_id AND type = :lawfirmType GROUP BY lawfirm) ` */
 
@@ -976,14 +1002,20 @@ route.post("/asset_types/assets/agents", [authJWT.verifyToken, clientDBConnectio
                         } else {
                             findLawFirm += ` c.rf_id IN (:lawfirm)`
                         }
-                        
+                        const replacementLawfirm = {assignments: where.assignments,lawfirm}
+                        if(req.orgType == 2) {
+                            /**
+                             * Bank Mode
+                             */
+                            replacementLawfirm.mode = 1
+                        }
                         
 
                         const getLawFirmData = await connection.applicationNew.query(findLawFirm, {
                             type: connection.Sequelize.QueryTypes.SELECT,
                             raw: true,
                             logging: console.log,
-                            replacements: {assignments: where.assignments,lawfirm },
+                            replacements: replacementLawfirm,
                         })  
                          
                         if(getLawFirmData.length > 0) {
@@ -1018,7 +1050,7 @@ route.post("/asset_types/assets/agents", [authJWT.verifyToken, clientDBConnectio
                             INNER JOIN db_uspto.assignor_and_assignee AS aaa ON aaa.assignor_and_assignee_id = di.assignor_id
                             LEFT JOIN db_uspto.representative AS r ON r.representative_id = aaa.representative_id
                             Where ( apt.organisation_id = :organisationID  OR apt.organisation_id IS NULL ) AND apt.company_id = :company_id AND date_format(apt.exec_dt, '%Y') > :year
-                            AND di.organisation_id = :organisationID AND di.representative_id = :company_id AND di.type = :ownedType AND apt.activity_id IN (:activity_id) `
+                            AND di.organisation_id = :organisationID AND di.representative_id = :company_id  ${req.orgType == 2 ? ' AND di.mode IN (:mode) ' : ''} AND di.type = :ownedType AND apt.activity_id IN (:activity_id) `
 
                         if(customers && customers != '') {
                             customers = JSON.parse( customers ) 
@@ -1045,7 +1077,7 @@ route.post("/asset_types/assets/agents", [authJWT.verifyToken, clientDBConnectio
                                 INNER JOIN db_uspto.correspondent as cor ON cor.rf_id = apt.rf_id 
                                 INNER JOIN db_uspto.law_firm AS l ON l.name = cor.cname
                                 LEFT JOIN db_uspto.representative_law_firm AS rlf ON rlf.representative_id = l.representative_id
-                                Where di.application IN (:assets) AND date_format(apt.exec_dt, '%Y') > :year `
+                                Where di.application IN (:assets)  ${req.orgType == 2 ? ' AND di.mode IN (:mode) ' : ''} AND date_format(apt.exec_dt, '%Y') > :year `
                         } else {
                             console.log(5)
                             /**
@@ -1067,7 +1099,7 @@ route.post("/asset_types/assets/agents", [authJWT.verifyToken, clientDBConnectio
                                     INNER JOIN db_uspto.correspondent as cor ON cor.rf_id = apt.rf_id 
                                     INNER JOIN db_uspto.law_firm AS l ON l.name = cor.cname
                                     LEFT JOIN db_uspto.representative_law_firm AS rlf ON rlf.representative_id = l.representative_id
-                                    Where ( apt.organisation_id = :organisationID  OR apt.organisation_id IS NULL ) AND apt.company_id = :company_id AND di.organisation_id = :organisationID  AND di.representative_id IN(:company_id) AND date_format(apt.exec_dt, '%Y') > :year `
+                                    Where ( apt.organisation_id = :organisationID  OR apt.organisation_id IS NULL ) AND apt.company_id = :company_id AND di.organisation_id = :organisationID  AND di.representative_id IN(:company_id)  ${req.orgType == 2 ? ' AND di.mode IN (:mode) ' : ''}  AND date_format(apt.exec_dt, '%Y') > :year `
         
                                     if(where.ownedType == 25) {
                                         query += ` AND di.type = :ownedType `
@@ -1298,8 +1330,8 @@ route.post("/asset_types/inventors/location", [authJWT.verifyToken, clientDBConn
 })
 
 
-const getOWNEDAssets = async(replacements) => {
-    let queryAssets = `SELECT application FROM db_new_application.dashboard_items WHERE organisation_id = :organisationID AND type = :layoutID `;
+/* const getOWNEDAssets = async(replacements) => {
+    let queryAssets = `SELECT application FROM db_new_application.dashboard_items WHERE organisation_id = :organisationID AND type = :layoutID  ${req.orgType == 2 ? ' AND mode IN (:mode) ' : ''} `;
 
     if(typeof replacements.companies != 'undefined' && Array.isArray(replacements.companies) && replacements.companies.length > 0) {
         queryAssets += ` AND representative_id IN (:companies) `
@@ -1322,7 +1354,7 @@ const getOWNEDAssets = async(replacements) => {
         })
     }
     return appNos
-}
+} */
 
 /**
  * Restore Ownership
@@ -1348,6 +1380,13 @@ route.get("/:layout/assets", [authJWT.verifyToken, clientDBConnection.connect], 
             total_records: 0
         }
 
+        if(req.orgType == 2) {
+            /**
+             * Bank Mode
+             */
+            replacements.mode = 1
+        }
+
         if(typeof offset === 'undefined') {
             offset = 0
         }
@@ -1371,7 +1410,7 @@ route.get("/:layout/assets", [authJWT.verifyToken, clientDBConnection.connect], 
             const countReplace = ` CASE WHEN assets.grant_doc_num = '' OR assets.grant_doc_num IS NULL THEN assets.appno_doc_num ELSE assets.grant_doc_num END AS asset `
     
     
-            const countquery = `SELECT COUNT(*) as total_records FROM (${query.replace('STRING_COLUMNS', countReplace)} WHERE ( organisation_id = :organisationID  OR organisation_id IS NULL ) AND type = :type GROUP BY appno_doc_num ) AS temp `
+            const countquery = `SELECT COUNT(*) as total_records FROM (${query.replace('STRING_COLUMNS', countReplace)} WHERE ( organisation_id = :organisationID  OR organisation_id IS NULL ) AND type = :type ${req.orgType == 2 ? ' AND mode IN (:mode) ' : ''}  GROUP BY appno_doc_num ) AS temp `
             
             replacements.type = parseInt(other_mode) == 1 ? 2 : parseInt(other_mode) == 3 ? 4 : 0
            
@@ -1433,7 +1472,7 @@ route.get("/:layout/assets", [authJWT.verifyToken, clientDBConnection.connect], 
 
             if(replacements.layoutID == 3) { 
                 /**Maintainence */
-                let query = "SELECT asset, asset_type, channel, appno_doc_num, grant_doc_num, grant_date, date_format(payment_due, '%b %d, %Y') AS payment_due, date_format(payment_grace, '%b %d, %Y') AS payment_grace, type, fee_code, fee_amount, fee_code_surcharge, fee_surcharge, remaining_year, source, fwd_citation, technology, child_count FROM maintainence_assets WHERE company_id IN (:representativeIDs) AND ( organisation_id = :organisationID OR organisation_id IS NULL ) AND appno_doc_num IN (SELECT application COLLATE utf8mb4_0900_ai_ci FROM dashboard_items where organisation_id = :organisationID AND representative_id IN (:representativeIDs) AND type = 35 GROUP BY application)  AND appno_doc_num NOT IN (SELECT appno_doc_num FROM db_application.assets_transfer WHERE appno_doc_num <> '' AND status = 0 AND layout_id = :layoutID AND ( organisation_id = :organisationID OR organisation_id IS NULL )) AND grant_doc_num NOT IN (SELECT grant_doc_num FROM db_application.assets_transfer WHERE appno_doc_num = '' AND grant_doc_num <> '' AND status = 0 AND layout_id = :layoutID AND ( organisation_id = :organisationID OR organisation_id IS NULL )) GROUP BY grant_doc_num, appno_doc_num, company_id";
+                let query = `SELECT asset, asset_type, channel, appno_doc_num, grant_doc_num, grant_date, date_format(payment_due, '%b %d, %Y') AS payment_due, date_format(payment_grace, '%b %d, %Y') AS payment_grace, type, fee_code, fee_amount, fee_code_surcharge, fee_surcharge, remaining_year, source, fwd_citation, technology, child_count FROM maintainence_assets WHERE company_id IN (:representativeIDs) AND ( organisation_id = :organisationID OR organisation_id IS NULL ) AND appno_doc_num IN (SELECT application COLLATE utf8mb4_0900_ai_ci FROM dashboard_items where organisation_id = :organisationID AND representative_id IN (:representativeIDs)  ${req.orgType == 2 ? ' AND mode IN (:mode) ' : ''}  AND type = 35 GROUP BY application)  AND appno_doc_num NOT IN (SELECT appno_doc_num FROM db_application.assets_transfer WHERE appno_doc_num <> '' AND status = 0 AND layout_id = :layoutID AND ( organisation_id = :organisationID OR organisation_id IS NULL )) AND grant_doc_num NOT IN (SELECT grant_doc_num FROM db_application.assets_transfer WHERE appno_doc_num = '' AND grant_doc_num <> '' AND status = 0 AND layout_id = :layoutID AND ( organisation_id = :organisationID OR organisation_id IS NULL )) GROUP BY grant_doc_num, appno_doc_num, company_id`;
 
                 if(typeof column === 'undefined' || column === 'undefined') {
                     column = 'asset'
@@ -1452,11 +1491,22 @@ route.get("/:layout/assets", [authJWT.verifyToken, clientDBConnection.connect], 
                 let currentDate = new Date()
                 const graceDate = moment(currentDate).add(6, 'months').format(FORMAT)
                 const expireDate = moment(currentDate).subtract(6, 'months').format(FORMAT)
+
+                const assetsReplacements = {representativeIDs: companies, organisationID:  0 /* req.orgId */, layoutID: 3, dueDate: moment(currentDate).format(FORMAT), graceDate, expireDate}
+
+                if(req.orgType == 2) {
+                    /**
+                     * Bank Mode
+                     */
+                    assetsReplacements.mode = 1
+                }
+
+
                 assets.list = await connection.applicationNew.query(query,{
                     type: connection.Sequelize.QueryTypes.SELECT,
                     raw: true,
                     logging: console.log,
-                    replacements: { representativeIDs: companies, organisationID:  0 /* req.orgId */, layoutID: 3, dueDate: moment(currentDate).format(FORMAT), graceDate, expireDate},
+                    replacements: assetsReplacements,
                 });
                 assets.total_records = assets.list.length;
                 res.status(200).json(assets);
@@ -1597,7 +1647,7 @@ route.get("/:layout/assets", [authJWT.verifyToken, clientDBConnection.connect], 
                         
                         query = `SELECT * FROM (SELECT  CASE WHEN patent = '' OR patent IS NULL THEN CONCAT(SUBSTRING(application, 1, 2), '/', FORMAT(SUBSTRING(application, 3), 0)) ELSE FORMAT(patent, 0) END AS format_asset,
                         CASE WHEN patent = '' OR patent IS NULL THEN application ELSE patent END AS asset, 
-                        CASE WHEN patent = '' OR patent IS NULL THEN 1 ELSE 0 END AS asset_type, application AS appno_doc_num, patent AS grant_doc_num, 0 AS child_count, '' AS channel  FROM db_new_application.dashboard_items WHERE organisation_id = :organisationID AND type = :layoutID `;
+                        CASE WHEN patent = '' OR patent IS NULL THEN 1 ELSE 0 END AS asset_type, application AS appno_doc_num, patent AS grant_doc_num, 0 AS child_count, '' AS channel  FROM db_new_application.dashboard_items WHERE organisation_id = :organisationID AND type = :layoutID  ${req.orgType == 2 ? ' AND mode IN (:mode) ' : ''}  `;
 
                         if(typeof replacements.companies != 'undefined' && Array.isArray(replacements.companies) && replacements.companies.length > 0) {
                             query += ` AND representative_id IN (:companies) `
@@ -1629,7 +1679,7 @@ route.get("/:layout/assets", [authJWT.verifyToken, clientDBConnection.connect], 
                                     
                                             select application FROM db_new_application.dashboard_items 
                                             WHERE organisation_id = :organisationID AND type = :layoutID  
-                                            AND representative_id IN (:companies)
+                                            AND representative_id IN (:companies)  ${req.orgType == 2 ? ' AND mode IN (:mode) ' : ''} 
                                         )
                                         UNION 
                                         Select appno_doc_num, assignor_and_assignee_id  from db_patent_grant_bibliographic.inventor_new
@@ -1637,7 +1687,7 @@ route.get("/:layout/assets", [authJWT.verifyToken, clientDBConnection.connect], 
                                     
                                             select application FROM db_new_application.dashboard_items 
                                             WHERE organisation_id = :organisationID AND type = :layoutID  
-                                            AND representative_id IN (:companies)
+                                            AND representative_id IN (:companies)  ${req.orgType == 2 ? ' AND mode IN (:mode) ' : ''} 
                                         )) AS tempInventor
                                         where assignor_and_assignee_id IN (:inventor))) `;
                             }
@@ -1646,12 +1696,12 @@ route.get("/:layout/assets", [authJWT.verifyToken, clientDBConnection.connect], 
                     } else if(replacements.layoutID == 45) {
                         query = `SELECT * FROM (SELECT  CASE WHEN patent = '' OR patent IS NULL THEN CONCAT(SUBSTRING(application, 1, 2), '/', FORMAT(SUBSTRING(application, 3), 0)) ELSE FORMAT(patent, 0) END AS format_asset,
                         CASE WHEN patent = '' OR patent IS NULL THEN application ELSE patent END AS asset, 
-                        CASE WHEN patent = '' OR patent IS NULL THEN 1 ELSE 0 END AS asset_type, application AS appno_doc_num, patent AS grant_doc_num, 0 AS child_count, '' AS channel  FROM db_new_application.dashboard_items WHERE organisation_id = :organisationID  `;
+                        CASE WHEN patent = '' OR patent IS NULL THEN 1 ELSE 0 END AS asset_type, application AS appno_doc_num, patent AS grant_doc_num, 0 AS child_count, '' AS channel  FROM db_new_application.dashboard_items WHERE organisation_id = :organisationID  ${req.orgType == 2 ? ' AND mode IN (:mode) ' : ''}   `;
 
                         if(typeof replacements.companies != 'undefined' && Array.isArray(replacements.companies) && replacements.companies.length > 0) {
                             query += ` AND representative_id IN (:companies) `
                         }
-                        query += ` AND type = 30  AND application NOT IN (SELECT application FROM db_new_application.dashboard_items WHERE organisation_id = :organisationID AND representative_id IN (:companies) ${customers != '' && customers.length > 0 ? ' AND assignor_id IN (:customers) ' : '' } AND type = 34 GROUP BY application)  `
+                        query += ` AND type = 30  AND application NOT IN (SELECT application FROM db_new_application.dashboard_items WHERE organisation_id = :organisationID AND representative_id IN (:companies) ${customers != '' && customers.length > 0 ? ' AND assignor_id IN (:customers) ' : '' }  ${req.orgType == 2 ? ' AND mode IN (:mode) ' : ''}  AND type = 34 GROUP BY application)  `
                         
                         if(Array.isArray(customers) && customers.length > 0){
                             query += ` AND `
@@ -1679,7 +1729,7 @@ route.get("/:layout/assets", [authJWT.verifyToken, clientDBConnection.connect], 
                                     
                                             select application FROM db_new_application.dashboard_items 
                                             WHERE organisation_id = :organisationID AND type = :layoutID  
-                                            AND representative_id IN (:companies)
+                                            AND representative_id IN (:companies)  ${req.orgType == 2 ? ' AND mode IN (:mode) ' : ''} 
                                         )
                                         UNION 
                                         Select appno_doc_num, assignor_and_assignee_id  from db_patent_grant_bibliographic.inventor_new
@@ -1687,7 +1737,7 @@ route.get("/:layout/assets", [authJWT.verifyToken, clientDBConnection.connect], 
                                     
                                             select application FROM db_new_application.dashboard_items 
                                             WHERE organisation_id = :organisationID AND type = :layoutID  
-                                            AND representative_id IN (:companies)
+                                            AND representative_id IN (:companies)  ${req.orgType == 2 ? ' AND mode IN (:mode) ' : ''} 
                                         )) AS tempInventor
                                         where assignor_and_assignee_id IN (:inventor))) `;
                             }
@@ -1714,7 +1764,7 @@ route.get("/:layout/assets", [authJWT.verifyToken, clientDBConnection.connect], 
                                 query += ` :assignments `
                             } else  {
                                 query += ` SELECT rf_id FROM db_new_application.dashboard_items
-                                WHERE organisation_id = :organisationID AND representative_id IN (:companies) AND type = :layoutID `
+                                WHERE organisation_id = :organisationID AND representative_id IN (:companies) AND type = :layoutID  ${req.orgType == 2 ? ' AND mode IN (:mode) ' : ''} `
                             }
 
                             if(lawyers != '' && lawyers != null && lawyers != undefined && parseInt(lawyers) > 0) {
@@ -1763,7 +1813,7 @@ route.get("/:layout/assets", [authJWT.verifyToken, clientDBConnection.connect], 
 
                         query = `SELECT * FROM (SELECT  CASE WHEN patent = '' OR patent IS NULL THEN CONCAT(SUBSTRING(application, 1, 2), '/', FORMAT(SUBSTRING(application, 3), 0)) ELSE FORMAT(patent, 0) END AS format_asset,
                         CASE WHEN patent = '' OR patent IS NULL THEN application ELSE TRIM(LEADING '0' FROM patent) END AS asset, 
-                        CASE WHEN patent = '' OR patent IS NULL THEN 1 ELSE 0 END AS asset_type, application AS appno_doc_num, TRIM(LEADING '0' FROM patent)  AS grant_doc_num, 0 AS child_count, '' AS channel  FROM db_new_application.dashboard_items WHERE organisation_id = :organisationID AND type = :layoutID `;
+                        CASE WHEN patent = '' OR patent IS NULL THEN 1 ELSE 0 END AS asset_type, application AS appno_doc_num, TRIM(LEADING '0' FROM patent)  AS grant_doc_num, 0 AS child_count, '' AS channel  FROM db_new_application.dashboard_items WHERE organisation_id = :organisationID AND type = :layoutID  ${req.orgType == 2 ? ' AND mode IN (:mode) ' : ''} `;
 
                         if(typeof replacements.companies != 'undefined' && Array.isArray(replacements.companies) && replacements.companies.length > 0) {
                             query += ` AND representative_id IN (:companies) `
@@ -1819,7 +1869,7 @@ route.get("/:layout/assets", [authJWT.verifyToken, clientDBConnection.connect], 
                                             
                                                     select application FROM db_new_application.dashboard_items 
                                                     WHERE organisation_id = :organisationID AND type = :layoutID  
-                                                    AND representative_id IN (:companies)
+                                                    AND representative_id IN (:companies) ${req.orgType == 2 ? ' AND mode IN (:mode) ' : ''} 
                                                 )
                                                 UNION 
                                                 Select appno_doc_num, assignor_and_assignee_id  from db_patent_grant_bibliographic.inventor_new
@@ -1827,7 +1877,7 @@ route.get("/:layout/assets", [authJWT.verifyToken, clientDBConnection.connect], 
                                             
                                                     select application FROM db_new_application.dashboard_items 
                                                     WHERE organisation_id = :organisationID AND type = :layoutID  
-                                                    AND representative_id IN (:companies)
+                                                    AND representative_id IN (:companies) ${req.orgType == 2 ? ' AND mode IN (:mode) ' : ''} 
                                                 )) AS tempInventor
                                                 where assignor_and_assignee_id IN (:inventor)))  `;
                                     }
@@ -1851,7 +1901,7 @@ route.get("/:layout/assets", [authJWT.verifyToken, clientDBConnection.connect], 
                                         
                                                 select application FROM db_new_application.dashboard_items 
                                                 WHERE organisation_id = :organisationID AND type = :layoutID  
-                                                AND representative_id IN (:companies)
+                                                AND representative_id IN (:companies) ${req.orgType == 2 ? ' AND mode IN (:mode) ' : ''} 
                                             )
                                             UNION 
                                             Select appno_doc_num, assignor_and_assignee_id  from db_patent_grant_bibliographic.inventor_new
@@ -1859,7 +1909,7 @@ route.get("/:layout/assets", [authJWT.verifyToken, clientDBConnection.connect], 
                                         
                                                 select application FROM db_new_application.dashboard_items 
                                                 WHERE organisation_id = :organisationID AND type = :layoutID  
-                                                AND representative_id IN (:companies)
+                                                AND representative_id IN (:companies) ${req.orgType == 2 ? ' AND mode IN (:mode) ' : ''} 
                                             )) AS tempInventor
                                             where assignor_and_assignee_id IN (:inventor))) `;
                                 }
@@ -2069,7 +2119,12 @@ route.get("/:layout/transactions", [authJWT.verifyToken, clientDBConnection.conn
                     }
         
         replacements.layoutID = helpers.findLayout(req.params.layout)    
-
+        if(req.orgType == 2) {
+            /**
+             * Bank Mode
+             */
+            replacements.mode = 1
+        }
         if(companies && companies != '') {
             companies = JSON.parse( companies )            
         }
@@ -2078,7 +2133,7 @@ route.get("/:layout/transactions", [authJWT.verifyToken, clientDBConnection.conn
             if(companies.length > 0) {
                 replacements.companies = companies
             }
-            let query = "SELECT trans.rf_id, assignment.reel_no, assignment.frame_no, '' AS channel, trans.`date`, `assets`, sum(`assets`) OVER (ORDER BY trans.`date`) AS grand_total  FROM (SELECT documentid.rf_id, (SELECT date_format(exec_dt,'%m-%d-%Y') FROM db_uspto.assignor AS assignor WHERE assignor.rf_id = documentid.rf_id LIMIT 1) AS date, COUNT(distinct documentid.appno_doc_num) AS assets FROM db_uspto.documentid As documentid WHERE documentid.rf_id IN (SELECT rf_id FROM dashboard_items WHERE organisation_id = :organisationID AND representative_id IN (:companies) AND type = :layoutID GROUP BY rf_id) GROUP BY documentid.rf_id) AS trans INNER JOIN db_uspto.assignment AS assignment ON assignment.rf_id = trans.rf_id "
+            let query = `SELECT trans.rf_id, assignment.reel_no, assignment.frame_no, '' AS channel, trans.date, assets, sum(assets) OVER (ORDER BY trans.date) AS grand_total  FROM (SELECT documentid.rf_id, (SELECT date_format(exec_dt,'%m-%d-%Y') FROM db_uspto.assignor AS assignor WHERE assignor.rf_id = documentid.rf_id LIMIT 1) AS date, COUNT(distinct documentid.appno_doc_num) AS assets FROM db_uspto.documentid As documentid WHERE documentid.rf_id IN (SELECT rf_id FROM dashboard_items WHERE organisation_id = :organisationID AND representative_id IN (:companies) AND type = :layoutID  ${req.orgType == 2 ? ' AND mode IN (:mode) ' : ''}  GROUP BY rf_id) GROUP BY documentid.rf_id) AS trans INNER JOIN db_uspto.assignment AS assignment ON assignment.rf_id = trans.rf_id `
             
             if(lawfirm > 0) { 
                 const findLawFirm = `SELECT cname, lf.name, rlf.representative_id, rlf.representative_name FROM db_uspto.correspondent AS c LEFT JOIN db_uspto.law_firm  as lf ON c.cname = lf.name
@@ -2306,6 +2361,14 @@ route.get("/incorrectnames", [authJWT.verifyToken, clientDBConnection.connect], 
                             customers: [],
                             assignments: [],
                         };
+        if(req.orgType == 2) {
+            /**
+                * Bank Mode
+                */
+            replacements.mode = 1
+        }
+                        
+                        
         let getNamesData = [], representativeName = '';
 
         if(typeof id != undefined && id > 0) {
@@ -2355,7 +2418,7 @@ route.get("/incorrectnames", [authJWT.verifyToken, clientDBConnection.connect], 
                     representativeName = findName.original_name
                 }
 
-                const query = `SELECT name, assignor_and_assignee_id AS id, COUNT(application) AS count_assets, 0 AS distance FROM ( SELECT IF(assignee.original_name != '', assignee.original_name, assignee.ee_name) AS name, aaa.assignor_and_assignee_id, doc.appno_doc_num as application FROM db_uspto.assignee AS assignee INNER JOIN db_uspto.assignor_and_assignee AS aaa ON aaa.assignor_and_assignee_id = assignee.assignor_and_assignee_id INNER JOIN db_uspto.documentid AS doc ON doc.rf_id = assignee.rf_id INNER JOIN db_uspto.list1 ON list1.assignor_and_assignee_id = aaa.assignor_and_assignee_id AND ( list1.organisation_id = :organisationID OR list1.organisation_id IS NULL )  ${replacements.companies.length > 0 ? ' AND list1.company_id IN (:companies)' : ''} WHERE assignee.rf_id IN (SELECT rf_id FROM db_new_application.dashboard_items WHERE type = 17 AND organisation_id = :organisationID  ${replacements.companies.length > 0 ? ' AND representative_id IN (:companies)' : ''} )  ${id != undefined && id > 0 ? ' AND aaa.assignor_and_assignee_id = :id' : ''} ) as temp GROUP BY name ORDER BY LENGTH(name) ASC`;
+                const query = `SELECT name, assignor_and_assignee_id AS id, COUNT(application) AS count_assets, 0 AS distance FROM ( SELECT IF(assignee.original_name != '', assignee.original_name, assignee.ee_name) AS name, aaa.assignor_and_assignee_id, doc.appno_doc_num as application FROM db_uspto.assignee AS assignee INNER JOIN db_uspto.assignor_and_assignee AS aaa ON aaa.assignor_and_assignee_id = assignee.assignor_and_assignee_id INNER JOIN db_uspto.documentid AS doc ON doc.rf_id = assignee.rf_id INNER JOIN db_uspto.list1 ON list1.assignor_and_assignee_id = aaa.assignor_and_assignee_id AND ( list1.organisation_id = :organisationID OR list1.organisation_id IS NULL )  ${replacements.companies.length > 0 ? ' AND list1.company_id IN (:companies)' : ''} WHERE assignee.rf_id IN (SELECT rf_id FROM db_new_application.dashboard_items WHERE type = 17 AND organisation_id = :organisationID  ${req.orgType == 2 ? ' AND mode IN (:mode) ' : ''}   ${replacements.companies.length > 0 ? ' AND representative_id IN (:companies)' : ''} )  ${id != undefined && id > 0 ? ' AND aaa.assignor_and_assignee_id = :id' : ''} ) as temp GROUP BY name ORDER BY LENGTH(name) ASC`;
         
                 const list = await connection.applicationNew.query(query,{
                         type: connection.Sequelize.QueryTypes.SELECT,
@@ -2496,8 +2559,15 @@ route.get("/lawfirm", [authJWT.verifyToken, clientDBConnection.connect], async(r
             replacements.companies = companies.join(',')
         }
 
+        if(req.orgType == 2) {
+            /**
+                * Bank Mode
+                */
+            replacements.mode = 1
+        }
+
         let tempQuery = `SELECT rf_id AS id, lawfirm, count(rf_id) AS distance, GROUP_CONCAT(rf_id) AS grp FROM db_new_application.dashboard_items
-            WHERE  organisation_id = :organisationID AND type = 40`
+            WHERE  organisation_id = :organisationID AND type = 40  ${req.orgType == 2 ? ' AND mode IN (:mode) ' : ''} `
 
         if(companies.length > 0) {
             tempQuery += ` AND representative_id IN (:companies)`;
@@ -2583,12 +2653,19 @@ route.get("/lenders", [authJWT.verifyToken, clientDBConnection.connect], async(r
             type: 41
         }
 
+        if(req.orgType == 2) {
+            /**
+                * Bank Mode
+                */
+            replacements.mode = 1
+        }
+
         if(companies && companies != '') {
             companies = JSON.parse( companies )
             replacements.companies = companies.join(',')
         }
 
-        let tempQuery = `SELECT IF(r.representative_name <> '', r.representative_name, aaa.name) AS name, assignor_id AS id, count(rf_id) AS counter FROM db_new_application.dashboard_items AS di INNER JOIN db_uspto.assignor_and_assignee AS aaa ON aaa.assignor_and_assignee_id = di.assignor_id LEFT JOIN db_uspto.representative AS r ON r.representative_id = aaa.representative_id WHERE  organisation_id = :organisationID AND type = :type`
+        let tempQuery = `SELECT IF(r.representative_name <> '', r.representative_name, aaa.name) AS name, assignor_id AS id, count(rf_id) AS counter FROM db_new_application.dashboard_items AS di INNER JOIN db_uspto.assignor_and_assignee AS aaa ON aaa.assignor_and_assignee_id = di.assignor_id LEFT JOIN db_uspto.representative AS r ON r.representative_id = aaa.representative_id WHERE  organisation_id = :organisationID AND type = :type  ${req.orgType == 2 ? ' AND mode IN (:mode) ' : ''} `
 
         if(companies.length > 0) {
             tempQuery += ` AND di.representative_id IN (:companies)`;
@@ -2629,7 +2706,14 @@ route.get("/:layout/parties", [authJWT.verifyToken, clientDBConnection.connect],
                             total_records: 0
                         }
         
-        replacements.layoutID = helpers.findLayout(req.params.layout)        
+        replacements.layoutID = helpers.findLayout(req.params.layout) 
+
+        if(req.orgType == 2) {
+            /**
+                * Bank Mode
+                */
+            replacements.mode = 1
+        }       
 
         if(companies && companies != '') {
             companies = JSON.parse( companies )
@@ -2657,7 +2741,7 @@ route.get("/:layout/parties", [authJWT.verifyToken, clientDBConnection.connect],
                INNER JOIN db_patent_application_bibliographic.assignor_and_assignee AS assignor_and_assignee ON assignor_and_assignee.assignor_and_assignee_id = apt.assignor_id
                LEFT JOIN db_uspto.representative AS representative ON representative.representative_id = assignor_and_assignee.representative_id 
                WHERE ( apt.organisation_id = :organisationID OR apt.organisation_id IS NULL ) AND apt.representative_id IN (:companies) 
-               AND apt.type = :layoutID
+               AND apt.type = :layoutID  ${req.orgType == 2 ? ' AND apt.mode IN (:mode) ' : ''} 
                GROUP BY entityName) AS temp1;`
 
             const result = await connection.applicationNew.query(query, {
@@ -2708,7 +2792,9 @@ route.get("/:layout/activites", [authJWT.verifyToken, clientDBConnection.connect
                             layoutID: layoutID
                         }
         
-        replacements.layoutID = helpers.findLayout(req.params.layout)        
+        replacements.layoutID = helpers.findLayout(req.params.layout)  
+        
+        
 
         if(companies && companies != '') {
             companies = JSON.parse( companies )

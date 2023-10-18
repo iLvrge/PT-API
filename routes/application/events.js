@@ -1694,8 +1694,14 @@ route.post("/events/abandoned/maintainence/assets", [authJWT.verifyToken], async
         if(companies.length > 0) {
             where.company_id = companies
         } 
-       
-        const assets = `SELECT application, patent FROM db_new_application.dashboard_items AS assets WHERE assets.organisation_id = :organisationID AND representative_id IN (:company_id) AND type = :layoutID GROUP BY application`;
+        if(req.orgType == 2) {
+            /**
+             * Bank Mode
+             */
+            where.mode = 1
+        }
+    
+        const assets = `SELECT application, patent FROM db_new_application.dashboard_items AS assets WHERE assets.organisation_id = :organisationID AND representative_id IN (:company_id) AND type = :layoutID ${req.orgType == 2 ? ' AND mode IN (:mode) ' : ''}  GROUP BY application`;
 
         const appList =  await connection.applicationNew.query(assets,{
             type: connection.Sequelize.QueryTypes.SELECT,
@@ -1812,8 +1818,15 @@ route.post("/events/abandoned/yearly/assets", [authJWT.verifyToken], async(req, 
         if(companies.length > 0) {
             where.company_id = companies
         } 
+
+        if(req.orgType == 2) {
+            /**
+             * Bank Mode
+             */
+            where.mode = 1
+        }
        
-        const assets = `SELECT application FROM db_new_application.dashboard_items AS assets WHERE assets.organisation_id = :organisationID AND representative_id IN (:company_id) AND type = :layoutID GROUP BY application`;
+        const assets = `SELECT application FROM db_new_application.dashboard_items AS assets WHERE assets.organisation_id = :organisationID AND representative_id IN (:company_id) AND type = :layoutID ${req.orgType == 2 ? ' AND mode IN (:mode) ' : ''}  GROUP BY application`;
 
         const appList =  await connection.applicationNew.query(assets,{
             type: connection.Sequelize.QueryTypes.SELECT,
@@ -1880,6 +1893,13 @@ route.post("/events/assets", [authJWT.verifyToken], async(req, res, next) => {
             if(type == 'due_dilligence' && (Array.isArray(companies) && companies.length == 0) && list.length == 0) {
                 findList = false
             }  
+
+            if(req.orgType == 2) {
+                /**
+                 * Bank Mode
+                 */
+                where.mode = 1
+            } 
             /* console.log('Abh', parseInt(total), list.length); */
             if(((parseInt(total) != list.length || (list.length == 0 && parseInt(total) == 0))) && findList === true) {
                 /**
@@ -1898,7 +1918,7 @@ route.post("/events/assets", [authJWT.verifyToken], async(req, res, next) => {
                     
 
                     if(where.layoutID > 15) {
-                        query = `SELECT application AS appno_doc_num FROM db_new_application.dashboard_items AS assets WHERE assets.organisation_id = :organisationID AND type = :layoutID `
+                        query = `SELECT application AS appno_doc_num FROM db_new_application.dashboard_items AS assets WHERE assets.organisation_id = :organisationID AND type = :layoutID ${req.orgType == 2 ? ' AND mode IN (:mode) ' : ''} `
                         
                         if(Array.isArray(companies) && companies.length > 0 ) {
                             query += ` AND representative_id IN (:company_id) `
@@ -1997,7 +2017,7 @@ route.post("/events/assets", [authJWT.verifyToken], async(req, res, next) => {
                 let query = '' 
                 console.log("asSasaSass")
                 if(type == 'missed_monetization') {
-                    query = "SELECT ag.appno_doc_num AS application, ag.grant_doc_num AS patent, 0 AS `status`,  ag.appno_date AS appno_date FROM db_patent_application_bibliographic.application_grant AS ag WHERE ag.appno_doc_num IN (:list) AND date_format(ag.appno_date, '%Y') > :year AND ag.appno_doc_num NOT IN ( SELECT appno_doc_num FROM db_new_application.assets_with_bank_expired_status WHERE appno_doc_num IN (:list)) AND ag.appno_doc_num NOT IN (SELECT application FROM db_new_application.dashboard_items WHERE type = :typeDevstiture AND organisation_id = :organisationID "
+                    query = `SELECT ag.appno_doc_num AS application, ag.grant_doc_num AS patent, 0 AS status,  ag.appno_date AS appno_date FROM db_patent_application_bibliographic.application_grant AS ag WHERE ag.appno_doc_num IN (:list) AND date_format(ag.appno_date, '%Y') > :year AND ag.appno_doc_num NOT IN ( SELECT appno_doc_num FROM db_new_application.assets_with_bank_expired_status WHERE appno_doc_num IN (:list)) AND ag.appno_doc_num NOT IN (SELECT application FROM db_new_application.dashboard_items WHERE type = :typeDevstiture ${req.orgType == 2 ? ' AND mode IN (:mode) ' : ''}  AND organisation_id = :organisationID `
                     if(Array.isArray(companies) && companies.length > 0 ) {
                         query += ` AND representative_id IN (:company_id) `
                     }
@@ -2009,12 +2029,12 @@ route.post("/events/assets", [authJWT.verifyToken], async(req, res, next) => {
                         if(type == 'assigned') {
                             query = "SELECT * FROM (SELECT documentid.appno_doc_num AS application, documentid.grant_doc_num AS patent, documentid.status AS `status`,  documentid.appno_date AS appno_date FROM db_uspto.documentid AS documentid WHERE documentid.appno_doc_num IN (:list) AND date_format(documentid.appno_date, '%Y') > :year AND documentid.grant_doc_num <> '' GROUP BY documentid.appno_doc_num UNION SELECT ag.appno_doc_num AS application, ag.grant_doc_num AS patent, 0 AS `status`,  ag.appno_date AS appno_date FROM db_patent_application_bibliographic.application_grant AS ag WHERE ag.appno_doc_num IN (:list) AND date_format(ag.appno_date, '%Y') > :year GROUP BY ag.appno_doc_num) AS temp GROUP BY application"
                         } else {
-                            query = "SELECT * FROM (SELECT documentid.appno_doc_num AS application, documentid.grant_doc_num AS patent, documentid.status AS `status`,  documentid.appno_date AS appno_date FROM db_uspto.documentid AS documentid WHERE documentid.appno_doc_num IN (:list) AND date_format(documentid.appno_date, '%Y') > :year AND documentid.grant_doc_num <> '' AND appno_doc_num NOT IN ( SELECT appno_doc_num FROM db_new_application.assets_with_bank_expired_status WHERE appno_doc_num IN (:list)  GROUP BY appno_doc_num) AND appno_doc_num NOT IN (SELECT application FROM db_new_application.dashboard_items WHERE type = :typeDevstiture AND organisation_id = :organisationID "
+                            query = `SELECT * FROM (SELECT documentid.appno_doc_num AS application, documentid.grant_doc_num AS patent, documentid.status AS status,  documentid.appno_date AS appno_date FROM db_uspto.documentid AS documentid WHERE documentid.appno_doc_num IN (:list) AND date_format(documentid.appno_date, '%Y') > :year AND documentid.grant_doc_num <> '' AND appno_doc_num NOT IN ( SELECT appno_doc_num FROM db_new_application.assets_with_bank_expired_status WHERE appno_doc_num IN (:list)  GROUP BY appno_doc_num) AND appno_doc_num NOT IN (SELECT application FROM db_new_application.dashboard_items WHERE type = :typeDevstiture  ${req.orgType == 2 ? ' AND mode IN (:mode) ' : ''}  AND organisation_id = :organisationID `
                             if(Array.isArray(companies) && companies.length > 0 ) {
                                 query += ` AND representative_id IN (:company_id) `
                             }
                             
-                            query += " GROUP BY application)  GROUP BY documentid.appno_doc_num UNION SELECT ag.appno_doc_num AS application, ag.grant_doc_num AS patent, 0 AS `status`,  ag.appno_date AS appno_date FROM db_patent_application_bibliographic.application_grant AS ag WHERE ag.appno_doc_num IN (:list) AND date_format(ag.appno_date, '%Y') > :year AND ag.appno_doc_num NOT IN ( SELECT appno_doc_num FROM db_new_application.assets_with_bank_expired_status WHERE appno_doc_num IN (:list)) AND ag.appno_doc_num NOT IN (SELECT application FROM db_new_application.dashboard_items WHERE type = :typeDevstiture AND organisation_id = :organisationID " 
+                            query += ` GROUP BY application)  GROUP BY documentid.appno_doc_num UNION SELECT ag.appno_doc_num AS application, ag.grant_doc_num AS patent, 0 AS status,  ag.appno_date AS appno_date FROM db_patent_application_bibliographic.application_grant AS ag WHERE ag.appno_doc_num IN (:list) AND date_format(ag.appno_date, '%Y') > :year AND ag.appno_doc_num NOT IN ( SELECT appno_doc_num FROM db_new_application.assets_with_bank_expired_status WHERE appno_doc_num IN (:list)) AND ag.appno_doc_num NOT IN (SELECT application FROM db_new_application.dashboard_items WHERE type = :typeDevstiture  ${req.orgType == 2 ? ' AND mode IN (:mode) ' : ''}  AND organisation_id = :organisationID ` 
                             
                             if(Array.isArray(companies) && companies.length > 0 ) {
                                 query += ` AND representative_id IN (:company_id) `
@@ -2394,9 +2414,15 @@ route.get("/events/all/assets/:category_type", [authJWT.verifyToken], async (req
 
         if(companies.length > 0) {
             const replacements = { organisationID: 0 /* req.orgId */, companies }
+            if(req.orgType == 2) {
+                /**
+                 * Bank Mode
+                 */
+                replacements.mode = 1
+            }
             if( category_type == 'to_record' ) {
                 replacements.type =  22
-                let queryToRecord = `SELECT application, patent, '' AS eventdate, '13' AS event_code, '' AS event_icon, IF(patent <> '' , FORMAT(patent, 0), CONCAT(SUBSTRING(application, 1, 2), '/', FORMAT(SUBSTRING(application, 3), 0))) AS template_string FROM dashboard_items WHERE organisation_id = :organisationID AND representative_id IN (:companies) AND type = :type ` 
+                let queryToRecord = `SELECT application, patent, '' AS eventdate, '13' AS event_code, '' AS event_icon, IF(patent <> '' , FORMAT(patent, 0), CONCAT(SUBSTRING(application, 1, 2), '/', FORMAT(SUBSTRING(application, 3), 0))) AS template_string FROM dashboard_items WHERE organisation_id = :organisationID AND representative_id IN (:companies) ${req.orgType == 2 ? ' AND mode IN (:mode) ' : ''}  AND type = :type ` 
 
                 if(Array.isArray(customers) && customers.length > 0) {
                     replacements.customers = customers;
@@ -2428,7 +2454,7 @@ route.get("/events/all/assets/:category_type", [authJWT.verifyToken], async (req
                             
                                     select application FROM db_new_application.dashboard_items 
                                     WHERE organisation_id = :organisationID AND type = :type  
-                                    AND representative_id IN (:companies)
+                                    AND representative_id IN (:companies) ${req.orgType == 2 ? ' AND mode IN (:mode) ' : ''} 
                                 )
                                 UNION 
                                 Select appno_doc_num, assignor_and_assignee_id  from db_patent_grant_bibliographic.inventor_new
@@ -2436,7 +2462,7 @@ route.get("/events/all/assets/:category_type", [authJWT.verifyToken], async (req
                             
                                     select application FROM db_new_application.dashboard_items 
                                     WHERE organisation_id = :organisationID AND type = :type  
-                                    AND representative_id IN (:companies)
+                                    AND representative_id IN (:companies) ${req.orgType == 2 ? ' AND mode IN (:mode) ' : ''} 
                                 )) AS tempInventor
                                 where assignor_and_assignee_id IN (:inventor))) `;
                     }
@@ -2500,7 +2526,7 @@ route.get("/events/all/assets/:category_type", [authJWT.verifyToken], async (req
                 }
             } else if (category_type == 'surcharge') {
                 replacements.type =  23
-                let queryLateMaintainence = `SELECT application FROM dashboard_items WHERE organisation_id = :organisationID AND representative_id IN (:companies) AND type = :type  `;
+                let queryLateMaintainence = `SELECT application FROM dashboard_items WHERE organisation_id = :organisationID AND representative_id IN (:companies) AND type = :type ${req.orgType == 2 ? ' AND mode IN (:mode) ' : ''}  `;
 
                 if(Array.isArray(customers) && customers.length > 0) {
                     replacements.customers = customers;
@@ -2532,7 +2558,7 @@ route.get("/events/all/assets/:category_type", [authJWT.verifyToken], async (req
                             
                                     select application FROM db_new_application.dashboard_items 
                                     WHERE organisation_id = :organisationID AND type = :type  
-                                    AND representative_id IN (:companies)
+                                    AND representative_id IN (:companies) ${req.orgType == 2 ? ' AND mode IN (:mode) ' : ''} 
                                 )
                                 UNION 
                                 Select appno_doc_num, assignor_and_assignee_id  from db_patent_grant_bibliographic.inventor_new
@@ -2540,7 +2566,7 @@ route.get("/events/all/assets/:category_type", [authJWT.verifyToken], async (req
                             
                                     select application FROM db_new_application.dashboard_items 
                                     WHERE organisation_id = :organisationID AND type = :type  
-                                    AND representative_id IN (:companies)
+                                    AND representative_id IN (:companies) ${req.orgType == 2 ? ' AND mode IN (:mode) ' : ''} 
                                 )) AS tempInventor
                                 where assignor_and_assignee_id IN (:inventor))) `;
                     } 
@@ -2606,7 +2632,7 @@ route.get("/events/all/assets/:category_type", [authJWT.verifyToken], async (req
                 }
             } else if (category_type == 'abandoned') {
                 replacements.type =  36
-                let queryAbandonedStatus =  `SELECT application FROM dashboard_items WHERE organisation_id = :organisationID AND representative_id IN (:companies) AND type = :type  `;
+                let queryAbandonedStatus =  `SELECT application FROM dashboard_items WHERE organisation_id = :organisationID AND representative_id IN (:companies) AND type = :type ${req.orgType == 2 ? ' AND mode IN (:mode) ' : ''}  `;
 
                 if(Array.isArray(customers) && customers.length > 0) {
                     replacements.customers = customers;
@@ -2638,7 +2664,7 @@ route.get("/events/all/assets/:category_type", [authJWT.verifyToken], async (req
                             
                                     select application FROM db_new_application.dashboard_items 
                                     WHERE organisation_id = :organisationID AND type = :type  
-                                    AND representative_id IN (:companies)
+                                    AND representative_id IN (:companies) ${req.orgType == 2 ? ' AND mode IN (:mode) ' : ''} 
                                 )
                                 UNION 
                                 Select appno_doc_num, assignor_and_assignee_id  from db_patent_grant_bibliographic.inventor_new
@@ -2646,7 +2672,7 @@ route.get("/events/all/assets/:category_type", [authJWT.verifyToken], async (req
                             
                                     select application FROM db_new_application.dashboard_items 
                                     WHERE organisation_id = :organisationID AND type = :type  
-                                    AND representative_id IN (:companies)
+                                    AND representative_id IN (:companies) ${req.orgType == 2 ? ' AND mode IN (:mode) ' : ''} 
                                 )) AS tempInventor
                                 where assignor_and_assignee_id IN (:inventor))) `;
                     }

@@ -690,13 +690,20 @@ route.get("/maintainence_assets", [authJWT.verifyToken], async(req, res, next) =
         const { representative_id, offset } = req.query
         let list = []
         if(JSON.parse( representative_id ).length > 0 ) {
-            const query = "SELECT asset, asset_type, channel, appno_doc_num, grant_doc_num, grant_date, payment_due, payment_grace, type, fee_code, fee_amount, fee_code_surcharge, fee_surcharge, remaining_year, source, fwd_citation, technology, child_count FROM maintainence_assets WHERE company_id IN (:representativeIDs) AND organisation_id = :organisationID AND appno_doc_num IN (SELECT application COLLATE utf8mb4_0900_ai_ci FROM  dashboard_items WHERE organisation_id = :organisationID AND representative_id IN (:representativeIDs) AND type = :type GROUP BY application )  AND appno_doc_num NOT IN (SELECT appno_doc_num FROM db_application.assets_transfer WHERE appno_doc_num <> '' AND status = 0 AND layout_id = :layoutID AND organisation_id = :organisationID) AND grant_doc_num NOT IN (SELECT grant_doc_num FROM db_application.assets_transfer WHERE appno_doc_num = '' AND grant_doc_num <> '' AND status = 0 AND layout_id = :layoutID AND organisation_id = :organisationID) GROUP BY grant_doc_num, appno_doc_num, company_id";
+            const query = `SELECT asset, asset_type, channel, appno_doc_num, grant_doc_num, grant_date, payment_due, payment_grace, type, fee_code, fee_amount, fee_code_surcharge, fee_surcharge, remaining_year, source, fwd_citation, technology, child_count FROM maintainence_assets WHERE company_id IN (:representativeIDs) AND organisation_id = :organisationID AND appno_doc_num IN (SELECT application COLLATE utf8mb4_0900_ai_ci FROM  dashboard_items WHERE organisation_id = :organisationID AND representative_id IN (:representativeIDs) ${req.orgType == 2 ? ' AND mode IN (:mode) ' : ''}  AND type = :type GROUP BY application )  AND appno_doc_num NOT IN (SELECT appno_doc_num FROM db_application.assets_transfer WHERE appno_doc_num <> '' AND status = 0 AND layout_id = :layoutID AND organisation_id = :organisationID) AND grant_doc_num NOT IN (SELECT grant_doc_num FROM db_application.assets_transfer WHERE appno_doc_num = '' AND grant_doc_num <> '' AND status = 0 AND layout_id = :layoutID AND organisation_id = :organisationID) GROUP BY grant_doc_num, appno_doc_num, company_id`;
+            const replacements = {representativeIDs: JSON.parse(representative_id), organisationID: req.orgId, layoutID: 3, type: 35}
+            if(req.orgType == 2) {
+                /**
+                 * Bank Mode
+                 */
+                replacements.mode = 1
+            }
         
             list = await connection.applicationNew.query(query,{
                     type: connection.Sequelize.QueryTypes.SELECT,
                     raw: true,
                     logging: console.log,
-                    replacements: { representativeIDs: JSON.parse(representative_id), organisationID: req.orgId, layoutID: 3, type: 35 },
+                    replacements
                 }
             ); 
         }

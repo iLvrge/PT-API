@@ -145,6 +145,12 @@ route.post("/assets/cpc", [authJWT.verifyToken, clientDBConnection.connect], asy
     try{
         let { list, total, type, selectedCompanies, tabs, customers, assignments, range, scope, year, other_mode, data_type, sale, license, primary, check, lawfirm } = req.body, getList = [], group = [], sales = []
         const replacements = { organisation_id: 0 /* req.orgId */, year: 2000 }
+        if(req.orgType == 2) {
+            /**
+             * Bank Mode
+             */
+            replacements.mode = 1
+        }
         let companies = []
         if(typeof selectedCompanies != 'undefined' && selectedCompanies != '') {            
             companies = JSON.parse(selectedCompanies)
@@ -170,7 +176,7 @@ route.post("/assets/cpc", [authJWT.verifyToken, clientDBConnection.connect], asy
                 } else {
                     
                     replacements.companies = companies
-                    const ownedAssets = `SELECT application FROM db_new_application.dashboard_items WHERE organisation_id = :organisation_id AND representative_id = :companies AND type = :type GROUP BY application `;
+                    const ownedAssets = `SELECT application FROM db_new_application.dashboard_items WHERE organisation_id = :organisation_id AND representative_id = :companies AND type = :type  ${req.orgType == 2 ? ' AND mode IN (:mode) ' : ''} GROUP BY application `;
     
                     const getAssetsData = await connection.application.query(ownedAssets,{
                             type: connection.Sequelize.QueryTypes.SELECT,
@@ -223,14 +229,14 @@ route.post("/assets/cpc", [authJWT.verifyToken, clientDBConnection.connect], asy
                 if(replacements.type == 38) {
                     replacements.type = 30
                 }
-                let queryAssets = `SELECT application FROM db_new_application.dashboard_items WHERE organisation_id = :organisation_id AND representative_id = :companies   `
+                let queryAssets = `SELECT application FROM db_new_application.dashboard_items WHERE organisation_id = :organisation_id AND representative_id = :companies  ${req.orgType == 2 ? ' AND mode IN (:mode) ' : ''}   `
                 replacements.companies = companies
                 if(assignments && assignments != '') {
                     assignments = JSON.parse( assignments )
                     if(assignments.length > 0) { 
                         replacements.assignments = assignments
                         if(replacements.type == 30) {
-                            queryAssets += ` AND application IN (SELECT application FROM db_new_application.dashboard_items WHERE organisation_id = :organisation_id AND representative_id = :companies AND rf_id IN (:assignments) ) `;
+                            queryAssets += ` AND application IN (SELECT application FROM db_new_application.dashboard_items WHERE organisation_id = :organisation_id AND representative_id = :companies AND rf_id IN (:assignments)  ${req.orgType == 2 ? ' AND mode IN (:mode) ' : ''}  ) `;
                         } else {
                             queryAssets += `  AND type = :type `
                             queryAssets += ` AND rf_id IN (:assignments) `;
@@ -626,6 +632,12 @@ route.post("/assets/cpc/:year/:cpcCode", [authJWT.verifyToken, clientDBConnectio
         if(typeof selectedCompanies != 'undefined' && selectedCompanies != '') {            
             companies = JSON.parse(selectedCompanies)
         }
+        if(req.orgType == 2) {
+            /**
+             * Bank Mode
+             */
+            replacements.mode = 1
+        }
         replacements.type = helpers.findLayout(type); 
         if(typeof type !== 'undefined' && type != 'due_dilligence') {
             if(type == 'top_law_firms') { 
@@ -635,7 +647,7 @@ route.post("/assets/cpc/:year/:cpcCode", [authJWT.verifyToken, clientDBConnectio
                 } else {
                     
                     replacements.companies = companies
-                    const ownedAssets = `SELECT application FROM db_new_application.dashboard_items WHERE organisation_id = :organisation_id AND representative_id = :companies AND type = :type GROUP BY application `;
+                    const ownedAssets = `SELECT application FROM db_new_application.dashboard_items WHERE organisation_id = :organisation_id AND representative_id = :companies AND type = :type GROUP BY application  ${req.orgType == 2 ? ' AND mode IN (:mode) ' : ''} `;
     
                     const getAssetsData = await connection.application.query(ownedAssets,{
                             type: connection.Sequelize.QueryTypes.SELECT,
@@ -687,7 +699,7 @@ route.post("/assets/cpc/:year/:cpcCode", [authJWT.verifyToken, clientDBConnectio
                 if(replacements.type == 38) {
                     replacements.type = 30
                 }
-                const queryAssets = `SELECT application FROM db_new_application.dashboard_items WHERE organisation_id = :organisation_id AND representative_id = :companies AND type = :type GROUP BY application `;
+                const queryAssets = `SELECT application FROM db_new_application.dashboard_items WHERE organisation_id = :organisation_id AND representative_id = :companies AND type = :type ${req.orgType == 2 ? ' AND mode IN (:mode) ' : ''}  GROUP BY application `;
                 replacements.companies = companies
                 if(assignments && assignments != '') {
                     assignments = JSON.parse( assignments )
@@ -881,11 +893,23 @@ route.get("/assets/:patentNumber/files/:channelID/slack/:token", [authJWT.verify
             const replacements = { organisation_id: 0 /* req.orgId */, year: connection.DEFAULT_YEAR }
 
             replacements.layout =  helpers.findLayout(layout); 
+            if(req.orgType == 2) {
+                /**
+                 * Bank Mode
+                 */
+                replacements.mode = 1
+            }
 
             let assetsList = []
             if( patents.length === 0 && activities.length === 0 && parties.length === 0 && rfIDs.length === 0 ) {
                 let replacementAssets = { organisation_id: 0 /* req.orgId */, layout: replacements.layout }
-                let queryFindAssets = `SELECT assets.application AS appno_doc_num FROM db_new_application.dashboard_items as assets WHERE type = :layout AND organisation_id = :organisation_id `
+                if(req.orgType == 2) {
+                    /**
+                     * Bank Mode
+                     */
+                    replacementAssets.mode = 1
+                }
+                let queryFindAssets = `SELECT assets.application AS appno_doc_num FROM db_new_application.dashboard_items as assets WHERE type = :layout AND organisation_id = :organisation_id  ${req.orgType == 2 ? ' AND mode IN (:mode) ' : ''} `
                 if(companies.length > 0) {
                     replacementAssets.companies = companies
                     queryFindAssets += ' AND representative_id IN (:companies)'
@@ -925,7 +949,7 @@ route.get("/assets/:patentNumber/files/:channelID/slack/:token", [authJWT.verify
             if(assetsList.length > 0) {
                 replacements.assetsList = assetsList 
                 if([40, 41].includes(replacements.layout)) {
-                    query += ' AND list2.rf_id IN ( SELECT assets.rf_id FROM db_new_application.dashboard_items as assets WHERE type = :layout AND organisation_id = :organisation_id   AND representative_id IN (:companies) AND type = :layout  GROUP BY assets.rf_id) '
+                    query += ` AND list2.rf_id IN ( SELECT assets.rf_id FROM db_new_application.dashboard_items as assets WHERE type = :layout AND organisation_id = :organisation_id   AND representative_id IN (:companies) AND type = :layout  ${req.orgType == 2 ? ' AND mode IN (:mode) ' : ''}  GROUP BY assets.rf_id) `
                 } else {
                     query += ' AND list2.rf_id IN  ( SELECT documentid.rf_id FROM documentid WHERE documentid.appno_doc_num IN (:assetsList) GROUP BY documentid.rf_id )'
                 }
@@ -990,7 +1014,7 @@ route.get("/assets/:patentNumber/files/:channelID/slack/:token", [authJWT.verify
                     let tempQuery = `SELECT di.rf_id FROM db_uspto.law_firm  as lf  
                     INNER JOIN db_new_application.dashboard_items AS di ON di.lawfirm_id = lf.law_firm_id
                     LEFT JOIN db_uspto.representative_law_firm AS rlf ON rlf.representative_id = lf.representative_id WHERE   
-                    organisation_id = :organisation_id AND di.representative_id IN (:companies) AND type = 40 `
+                    organisation_id = :organisation_id AND di.representative_id IN (:companies)  ${req.orgType == 2 ? ' AND di.mode IN (:mode) ' : ''}  AND type = 40 `
                     if(typeof replacements.representative_id != 'undefined') {
                         tempQuery += ` AND rlf.representative_id = :representative_id`
                     } else {

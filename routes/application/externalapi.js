@@ -291,6 +291,12 @@ route.post("/citation", [authJWT.verifyToken], async (req, res) => {
             if(companies.length > 0) {
                 where.company_id = companies
             }
+            if(req.orgType == 2) {
+                /**
+                 * Bank Mode
+                 */
+                where.mode = 1
+            }
             let query = '' 
             console.log(parseInt(total), list.length)
             if(parseInt(total) != list.length) {
@@ -362,7 +368,7 @@ route.post("/citation", [authJWT.verifyToken], async (req, res) => {
                         query += ` GROUP BY grant_doc_num`;
                     }  else {
                         query = `SELECT patent AS grant_doc_num FROM db_new_application.dashboard_items AS assets `
-                        query += ` WHERE  assets.type = :layoutID AND assets.organisation_id = :organisationID AND patent <> "" `
+                        query += ` WHERE  assets.type = :layoutID AND assets.organisation_id = :organisationID ${req.orgType == 2 ? ' AND mode IN (:mode) ' : ''}  AND patent <> "" `
 
                         if(Array.isArray(companies) && companies.length > 0) {
                             query += ` AND assets.representative_id IN (:company_id)`

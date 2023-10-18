@@ -4427,6 +4427,14 @@ const findFilterAssets = async(req, fType) => {
         
         const where = { year: connection.DEFAULT_YEAR, organisationID: 0 /* req.orgId */, otherORGID: req.orgId}  
 
+        
+        if(req.orgType == 2) {
+            /**
+             * Bank Mode
+             */
+            where.mode = 1
+        }
+
         const companies = JSON.parse(selectedCompanies)
         if(companies.length > 0) {
             where.company_id = companies
@@ -4463,7 +4471,7 @@ const findFilterAssets = async(req, fType) => {
                             if(where.layoutID == 38) {
                                 where.layoutID = 30
                             }
-                            query = `SELECT application AS appno_doc_num FROM db_new_application.dashboard_items  WHERE organisation_id = :organisationID AND type = :layoutID `
+                            query = `SELECT application AS appno_doc_num FROM db_new_application.dashboard_items  WHERE organisation_id = :organisationID AND type = :layoutID  ${req.orgType == 2 ? ' AND mode IN (:mode) ' : ''} `
 
                             if(Array.isArray(companies) && companies.length > 0) {
                                 query += ` AND representative_id IN (:company_id)`
@@ -4614,7 +4622,12 @@ const findFillingAssets = async (req, type) => {
     let {companies, start, end } = req.query;
     let {selectedCompanies, lawfirm} = req.body
     const replacements = { organisation_id: 0 /* req.orgId */, year: connection.DEFAULT_YEAR }
-
+    if(req.orgType == 2) {
+        /**
+         * Bank Mode
+         */
+        replacements.mode = 1
+    }
     const allAssets = []
     if(typeof companies != 'undefined' && companies != '') {
         companies = JSON.parse(companies)
@@ -4695,7 +4708,7 @@ const findFillingAssets = async (req, type) => {
 
             if(getLawFirmData != null ) { 
                 findAllAssigneeAssets += `  WHERE ` 
-                findAllAssigneeAssets += ` appno_doc_num IN (SELECT application FROM dashboard_items WHERE organisation_id = :organisation_id  AND representative_id IN (:companies) AND type = :type `
+                findAllAssigneeAssets += ` appno_doc_num IN (SELECT application FROM dashboard_items WHERE organisation_id = :organisation_id  AND representative_id IN (:companies) AND type = :type  ${req.orgType == 2 ? ' AND mode IN (:mode) ' : ''} `
                 if(getLawFirmData.representative_id > 0) {
                     replacements.representative_id = getLawFirmData.representative_id 
                 } else {
@@ -4712,7 +4725,7 @@ const findFillingAssets = async (req, type) => {
                 }
                 tempQuery += ` GROUP BY  lf.law_firm_id` 
 
-                findAllAssigneeAssets += ` AND application IN ( SELECT appno_doc_num FROM db_patent_application_bibliographic.lawfirm AS l WHERE ( TRIM(BOTH  '.' FROM name) IN (${tempQuery}) OR name IN (${tempQuery}) ) AND appno_doc_num IN (SELECT application FROM dashboard_items WHERE organisation_id = :organisation_id  AND representative_id IN (:companies) AND type = :type)) `  
+                findAllAssigneeAssets += ` AND application IN ( SELECT appno_doc_num FROM db_patent_application_bibliographic.lawfirm AS l WHERE ( TRIM(BOTH  '.' FROM name) IN (${tempQuery}) OR name IN (${tempQuery}) ) AND appno_doc_num IN (SELECT application FROM dashboard_items WHERE organisation_id = :organisation_id  ${req.orgType == 2 ? ' AND mode IN (:mode) ' : ''}  AND representative_id IN (:companies) AND type = :type)) `  
                 findAllAssigneeAssets += `  GROUP BY application )  `
             }  
         } 
@@ -4765,7 +4778,7 @@ const findFillingAssets = async (req, type) => {
 const getFamilyList = async(replacements) => {
 
     const query = `SELECT grant_doc_num FROM db_uspto.assets_family AS af WHERE grant_doc_num IN ( 
-        SELECT patent FROM db_new_application.dashboard_items WHERE organisation_id = :organisationID AND representative_id IN (:companies) AND type = :type GROUP BY patent ) AND application_country NOT IN ('WO', 'US') GROUP BY grant_doc_num `
+        SELECT patent FROM db_new_application.dashboard_items WHERE organisation_id = :organisationID AND representative_id IN (:companies) AND type = :type  ${replacements.orgType == 2 ? ' AND mode IN (:mode) ' : ''}  GROUP BY patent ) AND application_country NOT IN ('WO', 'US') GROUP BY grant_doc_num `
         replacements.organisationID = 0
     replacements.type = 30
     const grantAssets =  await connection.applicationNew.query(query, {
@@ -4785,7 +4798,7 @@ const getFamilyList = async(replacements) => {
 }
 
 const findLawFirmName = async (props) => {
-    let queryFillingLawFirm = ` SELECT lawfirm FROM dashboard_items WHERE organisation_id = :organisation_id  AND representative_id IN (:companies) AND type = :type `
+    let queryFillingLawFirm = ` SELECT lawfirm FROM dashboard_items WHERE organisation_id = :organisation_id  AND representative_id IN (:companies) AND type = :type  ${props.orgType == 2 ? ' AND mode IN (:mode) ' : ''} `
 
     if(typeof props.assignments  != 'undefined' && props.assignments.length > 0) {  
         queryFillingLawFirm += ` AND rf_id IN (:assignments) ` 
@@ -4830,17 +4843,26 @@ const getOwnedAssets = async( req, t = 0 ) => {
             selectedCompanies = JSON.parse(selectedCompanies)
         }
         /* const query = `SELECT appno_doc_num FROM owned_assets WHERE organisation_id = :organisationID AND company_id IN (:selectedCompanies)` */
-        const query = `SELECT application FROM dashboard_items WHERE organisation_id = :organisationID AND representative_id IN (:selectedCompanies) AND type = :type AND application <> '' GROUP BY application`
+        const query = `SELECT application FROM dashboard_items WHERE organisation_id = :organisationID AND representative_id IN (:selectedCompanies)  ${req.orgType == 2 ? ' AND mode IN (:mode) ' : ''}  AND type = :type AND application <> '' GROUP BY application`
+
+        const replacements = {
+            organisationID: 0 /* req.orgId */,
+            selectedCompanies,
+            type: 30
+        }
+
+        if(req.orgType == 2) {
+            /**
+             * Bank Mode
+             */
+            replacements.mode = 1
+        }
 
         const list =  await connection.applicationNew.query(query,{
             type: connection.Sequelize.QueryTypes.SELECT,
             raw: true,
             logging: console.log,
-            replacements: {
-                organisationID: 0 /* req.orgId */,
-                selectedCompanies,
-                type: 30
-            }
+            replacements
         }) 
         if(list !== null && list.length > 0) {
             list.forEach( row => {

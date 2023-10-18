@@ -388,15 +388,22 @@ route.get('/connection/asset/:applicationNumber',  [authJWT.verifyToken, clientD
     let { applicationNumber }  = req.params
     let { companies } = req.query
 
-    const  replacements = { applicationNumber, organisationID: req.orgId}
+const  replacements = { applicationNumber, organisationID: 0 /*req.orgId*/}
 
     if(companies != undefined && companies != null && companies != '') {
         companies = JSON.parse( companies )
         replacements.companies = companies
     }
 
+    if(req.orgType == 2) {
+        /**
+         * Bank Mode
+         */
+        replacements.mode = 1
+    }
+
     if(companies.length > 0 && applicationNumber != undefined && applicationNumber != '' && applicationNumber != null) {
-        const query = `SELECT rf_id FROM db_new_application.dashboard_items WHERE type = 17 AND application = :applicationNumber AND organisation_id = :organisationID ${replacements.companies.length > 0 ? ' AND representative_id IN (:companies)' : ''} LIMIT 1`
+        const query = `SELECT rf_id FROM db_new_application.dashboard_items WHERE type = 17 AND application = :applicationNumber AND organisation_id = :organisationID ${req.orgType == 2 ? ' AND mode IN (:mode) ' : ''}  ${replacements.companies.length > 0 ? ' AND representative_id IN (:companies)' : ''} LIMIT 1`
 
         const getData = await connection.applicationNew.query(query,{
             type: connection.Sequelize.QueryTypes.SELECT,
