@@ -865,7 +865,7 @@ let getAddressListByCompanyID = async( ID, type ) => {
         SELECT ee_address_2 as address, assignee.rf_id FROM assignee 
             INNER JOIN assignment ON assignment.rf_id = assignee.rf_id
             WHERE  date_format(assignment.record_dt, '%Y') >= :year AND ee_address_2 <> '' AND assignor_and_assignee_id  IN (${representativeQuery}) 
-            GROUP BY ee_address_2) as temp GROUP BY address  ORDER BY address ASC`;
+            GROUP BY ee_address_2 ) as temp GROUP BY address  ORDER BY address ASC`;
 
         if(isNaN(type) === false && type == 1) { 
             queryFindIDS = `SELECT address, rf_id FROM (SELECT ee_address_1 as address, assignee.rf_id FROM assignee 
@@ -877,6 +877,19 @@ let getAddressListByCompanyID = async( ID, type ) => {
                 INNER JOIN assignment ON assignment.rf_id = assignee.rf_id
                 INNER JOIN representative_assignment_conveyance ON assignment.rf_id = representative_assignment_conveyance.rf_id
                 WHERE representative_assignment_conveyance.convey_ty IN (:conveyanceType) AND date_format(assignment.record_dt, '%Y') >= :year AND ee_address_2 <> '' AND assignor_and_assignee_id IN (${representativeQuery}) 
+                GROUP BY ee_address_2
+                UNION
+                SELECT ee_address_1 as address, assignor.rf_id FROM assignor
+                INNER JOIN assignee ON assignee.rf_id = assignor.rf_id
+                INNER JOIN assignment ON assignment.rf_id = assignor.rf_id
+                INNER JOIN representative_assignment_conveyance ON assignment.rf_id = representative_assignment_conveyance.rf_id
+                WHERE representative_assignment_conveyance.convey_ty IN (:conveyanceType) AND date_format(assignor.exec_dt, '%Y') >= :year AND ee_address_1 <> '' AND assignor.assignor_and_assignee_id IN (${representativeQuery}) GROUP BY ee_address_1
+                UNION 
+            SELECT ee_address_2 as address, assignor.rf_id FROM assignor 
+                INNER JOIN assignee ON assignee.rf_id = assignor.rf_id
+                INNER JOIN assignment ON assignment.rf_id = assignor.rf_id
+                INNER JOIN representative_assignment_conveyance ON assignment.rf_id = representative_assignment_conveyance.rf_id
+                WHERE representative_assignment_conveyance.convey_ty IN (:conveyanceType) AND date_format(assignor.exec_dt, '%Y') >= :year AND ee_address_2 <> '' AND assignor.assignor_and_assignee_id IN (${representativeQuery}) 
                 GROUP BY ee_address_2) as temp GROUP BY address  ORDER BY address ASC`;
         }
 
