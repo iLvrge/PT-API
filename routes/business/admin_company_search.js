@@ -771,7 +771,21 @@ route.put("/company/search/all/", [authJWT.verifyToken, authJWT.isAdmin], async 
 
                 if(applicantAssignorAndAssigneeIDs.length > 0) {
                     await ApplicantAssignorAndAssignee.update(item, {where: {assignor_and_assignee_id: applicantAssignorAndAssigneeIDs}}); 
-                } 
+                } else {
+                    const findAppRows = await ApplicantAssignorAndAssignee.findAll({
+                        attributes:['assignor_and_assignee_id'],
+                        where: {
+                            [connection.Op.or]: [
+                            {name: normalize_name},
+                            {name: replaceNames}
+                        ]}
+                    })
+
+                    if(findAppRows.length > 0) { 
+                        const IDSS = await findAppRows.map( r => applicantAssignorAndAssigneeIDs.push(r.assignor_and_assignee_id))
+                        await ApplicantAssignorAndAssignee.update(item, {where: {assignor_and_assignee_id: applicantAssignorAndAssigneeIDs}}); 
+                    }
+                }
 
                 console.log("Applicant with Normalize name", normalize_name)
 
@@ -2969,7 +2983,7 @@ route.post("/company/:id/add_bulk_companies", [authJWT.verifyToken, authJWT.isAd
                     const findParentCompanies = await Representative.findAll({
                         where: whereC
                     });
-                    console.log('ParentLength', findParentCompanies.length, companies)
+                    console.log('ParentLength', findParentCompanies.length)
                     if(findParentCompanies.length == 0) {
                         let addRecord = 0,  mainCompanies = [], parentCompaniesID = [];  
 
@@ -3045,6 +3059,30 @@ route.post("/company/:id/add_bulk_companies", [authJWT.verifyToken, authJWT.isAd
                                 parentCompaniesID.push(c.company_id);
                             } 
                         })      
+                        console.log("PArentttttttt")
+                        let addRecord = 0;   
+                        for(let i = 0; i < companies.length; i++) {
+                            if(!parentCompaniesID.includes(companies[i].representative_id)){
+                                let representativeName = companies[i].representative_name != null ? companies[i].representative_name : companies[i].original_name;
+
+                                const addParent = await Representative.create({
+                                    original_name: companies[i].original_name, representative_name: representativeName, company_id: companies[i].representative_id, instances: companies[i].instances
+                                });
+                                if(addParent != null && addParent.representative_id > 0){
+
+                                
+                                    /**
+                                     * Find Normalize companies
+                                     */
+                                    parentCompaniesID.push(companies[i].representative_id);
+                                    let nameR = companies[i].representative_id > 0 ? companies[i].representative_name : companies[i].original_name;
+    
+                                    mainCompanies.push(nameR);
+                                    addRecord++;
+                                }
+                            }
+                        }
+                        
                         /* let addRecord = 0;    
                         findParentCompanies.map(c => {
                             addedCompanies.push(c.original_name);
@@ -3088,7 +3126,7 @@ route.post("/company/:id/add_bulk_companies", [authJWT.verifyToken, authJWT.isAd
                                 }
                             }
                         } */
-                        if(parentCompaniesID.length > 0) {
+                        if(addRecord  > 0) {
                             console.log(JSON.stringify(parentCompaniesID)); 
                             console.log(`screen -md php -f /var/www/html/scripts/run_add_companies_script.php "${client_id}" "${JSON.stringify(parentCompaniesID)}"`)
                             await exec(`screen -md php -f /var/www/html/scripts/run_add_companies_script.php "${client_id}" '${JSON.stringify(parentCompaniesID)}'`, async (error, stdout, stderr) => {
@@ -3194,7 +3232,7 @@ route.post("/company/:id/add_bulk_companies", [authJWT.verifyToken, authJWT.isAd
                             const findParentCompanies = await Representative.findAll({
                                 where: whereC
                             });
-                            console.log('ParentLength', findParentCompanies.length, companies)
+                            console.log('ParentLength', findParentCompanies.length)
                             if(findParentCompanies.length == 0) {
                                 let addRecord = 0,  mainCompanies = [], parentCompaniesID = [];  
 
@@ -3270,6 +3308,30 @@ route.post("/company/:id/add_bulk_companies", [authJWT.verifyToken, authJWT.isAd
                                         parentCompaniesID.push(c.company_id);
                                     } 
                                 })     
+                                console.log("PArentttttttt")
+                                let addRecord = 0;   
+                                for(let i = 0; i < companies.length; i++) {
+                                    if(!parentCompaniesID.includes(companies[i].representative_id)){
+                                        let representativeName = companies[i].representative_name != null ? companies[i].representative_name : companies[i].original_name;
+        
+                                        const addParent = await Representative.create({
+                                            original_name: companies[i].original_name, representative_name: representativeName, company_id: companies[i].representative_id, instances: companies[i].instances
+                                        });
+                                        if(addParent != null && addParent.representative_id > 0){
+        
+                                        
+                                            /**
+                                             * Find Normalize companies
+                                             */
+                                            parentCompaniesID.push(companies[i].representative_id);
+                                            let nameR = companies[i].representative_id > 0 ? companies[i].representative_name : companies[i].original_name;
+            
+                                            mainCompanies.push(nameR);
+                                            addRecord++;
+                                        }
+                                    }
+                                }
+
                                 /*let addRecord = 0;    
                                 findParentCompanies.map(c => {
                                     addedCompanies.push(c.original_name);
