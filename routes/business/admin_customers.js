@@ -811,8 +811,8 @@ route.delete("/customers/:id/companies", [authJWT.verifyToken, authJWT.isAdmin, 
 
                                 if(findPCompanies.length > 0) {
                                     const promiseAddRFIDs = findPCompanies.map(async (company, index) => {
-                                        console.log(`php -f /var/www/html/trash/add_representative_rfids.php "${req.orgId}" "${company.company_id}"`);
-                                        await exec(`php -f /var/www/html/trash/add_representative_rfids.php "${req.orgId}" "${company.company_id}"`, async (error, std, stderr) => {
+                                        console.log(`php -f /var/www/html/scripts/add_representative_rfids.php "${req.orgId}" "${company.company_id}"`);
+                                        await exec(`php -f /var/www/html/scripts/add_representative_rfids.php "${req.orgId}" "${company.company_id}"`, async (error, std, stderr) => {
                                             /*await exec(`php -f /var/www/html/trash/tree_script_client.php "${company.original_name}"`, async (error, stdout, stderr) => {
 
                                             });*/
@@ -821,7 +821,7 @@ route.delete("/customers/:id/companies", [authJWT.verifyToken, authJWT.isAdmin, 
                                             console.log(stderr);
 
 
-                                            exec(`php -f /var/www/html/trash/create_data_for_company_db_application.php "${req.orgId}" "${company.company_id}"`, (error, stdd, stderr)=> {
+                                            exec(`php -f /var/www/html/scripts/create_data_for_company_db_application.php "${req.orgId}" "${company.company_id}"`, (error, stdd, stderr)=> {
                                                 console.log("fill database ....")
                                                 console.log(error); 
                                                 console.log(stderr);
@@ -850,7 +850,7 @@ route.delete("/customers/:id/companies", [authJWT.verifyToken, authJWT.isAdmin, 
                              * Recreate KPI and Tree
                              */
                             console.log("DELETE");
-                            exec(`php -f /var/www/html/trash/create_data_for_company_db_application.php "${req.orgId}" ""`, (error, stdd, stderr)=> {
+                            exec(`php -f /var/www/html/scripts/create_data_for_company_db_application.php "${req.orgId}" ""`, (error, stdd, stderr)=> {
                                 console.log("fill database ....")
                                 console.log(error); 
                                 console.log(stderr);
@@ -1621,8 +1621,8 @@ route.post("/customers", [authJWT.verifyToken, authJWT.isAdmin], async (req, res
                     }
                 })
                
-                console.log(`php -f /var/www/html/trash/script_create_customer_db.php "${organisationID}"`);
-                exec(`php -f /var/www/html/trash/script_create_customer_db.php "${organisationID}"`, async (error, std, stderr) => {
+                console.log(`php -f /var/www/html/scripts/script_create_customer_db.php "${organisationID}"`);
+                exec(`php -f /var/www/html/scripts/script_create_customer_db.php "${organisationID}"`, async (error, std, stderr) => {
                     console.log("script_create_customer_db");
                     console.log(error);
                     console.log(stderr);
@@ -1728,8 +1728,8 @@ route.get("/customers/:organisation_id/flag_automatic", [authJWT.verifyToken, au
             let org = await helpers.findOrganisationbyID( organisationID );
             if(org != null && org.organisation_id > 0) {
                 
-                console.log(`php -f /var/www/html/trash/update_flag.php "${organisationID}" "${companyID}"`);
-                exec(`php -f /var/www/html/trash/update_flag.php "${organisationID}" "${companyID}"`, (error, stdout, stderr) => {  
+                console.log(`php -f /var/www/html/scripts/update_flag.php "${organisationID}" "${companyID}"`);
+                exec(`php -f /var/www/html/scripts/update_flag.php "${organisationID}" "${companyID}"`, (error, stdout, stderr) => {  
                     console.log(error, stdout, stderr);
                 });
                 res.status(200).send("Fixing flag in process");
@@ -1752,8 +1752,8 @@ route.get("/customers/:organisation_id/transaction_missing_conveyance", [authJWT
             let org = await helpers.findOrganisationbyID( organisationID );
             if(org != null && org.organisation_id > 0) {
                 
-                console.log(`php -f /var/www/html/trash/update_missing_type.php "${organisationID}" "${companyID}"`);
-                exec(`php -f /var/www/html/trash/update_missing_type.php "${organisationID}" "${companyID}"`, (error, stdout, stderr) => {  
+                console.log(`php -f /var/www/html/scripts/update_missing_type.php "${organisationID}" "${companyID}"`);
+                exec(`php -f /var/www/html/scripts/update_missing_type.php "${organisationID}" "${companyID}"`, (error, stdout, stderr) => {  
                     console.log(error, stdout, stderr);
                 });
                 res.status(200).send("Fixing flag in process");
@@ -1891,8 +1891,8 @@ route.get("/customers/:organisation_id/publish", [authJWT.verifyToken, authJWT.i
                 });
                 if(findUsers > 0) {
                     if(company_id.length == 0) {
-                        console.log(`php -f /var/www/html/trash/create_data_for_company_db_application.php "${organisationID}"  ""`);
-                        await exec(`php -f /var/www/html/trash/create_data_for_company_db_application.php "${organisationID}"  ""`, async (error, stdout, stderr) => {  
+                        console.log(`php -f /var/www/html/scripts/create_data_for_company_db_application.php "${organisationID}"  ""`);
+                        await exec(`php -f /var/www/html/scripts/create_data_for_company_db_application.php "${organisationID}"  ""`, async (error, stdout, stderr) => {  
                                                 
                         });
                         res.status(200).send("UPDATED!");   
@@ -1908,8 +1908,8 @@ route.get("/customers/:organisation_id/publish", [authJWT.verifyToken, authJWT.i
 
                         if(companyNames.length > 0) {
                             companyNames.map( async company => { 
-                                console.log(`php -f /var/www/html/trash/create_data_for_company_db_application.php "${organisationID}"  "${company.company_id}" "1"`)
-                                await exec(`php -f /var/www/html/trash/create_data_for_company_db_application.php "${organisationID}"  "${company.company_id}" "1"`, async (error, stdout, stderr) => {   
+                                console.log(`php -f /var/www/html/scripts/create_data_for_company_db_application.php "${organisationID}"  "${company.company_id}" "1"`)
+                                await exec(`php -f /var/www/html/scripts/create_data_for_company_db_application.php "${organisationID}"  "${company.company_id}" "1"`, async (error, stdout, stderr) => {   
                                                          
                                 });
                             })
@@ -1942,8 +1942,8 @@ route.get("/customers/:organisation_id/address/publish", [authJWT.verifyToken, a
         if(organisationID > 0){
             let org = await helpers.findOrganisationbyID( organisationID );
             if(org != null && org.organisation_id > 0) {
-                console.log(`php -f /var/www/html/trash/update_client_companies_address.php "${organisationID}"  ""`);
-                    await exec(`php -f /var/www/html/trash/update_client_companies_address.php "${organisationID}"  ""`, async (error, stdout, stderr) => {    
+                console.log(`php -f /var/www/html/scripts/update_client_companies_address.php "${organisationID}"  ""`);
+                    await exec(`php -f /var/www/html/scripts/update_client_companies_address.php "${organisationID}"  ""`, async (error, stdout, stderr) => {    
                         console.log("tree_script");
                         console.log(error);
                         console.log(stderr);

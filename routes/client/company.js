@@ -941,7 +941,7 @@ const createSlackWorkSpace = async (name, organisation) => {
                      * exec all account
                      */
 
-                    exec(`php -f /var/www/html/trash/transferred_data_from_one_account_to_another_accounts.php "${req.orgId}" ${accounts.join(',')}`, (error, stdd, stderr)=> {
+                    exec(`php -f /var/www/html/scripts/transferred_data_from_one_account_to_another_accounts.php "${req.orgId}" ${accounts.join(',')}`, (error, stdd, stderr)=> {
                         console.log("fill transferred_data_from_one_account_to_another_accounts.php ....")
                         console.log(error); 
                         console.log(stderr);
@@ -1055,10 +1055,10 @@ const createSlackWorkSpace = async (name, organisation) => {
                             console.log(addCompanies);
                             if(addCompanies) {
                                 childCompanies.map( async company => {
-                                    console.log(`php -f /var/www/html/trash/add_representative_rfids.php "${req.orgId}" "${company}"`);
-                                    await exec(`php -f /var/www/html/trash/add_representative_rfids.php "${req.orgId}" "${company}"`, async (error, stdout, stderr) => {
+                                    console.log(`php -f /var/www/html/scripts/add_representative_rfids.php "${req.orgId}" "${company}"`);
+                                    await exec(`php -f /var/www/html/scripts/add_representative_rfids.php "${req.orgId}" "${company}"`, async (error, stdout, stderr) => {
                                         
-                                        exec(`php -f /var/www/html/trash/create_data_for_company_db_application.php "${req.orgId}" "${company}"`, (error, stdd, stderr)=> {
+                                        exec(`php -f /var/www/html/scripts/create_data_for_company_db_application.php "${req.orgId}" "${company}"`, (error, stdd, stderr)=> {
                                             console.log("fill database ....")
                                             console.log(error); 
                                             console.log(stderr);
@@ -1203,25 +1203,25 @@ const createSlackWorkSpace = async (name, organisation) => {
                                 //ActivityLogs.bulkCreate(activityLogs);
                                 if(mainCompanies.length > 0){
                                     mainCompanies.map(async (company, index) => {
-                                        console.log(`php -f /var/www/html/trash/add_representative_rfids.php "${req.orgId}" "${company}"`);
-                                        await exec(`php -f /var/www/html/trash/add_representative_rfids.php "${req.orgId}" "${company}"`, async (error, stdout, stderr) => {
+                                        console.log(`php -f /var/www/html/scripts/add_representative_rfids.php "${req.orgId}" "${company}"`);
+                                        await exec(`php -f /var/www/html/scripts/add_representative_rfids.php "${req.orgId}" "${company}"`, async (error, stdout, stderr) => {
                                             console.log("Error add_representative_rfids", error);
                                             console.log("stdout add_representative_rfids", stdout);
                                             console.log("stderr add_representative_rfids", stderr);
-                                            console.log(`php -f /var/www/html/trash/create_data_for_company_db_application.php "${req.orgId}" "${company}"`)
-                                            exec(`php -f /var/www/html/trash/create_data_for_company_db_application.php "${req.orgId}" "${company}"`, (error, stdd, stderr)=> {
+                                            console.log(`php -f /var/www/html/scripts/create_data_for_company_db_application.php "${req.orgId}" "${company}"`)
+                                            exec(`php -f /var/www/html/scripts/create_data_for_company_db_application.php "${req.orgId}" "${company}"`, (error, stdd, stderr)=> {
                                                 console.log("error create_data_for_company_db_application", error); 
                                                 console.log("stderr create_data_for_company_db_application", stderr);
                                                 console.log("stdd create_data_for_company_db_application", stdd);
                                                 console.log("create_data_for_company_db_application DONE");
                                             });
 
-                                            /* exec(`php -f /var/www/html/trash/admin_report_represetative_assets_transactions_by_account.php "${req.orgId}" "${company}"`, (error, stdd, stderr)=> {
+                                            /* exec(`php -f /var/www/html/scripts/admin_report_represetative_assets_transactions_by_account.php "${req.orgId}" "${company}"`, (error, stdd, stderr)=> {
                                                 console.log("error admin_report_represetative_assets_transactions_by_account", error); 
                                                 console.log("stderr admin_report_represetative_assets_transactions_by_account", stderr);
                                                 console.log("stdd admin_report_represetative_assets_transactions_by_account", stdd);
                                                 console.log("error admin_report_represetative_assets_transactions_by_account  DONE");
-                                                exec(`php -f /var/www/html/trash/report_represetative_assets_transactions_by_account.php "${req.orgId}" "${company}"`, (error, stdd, stderr)=> {
+                                                exec(`php -f /var/www/scripts/trash/report_represetative_assets_transactions_by_account.php "${req.orgId}" "${company}"`, (error, stdd, stderr)=> {
                                                     console.log("error report_represetative_assets_transactions_by_account", error); 
                                                     console.log("stderr report_represetative_assets_transactions_by_account", stderr);
                                                     console.log("stdd report_represetative_assets_transactions_by_account", stdd);
@@ -1229,7 +1229,7 @@ const createSlackWorkSpace = async (name, organisation) => {
                                                 });
                                             });
         
-                                            exec(`php -f /var/www/html/trash/download_all_pdf.php "${req.orgId}"`, (error, stdd, stderr)=> {
+                                            exec(`php -f /var/www/html/scripts/download_all_pdf.php "${req.orgId}"`, (error, stdd, stderr)=> {
                                                 console.log("error download_all_pdf", error); 
                                                 console.log("stderr download_all_pdf", stderr);
                                                 console.log("stdd download_all_pdf", stdd);
@@ -1292,12 +1292,12 @@ const createSlackWorkSpace = async (name, organisation) => {
                                 //ActivityLogs.bulkCreate(activityLogs);
                                 if(mainCompanies.length > 0){
                                     mainCompanies.map(async (company, index) => {
-                                        console.log(`php -f /var/www/html/trash/add_representative_rfids.php "${req.orgId}" "${company}"`);
-                                        await exec(`php -f /var/www/html/trash/add_representative_rfids.php "${req.orgId}" "${company}"`, async (error, stdout, stderr) => {
+                                        console.log(`php -f /var/www/html/scripts/add_representative_rfids.php "${req.orgId}" "${company}"`);
+                                        await exec(`php -f /var/www/html/scripts/add_representative_rfids.php "${req.orgId}" "${company}"`, async (error, stdout, stderr) => {
                                             console.log(error);
                                             console.log(stdout);
                                             console.log(stderr);
-                                            exec(`php -f /var/www/html/trash/create_data_for_company_db_application.php "${req.orgId}" "${company}"`, (error, stdd, stderr)=> {
+                                            exec(`php -f /var/www/html/scripts/create_data_for_company_db_application.php "${req.orgId}" "${company}"`, (error, stdd, stderr)=> {
                                                 console.log("fill database ....")
                                                 console.log(error); 
                                                 console.log(stderr);
@@ -1305,13 +1305,13 @@ const createSlackWorkSpace = async (name, organisation) => {
                                                 console.log("DONE");
                                             });
 
-                                            /* exec(`php -f /var/www/html/trash/admin_report_represetative_assets_transactions_by_account.php "${req.orgId}" "${company}"`, (error, stdd, stderr)=> {
+                                            /* exec(`php -f /var/www/html/scripts/admin_report_represetative_assets_transactions_by_account.php "${req.orgId}" "${company}"`, (error, stdd, stderr)=> {
                                                 console.log("fill admin_report_represetative_assets_transactions_by_account.php ....")
                                                 console.log(error); 
                                                 console.log(stderr);
                                                 console.log(stdd);
                                                 console.log("DONE");
-                                                exec(`php -f /var/www/html/trash/report_represetative_assets_transactions_by_account.php "${req.orgId}" "${company}"`, (error, stdd, stderr)=> {
+                                                exec(`php -f /var/www/html/scripts/report_represetative_assets_transactions_by_account.php "${req.orgId}" "${company}"`, (error, stdd, stderr)=> {
                                                     console.log("fill report_represetative_assets_transactions_by_account.php ....")
                                                     console.log(error); 
                                                     console.log(stderr);
@@ -1320,7 +1320,7 @@ const createSlackWorkSpace = async (name, organisation) => {
                                                 });
                                             });
         
-                                            exec(`php -f /var/www/html/trash/download_all_pdf.php "${req.orgId}"`, (error, stdd, stderr)=> {
+                                            exec(`php -f /var/www/html/scripts/download_all_pdf.php "${req.orgId}"`, (error, stdd, stderr)=> {
                                                 console.log("donwload_all_pdf....")
                                                 console.log(error); 
                                                 console.log(stderr);
@@ -1454,9 +1454,9 @@ const createSlackWorkSpace = async (name, organisation) => {
 
                                 if(findPCompanies.length > 0) {
                                     const promiseAddRFIDs = findPCompanies.map(async (company, index) => {
-                                        console.log(`php -f /var/www/html/trash/add_representative_rfids.php "${req.orgId}" "${company.company_id}"`);
-                                        await exec(`php -f /var/www/html/trash/add_representative_rfids.php "${req.orgId}" "${company.company_id}"`, async (error, std, stderr) => {
-                                            /*await exec(`php -f /var/www/html/trash/tree_script_client.php "${company.original_name}"`, async (error, stdout, stderr) => {
+                                        console.log(`php -f /var/www/html/scripts/add_representative_rfids.php "${req.orgId}" "${company.company_id}"`);
+                                        await exec(`php -f /var/www/html/scripts/add_representative_rfids.php "${req.orgId}" "${company.company_id}"`, async (error, std, stderr) => {
+                                            /*await exec(`php -f /var/www/html/scripts/tree_script_client.php "${company.original_name}"`, async (error, stdout, stderr) => {
 
                                             });*/
                                             console.log(error);
@@ -1464,7 +1464,7 @@ const createSlackWorkSpace = async (name, organisation) => {
                                             console.log(stderr);
 
 
-                                            exec(`php -f /var/www/html/trash/create_data_for_company_db_application.php "${req.orgId}" "${company.company_id}"`, (error, stdd, stderr)=> {
+                                            exec(`php -f /var/www/html/scripts/create_data_for_company_db_application.php "${req.orgId}" "${company.company_id}"`, (error, stdd, stderr)=> {
                                                 console.log("fill database ....")
                                                 console.log(error); 
                                                 console.log(stderr);
@@ -1472,13 +1472,13 @@ const createSlackWorkSpace = async (name, organisation) => {
                                                 console.log("DONE");
 
                                             });
-                                            /* exec(`php -f /var/www/html/trash/admin_report_represetative_assets_transactions_by_account.php "${req.orgId}" "${company.original_name}"`, (error, stdd, stderr)=> {
+                                            /* exec(`php -f /var/www/html/scripts/admin_report_represetative_assets_transactions_by_account.php "${req.orgId}" "${company.original_name}"`, (error, stdd, stderr)=> {
                                                 console.log("fill admin_report_represetative_assets_transactions_by_account.php ....")
                                                 console.log(error); 
                                                 console.log(stderr);
                                                 console.log(stdd);
                                                 console.log("DONE");
-                                                exec(`php -f /var/www/html/trash/report_represetative_assets_transactions_by_account.php "${req.orgId}" "${company.original_name}"`, (error, stdd, stderr)=> {
+                                                exec(`php -f /var/www/html/scripts/report_represetative_assets_transactions_by_account.php "${req.orgId}" "${company.original_name}"`, (error, stdd, stderr)=> {
                                                     console.log("fill report_represetative_assets_transactions_by_account.php ....")
                                                     console.log(error); 
                                                     console.log(stderr);
@@ -1494,7 +1494,7 @@ const createSlackWorkSpace = async (name, organisation) => {
                                     /**
                                      * Recreate KPI and Tree
                                      */
-                                    /* exec(`php -f /var/www/html/trash/fix_inventor_timeline_tree_transaction_assests_updates.php "${req.orgId}" ""`, async (error, std, stderr) => {
+                                    /* exec(`php -f /var/www/html/scripts/fix_inventor_timeline_tree_transaction_assests_updates.php "${req.orgId}" ""`, async (error, std, stderr) => {
                                         console.log(error);
                                         console.log(std);
                                         console.log(stderr);
@@ -1507,20 +1507,20 @@ const createSlackWorkSpace = async (name, organisation) => {
                              * Recreate KPI and Tree
                              */
                             console.log("DELETE");
-                            exec(`php -f /var/www/html/trash/create_data_for_company_db_application.php "${req.orgId}" ""`, (error, stdd, stderr)=> {
+                            exec(`php -f /var/www/html/scripts/create_data_for_company_db_application.php "${req.orgId}" ""`, (error, stdd, stderr)=> {
                                 console.log("fill database ....")
                                 console.log(error); 
                                 console.log(stderr);
                                 console.log(stdd);
                                 console.log("DONE");
                             });
-                            /* exec(`php -f /var/www/html/trash/admin_report_represetative_assets_transactions_by_account.php "${req.orgId}" ""`, (error, stdd, stderr)=> {
+                            /* exec(`php -f /var/www/html/trascriptssh/admin_report_represetative_assets_transactions_by_account.php "${req.orgId}" ""`, (error, stdd, stderr)=> {
                                 console.log("fill admin_report_represetative_assets_transactions_by_account.php ....")
                                 console.log(error); 
                                 console.log(stderr);
                                 console.log(stdd);
                                 console.log("DONE");
-                                exec(`php -f /var/www/html/trash/report_represetative_assets_transactions_by_account.php "${req.orgId}" ""`, (error, stdd, stderr)=> {
+                                exec(`php -f /var/www/html/scripts/report_represetative_assets_transactions_by_account.php "${req.orgId}" ""`, (error, stdd, stderr)=> {
                                     console.log("fill report_represetative_assets_transactions_by_account.php ....")
                                     console.log(error); 
                                     console.log(stderr);
@@ -1600,20 +1600,20 @@ const createSlackWorkSpace = async (name, organisation) => {
                             });
                             if(destroyAllTransactions) {
                                 const promise = mainCompanies.map(async company => {
-                                    console.log(`php -f /var/www/html/trash/add_representative_rfids.php "${req.orgId}" "${company.company_id}"`);
-                                    await exec(`php -f /var/www/html/trash/add_representative_rfids.php "${req.orgId}" "${company.company_id}"`, async (error, stdout, stderr) => {
+                                    console.log(`php -f /var/www/html/scripts/add_representative_rfids.php "${req.orgId}" "${company.company_id}"`);
+                                    await exec(`php -f /var/www/html/scripts/add_representative_rfids.php "${req.orgId}" "${company.company_id}"`, async (error, stdout, stderr) => {
                                         console.log(error);
                                         console.log(stdout);
                                         console.log(stderr);
-                                        //console.log(`php -f /var/www/html/trash/tree_script_client.php "${req.orgId}"  "${company.original_name}"`);
+                                        //console.log(`php -f /var/www/html/scripts/tree_script_client.php "${req.orgId}"  "${company.original_name}"`);
 
-                                        exec(`php -f /var/www/html/trash/create_data_for_company_db_application.php "${req.orgId}" "${company.company_id}" 1`, (error, stdd, stderr)=> {
+                                        exec(`php -f /var/www/html/scripts/create_data_for_company_db_application.php "${req.orgId}" "${company.company_id}" 1`, (error, stdd, stderr)=> {
                                              
 
                                         });
-                                        /* exec(`php -f /var/www/html/trash/admin_report_represetative_assets_transactions_by_account.php "${req.orgId}" "${company.original_name}"`, (error, stdd, stderr)=> {
+                                        /* exec(`php -f /var/www/html/scripts/admin_report_represetative_assets_transactions_by_account.php "${req.orgId}" "${company.original_name}"`, (error, stdd, stderr)=> {
                                              
-                                            exec(`php -f /var/www/html/trash/report_represetative_assets_transactions_by_account.php "${req.orgId}" "${company.original_name}"`, (error, stdd, stderr)=> {
+                                            exec(`php -f /var/www/html/scripts/report_represetative_assets_transactions_by_account.php "${req.orgId}" "${company.original_name}"`, (error, stdd, stderr)=> {
                                                 
                                             });
                                         }); */
@@ -1625,7 +1625,7 @@ const createSlackWorkSpace = async (name, organisation) => {
                                 /**
                                  * Recreate KPI and Tree
                                  */
-                               /*  exec(`php -f /var/www/html/trash/fix_inventor_timeline_tree_transaction_assests_updates.php "${req.orgId}" ""`, async (error, std, stderr) => {
+                               /*  exec(`php -f /var/www/html/scripts/fix_inventor_timeline_tree_transaction_assests_updates.php "${req.orgId}" ""`, async (error, std, stderr) => {
 
                                 }); */
                             }
@@ -1633,10 +1633,10 @@ const createSlackWorkSpace = async (name, organisation) => {
                             /**
                              * Recreate KPI and Tree
                              */
-                            /* exec(`php -f /var/www/html/trash/fix_inventor_timeline_tree_transaction_assests_updates.php "${req.orgId}" ""`, async (error, std, stderr) => {
+                            /* exec(`php -f /var/www/html/scripts/fix_inventor_timeline_tree_transaction_assests_updates.php "${req.orgId}" ""`, async (error, std, stderr) => {
 
                             }); */
-                            exec(`php -f /var/www/html/trash/create_data_for_company_db_application.php "${req.orgId}" ""`, (error, stdd, stderr)=> {
+                            exec(`php -f /var/www/html/scripts/create_data_for_company_db_application.php "${req.orgId}" ""`, (error, stdd, stderr)=> {
                                 console.log("fill database ....")
                                 console.log(error); 
                                 console.log(stderr);
@@ -1644,13 +1644,13 @@ const createSlackWorkSpace = async (name, organisation) => {
                                 console.log("DONE");
 
                             });
-                            /* exec(`php -f /var/www/html/trash/admin_report_represetative_assets_transactions_by_account.php "${req.orgId}" ""`, (error, stdd, stderr)=> {
+                            /* exec(`php -f /var/www/html/scripts/admin_report_represetative_assets_transactions_by_account.php "${req.orgId}" ""`, (error, stdd, stderr)=> {
                                 console.log("fill admin_report_represetative_assets_transactions_by_account.php ....")
                                 console.log(error); 
                                 console.log(stderr);
                                 console.log(stdd);
                                 console.log("DONE");
-                                exec(`php -f /var/www/html/trash/report_represetative_assets_transactions_by_account.php "${req.orgId}" ""`, (error, stdd, stderr)=> {
+                                exec(`php -f /var/www/html/scripts/report_represetative_assets_transactions_by_account.php "${req.orgId}" ""`, (error, stdd, stderr)=> {
                                     console.log("fill report_represetative_assets_transactions_by_account.php ....")
                                     console.log(error); 
                                     console.log(stderr);
