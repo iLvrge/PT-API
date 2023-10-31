@@ -2850,11 +2850,11 @@ route.put("/company/assignments", [authJWT.verifyToken, authJWT.isAdmin], async 
             }
             const updateCompany = await Representative.update({
                 status
-            }, {where: {representative_id}});
+            }, {where: {company_id: representative_id}});
 
             const findParentData = await Representative.findOne({
                 attributes: ['parent_id'],
-                where: {representative_id}
+                where: {company_id: representative_id}
             })
 
             if(findParentData !== null && findParentData.parent_id > 0 ) {
