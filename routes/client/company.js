@@ -718,7 +718,7 @@ route.get("/list", [authJWT.verifyToken, clientDBConnection.connect], async(req,
                             inactiveCompanies.push(row)
                         }
                     })
-                    companiesList = [...activeCompanies, inactiveCompanies]
+                    companiesList = [...activeCompanies, ...inactiveCompanies]
                 }            
             }            
             res.status(200).json({list: companiesList, total_records});
