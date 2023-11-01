@@ -1216,7 +1216,7 @@ route.post("/asset_types/assets/family", [authJWT.verifyToken, clientDBConnectio
 
                 }
                 query += ` )
-                AND application_country <> 'WO' 
+                AND application_country NOT IN ('WO', 'EP') 
                 GROUP BY application_number) AS temp GROUP BY name`;
 
 
@@ -1305,7 +1305,7 @@ route.post("/asset_types/inventors/location", [authJWT.verifyToken, clientDBConn
                     AND date_format(appno_date, '%Y') > :year
                     GROUP BY grant_doc_num
                 )
-                AND application_country <> 'WO' 
+                AND application_country NOT IN ('WO', 'EP') 
                 GROUP BY application_number) AS temp GROUP BY name`;
 
 

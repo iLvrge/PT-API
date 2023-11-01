@@ -55,6 +55,7 @@ const SlackHelper = require('../../helpers/slack')
 
 const {google} = require('googleapis');
 const ClientAddCompany = require("../../model/application/ClientAddCompany");
+const Share = require("../../model/application/Share");
 
 const oauth2Client = new google.auth.OAuth2(
     process.env.GOOGLE_CLIENT_ID,
@@ -495,6 +496,7 @@ route.get("/:companyID/users", [authJWT.verifyToken, clientDBConnection.connect]
 /**Get all companies */
 route.get("/list", [authJWT.verifyToken, clientDBConnection.connect], async(req, res, next) => {
     try{
+        
         if(typeof req.connection_db != "undefined" && req.connection_db != null ) {
             const { offset, limit, column, direction } = req.query;
 
@@ -528,7 +530,7 @@ route.get("/list", [authJWT.verifyToken, clientDBConnection.connect], async(req,
 
             const list = await Representative.findAll( where )
 
-            const companiesList = []
+            let companiesList = []
 
             if(list.length > 0) {
                 let representativeNames = [], representativeIDs = []
@@ -578,26 +580,57 @@ route.get("/list", [authJWT.verifyToken, clientDBConnection.connect], async(req,
                     where: {representative_name: representativeNames},
                     order: [['representative_name', 'ASC']]
                 })
-
+                let selectedCompany = []
+ 
+                if(req.showOtherCompanies != undefined && req.showOtherCompanies == 0 && req.shareCode != '') {
+                    /**
+                     * Show only selected companies
+                     */
+                    const findSharedData = await Share.findOne({
+                        attributes: ['transactions'],
+                        where: {code: req.shareCode}
+                    }) 
+                    if(findSharedData !== null) {
+                        const sharedData = JSON.parse(findSharedData.transactions)
+                        if(sharedData.selectedCompanies.length > 0) {
+                            selectedCompany = sharedData.selectedCompanies
+                        }
+                    }
+                } 
                 for(let i = 0; i < list.length; i++) { 
                     let representative = list[i]
                     let representaitveJSON = representative.toJSON();
                     if(representaitveJSON.company_id > 0) {
                         representaitveJSON.representative_id = representaitveJSON.company_id
                     }
+
+                    if(selectedCompany.length > 0 && !selectedCompany.includes(representaitveJSON.company_id)) {
+                        representaitveJSON.status = 0;
+                    } else if(selectedCompany.length > 0 && selectedCompany.includes(representaitveJSON.company_id)){
+                        representaitveJSON.status = 1;
+                    }
+
                     delete representaitveJSON.company_id
                     let child = [], childWithName = [], product = 0, no_of_assets = 0, no_of_transactions = 0, no_of_parties = 0, no_of_inventor = 0, no_of_activities = 0;
                     if(findChild.length > 0) {
                         child = findChild
                                 .filter( row => row.parent_id == representative.representative_id)
                                 .map(obj => {
+                                    let status = obj.status;
+                                    const companyID = obj.company_id > 0 ? obj.company_id : obj.representative_id;
+                                    if(selectedCompany.length > 0 && !selectedCompany.includes(companyID)) {
+                                        status = 0;
+                                    } else if(selectedCompany.length > 0 && selectedCompany.includes(companyID)){
+                                        status = 1;
+                                    }
+
                                     childWithName.push({
                                         original_name: obj.original_name,
                                         representative_name: obj.representative_name,
-                                        representative_id: obj.company_id > 0 ? obj.company_id : obj.representative_id,
-                                        status: obj.status,
+                                        representative_id: companyID,
+                                        status
                                     })
-                                    return obj.company_id > 0 ? obj.company_id : obj.representative_id
+                                    return companyID
                                 })
                     }
 
@@ -672,7 +705,21 @@ route.get("/list", [authJWT.verifyToken, clientDBConnection.connect], async(req,
                     }
                     companiesList.push(representaitveJSON)
                     //return representative
-                }                
+                }    
+
+                if(selectedCompany.length > 0) {
+                    const oldCompanies = [...companiesList]
+
+                    const activeCompanies = [], inactiveCompanies = []
+                    oldCompanies.forEach( row => {
+                        if(selectedCompany.includes(row.representative_id)) {
+                            activeCompanies.push(row)
+                        } else {
+                            inactiveCompanies.push(row)
+                        }
+                    })
+                    companiesList = [...activeCompanies, inactiveCompanies]
+                }            
             }            
             res.status(200).json({list: companiesList, total_records});
         } else {

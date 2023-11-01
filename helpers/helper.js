@@ -3689,7 +3689,7 @@ let shareURL = async (params) => {
 let getShareList = async (code, type) => {
     console.log('type', code, type)
     if(type == 9) {
-        let query = "SELECT share.transactions, share.share_button FROM share  WHERE code = :code  AND type = :type"
+        let query = "SELECT share.transactions, share.share_button, show_other_companies FROM share  WHERE code = :code  AND type = :type"
         const shareData = await connection.applicationNew.query(query,{
                 type: connection.Sequelize.QueryTypes.SELECT,
                 raw: true,
@@ -3710,7 +3710,7 @@ let getShareList = async (code, type) => {
                 
             }
         }
-        let query = "SELECT  `share_lists`.`asset` AS asset, `share_lists`.`type`, `share`.`organisation_id` FROM `share` AS `share` INNER JOIN `share_list` AS `share_lists` ON `share`.`share_id` = `share_lists`.`share_id` WHERE `share`.`code` = :code  AND share.type = :type"
+        let query = "SELECT  `share_lists`.`asset` AS asset, `share_lists`.`type`, `share`.`organisation_id`, share.show_other_companies FROM `share` AS `share` INNER JOIN `share_list` AS `share_lists` ON `share`.`share_id` = `share_lists`.`share_id` WHERE `share`.`code` = :code  AND share.type = :type"
         
         /* if(type !== 'undefined' && type !== undefined && parseInt(type) === 2) {
             query += " AND share.type = :type"
@@ -4804,7 +4804,7 @@ const findFillingAssets = async (req, type) => {
 const getFamilyList = async(replacements) => {
 
     const query = `SELECT grant_doc_num FROM db_uspto.assets_family AS af WHERE grant_doc_num IN ( 
-        SELECT patent FROM db_new_application.dashboard_items WHERE organisation_id = :organisationID AND representative_id IN (:companies) AND type = :type  ${replacements.orgType == 2 ? ' AND mode IN (:mode) ' : ''}  GROUP BY patent ) AND application_country NOT IN ('WO', 'US') GROUP BY grant_doc_num `
+        SELECT patent FROM db_new_application.dashboard_items WHERE organisation_id = :organisationID AND representative_id IN (:companies) AND type = :type  ${replacements.orgType == 2 ? ' AND mode IN (:mode) ' : ''}  GROUP BY patent ) AND application_country NOT IN ('WO', 'US', 'EP') GROUP BY grant_doc_num `
         replacements.organisationID = 0
     replacements.type = 30
     const grantAssets =  await connection.applicationNew.query(query, {

@@ -16,7 +16,7 @@ const Dashboards = require("../../model/application/Dashboards");
 
 const Share = require("../../model/application/Share");
 
-const Representatives = require("../../model/client/Representatives");
+const ClientRepesentative = require("../../model/client/Representatives");
 
 const clientDBConnection = require("../../helpers/clientDBConnection");
 
@@ -883,7 +883,7 @@ route.post("/", [authJWT.verifyToken], async(req, res, next) => {
                                 SELECT grant_doc_num, application_number, application_country FROM db_uspto.assets_family AS af WHERE grant_doc_num IN (
                                     SELECT grant_doc_num FROM db_uspto.documentid AS di WHERE appno_doc_num IN (:list)                                     
                                     GROUP BY grant_doc_num
-                                ) AND application_country NOT IN ('WO', 'US') GROUP BY application_number) AS temp 
+                                ) AND application_country NOT IN ('WO', 'US', 'EP') GROUP BY application_number) AS temp 
                                 INNER JOIN db_uspto.country_with_codes AS cwc ON cwc.country_code = temp.application_country 
                                 GROUP BY application_country ORDER BY number DESC, name ASC `
                     }
@@ -1389,10 +1389,16 @@ route.post("/temp", [authJWT.verifyToken], async(req, res, next) => {
     }    
 });
 
-route.post("/share", [authJWT.verifyToken], async(req, res, next) => {
+route.post("/share", [authJWT.verifyToken, clientDBConnection.connect], async(req, res, next) => {
     try {
         let { selectedCompanies, tabs, customers, share_button } = req.body 
         if(selectedCompanies.length > 0) {
+            const Representative = req.connection_db.define('ClientRepesentative', ClientRepesentative.mainStructure, ClientRepesentative.options);
+
+            const countCompanies = await Representative.count({ 
+                where:{ status: 1, type: 0, company_id: { [connection.Sequelize.Op.notIn]: JSON.parse(selectedCompanies), [connection.Sequelize.Op.gt]: 0 } }                        
+            });
+  
             let code = await helpers.getNewCode();
             if(code != undefined) {
                 const params = {
@@ -1401,7 +1407,8 @@ route.post("/share", [authJWT.verifyToken], async(req, res, next) => {
                     type: 9,
                     share_button,
                     transactions: JSON.stringify({selectedCompanies, tabs, customers}),
-                    code
+                    code,
+                    show_other_companies: countCompanies > 0 ? 1 : 0
                 }
                 let subdomain = 'kpi'
                 if(share_button == '2') {
