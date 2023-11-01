@@ -919,10 +919,17 @@ route.get("/customers/:id/reports", [authJWT.verifyToken, authJWT.isAdmin, authJ
 route.get("/customers/:id/reclassify", [authJWT.verifyToken, authJWT.isAdmin], async (req, res, next) => {
     try{
         const organisationID = req.params.id;
-        const {companies} = req.query
+        let {companies} = req.query
         if(organisationID > 0){
+            const where = {organisation_id: organisationID}
+            if(companies != '') {
+                companies = JSON.parse(companies);
+                if(companies.length > 0 ) {
+                    where.company_id =  companies
+                }
+            }
             const getClassifyData = await LogMessages.findAll({
-                where: {organisation_id: organisationID, company_id: companies},
+                where,
                 order: [['id','ASC']]
             })
 
