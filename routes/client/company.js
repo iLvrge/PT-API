@@ -55,6 +55,7 @@ const SlackHelper = require('../../helpers/slack')
 
 const {google} = require('googleapis');
 const ClientAddCompany = require("../../model/application/ClientAddCompany");
+const Share = require("../../model/application/Share");
 
 const oauth2Client = new google.auth.OAuth2(
     process.env.GOOGLE_CLIENT_ID,
@@ -370,7 +371,7 @@ route.get("/:companyID/list", [authJWT.verifyToken, clientDBConnection.connect],
                 ['original_name', 'ASC'],
                 ['representative_name', 'ASC']
             ];
-            where.attributes = ['representative_id', 'original_name', 'representative_name', 'type', 'status'];
+            where.attributes = ['representative_id', 'company_id', 'original_name', 'representative_name', 'type', 'status'];
 
             const list = await Representative.findAll( where )
 
@@ -399,6 +400,10 @@ route.get("/:companyID/list", [authJWT.verifyToken, clientDBConnection.connect],
 
                 const promiseReport = list.map( representative => {
                     let representaitveJSON = representative.toJSON();
+                    if(representaitveJSON.company_id > 0) {
+                        representaitveJSON.representative_id = representaitveJSON.company_id
+                    }
+                    delete representaitveJSON.company_id
                     let product = 0, no_of_assets = 0, no_of_transactions = 0, no_of_parties = 0, no_of_inventor = 0, no_of_activities = 0;
                     if( findReports.length > 0 ) {
                         const findIndex = findReports.findIndex( r => r.representative_name == representative.representative_name)
@@ -491,6 +496,7 @@ route.get("/:companyID/users", [authJWT.verifyToken, clientDBConnection.connect]
 /**Get all companies */
 route.get("/list", [authJWT.verifyToken, clientDBConnection.connect], async(req, res, next) => {
     try{
+        
         if(typeof req.connection_db != "undefined" && req.connection_db != null ) {
             const { offset, limit, column, direction } = req.query;
 
@@ -520,24 +526,26 @@ route.get("/list", [authJWT.verifyToken, clientDBConnection.connect], async(req,
                 }
             }
 
-            where.attributes = ['representative_id', 'original_name', 'representative_name', 'type', 'status'];
+            where.attributes = ['representative_id', 'company_id', 'original_name', 'representative_name', 'type', 'status'];
 
             const list = await Representative.findAll( where )
 
-            const companiesList = []
+            let companiesList = []
 
             if(list.length > 0) {
                 let representativeNames = [], representativeIDs = []
 
                 const promises = list.map( representative => {
-                    representativeNames.push(representative.representative_name != '' ? representative.representative_name : representative.original_name)
-                    representativeIDs.push(representative.representative_id)
+                    if(representative.company_id == 0) {
+                        representativeNames.push(representative.representative_name != '' ? representative.representative_name : representative.original_name)
+                        representativeIDs.push(representative.representative_id)
+                    }
                 })
     
                 await Promise.all(promises)
 
                 const findChild = await Representative.findAll({
-                    attributes: ['representative_id', 'parent_id', 'representative_name', 'original_name', 'status'],
+                    attributes: ['representative_id', 'company_id', 'parent_id', 'representative_name', 'original_name', 'status'],
                     where: {                            
                         parent_id: representativeIDs, 
                         child: 1
@@ -572,25 +580,57 @@ route.get("/list", [authJWT.verifyToken, clientDBConnection.connect], async(req,
                     where: {representative_name: representativeNames},
                     order: [['representative_name', 'ASC']]
                 })
-
+                let selectedCompany = []
+ 
+                if(req.showOtherCompanies != undefined && req.showOtherCompanies == 0 && req.shareCode != '') {
+                    /**
+                     * Show only selected companies
+                     */
+                    const findSharedData = await Share.findOne({
+                        attributes: ['transactions'],
+                        where: {code: req.shareCode}
+                    }) 
+                    if(findSharedData !== null) {
+                        const sharedData = JSON.parse(findSharedData.transactions)
+                        if(sharedData.selectedCompanies.length > 0) {
+                            selectedCompany = sharedData.selectedCompanies
+                        }
+                    }
+                } 
                 for(let i = 0; i < list.length; i++) { 
                     let representative = list[i]
                     let representaitveJSON = representative.toJSON();
-                    if(representaitveJSON.type == 1) {
-                        representaitveJSON.original_name = representaitveJSON.representative_name;
+                    if(representaitveJSON.company_id > 0) {
+                        representaitveJSON.representative_id = representaitveJSON.company_id
                     }
+
+                    if(selectedCompany.length > 0 && !selectedCompany.includes(representaitveJSON.company_id)) {
+                        representaitveJSON.status = 0;
+                    } else if(selectedCompany.length > 0 && selectedCompany.includes(representaitveJSON.company_id)){
+                        representaitveJSON.status = 1;
+                    }
+
+                    delete representaitveJSON.company_id
                     let child = [], childWithName = [], product = 0, no_of_assets = 0, no_of_transactions = 0, no_of_parties = 0, no_of_inventor = 0, no_of_activities = 0;
                     if(findChild.length > 0) {
                         child = findChild
                                 .filter( row => row.parent_id == representative.representative_id)
                                 .map(obj => {
+                                    let status = obj.status;
+                                    const companyID = obj.company_id > 0 ? obj.company_id : obj.representative_id;
+                                    if(selectedCompany.length > 0 && !selectedCompany.includes(companyID)) {
+                                        status = 0;
+                                    } else if(selectedCompany.length > 0 && selectedCompany.includes(companyID)){
+                                        status = 1;
+                                    }
+
                                     childWithName.push({
                                         original_name: obj.original_name,
                                         representative_name: obj.representative_name,
-                                        representative_id: obj.representative_id,
-                                        status: obj.status,
+                                        representative_id: companyID,
+                                        status
                                     })
-                                    return obj.representative_id
+                                    return companyID
                                 })
                     }
 
@@ -665,7 +705,21 @@ route.get("/list", [authJWT.verifyToken, clientDBConnection.connect], async(req,
                     }
                     companiesList.push(representaitveJSON)
                     //return representative
-                }                
+                }    
+
+                if(selectedCompany.length > 0) {
+                    const oldCompanies = [...companiesList]
+
+                    const activeCompanies = [], inactiveCompanies = []
+                    oldCompanies.forEach( row => {
+                        if(selectedCompany.includes(row.representative_id)) {
+                            activeCompanies.push(row)
+                        } else {
+                            inactiveCompanies.push(row)
+                        }
+                    })
+                    companiesList = [...activeCompanies, inactiveCompanies]
+                }            
             }            
             res.status(200).json({list: companiesList, total_records});
         } else {
@@ -683,13 +737,20 @@ route.get("/maintainence_assets", [authJWT.verifyToken], async(req, res, next) =
         const { representative_id, offset } = req.query
         let list = []
         if(JSON.parse( representative_id ).length > 0 ) {
-            const query = "SELECT asset, asset_type, channel, appno_doc_num, grant_doc_num, grant_date, payment_due, payment_grace, type, fee_code, fee_amount, fee_code_surcharge, fee_surcharge, remaining_year, source, fwd_citation, technology, child_count FROM maintainence_assets WHERE company_id IN (:representativeIDs) AND organisation_id = :organisationID AND appno_doc_num IN (SELECT application COLLATE utf8mb4_0900_ai_ci FROM  dashboard_items WHERE organisation_id = :organisationID AND representative_id IN (:representativeIDs) AND type = :type GROUP BY application )  AND appno_doc_num NOT IN (SELECT appno_doc_num FROM db_application.assets_transfer WHERE appno_doc_num <> '' AND status = 0 AND layout_id = :layoutID AND organisation_id = :organisationID) AND grant_doc_num NOT IN (SELECT grant_doc_num FROM db_application.assets_transfer WHERE appno_doc_num = '' AND grant_doc_num <> '' AND status = 0 AND layout_id = :layoutID AND organisation_id = :organisationID) GROUP BY grant_doc_num, appno_doc_num, company_id";
+            const query = `SELECT asset, asset_type, channel, appno_doc_num, grant_doc_num, grant_date, payment_due, payment_grace, type, fee_code, fee_amount, fee_code_surcharge, fee_surcharge, remaining_year, source, fwd_citation, technology, child_count FROM maintainence_assets WHERE company_id IN (:representativeIDs) AND organisation_id = :organisationID AND appno_doc_num IN (SELECT application COLLATE utf8mb4_0900_ai_ci FROM  dashboard_items WHERE organisation_id = :organisationID AND representative_id IN (:representativeIDs) ${req.orgType == 2 ? ' AND mode IN (:mode) ' : ''}  AND type = :type GROUP BY application )  AND appno_doc_num NOT IN (SELECT appno_doc_num FROM db_application.assets_transfer WHERE appno_doc_num <> '' AND status = 0 AND layout_id = :layoutID AND organisation_id = :organisationID) AND grant_doc_num NOT IN (SELECT grant_doc_num FROM db_application.assets_transfer WHERE appno_doc_num = '' AND grant_doc_num <> '' AND status = 0 AND layout_id = :layoutID AND organisation_id = :organisationID) GROUP BY grant_doc_num, appno_doc_num, company_id`;
+            const replacements = {representativeIDs: JSON.parse(representative_id), organisationID: req.orgId, layoutID: 3, type: 35}
+            if(req.orgType == 2) {
+                /**
+                 * Bank Mode
+                 */
+                replacements.mode = 1
+            }
         
             list = await connection.applicationNew.query(query,{
                     type: connection.Sequelize.QueryTypes.SELECT,
                     raw: true,
                     logging: console.log,
-                    replacements: { representativeIDs: JSON.parse(representative_id), organisationID: req.orgId, layoutID: 3, type: 35 },
+                    replacements
                 }
             ); 
         }
@@ -828,7 +889,8 @@ route.post("/group", [authJWT.verifyToken, clientDBConnection.connect], async(re
         const { group_name } = req.body
 
         const findGroup = await Representative.findOne({
-            where: { 
+            where: {
+                original_name: group_name,
                 representative_name: group_name,
                 instances: 0,
                 type: 1
@@ -837,29 +899,27 @@ route.post("/group", [authJWT.verifyToken, clientDBConnection.connect], async(re
 
         if(findGroup === null) {
             const addGroup = await Representative.create({
-                original_name: '',
+                original_name: group_name,
                 representative_name: group_name,
                 instances: 0,
                 type: 1
             });
-            if(addGroup !== null) {     
-                /**
-                * Create new workspace in slack
-                */       
-                /* const organisation  = await helpers.findOrganisationbyID(req.orgId);
+            if(addGroup !== null) {            
+                const organisation  = await helpers.findOrganisationbyID(req.orgId);
                 
                 if(organisation != null && organisation.organisation_id > 0 && organisation.team !== '') {
-                    
+                    /**
+                    * Create new workspace in slack
+                    */
                     await createSlackWorkSpace(group_name, organisation)                
-                } */
+                }
             }
             res.status(200).json(addGroup);
         } else {
             res.status(200).json(findGroup);
         }
     } catch( err ) {
-        console.log(err)
-        res.status(500).send("Internal error");
+        res.status(500).send("Internal error", err);
     }
 })
 
@@ -894,7 +954,7 @@ const createSlackWorkSpace = async (name, organisation) => {
  * Add new company 
  */
 
-route.post("/", [authJWT.verifyToken, clientDBConnection.connect], async(req, res, next) => {
+ route.post("/", [authJWT.verifyToken, clientDBConnection.connect], async(req, res, next) => {
     try {
         
         const subsidaryName = req.body.name, parentCompany = req.body.parent_company; 
@@ -928,7 +988,7 @@ route.post("/", [authJWT.verifyToken, clientDBConnection.connect], async(req, re
                      * exec all account
                      */
 
-                    exec(`php -f /var/www/html/trash/transferred_data_from_one_account_to_another_accounts.php "${req.orgId}" ${accounts.join(',')}`, (error, stdd, stderr)=> {
+                    exec(`php -f /var/www/html/scripts/transferred_data_from_one_account_to_another_accounts.php "${req.orgId}" ${accounts.join(',')}`, (error, stdd, stderr)=> {
                         console.log("fill transferred_data_from_one_account_to_another_accounts.php ....")
                         console.log(error); 
                         console.log(stderr);
@@ -1017,14 +1077,14 @@ route.post("/", [authJWT.verifyToken, clientDBConnection.connect], async(req, re
                                      * For inserting bulk entries creating array of companies
                                      */
                                     const arrayObj = {
-                                        original_name: company.name , representative_name: nameRepre, instances: instances, parent_id: findName.representative_id
+                                        original_name: company.name, company_id: company.representative_id, representative_name: nameRepre, instances: instances, parent_id: findName.representative_id
                                     }
 
                                     if(companyList.includes(company.assignor_and_assignee_id)) {
                                         arrayObj.child = 1
                                     }
                                     companies.push(arrayObj);
-                                    childCompanies.push(nameRepre)
+                                    childCompanies.push(company.representative_id)
                                     /**
                                      *  For inserting bulk entries for activity log
                                      */
@@ -1042,36 +1102,11 @@ route.post("/", [authJWT.verifyToken, clientDBConnection.connect], async(req, re
                             console.log(addCompanies);
                             if(addCompanies) {
                                 childCompanies.map( async company => {
-                                    console.log(`php -f /var/www/html/trash/add_representative_rfids.php "${req.orgId}" "${company}"`);
-                                    await exec(`php -f /var/www/html/trash/add_representative_rfids.php "${req.orgId}" "${company}"`, async (error, stdout, stderr) => {
+                                    console.log(`php -f /var/www/html/scripts/add_representative_rfids.php "${req.orgId}" "${company}"`);
+                                    await exec(`php -f /var/www/html/scripts/add_representative_rfids.php "${req.orgId}" "${company}"`, async (error, stdout, stderr) => {
                                         
-                                        exec(`php -f /var/www/html/trash/create_data_for_company_db_application.php "${req.orgId}" "${company}"`, (error, stdd, stderr)=> {
+                                        exec(`php -f /var/www/html/scripts/create_data_for_company_db_application.php "${req.orgId}" "${company}"`, (error, stdd, stderr)=> {
                                             console.log("fill database ....")
-                                            console.log(error); 
-                                            console.log(stderr);
-                                            console.log(stdd);
-                                            console.log("DONE");
-                                        });
-    
-                                        /* exec(`php -f /var/www/html/trash/admin_report_represetative_assets_transactions_by_account.php "${req.orgId}" "${company}"`, (error, stdd, stderr)=> {
-                                            console.log("fill admin_report_represetative_assets_transactions_by_account.php ....")
-                                            console.log(error); 
-                                            console.log(stderr);
-                                            console.log(stdd);
-                                            console.log("DONE");
-                                            exec(`php -f /var/www/html/trash/report_represetative_assets_transactions_by_account.php "${req.orgId}" "${company}"`, (error, stdd, stderr)=> {
-                                                console.log("fill report_represetative_assets_transactions_by_account.php ....")
-                                                console.log(error); 
-                                                console.log(stderr);
-                                                console.log(stdd);
-                                                console.log("DONE");
-                                            });
-                                        }); */
-    
-                                       
-    
-                                        exec(`php -f /var/www/html/trash/download_all_pdf.php "${req.orgId}"`, (error, stdd, stderr)=> {
-                                            console.log("donwload_all_pdf....")
                                             console.log(error); 
                                             console.log(stderr);
                                             console.log(stdd);
@@ -1148,7 +1183,7 @@ route.post("/", [authJWT.verifyToken, clientDBConnection.connect], async(req, re
                                 let representativeName = companies[i].representative_name != null ? companies[i].representative_name : companies[i].original_name;
 
                                 const addParent = await Representative.create({
-                                    original_name: companies[i].original_name, representative_name: representativeName, instances: companies[i].instances
+                                    original_name: companies[i].original_name, company_id: companies[i].representative_id , representative_name: representativeName, instances: companies[i].instances
                                 });
 
                                 
@@ -1164,7 +1199,7 @@ route.post("/", [authJWT.verifyToken, clientDBConnection.connect], async(req, re
                                      * Create new workspace in slack
                                      */
                                     if(organisation != null && organisation.organisation_id > 0 && organisation.team !== '') {
-                                        createSlackWorkSpace(companies[i].original_name, organisation)
+                                       // createSlackWorkSpace(companies[i].original_name, organisation)
                                     }                                   
 
                                     /**
@@ -1173,10 +1208,10 @@ route.post("/", [authJWT.verifyToken, clientDBConnection.connect], async(req, re
                                     parentCompaniesID.push(addParent.representative_id);
                                     let nameR = companies[i].representative_id > 0 ? companies[i].representative_name : companies[i].original_name;
     
-                                    mainCompanies.push(nameR);
+                                    mainCompanies.push(companies[i].representative_id);
                                     addRecord++;
                                     
-                                    let findCompaniesQuery = "";
+                                    /* let findCompaniesQuery = "";
 
                                     if(companies[i].representative_id > 0) {
                                         findCompaniesQuery = "SELECT aaa.*, r.representative_name  FROM assignor_and_assignee as aaa LEFT JOIN representative as r ON r.representative_id = aaa.representative_id WHERE aaa.representative_id = :representativeID AND aaa.name <> :name";
@@ -1198,44 +1233,42 @@ route.post("/", [authJWT.verifyToken, clientDBConnection.connect], async(req, re
                                             let nameRepre = company.representative_name != null ? company.representative_name : company.name;
                                             childCompanies.push({original_name: company.name, representative_name: nameRepre, instances: company.instances, parent_id: addParent.representative_id});
 
-                                            /**
-                                             *  For inserting bulk entries for activity log
-                                             */
-                                            activityLogs.push({organistaion_id: req.orgId, user_id: req.userId, type: 0, company_name: company.name, representative_company_name: companies[i].original_name, activity_date: currentDate});
+                                           
+                                            //activityLogs.push({organistaion_id: req.orgId, user_id: req.userId, type: 0, company_name: company.name, representative_company_name: companies[i].original_name, activity_date: currentDate});
                                         });
                                         if(childCompanies.length > 0) {
                                             const addChildCompanies = await Representative.bulkCreate(childCompanies);
                                             if(addChildCompanies) {
                                                 addRecord++;
                                             }
-                                        }
-                                    }
+                                        } 
+                                    } */
                                    
                                 }
                             }
                             if(addRecord > 0) {
-                                ActivityLogs.bulkCreate(activityLogs);
+                                //ActivityLogs.bulkCreate(activityLogs);
                                 if(mainCompanies.length > 0){
                                     mainCompanies.map(async (company, index) => {
-                                        console.log(`php -f /var/www/html/trash/add_representative_rfids.php "${req.orgId}" "${company}"`);
-                                        await exec(`php -f /var/www/html/trash/add_representative_rfids.php "${req.orgId}" "${company}"`, async (error, stdout, stderr) => {
+                                        console.log(`php -f /var/www/html/scripts/add_representative_rfids.php "${req.orgId}" "${company}"`);
+                                        await exec(`php -f /var/www/html/scripts/add_representative_rfids.php "${req.orgId}" "${company}"`, async (error, stdout, stderr) => {
                                             console.log("Error add_representative_rfids", error);
                                             console.log("stdout add_representative_rfids", stdout);
                                             console.log("stderr add_representative_rfids", stderr);
-                                            console.log(`php -f /var/www/html/trash/create_data_for_company_db_application.php "${req.orgId}" "${company}"`)
-                                            exec(`php -f /var/www/html/trash/create_data_for_company_db_application.php "${req.orgId}" "${company}"`, (error, stdd, stderr)=> {
+                                            console.log(`php -f /var/www/html/scripts/create_data_for_company_db_application.php "${req.orgId}" "${company}"`)
+                                            exec(`php -f /var/www/html/scripts/create_data_for_company_db_application.php "${req.orgId}" "${company}"`, (error, stdd, stderr)=> {
                                                 console.log("error create_data_for_company_db_application", error); 
                                                 console.log("stderr create_data_for_company_db_application", stderr);
                                                 console.log("stdd create_data_for_company_db_application", stdd);
                                                 console.log("create_data_for_company_db_application DONE");
                                             });
 
-                                            exec(`php -f /var/www/html/trash/admin_report_represetative_assets_transactions_by_account.php "${req.orgId}" "${company}"`, (error, stdd, stderr)=> {
+                                            /* exec(`php -f /var/www/html/scripts/admin_report_represetative_assets_transactions_by_account.php "${req.orgId}" "${company}"`, (error, stdd, stderr)=> {
                                                 console.log("error admin_report_represetative_assets_transactions_by_account", error); 
                                                 console.log("stderr admin_report_represetative_assets_transactions_by_account", stderr);
                                                 console.log("stdd admin_report_represetative_assets_transactions_by_account", stdd);
                                                 console.log("error admin_report_represetative_assets_transactions_by_account  DONE");
-                                                exec(`php -f /var/www/html/trash/report_represetative_assets_transactions_by_account.php "${req.orgId}" "${company}"`, (error, stdd, stderr)=> {
+                                                exec(`php -f /var/www/scripts/trash/report_represetative_assets_transactions_by_account.php "${req.orgId}" "${company}"`, (error, stdd, stderr)=> {
                                                     console.log("error report_represetative_assets_transactions_by_account", error); 
                                                     console.log("stderr report_represetative_assets_transactions_by_account", stderr);
                                                     console.log("stdd report_represetative_assets_transactions_by_account", stdd);
@@ -1243,12 +1276,12 @@ route.post("/", [authJWT.verifyToken, clientDBConnection.connect], async(req, re
                                                 });
                                             });
         
-                                            exec(`php -f /var/www/html/trash/download_all_pdf.php "${req.orgId}"`, (error, stdd, stderr)=> {
+                                            exec(`php -f /var/www/html/scripts/download_all_pdf.php "${req.orgId}"`, (error, stdd, stderr)=> {
                                                 console.log("error download_all_pdf", error); 
                                                 console.log("stderr download_all_pdf", stderr);
                                                 console.log("stdd download_all_pdf", stdd);
                                                 console.log("error download_all_pdf  DONE");
-                                            });
+                                            }); */
                                         });
                                     });
                                 }
@@ -1266,15 +1299,15 @@ route.post("/", [authJWT.verifyToken, clientDBConnection.connect], async(req, re
                             for(let i = 0; i < companies.length; i++) {
                                 if(!addedCompanies.includes(companies[i].original_name) && !addedCompanies.includes(companies[i].representative_name)){
                                     const addParent = await Representative.create({
-                                        original_name: companies[i].original_name, representative_name: companies[i].representative_name, instances: companies[i].instances
+                                        original_name: companies[i].original_name, company_id: companies[i].representative_id,representative_name: companies[i].representative_name, instances: companies[i].instances
                                     });
                                     if(addParent != null && addParent.representative_id > 0){
                                         parentCompaniesID.push(addParent.representative_id);
                                         let nameR = companies[i].representative_id > 0 ? companies[i].representative_name : companies[i].original_name;
     
-                                        mainCompanies.push(nameR);
+                                        mainCompanies.push(companies[i].representative_id);
                                         addRecord++;
-                                        if(companies[i].representative_id > 0) {
+                                        /* if(companies[i].representative_id > 0) {
                                             const findCompaniesQuery = "SELECT aaa.*, r.representative_name  FROM assignor_and_assignee as aaa LEFT JOIN representative as r ON r.representative_id = aaa.representative_id WHERE aaa.representative_id = :representativeID  AND aaa.name <> :name";
         
                                             const list  = await connection.resources.query(findCompaniesQuery,{
@@ -1289,10 +1322,6 @@ route.post("/", [authJWT.verifyToken, clientDBConnection.connect], async(req, re
                                                 const childCompanies = [];
                                                 list.map( company => {
                                                     childCompanies.push({original_name: company.name, representative_name: company.representative_name, instances: companies[i].instances, parent_id: addParent.representative_id});
-
-                                                    /**
-                                                     *  For inserting bulk entries for activity log
-                                                     */
                                                     activityLogs.push({organistaion_id: req.orgId, user_id: req.userId, type: 0, company_name: company.name, representative_company_name: companies[i].original_name, activity_date: currentDate});
                                                 });
                                                 if(childCompanies.length > 0) {
@@ -1302,20 +1331,20 @@ route.post("/", [authJWT.verifyToken, clientDBConnection.connect], async(req, re
                                                     }
                                                 }
                                             }
-                                        }
+                                        } */
                                     }
                                 }
                             }
                             if(addRecord > 0) {
-                                ActivityLogs.bulkCreate(activityLogs);
+                                //ActivityLogs.bulkCreate(activityLogs);
                                 if(mainCompanies.length > 0){
                                     mainCompanies.map(async (company, index) => {
-                                        console.log(`php -f /var/www/html/trash/add_representative_rfids.php "${req.orgId}" "${company}"`);
-                                        await exec(`php -f /var/www/html/trash/add_representative_rfids.php "${req.orgId}" "${company}"`, async (error, stdout, stderr) => {
+                                        console.log(`php -f /var/www/html/scripts/add_representative_rfids.php "${req.orgId}" "${company}"`);
+                                        await exec(`php -f /var/www/html/scripts/add_representative_rfids.php "${req.orgId}" "${company}"`, async (error, stdout, stderr) => {
                                             console.log(error);
                                             console.log(stdout);
                                             console.log(stderr);
-                                            exec(`php -f /var/www/html/trash/create_data_for_company_db_application.php "${req.orgId}" "${company}"`, (error, stdd, stderr)=> {
+                                            exec(`php -f /var/www/html/scripts/create_data_for_company_db_application.php "${req.orgId}" "${company}"`, (error, stdd, stderr)=> {
                                                 console.log("fill database ....")
                                                 console.log(error); 
                                                 console.log(stderr);
@@ -1323,13 +1352,13 @@ route.post("/", [authJWT.verifyToken, clientDBConnection.connect], async(req, re
                                                 console.log("DONE");
                                             });
 
-                                            exec(`php -f /var/www/html/trash/admin_report_represetative_assets_transactions_by_account.php "${req.orgId}" "${company}"`, (error, stdd, stderr)=> {
+                                            /* exec(`php -f /var/www/html/scripts/admin_report_represetative_assets_transactions_by_account.php "${req.orgId}" "${company}"`, (error, stdd, stderr)=> {
                                                 console.log("fill admin_report_represetative_assets_transactions_by_account.php ....")
                                                 console.log(error); 
                                                 console.log(stderr);
                                                 console.log(stdd);
                                                 console.log("DONE");
-                                                exec(`php -f /var/www/html/trash/report_represetative_assets_transactions_by_account.php "${req.orgId}" "${company}"`, (error, stdd, stderr)=> {
+                                                exec(`php -f /var/www/html/scripts/report_represetative_assets_transactions_by_account.php "${req.orgId}" "${company}"`, (error, stdd, stderr)=> {
                                                     console.log("fill report_represetative_assets_transactions_by_account.php ....")
                                                     console.log(error); 
                                                     console.log(stderr);
@@ -1338,13 +1367,13 @@ route.post("/", [authJWT.verifyToken, clientDBConnection.connect], async(req, re
                                                 });
                                             });
         
-                                            exec(`php -f /var/www/html/trash/download_all_pdf.php "${req.orgId}"`, (error, stdd, stderr)=> {
+                                            exec(`php -f /var/www/html/scripts/download_all_pdf.php "${req.orgId}"`, (error, stdd, stderr)=> {
                                                 console.log("donwload_all_pdf....")
                                                 console.log(error); 
                                                 console.log(stderr);
                                                 console.log(stdd);
                                                 console.log("DONE");
-                                            });
+                                            }); */
                                         });
                                     });
                                 }
@@ -1372,7 +1401,7 @@ route.post("/", [authJWT.verifyToken, clientDBConnection.connect], async(req, re
 /**
  * Delete Parent Companies
  */
-route.delete("/", [authJWT.verifyToken, clientDBConnection.connect], async(req, res, next) => {
+ route.delete("/", [authJWT.verifyToken, clientDBConnection.connect], async(req, res, next) => {
     try{
         let {companies, type}  = req.query;
         
@@ -1381,7 +1410,7 @@ route.delete("/", [authJWT.verifyToken, clientDBConnection.connect], async(req, 
             const Representative = req.connection_db.define('Representatives', Representatives.mainStructure, Representatives.options);
             
             const findCompanies = await Representative.findAll({
-                attributes:['representative_id', 'parent_id', 'original_name', 'type'],
+                attributes:['representative_id', 'parent_id', 'original_name', 'type', 'company_id'],
                 where:{representative_id: companies},
                 group:['representative_id','parent_id']
             });
@@ -1466,15 +1495,15 @@ route.delete("/", [authJWT.verifyToken, clientDBConnection.connect], async(req, 
 
                             if(destroyAllTransactions) {
                                 const findPCompanies = await Representative.findAll({
-                                    attributes:['original_name'],
+                                    attributes:['original_name', 'company_id'],
                                     where:{representative_id: reUpdateCompanies, type: 0}                        
                                 });
 
                                 if(findPCompanies.length > 0) {
                                     const promiseAddRFIDs = findPCompanies.map(async (company, index) => {
-                                        console.log(`php -f /var/www/html/trash/add_representative_rfids.php "${req.orgId}" "${company.original_name}"`);
-                                        await exec(`php -f /var/www/html/trash/add_representative_rfids.php "${req.orgId}" "${company.original_name}"`, async (error, std, stderr) => {
-                                            /*await exec(`php -f /var/www/html/trash/tree_script_client.php "${company.original_name}"`, async (error, stdout, stderr) => {
+                                        console.log(`php -f /var/www/html/scripts/add_representative_rfids.php "${req.orgId}" "${company.company_id}"`);
+                                        await exec(`php -f /var/www/html/scripts/add_representative_rfids.php "${req.orgId}" "${company.company_id}"`, async (error, std, stderr) => {
+                                            /*await exec(`php -f /var/www/html/scripts/tree_script_client.php "${company.original_name}"`, async (error, stdout, stderr) => {
 
                                             });*/
                                             console.log(error);
@@ -1482,7 +1511,7 @@ route.delete("/", [authJWT.verifyToken, clientDBConnection.connect], async(req, 
                                             console.log(stderr);
 
 
-                                            exec(`php -f /var/www/html/trash/create_data_for_company_db_application.php "${req.orgId}" "${company.original_name}"`, (error, stdd, stderr)=> {
+                                            exec(`php -f /var/www/html/scripts/create_data_for_company_db_application.php "${req.orgId}" "${company.company_id}"`, (error, stdd, stderr)=> {
                                                 console.log("fill database ....")
                                                 console.log(error); 
                                                 console.log(stderr);
@@ -1490,20 +1519,20 @@ route.delete("/", [authJWT.verifyToken, clientDBConnection.connect], async(req, 
                                                 console.log("DONE");
 
                                             });
-                                            exec(`php -f /var/www/html/trash/admin_report_represetative_assets_transactions_by_account.php "${req.orgId}" "${company.original_name}"`, (error, stdd, stderr)=> {
+                                            /* exec(`php -f /var/www/html/scripts/admin_report_represetative_assets_transactions_by_account.php "${req.orgId}" "${company.original_name}"`, (error, stdd, stderr)=> {
                                                 console.log("fill admin_report_represetative_assets_transactions_by_account.php ....")
                                                 console.log(error); 
                                                 console.log(stderr);
                                                 console.log(stdd);
                                                 console.log("DONE");
-                                                exec(`php -f /var/www/html/trash/report_represetative_assets_transactions_by_account.php "${req.orgId}" "${company.original_name}"`, (error, stdd, stderr)=> {
+                                                exec(`php -f /var/www/html/scripts/report_represetative_assets_transactions_by_account.php "${req.orgId}" "${company.original_name}"`, (error, stdd, stderr)=> {
                                                     console.log("fill report_represetative_assets_transactions_by_account.php ....")
                                                     console.log(error); 
                                                     console.log(stderr);
                                                     console.log(stdd);
                                                     console.log("DONE");
                                                 });
-                                            });
+                                            }); */
                                         });
                                         return company;
                                     });
@@ -1512,7 +1541,7 @@ route.delete("/", [authJWT.verifyToken, clientDBConnection.connect], async(req, 
                                     /**
                                      * Recreate KPI and Tree
                                      */
-                                    /* exec(`php -f /var/www/html/trash/fix_inventor_timeline_tree_transaction_assests_updates.php "${req.orgId}" ""`, async (error, std, stderr) => {
+                                    /* exec(`php -f /var/www/html/scripts/fix_inventor_timeline_tree_transaction_assests_updates.php "${req.orgId}" ""`, async (error, std, stderr) => {
                                         console.log(error);
                                         console.log(std);
                                         console.log(stderr);
@@ -1525,27 +1554,27 @@ route.delete("/", [authJWT.verifyToken, clientDBConnection.connect], async(req, 
                              * Recreate KPI and Tree
                              */
                             console.log("DELETE");
-                            exec(`php -f /var/www/html/trash/create_data_for_company_db_application.php "${req.orgId}" ""`, (error, stdd, stderr)=> {
+                            exec(`php -f /var/www/html/scripts/create_data_for_company_db_application.php "${req.orgId}" ""`, (error, stdd, stderr)=> {
                                 console.log("fill database ....")
                                 console.log(error); 
                                 console.log(stderr);
                                 console.log(stdd);
                                 console.log("DONE");
                             });
-                            exec(`php -f /var/www/html/trash/admin_report_represetative_assets_transactions_by_account.php "${req.orgId}" ""`, (error, stdd, stderr)=> {
+                            /* exec(`php -f /var/www/html/trascriptssh/admin_report_represetative_assets_transactions_by_account.php "${req.orgId}" ""`, (error, stdd, stderr)=> {
                                 console.log("fill admin_report_represetative_assets_transactions_by_account.php ....")
                                 console.log(error); 
                                 console.log(stderr);
                                 console.log(stdd);
                                 console.log("DONE");
-                                exec(`php -f /var/www/html/trash/report_represetative_assets_transactions_by_account.php "${req.orgId}" ""`, (error, stdd, stderr)=> {
+                                exec(`php -f /var/www/html/scripts/report_represetative_assets_transactions_by_account.php "${req.orgId}" ""`, (error, stdd, stderr)=> {
                                     console.log("fill report_represetative_assets_transactions_by_account.php ....")
                                     console.log(error); 
                                     console.log(stderr);
                                     console.log(stdd);
                                     console.log("DONE");
                                 });
-                            });
+                            }); */
 
                             res.status(200).send("Companies deleted.");
                         }
@@ -1569,7 +1598,7 @@ route.delete("/", [authJWT.verifyToken, clientDBConnection.connect], async(req, 
  * Delete Child Companies
  */
      
-route.delete("/subcompanies", [authJWT.verifyToken, clientDBConnection.connect], async(req, res, next) => {
+ route.delete("/subcompanies", [authJWT.verifyToken, clientDBConnection.connect], async(req, res, next) => {
     try{
         let IDs = req.query.companies;
         if(IDs.length == 0) {
@@ -1579,7 +1608,7 @@ route.delete("/subcompanies", [authJWT.verifyToken, clientDBConnection.connect],
             IDs = JSON.parse(IDs)
             const Representative = req.connection_db.define('Representatives', Representatives.mainStructure, Representatives.options);
             const findParentCompanies = await Representative.findAll({
-                attributes:['representative_id','original_name', 'parent_id'],
+                attributes:['representative_id','original_name', 'parent_id', 'company_id'],
                 where:{representative_id: IDs, parent_id:{[connection.Op.gt]: 0}}
             });
             const deleteParentCompanies = [], activityLogs = [], currentDate = moment(new Date()).format('YYYY-MM-DD hh:mm:ss');
@@ -1600,39 +1629,41 @@ route.delete("/subcompanies", [authJWT.verifyToken, clientDBConnection.connect],
                     (async () => {
                         const parentCompanies = [];
                         const promise = findParentCompanies.map(c => {
-                            parentCompanies.push(c.parent_id);
+                            if(company_id > 0 && !parentCompanies.includes(c.company_id)){ 
+                                parentCompanies.push(c.company_id);
+                            }
                             return c;
                         });
 
                         await Promise.all(promise);
                         const mainCompanies = await Representative.findAll({
-                            attributes:['representative_id', 'original_name'],
-                            where:{representative_id: parentCompanies, type: 0}
+                            attributes:['representative_id', 'original_name', 'company_id'],
+                            where:{company_id: parentCompanies, type: 0}
                         });
 
                         if(mainCompanies.length > 0) {
                             const destroyAllTransactions = await RepresentativeTransactions.destroy({
-                                where: {representative_id: parentCompanies, organisation_id: req.orgId},
+                                where: {representative_id: parentCompanies},
                             });
                             if(destroyAllTransactions) {
                                 const promise = mainCompanies.map(async company => {
-                                    console.log(`php -f /var/www/html/trash/add_representative_rfids.php "${req.orgId}" "${company.original_name}"`);
-                                    await exec(`php -f /var/www/html/trash/add_representative_rfids.php "${req.orgId}" "${company.original_name}"`, async (error, stdout, stderr) => {
+                                    console.log(`php -f /var/www/html/scripts/add_representative_rfids.php "${req.orgId}" "${company.company_id}"`);
+                                    await exec(`php -f /var/www/html/scripts/add_representative_rfids.php "${req.orgId}" "${company.company_id}"`, async (error, stdout, stderr) => {
                                         console.log(error);
                                         console.log(stdout);
                                         console.log(stderr);
-                                        //console.log(`php -f /var/www/html/trash/tree_script_client.php "${req.orgId}"  "${company.original_name}"`);
+                                        //console.log(`php -f /var/www/html/scripts/tree_script_client.php "${req.orgId}"  "${company.original_name}"`);
 
-                                        exec(`php -f /var/www/html/trash/create_data_for_company_db_application.php "${req.orgId}" "${company.original_name}" 1`, (error, stdd, stderr)=> {
+                                        exec(`php -f /var/www/html/scripts/create_data_for_company_db_application.php "${req.orgId}" "${company.company_id}" 1`, (error, stdd, stderr)=> {
                                              
 
                                         });
-                                        exec(`php -f /var/www/html/trash/admin_report_represetative_assets_transactions_by_account.php "${req.orgId}" "${company.original_name}"`, (error, stdd, stderr)=> {
+                                        /* exec(`php -f /var/www/html/scripts/admin_report_represetative_assets_transactions_by_account.php "${req.orgId}" "${company.original_name}"`, (error, stdd, stderr)=> {
                                              
-                                            exec(`php -f /var/www/html/trash/report_represetative_assets_transactions_by_account.php "${req.orgId}" "${company.original_name}"`, (error, stdd, stderr)=> {
+                                            exec(`php -f /var/www/html/scripts/report_represetative_assets_transactions_by_account.php "${req.orgId}" "${company.original_name}"`, (error, stdd, stderr)=> {
                                                 
                                             });
-                                        });
+                                        }); */
                                         
                                     });
                                     return company;
@@ -1641,7 +1672,7 @@ route.delete("/subcompanies", [authJWT.verifyToken, clientDBConnection.connect],
                                 /**
                                  * Recreate KPI and Tree
                                  */
-                               /*  exec(`php -f /var/www/html/trash/fix_inventor_timeline_tree_transaction_assests_updates.php "${req.orgId}" ""`, async (error, std, stderr) => {
+                               /*  exec(`php -f /var/www/html/scripts/fix_inventor_timeline_tree_transaction_assests_updates.php "${req.orgId}" ""`, async (error, std, stderr) => {
 
                                 }); */
                             }
@@ -1649,10 +1680,10 @@ route.delete("/subcompanies", [authJWT.verifyToken, clientDBConnection.connect],
                             /**
                              * Recreate KPI and Tree
                              */
-                            /* exec(`php -f /var/www/html/trash/fix_inventor_timeline_tree_transaction_assests_updates.php "${req.orgId}" ""`, async (error, std, stderr) => {
+                            /* exec(`php -f /var/www/html/scripts/fix_inventor_timeline_tree_transaction_assests_updates.php "${req.orgId}" ""`, async (error, std, stderr) => {
 
                             }); */
-                            exec(`php -f /var/www/html/trash/create_data_for_company_db_application.php "${req.orgId}" ""`, (error, stdd, stderr)=> {
+                            exec(`php -f /var/www/html/scripts/create_data_for_company_db_application.php "${req.orgId}" ""`, (error, stdd, stderr)=> {
                                 console.log("fill database ....")
                                 console.log(error); 
                                 console.log(stderr);
@@ -1660,20 +1691,20 @@ route.delete("/subcompanies", [authJWT.verifyToken, clientDBConnection.connect],
                                 console.log("DONE");
 
                             });
-                            exec(`php -f /var/www/html/trash/admin_report_represetative_assets_transactions_by_account.php "${req.orgId}" ""`, (error, stdd, stderr)=> {
+                            /* exec(`php -f /var/www/html/scripts/admin_report_represetative_assets_transactions_by_account.php "${req.orgId}" ""`, (error, stdd, stderr)=> {
                                 console.log("fill admin_report_represetative_assets_transactions_by_account.php ....")
                                 console.log(error); 
                                 console.log(stderr);
                                 console.log(stdd);
                                 console.log("DONE");
-                                exec(`php -f /var/www/html/trash/report_represetative_assets_transactions_by_account.php "${req.orgId}" ""`, (error, stdd, stderr)=> {
+                                exec(`php -f /var/www/html/scripts/report_represetative_assets_transactions_by_account.php "${req.orgId}" ""`, (error, stdd, stderr)=> {
                                     console.log("fill report_represetative_assets_transactions_by_account.php ....")
                                     console.log(error); 
                                     console.log(stderr);
                                     console.log(stdd);
                                     console.log("DONE");
                                 });
-                            });
+                            }); */
                         }
                     })();
                     res.status(200).send("Companies deleted.");

@@ -107,7 +107,7 @@ app.options('*', (req, res) => {
 
 /**nginx client_max_body_size 100M; #100mb */
 
-const port = process.env.PORT || 3600;
+const port = process.env.PORT || 4200;
 /**
  * Route for Applications database
  */
@@ -281,5 +281,5 @@ app.use((error, req, res, next)=>{
 
 //listen function for Node / express
 app.listen({port, host:'0.0.0.0'}, ()=>{
-    console.log("The server is running");
+    console.log(`The server is running on port: ${port}`);
 })

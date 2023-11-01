@@ -21,6 +21,7 @@ let connect = async(req, res, next) => {
             /**
              * Make DB Connection
              */
+            
             try{
                 const newConnection = new Sequelize(organisation.org_db, organisation.org_usr, organisation.org_pass, {
                     host: organisation.org_host,

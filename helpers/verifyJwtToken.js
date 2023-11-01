@@ -34,6 +34,9 @@ let verifyToken = (req, res, next) => {
         } else {
           req.userId = decoded.id;
           req.orgId = decoded.orgId;
+          req.orgType = decoded.org_type;
+          req.showOtherCompanies = decoded.show_other_companies;
+          req.shareCode = decoded.share_code; 
           next();
         }
       })      

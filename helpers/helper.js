@@ -865,7 +865,7 @@ let getAddressListByCompanyID = async( ID, type ) => {
         SELECT ee_address_2 as address, assignee.rf_id FROM assignee 
             INNER JOIN assignment ON assignment.rf_id = assignee.rf_id
             WHERE  date_format(assignment.record_dt, '%Y') >= :year AND ee_address_2 <> '' AND assignor_and_assignee_id  IN (${representativeQuery}) 
-            GROUP BY ee_address_2) as temp GROUP BY address  ORDER BY address ASC`;
+            GROUP BY ee_address_2 ) as temp GROUP BY address  ORDER BY address ASC`;
 
         if(isNaN(type) === false && type == 1) { 
             queryFindIDS = `SELECT address, rf_id FROM (SELECT ee_address_1 as address, assignee.rf_id FROM assignee 
@@ -877,6 +877,19 @@ let getAddressListByCompanyID = async( ID, type ) => {
                 INNER JOIN assignment ON assignment.rf_id = assignee.rf_id
                 INNER JOIN representative_assignment_conveyance ON assignment.rf_id = representative_assignment_conveyance.rf_id
                 WHERE representative_assignment_conveyance.convey_ty IN (:conveyanceType) AND date_format(assignment.record_dt, '%Y') >= :year AND ee_address_2 <> '' AND assignor_and_assignee_id IN (${representativeQuery}) 
+                GROUP BY ee_address_2
+                UNION
+                SELECT ee_address_1 as address, assignor.rf_id FROM assignor
+                INNER JOIN assignee ON assignee.rf_id = assignor.rf_id
+                INNER JOIN assignment ON assignment.rf_id = assignor.rf_id
+                INNER JOIN representative_assignment_conveyance ON assignment.rf_id = representative_assignment_conveyance.rf_id
+                WHERE representative_assignment_conveyance.convey_ty IN (:conveyanceType) AND date_format(assignor.exec_dt, '%Y') >= :year AND ee_address_1 <> '' AND assignor.assignor_and_assignee_id IN (${representativeQuery}) GROUP BY ee_address_1
+                UNION 
+            SELECT ee_address_2 as address, assignor.rf_id FROM assignor 
+                INNER JOIN assignee ON assignee.rf_id = assignor.rf_id
+                INNER JOIN assignment ON assignment.rf_id = assignor.rf_id
+                INNER JOIN representative_assignment_conveyance ON assignment.rf_id = representative_assignment_conveyance.rf_id
+                WHERE representative_assignment_conveyance.convey_ty IN (:conveyanceType) AND date_format(assignor.exec_dt, '%Y') >= :year AND ee_address_2 <> '' AND assignor.assignor_and_assignee_id IN (${representativeQuery}) 
                 GROUP BY ee_address_2) as temp GROUP BY address  ORDER BY address ASC`;
         }
 
@@ -1213,14 +1226,20 @@ let allAssignments = async (customerID, req) => {
             const findRepresentative = await getCompaniesList(req.connection_db);
             if(findRepresentative != null && findRepresentative.length > 0) {
                 let representativeID = [];
-                findRepresentative.map(e => representativeID.push(e.representative_id)); 
-                queryAllAssignments = "Select a.rf_id as id, a.convey_text as text, (SELECT GROUP_CONCAT(or_name) FROM assignor WHERE assignor.rf_id = a.rf_id) as assingor, (SELECT GROUP_CONCAT(ee_name) FROM assignee WHERE assignee.rf_id = a.rf_id) as assingee, CONCAT(a.reel_no, '/', a.frame_no) as reel_frame, a.frame_no, a.reel_no , ac.convey_ty, rac.convey_ty as updated_convey_ty,  CASE  WHEN rac.convey_ty = 'assignment' THEN 0 WHEN rac.convey_ty = 'addresschg' THEN 1	 WHEN rac.convey_ty = 'correct' THEN 2	 WHEN rac.convey_ty = 'courtappointment' THEN 3	 WHEN rac.convey_ty = 'courtorder' THEN 4	 WHEN rac.convey_ty = 'employee' THEN 5	 WHEN rac.convey_ty = 'govern' THEN 6	 WHEN rac.convey_ty = 'license' THEN 7	 WHEN rac.convey_ty = 'licenseend' THEN 8	 WHEN rac.convey_ty = 'missing' THEN 9	 WHEN rac.convey_ty = 'merger' THEN 10	 WHEN rac.convey_ty = 'namechg' THEN 11	 WHEN rac.convey_ty = 'option' THEN 12	 WHEN rac.convey_ty = 'other' THEN 13	 WHEN rac.convey_ty = 'partialassignment' THEN 14	 WHEN rac.convey_ty = 'release' THEN 15	 WHEN rac.convey_ty = 'restatedsecurity' THEN 16	 WHEN rac.convey_ty = 'security' THEN 17  WHEN rac.convey_ty='correspondchange' THEN 18	WHEN rac.convey_ty='partialrelease' THEN 19 ELSE '' END as assignment_convey_ty FROM db_uspto.assignment as a INNER JOIN db_uspto.assignment_conveyance as ac ON ac.rf_id = a.rf_id LEFT JOIN db_uspto.representative_assignment_conveyance as rac ON rac.rf_id = a.rf_id INNER JOIN assignor AS aor ON aor.rf_id = a.rf_id AND date_format(aor.exec_dt, '%Y') > :year WHERE a.rf_id IN (SELECT rf_id FROM documentid WHERE appno_doc_num IN ( SELECT d.appno_doc_num FROM db_uspto.documentid as d WHERE appno_doc_num <> '' AND  d.rf_id IN (SELECT rf_id FROM db_uspto.list2 WHERE organisation_id = :organisationID ) GROUP BY d.appno_doc_num ) GROUP BY rf_id) GROUP BY a.rf_id"; 
+                const promises = await findRepresentative.map(e => {
+                    if(e.company_id > 0) {
+                        representativeID.push(e.company_id)
+                    } 
+                    
+                }); 
+                Promise.all(promises)
+                queryAllAssignments = "Select a.rf_id as id, a.convey_text as text, (SELECT GROUP_CONCAT(or_name) FROM assignor WHERE assignor.rf_id = a.rf_id) as assingor, (SELECT GROUP_CONCAT(ee_name) FROM assignee WHERE assignee.rf_id = a.rf_id) as assingee, CONCAT(a.reel_no, '/', a.frame_no) as reel_frame, a.frame_no, a.reel_no , ac.convey_ty, rac.convey_ty as updated_convey_ty,  CASE  WHEN rac.convey_ty = 'assignment' THEN 0 WHEN rac.convey_ty = 'addresschg' THEN 1	 WHEN rac.convey_ty = 'correct' THEN 2	 WHEN rac.convey_ty = 'courtappointment' THEN 3	 WHEN rac.convey_ty = 'courtorder' THEN 4	 WHEN rac.convey_ty = 'employee' THEN 5	 WHEN rac.convey_ty = 'govern' THEN 6	 WHEN rac.convey_ty = 'license' THEN 7	 WHEN rac.convey_ty = 'licenseend' THEN 8	 WHEN rac.convey_ty = 'missing' THEN 9	 WHEN rac.convey_ty = 'merger' THEN 10	 WHEN rac.convey_ty = 'namechg' THEN 11	 WHEN rac.convey_ty = 'option' THEN 12	 WHEN rac.convey_ty = 'other' THEN 13	 WHEN rac.convey_ty = 'partialassignment' THEN 14	 WHEN rac.convey_ty = 'release' THEN 15	 WHEN rac.convey_ty = 'restatedsecurity' THEN 16	 WHEN rac.convey_ty = 'security' THEN 17  WHEN rac.convey_ty='correspondchange' THEN 18	WHEN rac.convey_ty='partialrelease' THEN 19 ELSE '' END as assignment_convey_ty FROM db_uspto.assignment as a INNER JOIN db_uspto.assignment_conveyance as ac ON ac.rf_id = a.rf_id LEFT JOIN db_uspto.representative_assignment_conveyance as rac ON rac.rf_id = a.rf_id INNER JOIN assignor AS aor ON aor.rf_id = a.rf_id AND date_format(aor.exec_dt, '%Y') > :year WHERE a.rf_id IN (SELECT rf_id FROM documentid WHERE appno_doc_num IN ( SELECT d.appno_doc_num FROM db_uspto.documentid as d WHERE appno_doc_num <> '' AND  d.rf_id IN (SELECT rf_id FROM db_uspto.list2 WHERE ( organisation_id = :organisationID  OR organisation_id IS NULL)  AND company_id IN (:representativeID)  ) GROUP BY d.appno_doc_num ) GROUP BY rf_id) GROUP BY a.rf_id"; 
 
                 /* queryAllAssignments = "SELECT a.rf_id as id, a.convey_text as text, CONCAT(a.reel_no, '/', a.frame_no) as reel_frame, a.frame_no, a.reel_no , ac.convey_ty, rac.convey_ty as updated_convey_ty, CASE WHEN rac.convey_ty = 'assignment' THEN 0 WHEN rac.convey_ty = 'addresschg' THEN 1 WHEN rac.convey_ty = 'correct' THEN 2 WHEN rac.convey_ty = 'courtappointment' THEN 3 WHEN rac.convey_ty = 'courtorder' THEN 4 WHEN rac.convey_ty = 'employee' THEN 5 WHEN rac.convey_ty = 'govern' THEN 6 WHEN rac.convey_ty = 'license' THEN 7 WHEN rac.convey_ty = 'licenseend' THEN 8 WHEN rac.convey_ty = 'missing' THEN 9 WHEN rac.convey_ty = 'merger' THEN 10 WHEN rac.convey_ty = 'namechg' THEN 11 WHEN rac.convey_ty = 'option' THEN 12 WHEN rac.convey_ty = 'other' THEN 13 WHEN rac.convey_ty = 'partialassignment' THEN 14 WHEN rac.convey_ty = 'release' THEN 15  WHEN rac.convey_ty = 'restatedsecurity' THEN 16 WHEN rac.convey_ty = 'security' THEN 17 ELSE '' END as assignment_convey_ty FROM db_application.assignment as a INNER JOIN db_application.assignment_conveyance as ac ON ac.rf_id = a.rf_id LEFT JOIN db_uspto.representative_assignment_conveyance as rac ON rac.rf_id = a.rf_id WHERE a.convey_text <> '' AND a.convey_text IS NOT NULL AND a.rf_id IN (SELECT d.rf_id FROM db_application.documentid as d WHERE appno_doc_num <> '' AND d.rf_id IN (SELECT rf_id FROM assignee WHERE rf_id IN (SELECT rf_id FROM db_uspto.representative_transactions WHERE organisation_id = :organisationID AND representative_id IN (:representativeID))) OR d.rf_id IN(SELECT rf_id FROM assignor WHERE rf_id IN (SELECT rf_id FROM db_uspto.representative_transactions WHERE organisation_id = :organisationID AND representative_id IN (:representativeID))) GROUP BY d.rf_id)"; */
 
                 assignmentsList =  await connection.resources.query(queryAllAssignments,{
                     type: connection.Sequelize.QueryTypes.SELECT,
-                    replacements: { year: connection.DEFAULT_YEAR,  organisationID: org.organisation_id  },
+                    replacements: { year: connection.DEFAULT_YEAR,  organisationID: 0 /* org.organisation_id */, representativeID  },
                     raw: true,
                     logging: console.log,
                     }
@@ -1397,31 +1416,31 @@ let allAssignmentsByRepresentativeIDs = async (customerID, representativeIDs, re
             if(representativeIDs != null && representativeIDs.length > 0) {
                 console.log("allAssignmentsByRepresentativeIDs")
                  
-                let queryAssigneeAssignorRFIDs = "Select a.rf_id as id, a.convey_text as text, (SELECT GROUP_CONCAT(or_name) FROM assignor WHERE assignor.rf_id = a.rf_id) as assingor, (SELECT GROUP_CONCAT(ee_name) FROM assignee WHERE assignee.rf_id = a.rf_id) as assingee, CONCAT(a.reel_no, '/', a.frame_no) as reel_frame, a.frame_no, a.reel_no , ac.convey_ty, rac.convey_ty as updated_convey_ty,  CASE  WHEN rac.convey_ty = 'assignment' THEN 0 WHEN rac.convey_ty = 'addresschg' THEN 1	 WHEN rac.convey_ty = 'correct' THEN 2	 WHEN rac.convey_ty = 'courtappointment' THEN 3	 WHEN rac.convey_ty = 'courtorder' THEN 4	 WHEN rac.convey_ty = 'employee' THEN 5	 WHEN rac.convey_ty = 'govern' THEN 6	 WHEN rac.convey_ty = 'license' THEN 7	 WHEN rac.convey_ty = 'licenseend' THEN 8	 WHEN rac.convey_ty = 'missing' THEN 9	 WHEN rac.convey_ty = 'merger' THEN 10	 WHEN rac.convey_ty = 'namechg' THEN 11	 WHEN rac.convey_ty = 'option' THEN 12	 WHEN rac.convey_ty = 'other' THEN 13	 WHEN rac.convey_ty = 'partialassignment' THEN 14	WHEN rac.convey_ty = 'release' THEN 15	 WHEN rac.convey_ty = 'restatedsecurity' THEN 16 WHEN rac.convey_ty = 'security' THEN 17  WHEN rac.convey_ty='correspondchange' THEN 18	WHEN rac.convey_ty='partialrelease' THEN 19 ELSE '' END as assignment_convey_ty FROM assignment as a INNER JOIN assignment_conveyance as ac ON ac.rf_id = a.rf_id LEFT JOIN representative_assignment_conveyance as rac ON rac.rf_id = a.rf_id INNER JOIN assignor AS aor ON aor.rf_id = a.rf_id AND date_format(aor.exec_dt, '%Y') > :year WHERE a.convey_text <> '' AND a.convey_text IS NOT NULL AND a.rf_id IN (SELECT d.rf_id FROM documentid as d WHERE appno_doc_num IN (SELECT appno_doc_num FROM documentid WHERE appno_doc_num <> '' AND rf_id IN (SELECT rf_id FROM list2 WHERE organisation_id = :organisationID AND company_id IN (:representativeID)) GROUP BY appno_doc_num ) GROUP BY d.rf_id) GROUP BY a.rf_id";
+                let queryAssigneeAssignorRFIDs = "Select a.rf_id as id, a.convey_text as text, (SELECT GROUP_CONCAT(or_name) FROM assignor WHERE assignor.rf_id = a.rf_id) as assingor, (SELECT GROUP_CONCAT(ee_name) FROM assignee WHERE assignee.rf_id = a.rf_id) as assingee, CONCAT(a.reel_no, '/', a.frame_no) as reel_frame, a.frame_no, a.reel_no , ac.convey_ty, rac.convey_ty as updated_convey_ty,  CASE  WHEN rac.convey_ty = 'assignment' THEN 0 WHEN rac.convey_ty = 'addresschg' THEN 1	 WHEN rac.convey_ty = 'correct' THEN 2	 WHEN rac.convey_ty = 'courtappointment' THEN 3	 WHEN rac.convey_ty = 'courtorder' THEN 4	 WHEN rac.convey_ty = 'employee' THEN 5	 WHEN rac.convey_ty = 'govern' THEN 6	 WHEN rac.convey_ty = 'license' THEN 7	 WHEN rac.convey_ty = 'licenseend' THEN 8	 WHEN rac.convey_ty = 'missing' THEN 9	 WHEN rac.convey_ty = 'merger' THEN 10	 WHEN rac.convey_ty = 'namechg' THEN 11	 WHEN rac.convey_ty = 'option' THEN 12	 WHEN rac.convey_ty = 'other' THEN 13	 WHEN rac.convey_ty = 'partialassignment' THEN 14	WHEN rac.convey_ty = 'release' THEN 15	 WHEN rac.convey_ty = 'restatedsecurity' THEN 16 WHEN rac.convey_ty = 'security' THEN 17  WHEN rac.convey_ty='correspondchange' THEN 18	WHEN rac.convey_ty='partialrelease' THEN 19 ELSE '' END as assignment_convey_ty FROM assignment as a INNER JOIN assignment_conveyance as ac ON ac.rf_id = a.rf_id LEFT JOIN representative_assignment_conveyance as rac ON rac.rf_id = a.rf_id INNER JOIN assignor AS aor ON aor.rf_id = a.rf_id AND date_format(aor.exec_dt, '%Y') > :year WHERE a.convey_text <> '' AND a.convey_text IS NOT NULL AND a.rf_id IN (SELECT d.rf_id FROM documentid as d WHERE appno_doc_num IN (SELECT appno_doc_num FROM documentid WHERE appno_doc_num <> '' AND rf_id IN (SELECT rf_id FROM list2 WHERE ( organisation_id = :organisationID OR organisation_id IS NULL ) AND company_id IN (:representativeID)) GROUP BY appno_doc_num ) GROUP BY d.rf_id) GROUP BY a.rf_id";
             
                 assignmentsList = await connection.resources.query(queryAssigneeAssignorRFIDs,{
                     type: connection.Sequelize.QueryTypes.SELECT,
-                    replacements: {  year: connection.DEFAULT_YEAR, organisationID: org.organisation_id, representativeID: representativeIDs },
+                    replacements: {  year: connection.DEFAULT_YEAR, organisationID: 0 /* org.organisation_id */, representativeID: representativeIDs },
                     raw: true,
                     logging: console.log,
                     }
                 );
     
-                const queryAllConveyance = "SELECT ac.convey_ty as name FROM assignment_conveyance AS ac INNER JOIN assignor AS aor ON aor.rf_id = ac.rf_id AND date_format(aor.exec_dt, '%Y') > :year WHERE ac.rf_id IN (SELECT d.rf_id FROM documentid as d WHERE appno_doc_num IN (SELECT appno_doc_num FROM documentid WHERE appno_doc_num <> '' AND rf_id IN (SELECT rf_id FROM list2 WHERE organisation_id = :organisationID AND company_id IN (:representativeID)) GROUP BY appno_doc_num ) GROUP BY d.rf_id) GROUP BY ac.convey_ty";
+                const queryAllConveyance = "SELECT ac.convey_ty as name FROM assignment_conveyance AS ac INNER JOIN assignor AS aor ON aor.rf_id = ac.rf_id AND date_format(aor.exec_dt, '%Y') > :year WHERE ac.rf_id IN (SELECT d.rf_id FROM documentid as d WHERE appno_doc_num IN (SELECT appno_doc_num FROM documentid WHERE appno_doc_num <> '' AND rf_id IN (SELECT rf_id FROM list2 WHERE (organisation_id = :organisationID OR organisation_id IS NULL ) AND company_id IN (:representativeID)) GROUP BY appno_doc_num ) GROUP BY d.rf_id) GROUP BY ac.convey_ty";
 
                 conveyanceList =  await connection.resources.query(queryAllConveyance,{
                     type: connection.Sequelize.QueryTypes.SELECT,
-                    replacements: { year: connection.DEFAULT_YEAR, organisationID: org.organisation_id, representativeID: representativeIDs },
+                    replacements: { year: connection.DEFAULT_YEAR, organisationID: 0/* org.organisation_id */, representativeID: representativeIDs },
                     raw: true,
                     logging: console.log,
                     }
                 );
 
-                const queryAllUpdateConveyance = "SELECT ac.convey_ty as name FROM representative_assignment_conveyance AS ac INNER JOIN assignor AS aor ON aor.rf_id = ac.rf_id AND date_format(aor.exec_dt, '%Y') > :year WHERE ac.rf_id IN (SELECT d.rf_id FROM documentid as d WHERE appno_doc_num IN (SELECT appno_doc_num FROM documentid WHERE appno_doc_num <> '' AND rf_id IN (SELECT rf_id FROM list2 WHERE organisation_id = :organisationID AND company_id IN (:representativeID)) GROUP BY appno_doc_num ) GROUP BY d.rf_id) GROUP BY ac.convey_ty";
+                const queryAllUpdateConveyance = "SELECT ac.convey_ty as name FROM representative_assignment_conveyance AS ac INNER JOIN assignor AS aor ON aor.rf_id = ac.rf_id AND date_format(aor.exec_dt, '%Y') > :year WHERE ac.rf_id IN (SELECT d.rf_id FROM documentid as d WHERE appno_doc_num IN (SELECT appno_doc_num FROM documentid WHERE appno_doc_num <> '' AND rf_id IN (SELECT rf_id FROM list2 WHERE ( organisation_id = :organisationID OR organisation_id IS NULL ) AND company_id IN (:representativeID)) GROUP BY appno_doc_num ) GROUP BY d.rf_id) GROUP BY ac.convey_ty";
 
                 updateConveyanceList =  await connection.resources.query(queryAllUpdateConveyance,{
                     type: connection.Sequelize.QueryTypes.SELECT,
-                    replacements: { year: connection.DEFAULT_YEAR, organisationID: org.organisation_id, representativeID: representativeIDs },
+                    replacements: { year: connection.DEFAULT_YEAR, organisationID:  0 /* org.organisation_id */, representativeID: representativeIDs },
                     raw: true,
                     logging: console.log,
                     }
@@ -1611,12 +1630,14 @@ let getCompaniesListWithReports = async (DBConnection, organisationID) => {
 
     });*/
 
-    const queryRepresentatives = `SELECT representative_id, original_name, representative_name, status FROM representative
+    /* const queryRepresentatives = `SELECT representative_id, original_name, representative_name, status FROM representative
     WHERE parent_id IN (SELECT representative_id from representative WHERE type = :groupType)
     UNION
     SELECT representative_id, original_name, representative_name, status FROM representative 
     WHERE parent_id = :companyParentID AND type = :companyType ORDER BY original_name`
+ */   
 
+    const queryRepresentatives = `SELECT company_id AS representative_id, original_name, representative_name, status FROM representative WHERE company_id > 0 GROUP BY company_id`
     let getList = await DBConnection.query(queryRepresentatives,{
             type: DBConnection.Sequelize.QueryTypes.SELECT,
             replacements: { companyType: 0, companyParentID: 0, groupType: 1},
@@ -1624,14 +1645,19 @@ let getCompaniesListWithReports = async (DBConnection, organisationID) => {
             logging: console.log,
         }
     ); 
-
     if(getList.length > 0) {
-
-        const query = `SELECT organisation_id, company_id, companies, activities, entities AS no_of_entities, parties AS no_of_parties, employees AS no_of_employees, transactions AS no_of_transactions, assets AS assets, arrows AS product, 0 AS documents FROM db_uspto.summary WHERE organisation_id = :organisationID `;
+        const allCompanies = []
+        const promises = getList.map( company => {
+            if(company.representative_id > 0) {
+                allCompanies.push(company.representative_id)
+            }
+        })
+        await Promise.all(promises)
+        const query = `SELECT company_id, companies, activities, entities AS no_of_entities, parties AS no_of_parties, employees AS no_of_employees, transactions AS no_of_transactions, assets AS assets, arrows AS product, 0 AS documents FROM db_uspto.summary WHERE organisation_id = :organisationID AND company_id IN (:allCompanies)`;
 
         let reports = await connection.resources.query(query, {
             type: connection.Sequelize.QueryTypes.SELECT,
-            replacements: { organisationID: organisationID },
+            replacements: { organisationID: 0 /* organisationID */, allCompanies },
             raw: true, 
             logging: console.log, 
         }) 
@@ -2153,16 +2179,23 @@ let updateAllCustomerInventor = async(organisationID, inventors, flag, DBConnect
 let findCompanyEntitiesByAccountID = async(orgID, type, DBConnection, suggestions, fixed_identicals) => {
     const list = await getCompaniesList(DBConnection);
     let entitiesList = [];
-    if(list.length > 0) {
-        const IDs = [];
-        list.map(r => IDs.push(r.representative_id));
+    if(list.length > 0) { 
+
+        let IDs = [];
+        const promises = await list.map(e => {
+            if(e.company_id > 0) {
+                IDs.push(e.company_id)
+            } 
+            
+        }); 
+        Promise.all(promises) 
         let listIDs = [];
         if(IDs.length > 0) {
-            const queryRepresentativeTransactions = "SELECT rf_id FROM list2 where organisation_id = :organisationID AND company_id IN (:representativeIDs) GROUP BY rf_id";
+            const queryRepresentativeTransactions = "SELECT rf_id FROM list2 where (organisation_id = :organisationID OR organisation_id IS NULL) AND company_id IN (:representativeIDs) GROUP BY rf_id";
 
             listIDs = await connection.resources.query(queryRepresentativeTransactions,{
                 type: connection.Sequelize.QueryTypes.SELECT,
-                replacements: { representativeIDs: IDs, organisationID: orgID },
+                replacements: { representativeIDs: IDs, organisationID: 0 /* orgID */ },
                 raw: true,
                 logging: console.log,
                 }
@@ -2926,11 +2959,11 @@ let findCompanyEntitiesByAccountIDByRepresentativeIDs = async(orgID, representat
    
     let entitiesList = [];
     if(representativeIDs.length > 0) {        
-        const queryRepresentativeTransactions = "SELECT rf_id FROM list2 where organisation_id = :organisationID AND company_id IN (:representativeIDs)";
+        const queryRepresentativeTransactions = "SELECT rf_id FROM list2 where ( organisation_id = :organisationID OR organisation_id IS NULL ) AND company_id IN (:representativeIDs)";
 
         const listIDs = await connection.resources.query(queryRepresentativeTransactions,{
             type: connection.Sequelize.QueryTypes.SELECT,
-            replacements: { representativeIDs: representativeIDs, organisationID: orgID },
+            replacements: { representativeIDs: representativeIDs, organisationID: 0 /* orgID */ },
             raw: true,
             logging: console.log,
             }
@@ -3656,7 +3689,7 @@ let shareURL = async (params) => {
 let getShareList = async (code, type) => {
     console.log('type', code, type)
     if(type == 9) {
-        let query = "SELECT share.transactions, share.share_button FROM share  WHERE code = :code  AND type = :type"
+        let query = "SELECT share.transactions, share.share_button, show_other_companies FROM share  WHERE code = :code  AND type = :type"
         const shareData = await connection.applicationNew.query(query,{
                 type: connection.Sequelize.QueryTypes.SELECT,
                 raw: true,
@@ -3677,7 +3710,7 @@ let getShareList = async (code, type) => {
                 
             }
         }
-        let query = "SELECT  `share_lists`.`asset` AS asset, `share_lists`.`type`, `share`.`organisation_id` FROM `share` AS `share` INNER JOIN `share_list` AS `share_lists` ON `share`.`share_id` = `share_lists`.`share_id` WHERE `share`.`code` = :code  AND share.type = :type"
+        let query = "SELECT  `share_lists`.`asset` AS asset, `share_lists`.`type`, `share`.`organisation_id`, share.show_other_companies FROM `share` AS `share` INNER JOIN `share_list` AS `share_lists` ON `share`.`share_id` = `share_lists`.`share_id` WHERE `share`.`code` = :code  AND share.type = :type"
         
         /* if(type !== 'undefined' && type !== undefined && parseInt(type) === 2) {
             query += " AND share.type = :type"
@@ -4233,16 +4266,16 @@ const findRfIDsBySearchString = async(req) => {
     const searchList = [], uniquerfIDs = []
 
     if(!isNaN(search_string)) {
-        customQuery3rdParty = `SELECT tpc.rf_id as rf_id, date_format(tpc.exec_dt,'%m/%d/%Y') as date, (SELECT count(*) FROM documentid as dd WHERE dd.rf_id = tpc.rf_id) as assets FROM tree_parties as tp INNER JOIN tree_parties_collection as tpc ON tp.assignor_and_assignee_id = tpc.assignor_and_assignee_id WHERE tpc.rf_id IN (SELECT rf_id FROM db_uspto.representative_transactions WHERE organisation_id = :orgId) AND tpc.rf_id = :searchItem GROUP BY tpc.rf_id LIMIT :limit`
+        customQuery3rdParty = `SELECT tpc.rf_id as rf_id, date_format(tpc.exec_dt,'%m/%d/%Y') as date, (SELECT count(*) FROM documentid as dd WHERE dd.rf_id = tpc.rf_id) as assets FROM tree_parties as tp INNER JOIN tree_parties_collection as tpc ON tp.assignor_and_assignee_id = tpc.assignor_and_assignee_id WHERE tpc.rf_id IN (SELECT rf_id FROM db_uspto.representative_transactions WHERE (organisation_id = :orgId OR organisation_id IS NULL)) AND tpc.rf_id = :searchItem GROUP BY tpc.rf_id LIMIT :limit`
     } else {
-        customQuery3rdParty = `SELECT tpc.rf_id as rf_id, date_format(tpc.exec_dt,'%m/%d/%Y') as date, (SELECT count(*) FROM documentid as dd WHERE dd.rf_id = tpc.rf_id ) as assets FROM tree_parties as tp INNER JOIN tree_parties_collection as tpc ON tp.assignor_and_assignee_id = tpc.assignor_and_assignee_id WHERE tpc.rf_id IN (SELECT rf_id FROM db_uspto.representative_transactions WHERE organisation_id = :orgId) AND MATCH(tp.name) AGAINST (:searchItem) GROUP BY tpc.rf_id LIMIT :limit`
+        customQuery3rdParty = `SELECT tpc.rf_id as rf_id, date_format(tpc.exec_dt,'%m/%d/%Y') as date, (SELECT count(*) FROM documentid as dd WHERE dd.rf_id = tpc.rf_id ) as assets FROM tree_parties as tp INNER JOIN tree_parties_collection as tpc ON tp.assignor_and_assignee_id = tpc.assignor_and_assignee_id WHERE tpc.rf_id IN (SELECT rf_id FROM db_uspto.representative_transactions WHERE (organisation_id = :orgId OR organisation_id IS NULL)) AND MATCH(tp.name) AGAINST (:searchItem) GROUP BY tpc.rf_id LIMIT :limit`
     }
 
     let getList = await connection.application.query(customQuery3rdParty,{
             type: connection.Sequelize.QueryTypes.SELECT,
             raw: true,
             logging: console.log,
-            replacements: { searchItem: search_string, orgId: req.orgId, limit: limit },
+            replacements: { searchItem: search_string, orgId: 0 /* req.orgId */, limit: limit },
         }
     );
 
@@ -4250,13 +4283,13 @@ const findRfIDsBySearchString = async(req) => {
         list = [ ...list, ...getList]
     }
 
-    const customQueryLawyer = `SELECT a.rf_id as rf_id, (SELECT date_format(exec_dt,'%m/%d/%Y') FROM assignor WHERE assignor.rf_id = a.rf_id LIMIT 1) as date, (SELECT count(*) FROM documentid as dd WHERE dd.rf_id = a.rf_id ) as assets FROM assignment as a WHERE a.rf_id IN (SELECT rf_id FROM db_uspto.representative_transactions WHERE organisation_id = :orgId) AND MATCH(a.cname, a.caddress_1) AGAINST (:searchItem) GROUP BY a.rf_id LIMIT :limit`
+    const customQueryLawyer = `SELECT a.rf_id as rf_id, (SELECT date_format(exec_dt,'%m/%d/%Y') FROM assignor WHERE assignor.rf_id = a.rf_id LIMIT 1) as date, (SELECT count(*) FROM documentid as dd WHERE dd.rf_id = a.rf_id ) as assets FROM assignment as a WHERE a.rf_id IN (SELECT rf_id FROM db_uspto.representative_transactions WHERE (organisation_id = :orgId OR organisation_id IS NULL)) AND MATCH(a.cname, a.caddress_1) AGAINST (:searchItem) GROUP BY a.rf_id LIMIT :limit`
 
     getList = await connection.application.query(customQueryLawyer,{
             type: connection.Sequelize.QueryTypes.SELECT,
             raw: true,
             logging: console.log,
-            replacements: { searchItem: search_string, orgId: req.orgId, limit: limit },
+            replacements: { searchItem: search_string, orgId: 0 /* req.orgId */, limit: limit },
         }
     );
 
@@ -4267,16 +4300,16 @@ const findRfIDsBySearchString = async(req) => {
     let customQueryDocument = ''
 
     if(!isNaN(search_string)) {
-        customQueryDocument = `SELECT d.rf_id as rf_id, (SELECT date_format(exec_dt,'%m/%d/%Y') FROM assignor WHERE assignor.rf_id = d.rf_id LIMIT 1) as date, (SELECT count(*) FROM documentid as dd WHERE dd.rf_id = d.rf_id ) as assets FROM documentid as d WHERE d.rf_id IN (SELECT rf_id FROM db_uspto.representative_transactions WHERE organisation_id = :orgId) AND (d.appno_doc_num = :searchItem OR d.grant_doc_num = :searchItem) GROUP BY d.rf_id LIMIT :limit` 
+        customQueryDocument = `SELECT d.rf_id as rf_id, (SELECT date_format(exec_dt,'%m/%d/%Y') FROM assignor WHERE assignor.rf_id = d.rf_id LIMIT 1) as date, (SELECT count(*) FROM documentid as dd WHERE dd.rf_id = d.rf_id ) as assets FROM documentid as d WHERE d.rf_id IN (SELECT rf_id FROM db_uspto.representative_transactions WHERE (organisation_id = :orgId OR organisation_id IS NULL)) AND (d.appno_doc_num = :searchItem OR d.grant_doc_num = :searchItem) GROUP BY d.rf_id LIMIT :limit` 
     } else {
-        customQueryDocument = `SELECT d.rf_id as rf_id, (SELECT date_format(exec_dt,'%m/%d/%Y') FROM assignor WHERE assignor.rf_id = d.rf_id LIMIT 1) as date, (SELECT count(*) FROM documentid as dd WHERE dd.rf_id = d.rf_id ) as assets FROM documentid as d WHERE d.rf_id IN (SELECT rf_id FROM db_uspto.representative_transactions WHERE organisation_id = :orgId) AND d.grant_doc_num = :searchItem GROUP BY d.rf_id LIMIT :limit` 
+        customQueryDocument = `SELECT d.rf_id as rf_id, (SELECT date_format(exec_dt,'%m/%d/%Y') FROM assignor WHERE assignor.rf_id = d.rf_id LIMIT 1) as date, (SELECT count(*) FROM documentid as dd WHERE dd.rf_id = d.rf_id ) as assets FROM documentid as d WHERE d.rf_id IN (SELECT rf_id FROM db_uspto.representative_transactions WHERE (organisation_id = :orgId OR organisation_id IS NULL)) AND d.grant_doc_num = :searchItem GROUP BY d.rf_id LIMIT :limit` 
     }
 
     getList = await connection.application.query(customQueryDocument,{
             type: connection.Sequelize.QueryTypes.SELECT,
             raw: true,
             logging: console.log,
-            replacements: { searchItem: search_string, orgId: req.orgId, limit: limit},
+            replacements: { searchItem: search_string, orgId: 0 /* req.orgId */, limit: limit},
         }
     );
     
@@ -4418,7 +4451,15 @@ const findFilterAssets = async(req, fType) => {
     try {
         let { list, total, type, selectedCompanies, tabs, customers, assignments, data_type, format_type, other_mode, sale, license } = req.body
         
-        const where = { year: connection.DEFAULT_YEAR, organisationID: req.orgId}  
+        const where = { year: connection.DEFAULT_YEAR, organisationID: 0 /* req.orgId */, otherORGID: req.orgId}  
+
+        
+        if(req.orgType == 2) {
+            /**
+             * Bank Mode
+             */
+            where.mode = 1
+        }
 
         const companies = JSON.parse(selectedCompanies)
         if(companies.length > 0) {
@@ -4426,7 +4467,7 @@ const findFilterAssets = async(req, fType) => {
         }
         let query = '';
         if(typeof data_type != 'undefined' && data_type == 1) {
-            query = "SELECT appno_doc_num FROM owned_assets WHERE organisation_id = :organisationID AND company_id IN (:company_id)"
+            query = "SELECT appno_doc_num FROM owned_assets WHERE ( organisation_id = :organisationID OR organisation_id IS NULL) AND company_id IN (:company_id)"
         } else { 
             list = JSON.parse(list);
 
@@ -4437,7 +4478,7 @@ const findFilterAssets = async(req, fType) => {
                      * Get List
                      */
                     if((typeof other_mode != 'undefined' && other_mode == 'true') || typeof sale != 'undefined' || typeof license != 'undefined') {
-                        query = `SELECT appno_doc_num FROM db_new_application.assets_for_sale AS assets WHERE assets.organisation_id = :organisationID `
+                        query = `SELECT appno_doc_num FROM db_new_application.assets_for_sale AS assets WHERE assets.organisation_id = :otherORGID `
 
                         if(typeof sale != 'undefined'  || typeof license != 'undefined') {
                             query += ` AND type = :saleLicenceType `
@@ -4456,7 +4497,7 @@ const findFilterAssets = async(req, fType) => {
                             if(where.layoutID == 38) {
                                 where.layoutID = 30
                             }
-                            query = `SELECT application AS appno_doc_num FROM db_new_application.dashboard_items  WHERE organisation_id = :organisationID AND type = :layoutID `
+                            query = `SELECT application AS appno_doc_num FROM db_new_application.dashboard_items  WHERE organisation_id = :organisationID AND type = :layoutID  ${req.orgType == 2 ? ' AND mode IN (:mode) ' : ''} `
 
                             if(Array.isArray(companies) && companies.length > 0) {
                                 query += ` AND representative_id IN (:company_id)`
@@ -4491,7 +4532,7 @@ const findFilterAssets = async(req, fType) => {
                             query = `SELECT appno_doc_num FROM db_new_application.assets AS assets `
         
         
-                            query += ` WHERE date_format(assets.appno_date, '%Y') > :year AND assets.layout_id = :layoutID AND assets.organisation_id = :organisationID `
+                            query += ` WHERE date_format(assets.appno_date, '%Y') > :year AND assets.layout_id = :layoutID AND (assets.organisation_id = :organisationID OR assets.organisation_id IS NULL ) `
                             
         
                             if(Array.isArray(companies) && companies.length > 0) {
@@ -4499,7 +4540,7 @@ const findFilterAssets = async(req, fType) => {
                             }
         
                             if((Array.isArray(assignments) && assignments.length > 0 ) || (Array.isArray(tabs) && tabs.length > 0) || (Array.isArray(customers) && customers.length > 0)) {
-                                query += ` AND assets.appno_doc_num IN ( SELECT documentid.appno_doc_num FROM db_uspto.documentid WHERE rf_id  IN ( SELECT activity_parties_transactions.rf_id  FROM db_new_application.activity_parties_transactions WHERE activity_parties_transactions.organisation_id = :organisationID  `
+                                query += ` AND assets.appno_doc_num IN ( SELECT documentid.appno_doc_num FROM db_uspto.documentid WHERE rf_id  IN ( SELECT activity_parties_transactions.rf_id  FROM db_new_application.activity_parties_transactions WHERE (activity_parties_transactions.organisation_id = :organisationID  OR activity_parties_transactions.organisation_id IS NULL ) `
     
                                 if(Array.isArray(companies) && companies.length > 0 ) {
                                     query += ` AND activity_parties_transactions.company_id IN (:company_id) `
@@ -4523,7 +4564,7 @@ const findFilterAssets = async(req, fType) => {
                                 query += ` GROUP BY activity_parties_transactions.rf_id ) GROUP BY documentid.appno_doc_num) `
                             } else  if(Array.isArray(tabs) && tabs.length === 0 && typeof fType == 'undefined') {
                                 /**exclude employees */
-                                query += ` AND assets.appno_doc_num IN (  SELECT documentid.appno_doc_num FROM db_uspto.documentid WHERE rf_id  IN ( SELECT activity_parties_transactions.rf_id  FROM db_new_application.activity_parties_transactions WHERE activity_parties_transactions.organisation_id = :organisationID AND activity_parties_transactions.activity_id <> 10  ` 
+                                query += ` AND assets.appno_doc_num IN (  SELECT documentid.appno_doc_num FROM db_uspto.documentid WHERE rf_id  IN ( SELECT activity_parties_transactions.rf_id  FROM db_new_application.activity_parties_transactions WHERE (activity_parties_transactions.organisation_id = :organisationID  OR activity_parties_transactions.organisation_id IS NULL )  AND activity_parties_transactions.activity_id <> 10  ` 
     
                                 if(Array.isArray(companies) && companies.length > 0 ) {
                                     query += ` AND activity_parties_transactions.company_id IN (:company_id) `
@@ -4596,7 +4637,7 @@ const findCompanyName = async(DBConnection, selectedCompanies) => {
     const getRepresentativeName = await Representative.findOne({
          attributes: ['representative_name'],
          where: {
-             representative_id: selectedCompanies
+            company_id: selectedCompanies
          }
     });
     return getRepresentativeName;
@@ -4606,8 +4647,13 @@ const findCompanyName = async(DBConnection, selectedCompanies) => {
 const findFillingAssets = async (req, type) => {
     let {companies, start, end } = req.query;
     let {selectedCompanies, lawfirm} = req.body
-    const replacements = { organisation_id: req.orgId, year: connection.DEFAULT_YEAR }
-
+    const replacements = { organisation_id: 0 /* req.orgId */, year: connection.DEFAULT_YEAR }
+    if(req.orgType == 2) {
+        /**
+         * Bank Mode
+         */
+        replacements.mode = 1
+    }
     const allAssets = []
     if(typeof companies != 'undefined' && companies != '') {
         companies = JSON.parse(companies)
@@ -4619,7 +4665,7 @@ const findFillingAssets = async (req, type) => {
 
     const getAllCompaniesName = await Representative.findAll({
         attributes: ['representative_name'],
-        where:{ representative_id: companies}                        
+        where:{ company_id: companies}                        
     }); 
 
     if(getAllCompaniesName.length > 0) {
@@ -4688,7 +4734,7 @@ const findFillingAssets = async (req, type) => {
 
             if(getLawFirmData != null ) { 
                 findAllAssigneeAssets += `  WHERE ` 
-                findAllAssigneeAssets += ` appno_doc_num IN (SELECT application FROM dashboard_items WHERE organisation_id = :organisation_id  AND representative_id IN (:companies) AND type = :type `
+                findAllAssigneeAssets += ` appno_doc_num IN (SELECT application FROM dashboard_items WHERE organisation_id = :organisation_id  AND representative_id IN (:companies) AND type = :type  ${req.orgType == 2 ? ' AND mode IN (:mode) ' : ''} `
                 if(getLawFirmData.representative_id > 0) {
                     replacements.representative_id = getLawFirmData.representative_id 
                 } else {
@@ -4705,7 +4751,7 @@ const findFillingAssets = async (req, type) => {
                 }
                 tempQuery += ` GROUP BY  lf.law_firm_id` 
 
-                findAllAssigneeAssets += ` AND application IN ( SELECT appno_doc_num FROM db_patent_application_bibliographic.lawfirm AS l WHERE ( TRIM(BOTH  '.' FROM name) IN (${tempQuery}) OR name IN (${tempQuery}) ) AND appno_doc_num IN (SELECT application FROM dashboard_items WHERE organisation_id = :organisation_id  AND representative_id IN (:companies) AND type = :type)) `  
+                findAllAssigneeAssets += ` AND application IN ( SELECT appno_doc_num FROM db_patent_application_bibliographic.lawfirm AS l WHERE ( TRIM(BOTH  '.' FROM name) IN (${tempQuery}) OR name IN (${tempQuery}) ) AND appno_doc_num IN (SELECT application FROM dashboard_items WHERE organisation_id = :organisation_id  ${req.orgType == 2 ? ' AND mode IN (:mode) ' : ''}  AND representative_id IN (:companies) AND type = :type)) `  
                 findAllAssigneeAssets += `  GROUP BY application )  `
             }  
         } 
@@ -4758,7 +4804,8 @@ const findFillingAssets = async (req, type) => {
 const getFamilyList = async(replacements) => {
 
     const query = `SELECT grant_doc_num FROM db_uspto.assets_family AS af WHERE grant_doc_num IN ( 
-        SELECT patent FROM db_new_application.dashboard_items WHERE organisation_id = :organisationID AND representative_id IN (:companies) AND type = :type GROUP BY patent ) AND application_country NOT IN ('WO', 'US') GROUP BY grant_doc_num `
+        SELECT patent FROM db_new_application.dashboard_items WHERE organisation_id = :organisationID AND representative_id IN (:companies) AND type = :type  ${replacements.orgType == 2 ? ' AND mode IN (:mode) ' : ''}  GROUP BY patent ) AND application_country NOT IN ('WO', 'US', 'EP') GROUP BY grant_doc_num `
+        replacements.organisationID = 0
     replacements.type = 30
     const grantAssets =  await connection.applicationNew.query(query, {
         type: connection.Sequelize.QueryTypes.SELECT,
@@ -4777,7 +4824,7 @@ const getFamilyList = async(replacements) => {
 }
 
 const findLawFirmName = async (props) => {
-    let queryFillingLawFirm = ` SELECT lawfirm FROM dashboard_items WHERE organisation_id = :organisation_id  AND representative_id IN (:companies) AND type = :type `
+    let queryFillingLawFirm = ` SELECT lawfirm FROM dashboard_items WHERE organisation_id = :organisation_id  AND representative_id IN (:companies) AND type = :type  ${props.orgType == 2 ? ' AND mode IN (:mode) ' : ''} `
 
     if(typeof props.assignments  != 'undefined' && props.assignments.length > 0) {  
         queryFillingLawFirm += ` AND rf_id IN (:assignments) ` 
@@ -4788,7 +4835,7 @@ const findLawFirmName = async (props) => {
     }
 
     queryFillingLawFirm += ` GROUP BY lawfirm `
-
+    props.organisation_id = 0
     const assetsWithLawFirm =  await connection.applicationNew.query(queryFillingLawFirm, {
         type: connection.Sequelize.QueryTypes.SELECT,
         raw: true,
@@ -4822,17 +4869,26 @@ const getOwnedAssets = async( req, t = 0 ) => {
             selectedCompanies = JSON.parse(selectedCompanies)
         }
         /* const query = `SELECT appno_doc_num FROM owned_assets WHERE organisation_id = :organisationID AND company_id IN (:selectedCompanies)` */
-        const query = `SELECT application FROM dashboard_items WHERE organisation_id = :organisationID AND representative_id IN (:selectedCompanies) AND type = :type AND application <> '' GROUP BY application`
+        const query = `SELECT application FROM dashboard_items WHERE organisation_id = :organisationID AND representative_id IN (:selectedCompanies)  ${req.orgType == 2 ? ' AND mode IN (:mode) ' : ''}  AND type = :type AND application <> '' GROUP BY application`
+
+        const replacements = {
+            organisationID: 0 /* req.orgId */,
+            selectedCompanies,
+            type: 30
+        }
+
+        if(req.orgType == 2) {
+            /**
+             * Bank Mode
+             */
+            replacements.mode = 1
+        }
 
         const list =  await connection.applicationNew.query(query,{
             type: connection.Sequelize.QueryTypes.SELECT,
             raw: true,
             logging: console.log,
-            replacements: {
-                organisationID: req.orgId,
-                selectedCompanies,
-                type: 30
-            }
+            replacements
         }) 
         if(list !== null && list.length > 0) {
             list.forEach( row => {

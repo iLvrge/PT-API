@@ -771,7 +771,21 @@ route.put("/company/search/all/", [authJWT.verifyToken, authJWT.isAdmin], async 
 
                 if(applicantAssignorAndAssigneeIDs.length > 0) {
                     await ApplicantAssignorAndAssignee.update(item, {where: {assignor_and_assignee_id: applicantAssignorAndAssigneeIDs}}); 
-                } 
+                } else {
+                    const findAppRows = await ApplicantAssignorAndAssignee.findAll({
+                        attributes:['assignor_and_assignee_id'],
+                        where: {
+                            [connection.Op.or]: [
+                            {name: normalize_name},
+                            {name: replaceNames}
+                        ]}
+                    })
+
+                    if(findAppRows.length > 0) { 
+                        const IDSS = await findAppRows.map( r => applicantAssignorAndAssigneeIDs.push(r.assignor_and_assignee_id))
+                        await ApplicantAssignorAndAssignee.update(item, {where: {assignor_and_assignee_id: applicantAssignorAndAssigneeIDs}}); 
+                    }
+                }
 
                 console.log("Applicant with Normalize name", normalize_name)
 
@@ -1210,7 +1224,7 @@ route.get("/company/lenders/:id/companies", [authJWT.verifyToken, authJWT.isAdmi
             await Promise.all(promise)
 
             if( firmIDs.length > 0 ) {
-                const  queryCompany = `SELECT a.assignor_and_assignee_id AS id, a.assignor_and_assignee_id, a.name, COUNT(assignor.assignor_and_assignee_id) AS counter, (SELECT COUNT(*) FROM (SELECT assignor.rf_id FROM assignor INNER JOIN assignment ON assignment.rf_id = assignor.rf_id INNER JOIN representative_assignment_conveyance ON representative_assignment_conveyance.rf_id = assignor.rf_id WHERE assignor.assignor_and_assignee_id = a.assignor_and_assignee_id AND date_format(assignment.record_dt, '%Y') >= :year AND representative_assignment_conveyance.convey_ty IN (:conveyanceTypes) GROUP BY assignor.rf_id ) AS temp_total) AS total_occurences, c.representative_name as normalize_name, (select rr.representative_name FROM representative as rr WHERE rr.representative_name = a.name GROUP BY rr.representative_name) as representative_company, concat(assignment.reel_no,'-', assignment.frame_no) as assignorRFID, '' as assigneeRFID  FROM assignor_and_assignee as a LEFT JOIN representative as c ON c.representative_id = a.representative_id INNER JOIN assignor ON assignor.assignor_and_assignee_id = a.assignor_and_assignee_id INNER JOIN assignment ON assignment.rf_id = assignor.rf_id INNER JOIN representative_assignment_conveyance ON assignment.rf_id = representative_assignment_conveyance.rf_id WHERE representative_assignment_conveyance.convey_ty IN (:conveyanceTypes) AND date_format(assignment.record_dt, '%Y') >= :year AND assignor.rf_id IN (SELECT rf_id FROM assignee WHERE assignor_and_assignee_id  IN (:assignorAndAssigneeIDs)) GROUP BY a.name ORDER BY counter DESC`;
+                const  queryCompany = `SELECT a.assignor_and_assignee_id AS id, a.assignor_and_assignee_id, a.name, GROUP_CONCAT(DISTINCT doc.appno_doc_num) AS group_assets, COUNT(DISTINCT assignor.rf_id) AS counter, (SELECT COUNT(*) FROM (SELECT assignor.rf_id FROM assignor INNER JOIN assignment ON assignment.rf_id = assignor.rf_id INNER JOIN representative_assignment_conveyance ON representative_assignment_conveyance.rf_id = assignor.rf_id WHERE assignor.assignor_and_assignee_id = a.assignor_and_assignee_id AND date_format(assignment.record_dt, '%Y') >= :year AND representative_assignment_conveyance.convey_ty IN (:conveyanceTypes) GROUP BY assignor.rf_id ) AS temp_total) AS total_occurences, c.representative_name as normalize_name, (select rr.representative_name FROM representative as rr WHERE rr.representative_name = a.name GROUP BY rr.representative_name) as representative_company, concat(assignment.reel_no,'-', assignment.frame_no) as assigneeRFID, null as assignorRFID  FROM assignor_and_assignee as a LEFT JOIN representative as c ON c.representative_id = a.representative_id INNER JOIN assignor ON assignor.assignor_and_assignee_id = a.assignor_and_assignee_id INNER JOIN assignment ON assignment.rf_id = assignor.rf_id INNER JOIN documentid AS doc ON doc.rf_id = assignment.rf_id INNER JOIN representative_assignment_conveyance ON assignment.rf_id = representative_assignment_conveyance.rf_id WHERE representative_assignment_conveyance.convey_ty IN (:conveyanceTypes) AND date_format(assignment.record_dt, '%Y') >= :year AND assignor.rf_id IN (SELECT rf_id FROM assignee WHERE assignor_and_assignee_id  IN (:assignorAndAssigneeIDs)) GROUP BY a.name ORDER BY counter DESC`;
 
                 querySearchResult = await connection.resources.query(queryCompany,{
                     type: connection.Sequelize.QueryTypes.SELECT,
@@ -1219,7 +1233,7 @@ route.get("/company/lenders/:id/companies", [authJWT.verifyToken, authJWT.isAdmi
                     logging: console.log,
                 });
             }
-        }
+        }   
         res.status(200).json(querySearchResult);
     } catch(e) {
         console.log(e);
@@ -1382,29 +1396,73 @@ route.get("/company/law_firms/:id/companies", [authJWT.verifyToken, authJWT.isAd
     }
 })
 
+const getAllCompanyIDs = async(req) => {
+    const representativeIDs = []
+    const RepresentativeClient = req.connection_db.define('Representatives', RepresentativeCustomer.mainStructure, RepresentativeCustomer.options);
+    const findRepresentativeCompanies = await RepresentativeClient.findAll({
+        attributes:['company_id'],
+        where: {
+            company_id:{[connection.Op.gt]: 0}       
+        }
+    });
+    if(findRepresentativeCompanies != null && findRepresentativeCompanies.length > 0) {
+        const promises = findRepresentativeCompanies.map( company => {
+            representativeIDs.push(company.company_id);
+            return company;
+        });
+        await Promise.all(promises);
+    }
+    return representativeIDs;
+}
+
+const getAllAssignorIDs = async (representativeIDs) => {
+    const assignorAndAssigneeIDs = []
+    const findAssignorAndAssignee = await AssignorAndAssignee.findAll({
+        attributes: ['assignor_and_assignee_id'],
+        where:{representative_id: representativeIDs}
+    });
+
+    if(findAssignorAndAssignee != null && findAssignorAndAssignee.length > 0) {
+        const assignorAndAssigneePromises = findAssignorAndAssignee.map( assignor_and_assignee => {
+            assignorAndAssigneeIDs.push(assignor_and_assignee.assignor_and_assignee_id);
+            return assignor_and_assignee;
+        });
+
+        await Promise.all(assignorAndAssigneePromises);
+    }
+    return assignorAndAssigneeIDs;
+}
+
 route.get("/company/law_firms/:id", [authJWT.verifyToken, authJWT.isAdmin, authJWT.addClientID, clientDBConnection.connect], async (req, res, next) => {
     try {
-        const customerID = req.params.id, representativeIDs = JSON.parse(req.query.portfolios);
+        let customerID = req.params.id, representativeIDs = JSON.parse(req.query.portfolios);
 
         /*const findAllLawFirms =  await helpers.findAllLawFirms(customerID, representativeIDs, req);*/
         let findAllLawFirms = [];        
         if(customerID > 0) {
-            const where = {organisation_id: customerID};
+            const where = {organisation_id: 0 /* customerID */};
             let whereRepresentative = {};
             if(representativeIDs.length > 0) {
-                where.company_id = representativeIDs;
+                where.company_id = representativeIDs; 
                 whereRepresentative = {
                     [connection.Op.or]: [
                         {parent_id: representativeIDs},
                         {representative_id: representativeIDs}
                     ]
-                }
+                } 
             }
 
-            const assignorAndAssigneeIDs = [];
+            let assignorAndAssigneeIDs = [];
 
             if(req.connection_db != null) {
-                const RepresentativeClient = req.connection_db.define('Representatives', RepresentativeCustomer.mainStructure, RepresentativeCustomer.options);
+                
+                if(representativeIDs.length == 0) { 
+                    representativeIDs = await getAllCompanyIDs(req)
+                }
+                if(representativeIDs.length > 0) { 
+                    assignorAndAssigneeIDs = await getAllAssignorIDs(representativeIDs)
+                } 
+                /* const RepresentativeClient = req.connection_db.define('Representatives', RepresentativeCustomer.mainStructure, RepresentativeCustomer.options);
                 const findRepresentativeCompanies = await RepresentativeClient.findAll({
                     attributes:['original_name'],
                     where:whereRepresentative
@@ -1432,7 +1490,7 @@ route.get("/company/law_firms/:id", [authJWT.verifyToken, authJWT.isAdmin, authJ
         
                         await Promise.all(assignorAndAssigneePromises);
                     }
-                }
+                } */
             }
 
             const whereAssignor = {};
@@ -1873,13 +1931,13 @@ route.get("/company/lawyers", [authJWT.verifyToken, authJWT.isAdmin, authJWT.add
 
 route.get("/company/lawyers/:id", [authJWT.verifyToken, authJWT.isAdmin, authJWT.addClientID, clientDBConnection.connect], async (req, res, next) => {
     try {
-        const customerID = req.params.id, representativeIDs = JSON.parse(req.query.portfolios != undefined ? req.query.portfolios : "[]");
+        let customerID = req.params.id, representativeIDs = JSON.parse(req.query.portfolios != undefined ? req.query.portfolios : "[]");
 
         /*const findAllLawFirms =  await helpers.findAllLawFirms(customerID, representativeIDs, req);*/
         let findAllLawers = [];
         if(customerID > 0) {
             let whereRepresentative = {};
-            const where = {organisation_id: customerID};
+            const where = {organisation_id: 0 /* customerID */};
             if(representativeIDs.length > 0) {
                 where.representative_id = representativeIDs;
                 whereRepresentative = {
@@ -1890,37 +1948,14 @@ route.get("/company/lawyers/:id", [authJWT.verifyToken, authJWT.isAdmin, authJWT
                 }
             }
 
-            const assignorAndAssigneeIDs = [];
+            let assignorAndAssigneeIDs = [];
 
             if(req.connection_db != null) {
-                const RepresentativeClient = req.connection_db.define('Representatives', RepresentativeCustomer.mainStructure, RepresentativeCustomer.options);
-                const findRepresentativeCompanies = await RepresentativeClient.findAll({
-                    attributes:['original_name'],
-                    where:whereRepresentative
-                });
-    
-                if(findRepresentativeCompanies != null && findRepresentativeCompanies.length > 0) {
-                   const allNames = [];
-                    const promises = findRepresentativeCompanies.map( company => {
-                        allNames.push(company.original_name);
-                        return company;
-                    });
-    
-                    await Promise.all(promises);
-    
-                    const findAssignorAndAssignee = await AssignorAndAssignee.findAll({
-                        attributes: ['assignor_and_assignee_id'],
-                        where:{name: allNames}
-                    });
-    
-                    if(findAssignorAndAssignee != null && findAssignorAndAssignee.length > 0) {
-                        const assignorAndAssigneePromises = findAssignorAndAssignee.map( assignor_and_assignee => {
-                            assignorAndAssigneeIDs.push(assignor_and_assignee.assignor_and_assignee_id);
-                            return assignor_and_assignee;
-                        });
-        
-                        await Promise.all(assignorAndAssigneePromises);
-                    }
+                if(representativeIDs.length == 0) { 
+                    representativeIDs = await getAllCompanyIDs(req)
+                }
+                if(representativeIDs.length > 0) { 
+                    assignorAndAssigneeIDs = await getAllAssignorIDs(representativeIDs)
                 }
             }
 
@@ -2134,10 +2169,10 @@ route.put("/company/lawyers", [authJWT.verifyToken, authJWT.isAdmin, authJWT.add
 route.get("/company/raw/assignments/:id", [authJWT.verifyToken, authJWT.isAdmin, authJWT.addClientID, clientDBConnection.connect], async (req, res, next) => {
     try{
 
-        const customerID = req.params.id, representativeIDs = JSON.parse(req.query.portfolios != undefined ? req.query.portfolios : "[]");
+        let customerID = req.params.id, representativeIDs = JSON.parse(req.query.portfolios != undefined ? req.query.portfolios : "[]");
         let getList = [];
         if(customerID > 0) {
-            const where = {organisation_id: customerID};
+            const where = {organisation_id: 0 /* customerID */};
             let whereRepresentative = {};
             if(representativeIDs.length > 0) {
                 where.company_id = representativeIDs;
@@ -2149,37 +2184,14 @@ route.get("/company/raw/assignments/:id", [authJWT.verifyToken, authJWT.isAdmin,
                 }
             }
     
-            const assignorAndAssigneeIDs = [];
+            let assignorAndAssigneeIDs = [];
     
             if(req.connection_db != null) {
-                const RepresentativeClient = req.connection_db.define('Representatives', RepresentativeCustomer.mainStructure, RepresentativeCustomer.options);
-                const findRepresentativeCompanies = await RepresentativeClient.findAll({
-                    attributes:['original_name'],
-                    where:whereRepresentative
-                });
-    
-                if(findRepresentativeCompanies != null && findRepresentativeCompanies.length > 0) {
-                    const allNames = [];
-                    const promises = findRepresentativeCompanies.map( company => {
-                        allNames.push(company.original_name);
-                        return company;
-                    });
-    
-                    await Promise.all(promises);
-    
-                    const findAssignorAndAssignee = await AssignorAndAssignee.findAll({
-                        attributes: ['assignor_and_assignee_id'],
-                        where:{name: allNames}
-                    });
-    
-                    if(findAssignorAndAssignee != null && findAssignorAndAssignee.length > 0) {
-                        const assignorAndAssigneePromises = findAssignorAndAssignee.map( assignor_and_assignee => {
-                            assignorAndAssigneeIDs.push(assignor_and_assignee.assignor_and_assignee_id);
-                            return assignor_and_assignee;
-                        });
-        
-                        await Promise.all(assignorAndAssigneePromises);
-                    }
+                if(representativeIDs.length == 0) { 
+                    representativeIDs = await getAllCompanyIDs(req)
+                }
+                if(representativeIDs.length > 0) { 
+                    assignorAndAssigneeIDs = await getAllAssignorIDs(representativeIDs)
                 }
             }
     
@@ -2301,8 +2313,8 @@ route.put("/company/raw/assignments/:id", [authJWT.verifyToken, authJWT.isAdmin,
     try{
 
         const customerID = req.params.id, representativeIDs = JSON.parse(req.query.portfolios != undefined ? req.query.portfolios : "[]");
-        console.log(`php -f /var/www/html/trash/address_swapping.php ${customerID} ${representativeIDs}`)
-        exec(`php -f /var/www/html/trash/address_swapping.php ${customerID} ${JSON.stringify(representativeIDs)}`, function (error, stdout, stderr) {
+        console.log(`php -f /var/www/html/scripts/address_swapping.php ${customerID} ${representativeIDs}`)
+        exec(`php -f /var/www/html/scripts/address_swapping.php ${customerID} ${JSON.stringify(representativeIDs)}`, function (error, stdout, stderr) {
             console.log(error);
             console.log(stdout);
             //console.log(stderr);
@@ -2336,10 +2348,10 @@ route.get("/company/assignments", [authJWT.verifyToken, authJWT.isAdmin], async 
 route.get("/company/assignments/:id", [authJWT.verifyToken, authJWT.isAdmin, authJWT.addClientID, clientDBConnection.connect], async (req, res, next) => {
     try{
 
-        const customerID = req.params.id, representativeIDs = JSON.parse(req.query.portfolios != undefined ? req.query.portfolios : "[]");
+        let customerID = req.params.id, representativeIDs = JSON.parse(req.query.portfolios != undefined ? req.query.portfolios : "[]");
         let getList = [];
         if(customerID > 0) {
-            const where = {organisation_id: customerID};
+            const where = {organisation_id: 0 /* customerID */};
             let whereRepresentative = {};
             if(representativeIDs.length > 0) {
                 where.representative_id = representativeIDs;
@@ -2354,34 +2366,11 @@ route.get("/company/assignments/:id", [authJWT.verifyToken, authJWT.isAdmin, aut
             const assignorAndAssigneeIDs = [];
     
             if(req.connection_db != null) {
-                const RepresentativeClient = req.connection_db.define('Representatives', RepresentativeCustomer.mainStructure, RepresentativeCustomer.options);
-                const findRepresentativeCompanies = await RepresentativeClient.findAll({
-                    attributes:['original_name'],
-                    where:whereRepresentative
-                });
-    
-                if(findRepresentativeCompanies != null && findRepresentativeCompanies.length > 0) {
-                    const allNames = [];
-                    const promises = findRepresentativeCompanies.map( company => {
-                        allNames.push(company.original_name);
-                        return company;
-                    });
-    
-                    await Promise.all(promises);
-    
-                    const findAssignorAndAssignee = await AssignorAndAssignee.findAll({
-                        attributes: ['assignor_and_assignee_id'],
-                        where:{name: allNames}
-                    });
-    
-                    if(findAssignorAndAssignee != null && findAssignorAndAssignee.length > 0) {
-                        const assignorAndAssigneePromises = findAssignorAndAssignee.map( assignor_and_assignee => {
-                            assignorAndAssigneeIDs.push(assignor_and_assignee.assignor_and_assignee_id);
-                            return assignor_and_assignee;
-                        });
-        
-                        await Promise.all(assignorAndAssigneePromises);
-                    }
+                if(representativeIDs.length == 0) { 
+                    representativeIDs = await getAllCompanyIDs(req)
+                }
+                if(representativeIDs.length > 0) { 
+                    assignorAndAssigneeIDs = await getAllAssignorIDs(representativeIDs)
                 }
             }
     
@@ -2861,11 +2850,11 @@ route.put("/company/assignments", [authJWT.verifyToken, authJWT.isAdmin], async 
             }
             const updateCompany = await Representative.update({
                 status
-            }, {where: {representative_id}});
+            }, {where: {company_id: representative_id}});
 
             const findParentData = await Representative.findOne({
                 attributes: ['parent_id'],
-                where: {representative_id}
+                where: {company_id: representative_id}
             })
 
             if(findParentData !== null && findParentData.parent_id > 0 ) {
@@ -2994,7 +2983,7 @@ route.post("/company/:id/add_bulk_companies", [authJWT.verifyToken, authJWT.isAd
                     const findParentCompanies = await Representative.findAll({
                         where: whereC
                     });
-                    console.log('ParentLength', findParentCompanies.length, companies)
+                    console.log('ParentLength', findParentCompanies.length)
                     if(findParentCompanies.length == 0) {
                         let addRecord = 0,  mainCompanies = [], parentCompaniesID = [];  
 
@@ -3004,7 +2993,7 @@ route.post("/company/:id/add_bulk_companies", [authJWT.verifyToken, authJWT.isAd
                             let representativeName = companies[i].representative_name != null ? companies[i].representative_name : companies[i].original_name;
 
                             const addParent = await Representative.create({
-                                original_name: companies[i].original_name, representative_name: representativeName, instances: companies[i].instances, parent_id: findGroup.representative_id, child: 1
+                                original_name: companies[i].original_name, representative_name: representativeName, company_id: companies[i].representative_id, instances: companies[i].instances, parent_id: findGroup.representative_id, child: 1
                             });
 
                             if(addParent != null && addParent.representative_id > 0){
@@ -3013,13 +3002,13 @@ route.post("/company/:id/add_bulk_companies", [authJWT.verifyToken, authJWT.isAd
                                 /**
                                  * Find Normalize companies
                                  */
-                                parentCompaniesID.push(addParent.representative_id);
+                                parentCompaniesID.push(companies[i].representative_id);
                                 let nameR = companies[i].representative_id > 0 ? companies[i].representative_name : companies[i].original_name;
 
                                 mainCompanies.push(nameR);
                                 addRecord++;
                                 
-                                let findCompaniesQuery = "";
+                                /* let findCompaniesQuery = "";
 
                                 if(companies[i].representative_id > 0) {
                                     findCompaniesQuery = "SELECT aaa.*, r.representative_name  FROM assignor_and_assignee as aaa LEFT JOIN representative as r ON r.representative_id = aaa.representative_id WHERE aaa.representative_id = :representativeID AND aaa.name <> :name";
@@ -3047,26 +3036,54 @@ route.post("/company/:id/add_bulk_companies", [authJWT.verifyToken, authJWT.isAd
                                             addRecord++;
                                         }
                                     }
-                                }
+                                } */
                             
                             }
                         }
                         if(addRecord > 0) { 
                             console.log(JSON.stringify(parentCompaniesID));
-                            if(mainCompanies.length > 0){
-                                await exec(`screen -md php -f /var/www/html/trash/run_add_companies_script.php "${client_id}" '${JSON.stringify(parentCompaniesID)}'`, async (error, stdout, stderr) => {
-                                    console.log(error);
-                                    console.log(stdout);
-                                    console.log(stderr);
-                                })
-                            }
+                            console.log(`screen -md php -f /var/www/html/scripts/run_add_companies_script.php "${client_id}" '${JSON.stringify(parentCompaniesID)}'`)
+                            await exec(`screen -md php -f /var/www/html/scripts/run_add_companies_script.php "${client_id}" '${JSON.stringify(parentCompaniesID)}'`, async (error, stdout, stderr) => {
+                                console.log(error);
+                                console.log(stdout);
+                                console.log(stderr);
+                            })
                             res.status(200).send("Companies added");
                         } else {
                             res.status(500).json("Company is already exist");
                         }
                     } else { 
-                        const addedCompanies = [],  mainCompanies = [], parentCompaniesID = [];           
-                        let addRecord = 0;    
+                        const addedCompanies = [],  mainCompanies = [], parentCompaniesID = [];     
+                        findParentCompanies.map(c => {
+                            if(c.company_id > 0) {
+                                parentCompaniesID.push(c.company_id);
+                            } 
+                        })      
+                        console.log("PArentttttttt")
+                        let addRecord = 0;   
+                        for(let i = 0; i < companies.length; i++) {
+                            if(!parentCompaniesID.includes(companies[i].representative_id)){
+                                let representativeName = companies[i].representative_name != null ? companies[i].representative_name : companies[i].original_name;
+
+                                const addParent = await Representative.create({
+                                    original_name: companies[i].original_name, representative_name: representativeName, company_id: companies[i].representative_id, instances: companies[i].instances
+                                });
+                                if(addParent != null && addParent.representative_id > 0){
+
+                                
+                                    /**
+                                     * Find Normalize companies
+                                     */
+                                    parentCompaniesID.push(companies[i].representative_id);
+                                    let nameR = companies[i].representative_id > 0 ? companies[i].representative_name : companies[i].original_name;
+    
+                                    mainCompanies.push(nameR);
+                                    addRecord++;
+                                }
+                            }
+                        }
+                        
+                        /* let addRecord = 0;    
                         findParentCompanies.map(c => {
                             addedCompanies.push(c.original_name);
                             addedCompanies.push(c.representative_name);
@@ -3108,16 +3125,15 @@ route.post("/company/:id/add_bulk_companies", [authJWT.verifyToken, authJWT.isAd
                                     }
                                 }
                             }
-                        }
-                        if(addRecord > 0) {
-                            console.log(JSON.stringify(parentCompaniesID));
-                            if(mainCompanies.length > 0){
-                                await exec(`screen -md php -f /var/www/html/trash/run_add_companies_script.php "${client_id}" '${JSON.stringify(parentCompaniesID)}'`, async (error, stdout, stderr) => {
-                                    console.log(error);
-                                    console.log(stdout);
-                                    console.log(stderr);
-                                })
-                            }
+                        } */
+                        if(addRecord  > 0) {
+                            console.log(JSON.stringify(parentCompaniesID)); 
+                            console.log(`screen -md php -f /var/www/html/scripts/run_add_companies_script.php "${client_id}" "${JSON.stringify(parentCompaniesID)}"`)
+                            await exec(`screen -md php -f /var/www/html/scripts/run_add_companies_script.php "${client_id}" '${JSON.stringify(parentCompaniesID)}'`, async (error, stdout, stderr) => {
+                                console.log(error);
+                                console.log(stdout);
+                                console.log(stderr);
+                            }) 
                             res.status(200).send("Companies added");
                         } else {
                             res.status(500).json("Company is already exist");
@@ -3216,7 +3232,7 @@ route.post("/company/:id/add_bulk_companies", [authJWT.verifyToken, authJWT.isAd
                             const findParentCompanies = await Representative.findAll({
                                 where: whereC
                             });
-                            console.log('ParentLength', findParentCompanies.length, companies)
+                            console.log('ParentLength', findParentCompanies.length)
                             if(findParentCompanies.length == 0) {
                                 let addRecord = 0,  mainCompanies = [], parentCompaniesID = [];  
 
@@ -3226,7 +3242,7 @@ route.post("/company/:id/add_bulk_companies", [authJWT.verifyToken, authJWT.isAd
                                     let representativeName = companies[i].representative_name != null ? companies[i].representative_name : companies[i].original_name;
 
                                     const addParent = await Representative.create({
-                                        original_name: companies[i].original_name, representative_name: representativeName, instances: companies[i].instances
+                                        original_name: companies[i].original_name, representative_name: representativeName, company_id: companies[i].representative_id, instances: companies[i].instances
                                     });
 
                                     if(addParent != null && addParent.representative_id > 0){
@@ -3235,12 +3251,12 @@ route.post("/company/:id/add_bulk_companies", [authJWT.verifyToken, authJWT.isAd
                                         /**
                                          * Find Normalize companies
                                          */
-                                        parentCompaniesID.push(addParent.representative_id);
+                                        parentCompaniesID.push(companies[i].representative_id);
                                         let nameR = companies[i].representative_id > 0 ? companies[i].representative_name : companies[i].original_name;
         
                                         mainCompanies.push(nameR);
                                         addRecord++;
-                                        
+                                         /*
                                         let findCompaniesQuery = "";
 
                                         if(companies[i].representative_id > 0) {
@@ -3269,31 +3285,59 @@ route.post("/company/:id/add_bulk_companies", [authJWT.verifyToken, authJWT.isAd
                                                     addRecord++;
                                                 }
                                             }
-                                        }
+                                        } */
                                     
                                     }
                                 }
                                 if(addRecord > 0) { 
                                     console.log(JSON.stringify(parentCompaniesID));
-                                    if(mainCompanies.length > 0){
-                                        await exec(`screen -md php -f /var/www/html/trash/run_add_companies_script.php "${client_id}" "${JSON.stringify(parentCompaniesID)}"`, async (error, stdout, stderr) => {
-                                            console.log(error);
-                                            console.log(stdout);
-                                            console.log(stderr);
-                                        })
-                                    }
+                                    console.log(`screen -md php -f /var/www/html/scripts/run_add_companies_script.php "${client_id}" "${JSON.stringify(parentCompaniesID)}"`)
+                                    await exec(`screen -md php -f /var/www/html/scripts/run_add_companies_script.php "${client_id}" "${JSON.stringify(parentCompaniesID)}"`, async (error, stdout, stderr) => {
+                                        console.log(error);
+                                        console.log(stdout);
+                                        console.log(stderr);
+                                    })
                                     res.status(200).send("Companies added");
                                 } else {
                                     res.status(500).json("Company is already exist");
                                 }
                             } else { 
-                                const addedCompanies = [],  mainCompanies = [], parentCompaniesID = [];           
-                                let addRecord = 0;    
+                                const addedCompanies = [],  mainCompanies = [], parentCompaniesID = [];      
+                                findParentCompanies.map(c => {
+                                    if(c.company_id > 0) {
+                                        parentCompaniesID.push(c.company_id);
+                                    } 
+                                })     
+                                console.log("PArentttttttt")
+                                let addRecord = 0;   
+                                for(let i = 0; i < companies.length; i++) {
+                                    if(!parentCompaniesID.includes(companies[i].representative_id)){
+                                        let representativeName = companies[i].representative_name != null ? companies[i].representative_name : companies[i].original_name;
+        
+                                        const addParent = await Representative.create({
+                                            original_name: companies[i].original_name, representative_name: representativeName, company_id: companies[i].representative_id, instances: companies[i].instances
+                                        });
+                                        if(addParent != null && addParent.representative_id > 0){
+        
+                                        
+                                            /**
+                                             * Find Normalize companies
+                                             */
+                                            parentCompaniesID.push(companies[i].representative_id);
+                                            let nameR = companies[i].representative_id > 0 ? companies[i].representative_name : companies[i].original_name;
+            
+                                            mainCompanies.push(nameR);
+                                            addRecord++;
+                                        }
+                                    }
+                                }
+
+                                /*let addRecord = 0;    
                                 findParentCompanies.map(c => {
                                     addedCompanies.push(c.original_name);
                                     addedCompanies.push(c.representative_name);
                                 })
-                                for(let i = 0; i < companies.length; i++) {
+                                 for(let i = 0; i < companies.length; i++) {
                                     if(!addedCompanies.includes(companies[i].original_name) && !addedCompanies.includes(companies[i].representative_name)){
                                         const addParent = await Representative.create({
                                             original_name: companies[i].original_name, representative_name: companies[i].representative_name, instances: companies[i].instances
@@ -3330,16 +3374,15 @@ route.post("/company/:id/add_bulk_companies", [authJWT.verifyToken, authJWT.isAd
                                             }
                                         }
                                     }
-                                }
-                                if(addRecord > 0) {
-                                    console.log(JSON.stringify(parentCompaniesID));
-                                    if(mainCompanies.length > 0){
-                                        await exec(`screen -md php -f /var/www/html/trash/run_add_companies_script.php "${client_id}" "${JSON.stringify(parentCompaniesID)}"`, async (error, stdout, stderr) => {
-                                            console.log(error);
-                                            console.log(stdout);
-                                            console.log(stderr);
-                                        })
-                                    }
+                                } */
+                                if(parentCompaniesID.length > 0) {
+                                    console.log(JSON.stringify(parentCompaniesID)); 
+                                    console.log(`screen -md php -f /var/www/html/scripts/run_add_companies_script.php "${client_id}" "${JSON.stringify(parentCompaniesID)}"`)
+                                    await exec(`screen -md php -f /var/www/html/scripts/run_add_companies_script.php "${client_id}" "${JSON.stringify(parentCompaniesID)}"`, async (error, stdout, stderr) => {
+                                        console.log(error);
+                                        console.log(stdout);
+                                        console.log(stderr);
+                                    }) 
                                     res.status(200).send("Companies added");
                                 } else {
                                     res.status(500).json("Company is already exist");
@@ -3386,6 +3429,7 @@ route.post("/company/cited/:id/export", [authJWT.verifyToken, authJWT.isAdmin, a
     
             if(req.connection_db != null) {
                 const RepresentativeClient = req.connection_db.define('Representatives', RepresentativeCustomer.mainStructure, RepresentativeCustomer.options);
+                
                 const findRepresentativeCompanies = await RepresentativeClient.findAll({
                     attributes:['representative_id'],
                     where:whereRepresentative
@@ -3475,7 +3519,7 @@ route.post("/company/cited/:id/export", [authJWT.verifyToken, authJWT.isAdmin, a
         const representativeIDs = JSON.parse(portfolios != undefined ? portfolios : "[]");
         let citedAssignees = [], organizations = [], total_records = 0;
         if(customerID > 0) {
-            const where = {organisationID: customerID, layout_id: 15};
+            const where = {organisationID: 0 /* customerID */, layout_id: 15};
             let whereRepresentative = {};
             if(representativeIDs.length > 0) {
                 where.representative_id = representativeIDs;
@@ -3493,7 +3537,14 @@ route.post("/company/cited/:id/export", [authJWT.verifyToken, authJWT.isAdmin, a
             console.log('where',  where)
     
             if(req.connection_db != null) {
-                if(assignee_id == undefined) {
+                if(representativeIDs.length  == 0) {
+                    const getAllIDs = await getAllCompanyIDs(req)
+                    where.representative_id = getAllIDs;
+                    where.companiesIDs = getAllIDs
+                } else {
+                    where.companiesIDs = representativeIDs
+                }
+                /* if(assignee_id == undefined) {
                     const RepresentativeClient = req.connection_db.define('Representatives', RepresentativeCustomer.mainStructure, RepresentativeCustomer.options);
                     const findRepresentativeCompanies = await RepresentativeClient.findAll({
                         attributes:['representative_id'],
@@ -3509,7 +3560,7 @@ route.post("/company/cited/:id/export", [authJWT.verifyToken, authJWT.isAdmin, a
                         await Promise.all(promises);
                         where.companiesIDs = companies
                     }
-                }    
+                } */    
                 where.type = [30, 21, 36]
     
                 let queryOwnedAssets = `SELECT application FROM db_new_application.dashboard_items WHERE type IN (:type) AND organisation_id = :organisationID `
@@ -3546,8 +3597,8 @@ route.post("/company/cited/:id/export", [authJWT.verifyToken, authJWT.isAdmin, a
     
                         queryCitedPatentsAssignee +=   `AND a.application IN (:application)  `
                         where.application = allOwnedAssets
-                        
-                        if(typeof where.companiesIDs !== 'undefined') {
+
+                        if(typeof where.companiesIDs != 'undefined') {
                             queryCitedPatentsAssignee +=   `AND a.representative_id IN (:companiesIDs) AND ao.organisation_id = 0`
                         }                       
     
@@ -3615,7 +3666,7 @@ route.get("/company/cited/:id", [authJWT.verifyToken, authJWT.isAdmin, authJWT.a
         const representativeIDs = JSON.parse(portfolios != undefined ? portfolios : "[]");
         let citedAssignees = [], organizations = [], total_records = 0;
         if(customerID > 0) {
-            const where = {organisationID: customerID, layout_id: 15};
+            const where = {organisationID: 0 /* customerID */, layout_id: 15};
             let whereRepresentative = {};
             if(representativeIDs.length > 0) {
                 where.representative_id = representativeIDs;
@@ -3632,7 +3683,15 @@ route.get("/company/cited/:id", [authJWT.verifyToken, authJWT.isAdmin, authJWT.a
             } 
     
             if(req.connection_db != null) {
-                if(assignee_id == undefined) {
+                console.log("LENEGEGEGE", representativeIDs.length, representativeIDs)
+                if(representativeIDs.length  ==  0) {
+                    const getAllIDs = await getAllCompanyIDs(req)
+                    where.representative_id = getAllIDs;
+                    where.companiesIDs = getAllIDs
+                } else {
+                    where.companiesIDs = representativeIDs
+                }
+                /* if(assignee_id == undefined) {
                     const RepresentativeClient = req.connection_db.define('Representatives', RepresentativeCustomer.mainStructure, RepresentativeCustomer.options);
                     const findRepresentativeCompanies = await RepresentativeClient.findAll({
                         attributes:['representative_id'],
@@ -3648,15 +3707,15 @@ route.get("/company/cited/:id", [authJWT.verifyToken, authJWT.isAdmin, authJWT.a
                         await Promise.all(promises);
                         where.companiesIDs = companies
                     }
-                }    
+                }     */
     
                 let queryCitedPatentsAssignee = `SELECT ao.assignee_id, COUNT(ao.assignee_id) AS occurences, ao.assignee_organization, ao.assignee_query, ao.domain, ao.domain2, ao.domain3, IF(ao.api_logo <> "null", ao.api_logo, "") AS api_logo, IF(ao.api_logo1 <> "null", ao.api_logo1, "") AS api_logo1, IF(ao.api_logo2 <> "null", ao.api_logo2, "") AS api_logo2, IF(ao.api_logo3 <> "null", ao.api_logo3, "") AS api_logo3, IF(ao.api_logo4 <> "null", ao.api_logo4, "") AS api_logo4, IF(ao.api_logo5 <> "null", ao.api_logo5, "") AS api_logo5, IF(ao.api_logo6 <> "null", ao.api_logo6, "") AS api_logo6, IF(ao.api_logo7 <> "null", ao.api_logo7, "") AS api_logo7, IF(ao.api_logo8 <> "null", ao.api_logo8, "") AS api_logo8, IF(ao.api_logo9 <> "null", ao.api_logo9, "") AS api_logo9, without_square, image_url, '' AS img FROM assignee_organizations AS ao 
                                             INNER JOIN cited_patents AS cp ON cp.assignee_id = ao.assignee_id
-                                            INNER JOIN assets AS a ON a.grant_doc_num  COLLATE utf8mb4_general_ci  = cp.patent_number  COLLATE utf8mb4_general_ci 
-                                            WHERE a.layout_id = :layout_id AND a.organisation_id = :organisationID ` 
+                                            INNER JOIN dashboard_items AS a ON a.patent  COLLATE utf8mb4_general_ci  = cp.patent_number  COLLATE utf8mb4_general_ci 
+                                            WHERE a.organisation_id = :organisationID   ` 
                                             
                 if(typeof where.companiesIDs !== 'undefined') {
-                    queryCitedPatentsAssignee +=   `AND a.company_id IN (:companiesIDs) AND ao.organisation_id = 0`
+                    queryCitedPatentsAssignee +=   `AND a.representative_id IN (:companiesIDs) AND ao.organisation_id = 0`
                 }                       
     
                 if(assignee_id != undefined) {
@@ -3666,7 +3725,7 @@ route.get("/company/cited/:id", [authJWT.verifyToken, authJWT.isAdmin, authJWT.a
                 queryCitedPatentsAssignee += ` GROUP BY ao.assignee_id`
     
     
-                const recordsResult = await connection.applicationNew.query(`SELECT COUNT(*) as total_records FROM (${queryCitedPatentsAssignee}) as temp`,{
+                const recordsResult = await connection.applicationNew.query(`SELECT COUNT(*) as total_records FROM (${ queryCitedPatentsAssignee }) as temp`,{
                         type: connection.Sequelize.QueryTypes.SELECT,
                         raw: true,
                         replacements: where,
@@ -3684,13 +3743,16 @@ route.get("/company/cited/:id", [authJWT.verifyToken, authJWT.isAdmin, authJWT.a
     
                 queryCitedPatentsAssignee += ` LIMIT  ${typeof current_page !== "undefined" ? current_page * rows_per_page + ", " : " 0, "} ${typeof rows_per_page !== "undefined" ? rows_per_page : " 50 "} `
                 
-                citedAssignees = await connection.applicationNew.query(queryCitedPatentsAssignee,{
-                        type: connection.Sequelize.QueryTypes.SELECT,
-                        raw: true,
-                        replacements: where,
-                        logging: console.log,
-                    }
-                );
+                if(total_records > 0) {
+
+                    citedAssignees = await connection.applicationNew.query(queryCitedPatentsAssignee,{
+                            type: connection.Sequelize.QueryTypes.SELECT,
+                            raw: true,
+                            replacements: where,
+                            logging: console.log,
+                        }
+                    );
+                }
     
                 /* const queryOrganisations = `SELECT organisation_id, organisation_name FROM organisations`
                 organizations = await connection.applicationNew.query(queryOrganisations,{
@@ -3784,7 +3846,11 @@ route.post("/company/cited/:id", [authJWT.verifyToken, authJWT.isAdmin, authJWT.
         const representativeIDs = JSON.parse(portfolios != undefined ? portfolios : "[]");
         let list = [],   total_records = 0;
         if(customerID > 0) { 
-            let queryParties = `Select partyName FROM (SELECT IF(r.representative_name <> '', r.representative_name, aaa.name) AS partyName FROM (  SELECT apt.assignor_and_assignee_id FROM db_new_application.activity_parties_transactions AS apt LEFT JOIN db_uspto.inventors AS inv ON inv.assignor_and_assignee_id = apt.assignor_and_assignee_id WHERE activity_id IN (:activityID) AND organisation_id = :organisationID `;
+            if(representativeIDs.length == 0) {
+                representativeIDs = await getAllCompanyIDs(req)
+            }
+            console.log("ALL", representativeIDs)
+            let queryParties = `Select partyName FROM (SELECT IF(r.representative_name <> '', r.representative_name, aaa.name) AS partyName FROM (  SELECT apt.assignor_and_assignee_id FROM db_new_application.activity_parties_transactions AS apt LEFT JOIN db_uspto.inventors AS inv ON inv.assignor_and_assignee_id = apt.assignor_and_assignee_id WHERE activity_id IN (:activityID) AND (organisation_id = :organisationID OR organisation_id IS NULL) `;
 
             if(representativeIDs.length > 0) {
                 queryParties += `AND company_id IN (:representativeIDs) `
@@ -3795,7 +3861,7 @@ route.post("/company/cited/:id", [authJWT.verifyToken, authJWT.isAdmin, authJWT.
             const partiesResult = await connection.applicationNew.query( queryParties,{
                 type: connection.Sequelize.QueryTypes.SELECT,
                 raw: true,
-                replacements: {organisationID: customerID, activityID: [1, 6, 2, 7, 3, 4, 5, 12, 9], representativeIDs, year: 1998},
+                replacements: {organisationID: 0 /* customerID */, activityID: [1, 6, 2, 7, 3, 4, 5, 12, 9, 14, 8, 11, 15, 16, 17, 18], representativeIDs, year: 1998},
                 logging: console.log,
             });
 
@@ -3863,7 +3929,11 @@ route.post("/company/cited/:id", [authJWT.verifyToken, authJWT.isAdmin, authJWT.
         const representativeIDs = JSON.parse(portfolios != undefined ? portfolios : "[]");
         let list = [],   total_records = 0;
         if(customerID > 0) { 
-            let queryParties = `Select partyName FROM (SELECT IF(r.representative_name <> '', r.representative_name, aaa.name) AS partyName FROM (  SELECT apt.assignor_and_assignee_id FROM db_new_application.activity_parties_transactions AS apt LEFT JOIN db_uspto.inventors AS inv ON inv.assignor_and_assignee_id = apt.assignor_and_assignee_id WHERE activity_id <> :activityID AND organisation_id = :organisationID `;
+            if(representativeIDs.length == 0) {
+                representativeIDs = await getAllCompanyIDs(req)
+            }
+
+            let queryParties = `Select partyName FROM (SELECT IF(r.representative_name <> '', r.representative_name, aaa.name) AS partyName FROM (  SELECT apt.assignor_and_assignee_id FROM db_new_application.activity_parties_transactions AS apt LEFT JOIN db_uspto.inventors AS inv ON inv.assignor_and_assignee_id = apt.assignor_and_assignee_id WHERE activity_id <> :activityID AND (organisation_id = :organisationID or organisation_id IS NULL)`;
 
             if(representativeIDs.length > 0) {
                 queryParties += `AND company_id IN (:representativeIDs) `
@@ -3874,7 +3944,7 @@ route.post("/company/cited/:id", [authJWT.verifyToken, authJWT.isAdmin, authJWT.
             const partiesResult = await connection.applicationNew.query( queryParties,{
                 type: connection.Sequelize.QueryTypes.SELECT,
                 raw: true,
-                replacements: {organisationID: customerID, activityID: 10, representativeIDs, year: moment(new Date()).subtract(14, 'year').format('YYYY')},
+                replacements: {organisationID: 0 /* customerID */, activityID: 10, representativeIDs, year: moment(new Date()).subtract(14, 'year').format('YYYY')},
                 logging: console.log,
             });
 
@@ -3914,14 +3984,18 @@ route.post("/company/cited/:id", [authJWT.verifyToken, authJWT.isAdmin, authJWT.
     
     
                 queryPartiesAssignee += ` LIMIT  ${typeof current_page !== "undefined" ? current_page * rows_per_page + ", " : " 0, "} ${typeof rows_per_page !== "undefined" ? rows_per_page : " 50 "} `
+
+                if(total_records > 0) {
+                    list = await connection.applicationNew.query(queryPartiesAssignee,{
+                            type: connection.Sequelize.QueryTypes.SELECT,
+                            raw: true,
+                            replacements: {allParties, assignee_id},
+                            logging: console.log,
+                        }
+                    );
+                }
                 
-                list = await connection.applicationNew.query(queryPartiesAssignee,{
-                        type: connection.Sequelize.QueryTypes.SELECT,
-                        raw: true,
-                        replacements: {allParties, assignee_id},
-                        logging: console.log,
-                    }
-                );
+                
             } 
         }
         res.status(200).json({list, total_records});

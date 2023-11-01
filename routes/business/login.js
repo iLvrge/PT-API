@@ -26,7 +26,7 @@ route.get("/authenticate/:code/:type", async(req, res, next) => {
         //let query = `SELECT organisation_id FROM db_business.organisation WHERE uuid = UUID_TO_BIN(:binToUUID) AND status = 0`
 
         const replacements = { binToUUID : req.params.code  } 
-        let query = `SELECT org.organisation_id, share.share_id FROM db_business.organisation AS org INNER JOIN db_new_application.share AS share ON share.organisation_id = org.organisation_id
+        let query = `SELECT org.organisation_id, share.share_id, share.show_other_companies FROM db_business.organisation AS org INNER JOIN db_new_application.share AS share ON share.organisation_id = org.organisation_id
         WHERE org.status = 0 AND share.code = :binToUUID AND share.type = :type GROUP BY org.organisation_id`
         replacements.type = req.params.type 
         //const clientIp = requestIPADRESS.getClientIp(req);  
@@ -60,7 +60,7 @@ route.get("/authenticate/:code/:type", async(req, res, next) => {
     
                 const expiredDate = moment(new Date(currentDate)).add(1,'days').valueOf();
     
-                token = jwt.sign({ id: findAdminUser.user_id, orgId: findAdminUser.organisation_id, iat: currentDate, expired: expiredDate }, config.config.secret, {
+                token = jwt.sign({ id: findAdminUser.user_id, orgId: findAdminUser.organisation_id, iat: currentDate, expired: expiredDate, show_other_companies: findOrg.show_other_companies, share_code: req.params.code }, config.config.secret, {
                     expiresIn: 86400 // expires in 24 hours,
                 });
         
@@ -179,7 +179,7 @@ route.post("/signin", (req, res, next) => {
             {
               model: Organisation,
               as: "organisation",
-              attributes: ['subscribtion'],
+              attributes: ['subscribtion', 'organisation_type'],
             }
         ],
         where: {
@@ -200,8 +200,10 @@ route.post("/signin", (req, res, next) => {
         const currentDate = Date.now();
 
         const expiredDate = moment(new Date(currentDate)).add(1,'days').valueOf();
+
+        console.log(user.organisation)
         
-        let token = jwt.sign({ id: user.user_id, orgId:user.organisation_id, subscription: user.organisation.subscribtion, iat: currentDate, expired: expiredDate }, config.config.secret, {
+        let token = jwt.sign({ id: user.user_id, orgId:user.organisation_id, org_type: user.organisation.organisation_type , subscription: user.organisation.subscribtion, iat: currentDate, expired: expiredDate, show_other_companies: 1, share_code: '' }, config.config.secret, {
             expiresIn: 86400 // expires in 24 hours,
         });
 
