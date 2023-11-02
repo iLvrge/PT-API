@@ -615,14 +615,14 @@ route.put("/company/search/all/", [authJWT.verifyToken, authJWT.isAdmin], async 
                     await Promise.all(promiseR) */
                 }
 
-
+                const replaceNames = [];
                 if(IDs.length > 0) {
                     let getList = await AssignorAndAssignee.findAll({
                         where:{assignor_and_assignee_id: IDs}
                     });
                     
                     console.log("getList->length", getList.length);
-                    const replaceNames = [];
+                    
 
 
                     const promiseName = getList.map( company => {
@@ -772,13 +772,20 @@ route.put("/company/search/all/", [authJWT.verifyToken, authJWT.isAdmin], async 
                 if(applicantAssignorAndAssigneeIDs.length > 0) {
                     await ApplicantAssignorAndAssignee.update(item, {where: {assignor_and_assignee_id: applicantAssignorAndAssigneeIDs}}); 
                 } else {
-                    const findAppRows = await ApplicantAssignorAndAssignee.findAll({
-                        attributes:['assignor_and_assignee_id'],
-                        where: {
+
+                    let where = {name: normalize_name}
+
+                    if(replaceNames.length > 0) {
+                        where = {
                             [connection.Op.or]: [
                             {name: normalize_name},
                             {name: replaceNames}
                         ]}
+                    }
+
+                    const findAppRows = await ApplicantAssignorAndAssignee.findAll({
+                        attributes:['assignor_and_assignee_id'],
+                        where 
                     })
 
                     if(findAppRows.length > 0) { 
