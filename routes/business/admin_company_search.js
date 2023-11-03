@@ -786,7 +786,7 @@ route.put("/company/search/all/", [authJWT.verifyToken, authJWT.isAdmin], async 
                     const findAppRows = await ApplicantAssignorAndAssignee.findAll({
                         attributes:['assignor_and_assignee_id'],
                         where 
-                    })
+                    })   
 
                     if(findAppRows.length > 0) { 
                         const IDSS = await findAppRows.map( r => applicantAssignorAndAssigneeIDs.push(r.assignor_and_assignee_id))
