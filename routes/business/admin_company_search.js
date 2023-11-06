@@ -1240,7 +1240,7 @@ route.get("/company/lenders/:id/companies", [authJWT.verifyToken, authJWT.isAdmi
                 (SELECT COUNT(*) FROM (SELECT assignor.rf_id FROM assignor 
                     INNER JOIN assignment ON assignment.rf_id = assignor.rf_id 
                     INNER JOIN representative_assignment_conveyance ON representative_assignment_conveyance.rf_id = assignor.rf_id 
-                    WHERE assignor.assignor_and_assignee_id = assignor_and_assignee_id AND date_format(assignment.record_dt, '%Y')  >= :year
+                    WHERE assignor.assignor_and_assignee_id = dumpData.assignor_and_assignee_id AND date_format(assignment.record_dt, '%Y')  >= :year
                     AND representative_assignment_conveyance.convey_ty IN (:conveyanceTypes) GROUP BY assignor.rf_id ) AS temp_total
                 ) AS total_occurences,  normalize_name, 
                 (select rr.representative_name FROM representative as rr WHERE rr.representative_name = name GROUP BY rr.representative_name) as representative_company,
