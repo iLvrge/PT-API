@@ -716,8 +716,8 @@ route.delete("/customers/:id/companies", [authJWT.verifyToken, authJWT.isAdmin, 
             const Representative = req.connection_db.define('ClientRepesentative', ClientRepesentative.mainStructure, ClientRepesentative.options);
             const findCompanies = await Representative.findAll({
                 attributes:['representative_id', 'parent_id', 'original_name', 'company_id'],
-                where:{representative_id: IDs},
-                group:[                                                                                                                'company_id']
+                where:{company_id: IDs},
+                group:['company_id']
             });
             const updateKPICompanies=[],  deleteParentCompanies = [], reUpdateCompanies = [], deleteCompanies = [], activityLogs = [], currentDate = moment(new Date()).format('YYYY-MM-DD hh:mm:ss');
             if(findCompanies.length > 0) {
@@ -1734,11 +1734,25 @@ route.get("/customers/:organisation_id/flag_automatic", [authJWT.verifyToken, au
         if(organisationID > 0){
             let org = await helpers.findOrganisationbyID( organisationID );
             if(org != null && org.organisation_id > 0) {
+                if(companyID != '') {
+                    companyID = JSON.parse(companyID)
+                }
+
+                if(companyID.length > 0) {
+                    companyID.map( ID => {
+                        console.log(`php -f /var/www/html/scripts/update_flag.php "${organisationID}" "${ID}"`);
+                        exec(`php -f /var/www/html/scripts/update_flag.php "${organisationID}" "${ID}"`, (error, stdout, stderr) => {  
+                            console.log(error, stdout, stderr);
+                        });
+                    })
+                } else {
+                    console.log(`php -f /var/www/html/scripts/update_flag.php "${organisationID}" ""`);
+                        exec(`php -f /var/www/html/scripts/update_flag.php "${organisationID}" ""`, (error, stdout, stderr) => {  
+                            console.log(error, stdout, stderr);
+                        });
+                }
                 
-                console.log(`php -f /var/www/html/scripts/update_flag.php "${organisationID}" "${companyID}"`);
-                exec(`php -f /var/www/html/scripts/update_flag.php "${organisationID}" "${companyID}"`, (error, stdout, stderr) => {  
-                    console.log(error, stdout, stderr);
-                });
+                
                 res.status(200).send("Fixing flag in process");
             } else {
                 res.status(402).send("Customer not exist.");
