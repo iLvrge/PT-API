@@ -1740,7 +1740,7 @@ route.get("/customers/:organisation_id/flag_automatic", [authJWT.verifyToken, au
 
                 if(companyID.length > 0) {
                     companyID.map( ID => {
-                        console.log(`php -f /var/www/html/scripts/update_flag.php "${organisationID}" "${ID}"`);
+                        console.log(`tab   php -f /var/www/html/scripts/update_flag.php "${organisationID}" "${ID}"`);
                         exec(`php -f /var/www/html/scripts/update_flag.php "${organisationID}" "${ID}"`, (error, stdout, stderr) => {  
                             console.log(error, stdout, stderr);
                         });
@@ -2180,8 +2180,8 @@ route.get("/customers/retrieve_cited_patents/:customerID",[authJWT.verifyToken, 
     try {
         const {customerID} = req.params
         const {companies, type} = req.query
-        console.log('companies', '/var/www/html/script/retrieve_cited_patents_assignees.js', customerID, `${companies}`, `${type}`);
-        const script = spawn('node', ['/var/www/html/script/retrieve_cited_patents_assignees.js', customerID, `${companies}`, `${type}`]);
+        console.log('companies', '/var/www/html/scripts/retrieve_cited_patents_assignees.js', customerID, `${companies}`, `${type}`);
+        const script = spawn('node', ['/var/www/html/scripts/retrieve_cited_patents_assignees.js', customerID, `${companies}`, `${type}`]);
         script.stdout.on('data', function(data) {
             console.log(data)
         })
@@ -2245,7 +2245,7 @@ route.post("/customers/retrieve_cited_patents_logo",[authJWT.verifyToken, authJW
         /* logger.info('Sending request to RapidAPI script')
         console.log('/var/www/html/script/name_to_domain_api.js', client_id, api_name, assignees, 1, company_id, all, type) */
         /* const assigneeLogos = spawn('node', ['/var/www/html/script/name_to_domain_api.js', client_id, api_name, assignees, 1, company_id, all, type, source_data]); */
-        spawn('node', ['/var/www/html/script/name_to_domain_api.js', client_id, api_name, assignees, 1, company_id, all, type, source_data]);
+        spawn('node', ['/var/www/html/scripts/name_to_domain_api.js', client_id, api_name, assignees, 1, company_id, all, type, source_data]);
     
         /* assigneeLogos.stdout.on('data', (data) => {
             logger.info(data)

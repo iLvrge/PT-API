@@ -902,7 +902,8 @@ route.post("/group", [authJWT.verifyToken, clientDBConnection.connect], async(re
                 original_name: group_name,
                 representative_name: group_name,
                 instances: 0,
-                type: 1
+                type: 1,
+                company_id: 0
             });
             if(addGroup !== null) {            
                 const organisation  = await helpers.findOrganisationbyID(req.orgId);
@@ -911,7 +912,7 @@ route.post("/group", [authJWT.verifyToken, clientDBConnection.connect], async(re
                     /**
                     * Create new workspace in slack
                     */
-                    await createSlackWorkSpace(group_name, organisation)                
+                    //await createSlackWorkSpace(group_name, organisation)                
                 }
             }
             res.status(200).json(addGroup);
@@ -919,7 +920,8 @@ route.post("/group", [authJWT.verifyToken, clientDBConnection.connect], async(re
             res.status(200).json(findGroup);
         }
     } catch( err ) {
-        res.status(500).send("Internal error", err);
+        console.log(err)
+        res.status(500).send("Internal error");
     }
 })
 

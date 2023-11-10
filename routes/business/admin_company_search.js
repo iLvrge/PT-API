@@ -4004,7 +4004,7 @@ route.post("/company/cited/:id", [authJWT.verifyToken, authJWT.isAdmin, authJWT.
             let queryParties = `Select partyName FROM (SELECT IF(r.representative_name <> '', r.representative_name, aaa.name) AS partyName FROM (  SELECT apt.assignor_and_assignee_id FROM db_new_application.activity_parties_transactions AS apt LEFT JOIN db_uspto.inventors AS inv ON inv.assignor_and_assignee_id = apt.assignor_and_assignee_id WHERE activity_id <> :activityID AND (organisation_id = :organisationID or organisation_id IS NULL)`;
 
             if(representativeIDs.length > 0) {
-                queryParties += `AND company_id IN (:representativeIDs) `
+                queryParties += ` AND company_id IN (:representativeIDs) `
             }
 
             queryParties += ` AND date_format(apt.exec_dt, '%Y') > :year AND inv.assignor_and_assignee_id IS NULL GROUP BY apt.assignor_and_assignee_id ) AS temp INNER JOIN db_uspto.assignor_and_assignee AS aaa ON aaa.assignor_and_assignee_id = temp.assignor_and_assignee_id LEFT JOIN db_uspto.representative AS r ON r.representative_id = aaa.representative_id ) AS temp GROUP BY partyName`; 
