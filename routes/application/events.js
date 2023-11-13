@@ -1932,7 +1932,25 @@ route.post("/events/assets", [authJWT.verifyToken], async(req, res, next) => {
                             }
                         }
 
-                        query += ` GROUP BY application`
+
+                        if(customers && customers != '') {
+                            customers = JSON.parse( customers )
+
+                            if(Array.isArray(customers) && customers.length > 0 ) {
+                                where.customers = customers 
+                                query += `  AND assignor_id IN ( SELECT assignor_and_assignee_id FROM (SELECT assignor_and_assignee_id FROM db_uspto.assignor_and_assignee WHERE assignor_and_assignee_id = :customers 
+                                    UNION 
+                                    SELECT assignor_and_assignee_id FROM db_uspto.assignor_and_assignee WHERE representative_id IN (
+                                        SELECT representative_id FROM db_uspto.assignor_and_assignee WHERE assignor_and_assignee_id = :customers
+                                    )) AS tempParties ) `
+                                /* if(type == 'top_lenders') {
+                                   
+                                } */
+                            }
+                        }
+
+                        query += ` GROUP BY application` 
+                        
                     } else { 
                         if(tabs && tabs != '') {
                             tabs = JSON.parse( tabs )

@@ -1070,9 +1070,14 @@ route.post("/asset_types/assets/agents", [authJWT.verifyToken, clientDBConnectio
                             customers = []
                         }
                 
-                        if( customers.length > 0 ) {
+                        if(Array.isArray(customers) && customers.length > 0 ) {
                             where.customers = customers
-                            query += `  AND assignor_id IN (:customers) `
+                            query += `   AND assignor_id IN ( SELECT assignor_and_assignee_id FROM (SELECT assignor_and_assignee_id FROM db_uspto.assignor_and_assignee WHERE assignor_and_assignee_id = :customers 
+                                UNION 
+                                SELECT assignor_and_assignee_id FROM db_uspto.assignor_and_assignee WHERE representative_id IN (
+                                    SELECT representative_id FROM db_uspto.assignor_and_assignee WHERE assignor_and_assignee_id = :customers
+                                )) AS tempParties ) ` 
+
                         }
                         query += `    
                             GROUP BY cor.convey_ty, apt.rf_id
@@ -1900,8 +1905,20 @@ route.get("/:layout/assets", [authJWT.verifyToken, clientDBConnection.connect], 
                                     query += ` ( `
 
                                 }
+
+                                if(replacements.layoutID == 41) {   
+                                    query += `  assignor_id IN (
+                                        SELECT assignor_and_assignee_id FROM (
+                                        SELECT assignor_and_assignee_id FROM db_uspto.assignor_and_assignee WHERE assignor_and_assignee_id IN (:customers)
+                                        UNION
+                                        SELECT assignor_and_assignee_id FROM db_uspto.assignor_and_assignee WHERE representative_id IN (SELECT representative_id FROM db_uspto.assignor_and_assignee WHERE assignor_and_assignee_id IN (:customers) AND representative_id > 0)) As tempAssignorAndAssignee GROUP BY assignor_and_assignee_id
+
+                                    ) `
+                                } else {
+                                    query += `  assignor_id IN (:customers) `
+                                }
                                 
-                                query += `  assignor_id IN (:customers) `
+                                
 
                                 if( customers.length == 2){
                                     const allCustomers = replacements.customers = customers;
@@ -2140,12 +2157,37 @@ route.get("/:layout/transactions", [authJWT.verifyToken, clientDBConnection.conn
         if(companies && companies != '') {
             companies = JSON.parse( companies )            
         }
+
+        if(customers && customers != '') {
+            customers = JSON.parse( customers )            
+        }
         
         if([17, 18, 19, 24, 25, 26, 39, 40, 41].includes(replacements.layoutID)) {
             if(companies.length > 0) {
                 replacements.companies = companies
             }
-            let query = `SELECT trans.rf_id, assignment.reel_no, assignment.frame_no, '' AS channel, trans.date, assets, sum(assets) OVER (ORDER BY trans.date) AS grand_total  FROM (SELECT documentid.rf_id, (SELECT date_format(exec_dt,'%m-%d-%Y') FROM db_uspto.assignor AS assignor WHERE assignor.rf_id = documentid.rf_id LIMIT 1) AS date, COUNT(distinct documentid.appno_doc_num) AS assets FROM db_uspto.documentid As documentid WHERE documentid.rf_id IN (SELECT rf_id FROM dashboard_items WHERE organisation_id = :organisationID AND representative_id IN (:companies) AND type = :layoutID  ${req.orgType == 2 ? ' AND mode IN (:mode) ' : ''}  GROUP BY rf_id) GROUP BY documentid.rf_id) AS trans INNER JOIN db_uspto.assignment AS assignment ON assignment.rf_id = trans.rf_id `
+
+            if(customers.length > 0) {
+                replacements.customers = customers
+            } 
+
+            let query = `SELECT trans.rf_id, assignment.reel_no, assignment.frame_no, '' AS channel, trans.date, assets, sum(assets) OVER (ORDER BY trans.date) AS grand_total  FROM (SELECT documentid.rf_id, (SELECT date_format(exec_dt,'%m-%d-%Y') FROM db_uspto.assignor AS assignor WHERE assignor.rf_id = documentid.rf_id LIMIT 1) AS date, COUNT(distinct documentid.appno_doc_num) AS assets FROM db_uspto.documentid As documentid WHERE documentid.rf_id IN (SELECT rf_id FROM dashboard_items WHERE organisation_id = :organisationID AND representative_id IN (:companies) AND type = :layoutID  `
+            
+            if(replacements.layoutID == 41) {   
+                query += ` AND assignor_id IN (
+                    SELECT assignor_and_assignee_id FROM (
+                    SELECT assignor_and_assignee_id FROM db_uspto.assignor_and_assignee WHERE assignor_and_assignee_id IN (:customers)
+                    UNION
+                    SELECT assignor_and_assignee_id FROM db_uspto.assignor_and_assignee WHERE representative_id IN (SELECT representative_id FROM db_uspto.assignor_and_assignee WHERE assignor_and_assignee_id IN (:customers) AND representative_id > 0)) As tempAssignorAndAssignee GROUP BY assignor_and_assignee_id
+
+                ) `
+            } else {
+                query += ` AND assignor_id IN (:customers) `
+            }
+
+
+
+            query += ` ${req.orgType == 2 ? ' AND mode IN (:mode) ' : ''}  GROUP BY rf_id) GROUP BY documentid.rf_id) AS trans INNER JOIN db_uspto.assignment AS assignment ON assignment.rf_id = trans.rf_id `
             
             if(lawfirm > 0) { 
                 const findLawFirm = `SELECT cname, lf.name, rlf.representative_id, rlf.representative_name FROM db_uspto.correspondent AS c LEFT JOIN db_uspto.law_firm  as lf ON c.cname = lf.name
@@ -2395,7 +2437,7 @@ route.get("/incorrectnames", [authJWT.verifyToken, clientDBConnection.connect], 
 
             const findName = await Representative.findOne({
                 attributes: ['representative_name'],
-                where:{ representative_id: companies}                        
+                where:{ company_id: companies}                        
             });
 
             if(findName != null) {
@@ -2683,7 +2725,7 @@ route.get("/lenders", [authJWT.verifyToken, clientDBConnection.connect], async(r
             tempQuery += ` AND di.representative_id IN (:companies)`;
         }
 
-        tempQuery += ` GROUP BY assignor_id `;  
+        tempQuery += ` GROUP BY name `;  
         
         const getList = await connection.applicationNew.query(tempQuery, {
             type: connection.Sequelize.QueryTypes.SELECT,
