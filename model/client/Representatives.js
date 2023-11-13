@@ -9,7 +9,7 @@ const ClientRepresentatives = {
         },   
         company_id: {
             type: Sequelize.INTEGER,  
-            allowNull: false,
+            allowNull: true,
         },       
         representative_name:{
             type: Sequelize.STRING,
