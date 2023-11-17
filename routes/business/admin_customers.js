@@ -2168,7 +2168,7 @@ route.get("/patents/:patentNumber/assignments",[authJWT.verifyToken, authJWT.isA
             }        
         }).catch(err => {
             console.log(err);
-            res.status(400).send("Invalid number");
+            res.status(400).send("Invalid number.");
         })
     } catch (e) {
         
