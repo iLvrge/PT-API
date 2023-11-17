@@ -2168,7 +2168,7 @@ route.get("/patents/:patentNumber/assignments",[authJWT.verifyToken, authJWT.isA
             }        
         }).catch(err => {
             console.log(err);
-            res.status(400).send("Invalid number");
+            res.status(400).send("Invalid number.");
         })
     } catch (e) {
         
@@ -2185,9 +2185,10 @@ route.get("/customers/retrieve_cited_patents/:customerID",[authJWT.verifyToken, 
         script.stdout.on('data', function(data) {
             console.log(data)
         })
-        res.status(200).send("Run retireved assignee script");
+        res.status(200).send("Run retireved assignee script.");
     } catch (err) {
-        res.status(500).send("Invalid input");
+        console.log('Err', err)
+        res.status(500).send("Invalid input.");
     }
     
 })
