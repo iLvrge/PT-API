@@ -592,7 +592,7 @@ route.get("/customers/customers/:id/:type", [authJWT.verifyToken, authJWT.isAdmi
                 list = await helpers.findCompanyEntitiesByAccountID(organisationID, type, req.connection_db, suggestions, fixed_identicals); 
             } else { 
                 console.log('Run File Account')
-                exec(`/var/www/html/script/node_modules/.bin/env-cmd node /var/www/html/script/normalize_names.js ${req.orgId} '[]' ${type} ${suggestions} ${fixed_identicals}`, async (error, std, stderr) => {
+                exec(`node /var/www/html/script/normalize_names.js ${req.orgId} '[]' ${type} ${suggestions} ${fixed_identicals}`, async (error, std, stderr) => {
                     console.log('Accound Suggestion')
                     console.log('Err', error)
                     console.log('std', std)
@@ -664,7 +664,7 @@ route.get("/customers/customers/:id/:representativeID/:type", [authJWT.verifyTok
                 list = await helpers.findCompanyEntitiesByAccountIDByRepresentativeIDs(organisationID, representativeIDs, type, req.connection_db, suggestions, fixed_identicals);
             } else { 
                 console.log('Run File')
-                exec(`/var/www/html/script/node_modules/.bin/env-cmd node /var/www/html/script/normalize_names.js ${req.orgId} ${req.params.representativeID}  ${type} ${suggestions} ${fixed_identicals}`);
+                exec(`node /var/www/html/script/normalize_names.js ${req.orgId} ${req.params.representativeID}  ${type} ${suggestions} ${fixed_identicals}`);
             }
         }
         res.status(200).json(list);
