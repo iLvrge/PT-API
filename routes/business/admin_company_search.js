@@ -3917,7 +3917,7 @@ route.post("/company/cited/:id", [authJWT.verifyToken, authJWT.isAdmin, authJWT.
 
         const customerID = req.params.id;
         const { portfolios, sort_by, sort_direction, rows_per_page, current_page, assignee_id } = req.query
-        const representativeIDs = JSON.parse(portfolios != undefined ? portfolios : "[]");
+        let representativeIDs = JSON.parse(portfolios != undefined ? portfolios : "[]");
         let list = [],   total_records = 0;
         if(customerID > 0) { 
             if(representativeIDs.length == 0) {
@@ -4000,7 +4000,7 @@ route.post("/company/cited/:id", [authJWT.verifyToken, authJWT.isAdmin, authJWT.
 
         const customerID = req.params.id;
         const { portfolios, sort_by, sort_direction, rows_per_page, current_page, assignee_id } = req.query
-        const representativeIDs = JSON.parse(portfolios != undefined ? portfolios : "[]");
+        let representativeIDs = JSON.parse(portfolios != undefined ? portfolios : "[]");
         let list = [],   total_records = 0;
         if(customerID > 0) { 
             if(representativeIDs.length == 0) {
