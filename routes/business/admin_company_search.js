@@ -1528,6 +1528,7 @@ route.get("/company/law_firms/:id", [authJWT.verifyToken, authJWT.isAdmin, authJ
                     representativeIDs = await getAllCompanyIDs(req)
                 }
                 if(representativeIDs.length > 0) { 
+                    where.company_id = representativeIDs; 
                     assignorAndAssigneeIDs = await getAllAssignorIDs(representativeIDs)
                 } 
                 /* const RepresentativeClient = req.connection_db.define('Representatives', RepresentativeCustomer.mainStructure, RepresentativeCustomer.options);
@@ -1567,13 +1568,18 @@ route.get("/company/law_firms/:id", [authJWT.verifyToken, authJWT.isAdmin, authJ
                 where.assignor_and_assignee_id = assignorAndAssigneeIDs;
             }
 
-            let query = " SELECT `lawfirm`.`law_firm_id` AS `law_firm_id`, IF(`lawfirm`.`name` <> '' , `lawfirm`.`name`, `assignment`.`cname`) AS name,  COUNT('law_firm_id') AS `counter`, `lawfirm`.`instances` AS `total_occurences`, `lawfirm->representativelawfirm`.`representative_id` AS `representative_id`, `lawfirm->representativelawfirm`.`representative_name` AS `representative_name` FROM `correspondent` AS `assignment` INNER JOIN `list2` AS `representativetransaction` ON `assignment`.`rf_id` = `representativetransaction`.`rf_id` AND `representativetransaction`.`organisation_id` = :organisation_id "
+            let query = " SELECT `lawfirm`.`law_firm_id` AS `law_firm_id`, IF(`lawfirm`.`name` <> '' , `lawfirm`.`name`, `assignment`.`cname`) AS name,  COUNT('law_firm_id') AS `counter`, `lawfirm`.`instances` AS `total_occurences`, `lawfirm->representativelawfirm`.`representative_id` AS `representative_id`, `lawfirm->representativelawfirm`.`representative_name` AS `representative_name` FROM `correspondent` AS `assignment` INNER JOIN `list2` AS `representativetransaction` ON `assignment`.`rf_id` = `representativetransaction`.`rf_id` "
+
+            
+            
+            query += " INNER JOIN `assignee` AS `representativetransaction->assignee` ON `representativetransaction`.`rf_id` = `representativetransaction->assignee`.`rf_id`  INNER JOIN db_new_application.activity_parties_transactions AS apt ON apt.rf_id =  `representativetransaction->assignee`.`rf_id` LEFT JOIN `law_firm` AS `lawfirm` ON `assignment`.`cname` = `lawfirm`.`name` LEFT OUTER JOIN `representative_law_firm` AS `lawfirm->representativelawfirm` ON `lawfirm`.`representative_id` = `lawfirm->representativelawfirm`.`representative_id` WHERE date_format(apt.exec_dt, '%Y') > :year AND (`representativetransaction`.`organisation_id` = :organisation_id OR `representativetransaction`.`organisation_id` IS NULL ) AND `representativetransaction->assignee`.`assignor_and_assignee_id` IN (:assignor_and_assignee_id) ";
+
 
             if(representativeIDs.length > 0) {
                 query += " AND `representativetransaction`.`company_id` IN (:company_id)";
             }
-            
-            query += " INNER JOIN `assignee` AS `representativetransaction->assignee` ON `representativetransaction`.`rf_id` = `representativetransaction->assignee`.`rf_id` AND `representativetransaction->assignee`.`assignor_and_assignee_id` IN (:assignor_and_assignee_id) INNER JOIN db_new_application.activity_parties_transactions AS apt ON apt.rf_id =  `representativetransaction->assignee`.`rf_id` LEFT JOIN `law_firm` AS `lawfirm` ON `assignment`.`cname` = `lawfirm`.`name` LEFT OUTER JOIN `representative_law_firm` AS `lawfirm->representativelawfirm` ON `lawfirm`.`representative_id` = `lawfirm->representativelawfirm`.`representative_id` WHERE date_format(apt.exec_dt, '%Y') > :year GROUP BY name";
+
+            query += " GROUP BY name ";
 
             where.year = connection.DEFAULT_YEAR
             findAllLawFirms = await connection.resources.query(query,{
