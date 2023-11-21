@@ -3912,7 +3912,7 @@ route.post("/company/cited/:id", [authJWT.verifyToken, authJWT.isAdmin, authJWT.
  * Account Parties
  */
 
- route.get("/company/parties/all/:id", [authJWT.verifyToken, authJWT.isAdmin, authJWT.addClientID], async (req, res, next) => {
+ route.get("/company/parties/all/:id", [authJWT.verifyToken, authJWT.isAdmin, authJWT.addClientID, clientDBConnection.connect], async (req, res, next) => {
     try{
 
         const customerID = req.params.id;
@@ -3995,7 +3995,7 @@ route.post("/company/cited/:id", [authJWT.verifyToken, authJWT.isAdmin, authJWT.
  * Account Parties
  */
 
- route.get("/company/parties/:id", [authJWT.verifyToken, authJWT.isAdmin, authJWT.addClientID], async (req, res, next) => {
+ route.get("/company/parties/:id", [authJWT.verifyToken, authJWT.isAdmin, authJWT.addClientID, clientDBConnection.connect], async (req, res, next) => {
     try{
 
         const customerID = req.params.id;
