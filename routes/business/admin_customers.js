@@ -70,6 +70,8 @@ const Organisations = require("../../model/business/Organisations"),
 
     AWS  = require('aws-sdk');
 const LogMessages = require("../../model/application/LogMessages");
+
+import socket from "../../socket";
    
 /**Get all documents */
 const logger = createLogger({
@@ -78,6 +80,14 @@ const logger = createLogger({
     exceptionHandlers: [new transports.File({ filename: "./name_to_domain_api_exceptions.log" })],
     rejectionHandlers: [new transports.File({ filename: "./name_to_domain_api_rejections.log" })],
 });
+
+route.get('socket', async(req, res, next) => {
+    const connection = socket.connection();
+    if (connection) {
+      connection.emit("notification", 'First socket connection message.');
+    }
+})
+
 
 route.put("/customers/:organisation_id/buttons", [authJWT.verifyToken, authJWT.isAdmin], async(req, res, next) => {
     try{
