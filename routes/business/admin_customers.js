@@ -71,7 +71,7 @@ const Organisations = require("../../model/business/Organisations"),
     AWS  = require('aws-sdk');
 const LogMessages = require("../../model/application/LogMessages");
 
-import socket from "../../socket";
+const socket = require("../../socket");
    
 /**Get all documents */
 const logger = createLogger({
@@ -82,11 +82,16 @@ const logger = createLogger({
 });
 
 route.get('socket', async(req, res, next) => {
-    const connection = socket.connection();
-    if (connection) {
-      connection.emit("notification", 'First socket connection message.');
+    try{
+        const connection = socket.connection();
+        if (connection) {
+        connection.emit("notification", 'First socket connection message.');
+        }
+    } catch (err) {
+        console.log(`Error in socket`, err)
     }
-})
+    
+}) 
 
 
 route.put("/customers/:organisation_id/buttons", [authJWT.verifyToken, authJWT.isAdmin], async(req, res, next) => {
@@ -631,7 +636,7 @@ route.get("/customers/read_static_file/read_entity_file/:id/:portfolios/:type", 
         let list = []; 
         if(fileName != '') {
             const fullPath = `/var/www/html/script/${fileName}`
-            
+
             fs.readFile(fullPath, async function(err, data) {
                 if (!err) {
                     try {            

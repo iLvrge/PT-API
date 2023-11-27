@@ -11,7 +11,7 @@ const Tracing = require("@sentry/tracing"); */
 
 const upload = require("express-fileupload");
 
-import socket from "./socket";
+const socket = require("./socket");
 
 // load the agent
 /* const newrelic = require('newrelic'); */
@@ -286,4 +286,8 @@ const server = app.listen({port, host:'0.0.0.0'}, ()=>{
     console.log(`The server is running on port: ${port}`);
 })
 
-socket.connect(server);
+try{
+    socket.connect(server); 
+} catch (err) {
+    console.log(`Error in socket connect`, err)
+} 

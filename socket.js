@@ -1,6 +1,6 @@
 let connection = null;
 
-export class Socket {  
+class Socket {  
     socket = null;
     constructor() {
         this.socket = null;
@@ -36,7 +36,7 @@ export class Socket {
     }
 }
 
-export default {
+module.exports = {
     connect: Socket.init,
     connection: Socket.getConnection
 }
