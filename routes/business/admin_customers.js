@@ -618,6 +618,46 @@ route.get("/customers/customers/:id/:type", [authJWT.verifyToken, authJWT.isAdmi
     }
 });
 
+route.get("/customers/read_static_file/read_entity_file/:id/:portfolios/:type", [authJWT.verifyToken, authJWT.isAdmin], async (req, res, next) => {
+    try{            
+        /*const companyName = req.params.company_name, type = req.params.type;*/
+        let {id, type, portfolios} = req.params;
+
+        if(portfolios != '') {
+            portfolios = JSON.parse(portfolios)
+        }
+        const fileName = `normalizeNames_${id}_${type == 1 ? portfolios.join(',') + '_file' : 'file'}.json`
+       
+        let list = []; 
+        if(fileName != '') {
+            const fullPath = `/var/www/html/script/${fileName}`
+            
+            fs.readFile(fullPath, async function(err, data) {
+                if (!err) {
+                    try {            
+                        if(data != '') {
+                            list = JSON.parse(data)
+                            res.status(200).json(list);
+                        }
+                    } catch( e ) { 
+                        console.log("Error while reading entity file", e) 
+                        res.status(200).json(list);
+                    } 
+                } else {
+                    console.log("Error while reading entity file", err) 
+                    res.status(200).json(list);
+                }
+            })
+        } else { 
+            res.status(200).json(list);
+        }
+    } catch (e){
+        console.log(e);
+        res.status(402).send("No customers found");
+    }
+
+});
+
 route.get("/customers/static_file/read_entity_file", [authJWT.verifyToken, authJWT.isAdmin], async (req, res, next) => {
     try{            
         /*const companyName = req.params.company_name, type = req.params.type;*/
