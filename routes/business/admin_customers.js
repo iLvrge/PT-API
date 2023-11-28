@@ -712,7 +712,7 @@ route.get("/customers/customers/:id/:representativeID/:type", [authJWT.verifyTok
         let list = []; 
 
         if(typeof req.connection_db != "undefined" && req.connection_db != null ) {
-            list = await helpers.findCompanyEntitiesByAccountIDByRepresentativeIDs(organisationID, representativeIDs, type, req.connection_db, suggestions, fixed_identicals);
+            //list = await helpers.findCompanyEntitiesByAccountIDByRepresentativeIDs(organisationID, representativeIDs, type, req.connection_db, suggestions, fixed_identicals);
 
             
             if(typeof suggestions == 'undefined' && typeof fixed_identicals == 'undefined') { 
