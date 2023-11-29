@@ -631,7 +631,7 @@ route.get("/customers/read_static_file/read_entity_file/:id/:portfolios/:type", 
         if(portfolios != '') {
             portfolios = JSON.parse(portfolios)
         }
-        const fileName = `normalizeNames_${id}_${type == 1 ? portfolios.join(',') + '_file' : 'file'}.json`
+        const fileName = `normalizeNames_${id}_${type == 1 ? portfolios.join('') + '_file' : 'file'}.json`
        
         let list = []; 
         if(fileName != '') {
