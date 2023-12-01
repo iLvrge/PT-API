@@ -186,10 +186,10 @@ route.post('/parties/assignor', [authJWT.verifyToken, clientDBConnection.connect
                 if(typeof search != 'undefined' && search == 'all') {
                     subQuery = `SELECT appno_doc_num FROM assets WHERE (organisation_id = :organisationID OR organisation_id IS NULL) AND company_id IN (:selectedCompanies) AND layout_id = :layoutID`;
                 }
-                const query = `SELECT assignor_and_assignee_id AS id, name, assignor, SUM(app_count) as number FROM
+                const query = `SELECT assignor_and_assignee_id AS id, name, assignor, COUNT(DISTINCT appno_doc_num) as number FROM
                 (SELECT  aaa.assignor_and_assignee_id, "${getRepresentativeName.representative_name}" as assignor, aaa.representative_id, 
                 (CASE  WHEN r.representative_name <> "" THEN r.representative_name ELSE aaa.name END) AS name,
-                 COUNT(DISTINCT appno_doc_num) AS app_count FROM db_uspto.assignee AS ass
+                appno_doc_num  FROM db_uspto.assignee AS ass
                 INNER JOIN db_uspto.assignor_and_assignee AS aaa ON aaa.assignor_and_assignee_id = ass.assignor_and_assignee_id
                 LEFT JOIN db_uspto.representative As r ON r.representative_id = aaa.representative_id
                 INNER JOIN db_uspto.documentid AS doc ON doc.rf_id = ass.rf_id
@@ -200,7 +200,7 @@ route.post('/parties/assignor', [authJWT.verifyToken, clientDBConnection.connect
                 AND apt.company_id IN (:selectedCompanies)
                 AND activity_id IN (:activityID)
                 AND appno_doc_num IN (${subQuery})
-                GROUP BY aaa.assignor_and_assignee_id )AS temp 
+                )AS temp 
                 GROUP BY name 
                 HAVING name <> assignor ORDER BY number DESC, name ASC`
     

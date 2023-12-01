@@ -632,7 +632,7 @@ route.get("/customers/read_static_file/read_entity_file/:id/:portfolios/:type", 
             portfolios = JSON.parse(portfolios)
         }
         const fileName = `normalizeNames_${id}_${type == 1 ? portfolios.join('') + '_file' : 'file'}.json`
-       
+       console.log(fileName)
         let list = []; 
         if(fileName != '') {
             const fullPath = `/var/www/html/script/${fileName}`
