@@ -70,6 +70,8 @@ const Organisations = require("../../model/business/Organisations"),
 
     AWS  = require('aws-sdk');
 const LogMessages = require("../../model/application/LogMessages");
+
+const socket = require("../../socket");
    
 /**Get all documents */
 const logger = createLogger({
@@ -78,6 +80,19 @@ const logger = createLogger({
     exceptionHandlers: [new transports.File({ filename: "./name_to_domain_api_exceptions.log" })],
     rejectionHandlers: [new transports.File({ filename: "./name_to_domain_api_rejections.log" })],
 });
+
+route.get('socket', async(req, res, next) => {
+    try{
+        const connection = socket.connection();
+        if (connection) {
+        connection.emit("notification", 'First socket connection message.');
+        }
+    } catch (err) {
+        console.log(`Error in socket`, err)
+    }
+    
+}) 
+
 
 route.put("/customers/:organisation_id/buttons", [authJWT.verifyToken, authJWT.isAdmin], async(req, res, next) => {
     try{
@@ -608,6 +623,46 @@ route.get("/customers/customers/:id/:type", [authJWT.verifyToken, authJWT.isAdmi
     }
 });
 
+route.get("/customers/read_static_file/read_entity_file/:id/:portfolios/:type", [authJWT.verifyToken, authJWT.isAdmin], async (req, res, next) => {
+    try{            
+        /*const companyName = req.params.company_name, type = req.params.type;*/
+        let {id, type, portfolios} = req.params;
+
+        if(portfolios != '') {
+            portfolios = JSON.parse(portfolios)
+        }
+        const fileName = `normalizeNames_${id}_${type == 1 ? portfolios.join('') + '_file' : 'file'}.json`
+       console.log(fileName)
+        let list = []; 
+        if(fileName != '') {
+            const fullPath = `/var/www/html/script/${fileName}`
+
+            fs.readFile(fullPath, async function(err, data) {
+                if (!err) {
+                    try {            
+                        if(data != '') {
+                            list = JSON.parse(data)
+                            res.status(200).json(list);
+                        }
+                    } catch( e ) { 
+                        console.log("Error while reading entity file", e) 
+                        res.status(200).json(list);
+                    } 
+                } else {
+                    console.log("Error while reading entity file", err) 
+                    res.status(200).json(list);
+                }
+            })
+        } else { 
+            res.status(200).json(list);
+        }
+    } catch (e){
+        console.log(e);
+        res.status(402).send("No customers found");
+    }
+
+});
+
 route.get("/customers/static_file/read_entity_file", [authJWT.verifyToken, authJWT.isAdmin], async (req, res, next) => {
     try{            
         /*const companyName = req.params.company_name, type = req.params.type;*/
@@ -657,7 +712,7 @@ route.get("/customers/customers/:id/:representativeID/:type", [authJWT.verifyTok
         let list = []; 
 
         if(typeof req.connection_db != "undefined" && req.connection_db != null ) {
-            list = await helpers.findCompanyEntitiesByAccountIDByRepresentativeIDs(organisationID, representativeIDs, type, req.connection_db, suggestions, fixed_identicals);
+            //list = await helpers.findCompanyEntitiesByAccountIDByRepresentativeIDs(organisationID, representativeIDs, type, req.connection_db, suggestions, fixed_identicals);
 
             
             if(typeof suggestions == 'undefined' && typeof fixed_identicals == 'undefined') { 
