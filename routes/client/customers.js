@@ -1207,9 +1207,8 @@ route.post("/asset_types/assets/family", [authJWT.verifyToken, clientDBConnectio
                         await Promise.all(promise) 
                     }
                     query += `  :list `
-                } else { 
-
-                    query += ` SELECT grant_doc_num FROM db_uspto.documentid 
+                } else {  
+                    const assetsQuery = ` SELECT * FROM (SELECT grant_doc_num FROM db_uspto.documentid 
                     WHERE appno_doc_num IN (:list) 
                     AND grant_doc_num <> '' 
                     AND date_format(appno_date, '%Y') > :year
@@ -1217,8 +1216,22 @@ route.post("/asset_types/assets/family", [authJWT.verifyToken, clientDBConnectio
                     WHERE appno_doc_num IN (:list) 
                     AND grant_doc_num <> '' 
                     AND date_format(appno_date, '%Y') > :year
-                    GROUP BY grant_doc_num `
+                    GROUP BY grant_doc_num) AS tempAssets GROUP BY grant_doc_num `
 
+                    const getAssetsList = await connection.application.query(assetsQuery,{
+                            type: connection.Sequelize.QueryTypes.SELECT,
+                            raw: true,
+                            logging: console.log,
+                            replacements: {list, year: 1999},
+                        }
+                    ); 
+
+                    if(getAssetsList.length > 0) {
+                        list = []
+                        const promise = getAssetsList.map( item => list.push(`${item.grant_doc_num}`))
+                        await Promise.all(promise) 
+                    } 
+                    query += `  :list `
                 }
                 query += ` )
                 AND application_country NOT IN ('WO', 'EP') 
