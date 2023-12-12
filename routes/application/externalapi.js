@@ -283,7 +283,7 @@ route.post("/citation", [authJWT.verifyToken], async (req, res) => {
         let citedCompanies = []
         if( list != '' ) {
             list = JSON.parse(list)
-            const where = { year: connection.DEFAULT_YEAR, organisationID: req.orgId, layoutID: 15, list}  
+            const where = { year: connection.DEFAULT_YEAR, organisationID: 0 /* req.orgId */, orgID: req.orgId , layoutID: 15, list}  
             if(typeof type !== 'undefined') {
                 where.layoutID = helpers.findLayout(type)        
             }
@@ -304,7 +304,7 @@ route.post("/citation", [authJWT.verifyToken], async (req, res) => {
                  * Get List
                  */ 
                 if(typeof other_mode != 'undefined' && other_mode == 'true') {
-                    query = `SELECT grant_doc_num FROM db_new_application.assets_for_sale AS assets WHERE assets.organisation_id = :organisationID `
+                    query = `SELECT grant_doc_num FROM db_new_application.assets_for_sale AS assets WHERE assets.organisation_id = :orgID `
                     query += ` GROUP BY grant_doc_num`;
                 } else {     
                     if(assignments && assignments != '') {
@@ -326,14 +326,14 @@ route.post("/citation", [authJWT.verifyToken], async (req, res) => {
                         }
     
                         query = `SELECT grant_doc_num FROM db_new_application.assets AS assets `
-                        query += ` WHERE date_format(assets.appno_date, '%Y') > :year AND assets.layout_id = :layoutID AND assets.organisation_id = :organisationID AND grant_doc_num <> "" `
+                        query += ` WHERE date_format(assets.appno_date, '%Y') > :year AND assets.layout_id = :layoutID AND ( assets.organisation_id = :organisationID OR assets.organisation_id IS NULL ) AND grant_doc_num <> "" `
 
                         if(Array.isArray(companies) && companies.length > 0) {
                             query += ` AND assets.company_id IN (:company_id)`
                         } 
 
                         if((Array.isArray(assignments) && assignments.length > 0 ) || (Array.isArray(tabs) && tabs.length > 0) || (Array.isArray(customers) && customers.length > 0)) {
-                            query += ` AND assets.appno_doc_num IN ( SELECT documentid.appno_doc_num FROM db_uspto.documentid WHERE rf_id  IN ( SELECT activity_parties_transactions.rf_id  FROM db_new_application.activity_parties_transactions WHERE activity_parties_transactions.organisation_id = :organisationID  `
+                            query += ` AND assets.appno_doc_num IN ( SELECT documentid.appno_doc_num FROM db_uspto.documentid WHERE rf_id  IN ( SELECT activity_parties_transactions.rf_id  FROM db_new_application.activity_parties_transactions WHERE (activity_parties_transactions.organisation_id = :organisationID OR activity_parties_transactions.organisation_id IS NULL ) `
 
                             if(Array.isArray(companies) && companies.length > 0 ) {
                                 query += ` AND activity_parties_transactions.company_id IN (:company_id) `
@@ -357,7 +357,7 @@ route.post("/citation", [authJWT.verifyToken], async (req, res) => {
                             query += ` GROUP BY activity_parties_transactions.rf_id ) GROUP BY documentid.appno_doc_num) `
                         } else  if(Array.isArray(tabs) && tabs.length === 0) {
                             /**exclude employees */
-                            query += ` AND assets.appno_doc_num IN (  SELECT documentid.appno_doc_num FROM db_uspto.documentid WHERE rf_id  IN ( SELECT activity_parties_transactions.rf_id  FROM db_new_application.activity_parties_transactions WHERE activity_parties_transactions.organisation_id = :organisationID   AND activity_parties_transactions.activity_id <> 10   ` 
+                            query += ` AND assets.appno_doc_num IN (  SELECT documentid.appno_doc_num FROM db_uspto.documentid WHERE rf_id  IN ( SELECT activity_parties_transactions.rf_id  FROM db_new_application.activity_parties_transactions WHERE (activity_parties_transactions.organisation_id = :organisationID OR activity_parties_transactions.organisation_id IS NULL )   AND activity_parties_transactions.activity_id <> 10   ` 
 
                             if(Array.isArray(companies) && companies.length > 0 ) {
                                 query += ` AND activity_parties_transactions.company_id IN (:company_id) `
@@ -368,7 +368,7 @@ route.post("/citation", [authJWT.verifyToken], async (req, res) => {
                         query += ` GROUP BY grant_doc_num`;
                     }  else {
                         query = `SELECT patent AS grant_doc_num FROM db_new_application.dashboard_items AS assets `
-                        query += ` WHERE  assets.type = :layoutID AND assets.organisation_id = :organisationID ${req.orgType == 2 ? ' AND mode IN (:mode) ' : ''}  AND patent <> "" `
+                        query += ` WHERE  assets.type = :layoutID AND (assets.organisation_id = :organisationID OR assets.organisation_id IS NULL) ${req.orgType == 2 ? ' AND mode IN (:mode) ' : ''}  AND patent <> "" `
 
                         if(Array.isArray(companies) && companies.length > 0) {
                             query += ` AND assets.representative_id IN (:company_id)`
@@ -383,7 +383,7 @@ route.post("/citation", [authJWT.verifyToken], async (req, res) => {
             } else {
                 if(where.layoutID <= 15) {
                     query = `SELECT grant_doc_num FROM db_new_application.assets AS assets `
-                    query += ` WHERE date_format(assets.appno_date, '%Y') > :year AND assets.layout_id = :layoutID AND assets.organisation_id = :organisationID AND grant_doc_num <> "" `
+                    query += ` WHERE date_format(assets.appno_date, '%Y') > :year AND assets.layout_id = :layoutID AND (assets.organisation_id = :organisationID OR assets.organisation_id IS NULL) AND grant_doc_num <> "" `
                     query += ` AND assets.appno_doc_num IN (:list)`
                     query += ` GROUP BY grant_doc_num UNION `;
 
@@ -395,7 +395,7 @@ route.post("/citation", [authJWT.verifyToken], async (req, res) => {
                     where.layoutID = 15;
                 } else {
                     query = `SELECT patent AS grant_doc_num FROM db_new_application.dashboard_items AS assets `
-                    query += ` WHERE  assets.type = :layoutID AND assets.organisation_id = :organisationID AND patent <> "" `
+                    query += ` WHERE  assets.type = :layoutID AND (assets.organisation_id = :organisationID OR assets.organisation_id IS NULL) AND patent <> "" `
                     if(Array.isArray(companies) && companies.length > 0) {
                         query += ` AND assets.representative_id IN (:company_id)`
                     } 
