@@ -299,6 +299,19 @@ route.post("/citation", [authJWT.verifyToken], async (req, res) => {
             }
             let query = '' 
             console.log(parseInt(total), list.length)
+
+            if(assignments && assignments != '') {
+                assignments = JSON.parse( assignments )
+                where.assignments = assignments
+            }     
+            
+            if(customers && customers != '') {
+                customers = JSON.parse( customers )
+                console.log(customers)
+                where.customers = customers
+            }
+             
+            console.log('assignments', where)
             if(parseInt(total) != list.length) {
                 /**
                  * Get List
@@ -307,12 +320,7 @@ route.post("/citation", [authJWT.verifyToken], async (req, res) => {
                     query = `SELECT grant_doc_num FROM db_new_application.assets_for_sale AS assets WHERE assets.organisation_id = :orgID `
                     query += ` GROUP BY grant_doc_num`;
                 } else {     
-                    if(assignments && assignments != '') {
-                        assignments = JSON.parse( assignments )
-                        where.assignments = assignments
-                    }           
-                     
-                    console.log('assignments', where)
+                    
 
                     if(where.layoutID <= 15) {
                         if(tabs && tabs != '') {
@@ -320,10 +328,7 @@ route.post("/citation", [authJWT.verifyToken], async (req, res) => {
                             where.tabs = tabs
                         }
     
-                        if(customers && customers != '') {
-                            customers = JSON.parse( customers )
-                            where.customers = customers
-                        }
+                        
     
                         query = `SELECT grant_doc_num FROM db_new_application.assets AS assets `
                         query += ` WHERE date_format(assets.appno_date, '%Y') > :year AND assets.layout_id = :layoutID AND ( assets.organisation_id = :organisationID OR assets.organisation_id IS NULL ) AND grant_doc_num <> "" `
@@ -376,8 +381,26 @@ route.post("/citation", [authJWT.verifyToken], async (req, res) => {
 
                         if(Array.isArray(assignments) && assignments.length > 0 ) {
                             query += ` AND assets.rf_id IN (:assignments)`
-                        }
+                        } 
                         query += ` GROUP BY patent`;
+
+                        if(Array.isArray(customers) && customers.length > 0 ) {
+                            query = ` SELECT grant_doc_num FROM db_uspto.documentid AS doc INNER JOIN db_new_application.activity_parties_transactions AS apt ON apt.rf_id = doc.rf_id
+                            WHERE grant_doc_num IN (${query}) AND (apt.organisation_id = :organisationID OR apt.organisation_id IS NULL) `
+                            if(Array.isArray(companies) && companies.length > 0) {
+                                query += ` AND apt.company_id IN (:company_id)`
+                            } 
+    
+                            if(Array.isArray(assignments) && assignments.length > 0 ) {
+                                query += ` AND apt.rf_id IN (:assignments)`
+                            } 
+
+                            if(Array.isArray(customers) && customers.length > 0 ) {
+                                query += ` AND apt.assignor_and_assignee_id IN (:customers)`
+                            }
+
+                            query += ` GROUP BY grant_doc_num`;  
+                        }
                     }
                 } 
             } else {
@@ -404,6 +427,24 @@ route.post("/citation", [authJWT.verifyToken], async (req, res) => {
                         query += ` AND assets.rf_id IN (:assignments)`
                     }
                     query += ` GROUP BY patent`;
+                    console.log('customers', Array.isArray(customers), customers.length)
+                    if(Array.isArray(customers) && customers.length > 0 ) {
+                        query = ` SELECT grant_doc_num FROM db_uspto.documentid AS doc INNER JOIN db_new_application.activity_parties_transactions AS apt ON apt.rf_id = doc.rf_id
+                        WHERE grant_doc_num IN (${query}) AND (apt.organisation_id = :organisationID OR apt.organisation_id IS NULL) `
+                        if(Array.isArray(companies) && companies.length > 0) {
+                            query += ` AND apt.company_id IN (:company_id)`
+                        } 
+
+                        if(Array.isArray(assignments) && assignments.length > 0 ) {
+                            query += ` AND apt.rf_id IN (:assignments)`
+                        } 
+
+                        if(Array.isArray(customers) && customers.length > 0 ) {
+                            query += ` AND apt.assignor_and_assignee_id IN (:customers)`
+                        }
+
+                        query += ` GROUP BY grant_doc_num`;  
+                    }
                 } 
             }
             const appList =  await connection.applicationNew.query(query,{
