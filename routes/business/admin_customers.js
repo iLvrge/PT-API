@@ -976,12 +976,12 @@ route.get("/customers/:id/reclassify", [authJWT.verifyToken, authJWT.isAdmin], a
         const organisationID = req.params.id;
         let {companies} = req.query
         if(organisationID > 0){
-            const where = {organisation_id: organisationID}
+            const where = {organisation_id: organisationID, company_id: 0}
             if(companies != '') {
                 companies = JSON.parse(companies);
                 if(companies.length > 0 ) {
                     where.company_id =  companies
-                }
+                } 
             }
             const getClassifyData = await LogMessages.findAll({
                 where,
@@ -989,6 +989,8 @@ route.get("/customers/:id/reclassify", [authJWT.verifyToken, authJWT.isAdmin], a
             })
 
             const logData = [];
+
+            console.log(getClassifyData);
 
             if(getClassifyData.length > 0) {
 
@@ -1968,36 +1970,34 @@ route.get("/customers/:organisation_id/publish", [authJWT.verifyToken, authJWT.i
                 if(findUsers > 0) {
                     if(company_id.length == 0) {
                         console.log(`php -f /var/www/html/scripts/create_data_for_company_db_application.php "${organisationID}"  ""`);
-                        await exec(`php -f /var/www/html/scripts/create_data_for_company_db_application.php "${organisationID}"  ""`, async (error, stdout, stderr) => {  
+                        exec(`php -f /var/www/html/scripts/create_data_for_company_db_application.php "${organisationID}"  ""`, async (error, stdout, stderr) => {  
                                                 
                         });
                         res.status(200).send("UPDATED!");   
                     } else {
-                        const queryRepresentativeName = `SELECT representative_name, company_id FROM db_uspto.list1 WHERE company_id IN (:company_id) AND organisation_id = :organisationID GROUP BY representative_name`;
+                        /* const queryRepresentativeName = `SELECT representative_name, company_id FROM db_uspto.list1 WHERE company_id IN (:company_id) AND organisation_id = :organisationID GROUP BY representative_name`;
                         const companyNames =  await connection.applicationNew.query(queryRepresentativeName,{
                             type: connection.Sequelize.QueryTypes.SELECT,
                             replacements: { organisationID, company_id  },
                             raw: true,
                             logging: console.log,
                             }
-                        );
-
-                        if(companyNames.length > 0) {
-                            companyNames.map( async company => { 
-                                console.log(`php -f /var/www/html/scripts/create_data_for_company_db_application.php "${organisationID}"  "${company.company_id}" "1"`)
-                                await exec(`php -f /var/www/html/scripts/create_data_for_company_db_application.php "${organisationID}"  "${company.company_id}" "1"`, async (error, stdout, stderr) => {   
+                        ); */ 
+                        if(Array.isArray(company_id) && company_id.length > 0) {
+                            company_id.map( async company => { 
+                                console.log(`php -f /var/www/html/scripts/create_data_for_company_db_application.php "${organisationID}"  "${company}" "1"`)
+                                exec(`php -f /var/www/html/scripts/create_data_for_company_db_application.php "${organisationID}"  "${company}" "1"`, async (error, stdout, stderr) => {   
                                                          
                                 });
                             })
                             res.status(200).send("UPDATED!");   
-                        }
-
+                        } else {
+                            res.status(200).send("Company not found!");  
+                        } 
                     }
                 } else {
                     res.status(200).send("Please create a admin user first for this customer.");
-                }
-
-                
+                } 
             } else {
                 res.status(402).send("Bad Inputs");
             }
