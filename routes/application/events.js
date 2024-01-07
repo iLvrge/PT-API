@@ -2045,10 +2045,9 @@ route.post("/events/assets", [authJWT.verifyToken], async(req, res, next) => {
                         query = " SELECT documentid.appno_doc_num AS application, documentid.grant_doc_num AS patent, documentid.status AS `status`,  documentid.appno_date AS appno_date FROM db_uspto.documentid AS documentid WHERE documentid.appno_doc_num IN (:list) AND date_format(documentid.appno_date, '%Y') > :year AND documentid.grant_doc_num <> '' GROUP BY documentid.appno_doc_num"
                         queryBiblio = "SELECT ag.appno_doc_num AS application, ag.grant_doc_num AS patent, 0 AS `status`,  ag.appno_date AS appno_date FROM db_patent_application_bibliographic.application_grant AS ag WHERE ag.appno_doc_num IN (:list) AND date_format(ag.appno_date, '%Y') > :year  GROUP BY ag.appno_doc_num "
                     } else {
-                        if(type == 'assigned') {
-                            query = " SELECT documentid.appno_doc_num AS application, documentid.grant_doc_num AS patent, documentid.status AS `status`,  documentid.appno_date AS appno_date FROM db_uspto.documentid AS documentid WHERE documentid.appno_doc_num IN (:list) AND date_format(documentid.appno_date, '%Y') > :year AND documentid.grant_doc_num <> '' GROUP BY documentid.appno_doc_num"
-                            queryBiblio = "SELECT ag.appno_doc_num AS application, ag.grant_doc_num AS patent, 0 AS `status`,  ag.appno_date AS appno_date FROM db_patent_application_bibliographic.application_grant AS ag WHERE ag.appno_doc_num IN (:list) AND date_format(ag.appno_date, '%Y') > :year GROUP BY ag.appno_doc_num "
-                        } else {
+                        query = " SELECT documentid.appno_doc_num AS application, documentid.grant_doc_num AS patent, documentid.status AS `status`,  documentid.appno_date AS appno_date FROM db_uspto.documentid AS documentid WHERE documentid.appno_doc_num IN (:list) AND date_format(documentid.appno_date, '%Y') > :year AND documentid.grant_doc_num <> '' GROUP BY documentid.appno_doc_num"
+                        queryBiblio = "SELECT ag.appno_doc_num AS application, ag.grant_doc_num AS patent, 0 AS `status`,  ag.appno_date AS appno_date FROM db_patent_application_bibliographic.application_grant AS ag WHERE ag.appno_doc_num IN (:list) AND date_format(ag.appno_date, '%Y') > :year GROUP BY ag.appno_doc_num "
+                        if(type != 'assigned')  {
 
                             let divestedQuery = `SELECT application FROM db_new_application.dashboard_items WHERE type = :typeDevstiture  ${req.orgType == 2 ? ' AND mode IN (:mode) ' : ''}  AND organisation_id = :organisationID `
                             if(Array.isArray(companies) && companies.length > 0 ) { 
@@ -2071,10 +2070,13 @@ route.post("/events/assets", [authJWT.verifyToken], async(req, res, next) => {
                                 divestedResultList.forEach( row => {
                                     divestedList.push(`${row.application}`)
                                 })
-                            }
-                            where.divestedList = divestedList
-                            query = `SELECT documentid.appno_doc_num AS application, documentid.grant_doc_num AS patent, documentid.status AS status,  documentid.appno_date AS appno_date FROM db_uspto.documentid AS documentid WHERE documentid.appno_doc_num IN (:list) AND date_format(documentid.appno_date, '%Y') > :year AND documentid.grant_doc_num <> '' AND appno_doc_num NOT IN ( SELECT appno_doc_num FROM db_new_application.assets_with_bank_expired_status WHERE appno_doc_num IN (:list)  GROUP BY appno_doc_num) AND appno_doc_num NOT IN (:divestedList)  GROUP BY documentid.appno_doc_num ` 
-                            queryBiblio = ` SELECT ag.appno_doc_num AS application, ag.grant_doc_num AS patent, 0 AS status,  ag.appno_date AS appno_date FROM db_patent_application_bibliographic.application_grant AS ag WHERE ag.appno_doc_num IN (:list) AND date_format(ag.appno_date, '%Y') > :year AND ag.appno_doc_num NOT IN ( SELECT appno_doc_num FROM db_new_application.assets_with_bank_expired_status WHERE appno_doc_num IN (:list)) AND ag.appno_doc_num NOT IN (:divestedList)  GROUP BY ag.appno_doc_num  `
+
+                                where.divestedList = divestedList
+                                query = `SELECT documentid.appno_doc_num AS application, documentid.grant_doc_num AS patent, documentid.status AS status,  documentid.appno_date AS appno_date FROM db_uspto.documentid AS documentid WHERE documentid.appno_doc_num IN (:list) AND date_format(documentid.appno_date, '%Y') > :year AND documentid.grant_doc_num <> '' AND appno_doc_num NOT IN ( SELECT appno_doc_num FROM db_new_application.assets_with_bank_expired_status WHERE appno_doc_num IN (:list)  GROUP BY appno_doc_num) AND appno_doc_num NOT IN (:divestedList)  GROUP BY documentid.appno_doc_num ` 
+                                
+                                queryBiblio = ` SELECT ag.appno_doc_num AS application, ag.grant_doc_num AS patent, 0 AS status,  ag.appno_date AS appno_date FROM db_patent_application_bibliographic.application_grant AS ag WHERE ag.appno_doc_num IN (:list) AND date_format(ag.appno_date, '%Y') > :year AND ag.appno_doc_num NOT IN ( SELECT appno_doc_num FROM db_new_application.assets_with_bank_expired_status WHERE appno_doc_num IN (:list)) AND ag.appno_doc_num NOT IN (:divestedList)  GROUP BY ag.appno_doc_num  `
+                            } 
+                            
                         }
                     }
                 }
