@@ -2486,7 +2486,7 @@ route.get("/company/assignments/:id", [authJWT.verifyToken, authJWT.isAdmin, aut
     }
 });
 
-route.put("/company/assignments", [authJWT.verifyToken, authJWT.isAdmin], async (req, res, next) => {
+route.put("/company/assignments", [authJWT.verifyToken, authJWT.isAdmin, authJWT.addClientID, clientDBConnection.connect], async (req, res, next) => {
     try{
         const {rf_id, type, client_id, flag, other_column, cname, caddress_1, caddress_2, caddress_7, caddress_5, caddress_6, caddress_3, caddress_4} = req.body;
         if(rf_id > 0) {
@@ -2507,13 +2507,14 @@ route.put("/company/assignments", [authJWT.verifyToken, authJWT.isAdmin], async 
                 getData.caddress_4 = caddress_4
                 await getData.save()
                 let whereConstraint = null, where = ''
+                
                 if(typeof other_column != 'undefined' && other_column != null) {
                     const clickableColumn = JSON.parse(other_column)
-                    whereConstraint = {organisationID: client_id};
+                    whereConstraint = {organisationID: 0};
                     whereConstraint[clickableColumn.id] = clickableColumn.value
                     where = ` AND ${clickableColumn.id} = :${clickableColumn.id}` 
                 } else  if(typeof flag != 'undefined') {
-                    whereConstraint = {organisationID: client_id};
+                    whereConstraint = {organisationID: 0};
                     switch(parseInt(flag)) {
                         case 1:
                             whereConstraint.caddress_1 = cname;
@@ -2533,13 +2534,25 @@ route.put("/company/assignments", [authJWT.verifyToken, authJWT.isAdmin], async 
                             break;
                     }
                 } 
+
+                let representativeIDs = [];
+                console.log(req.connection_db);
+                if(req.connection_db != null) {
+                    representativeIDs = await getAllCompanyIDs(req) 
+                }
                     
-                if(whereConstraint != null && Object.entries(whereConstraint).length > 0) {
+                if(whereConstraint != null && Object.entries(whereConstraint).length > 0 && representativeIDs.length > 0) {
                     /**
                      * Other Records
                      */
 
-                    const query = `SELECT * FROM db_uspto.correspondent WHERE rf_id IN ( SELECT apt.rf_id FROM db_new_application.activity_parties_transactions AS apt WHERE organisation_id = :organisationID ) ${where}`
+                   
+             
+                    if(representativeIDs.length > 0) {
+                        whereConstraint.company_id = representativeIDs;
+                    }
+
+                    const query = `SELECT * FROM db_uspto.correspondent WHERE rf_id IN ( SELECT apt.rf_id FROM db_new_application.activity_parties_transactions AS apt WHERE organisation_id = :organisationID AND company_id IN (:company_id)) ${where}`
 
                     console.log(query, whereConstraint)
 
