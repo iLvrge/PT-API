@@ -65,7 +65,11 @@ let isAdmin = (req, res, next) => {
   }
 
 let addClientID = (req, res, next) => {
-  req.orgId = req.params.id;
+  if(typeof req.body != 'undefined' && typeof req.body.client_id != 'undefined') {
+    req.orgId = req.body.client_id;
+  } else {
+    req.orgId = req.params.id;
+  }
   next();
 };
   
