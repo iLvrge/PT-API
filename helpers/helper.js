@@ -1209,6 +1209,12 @@ let findOrganisationbyID = async (organisationID) => {
                 });
 }
 
+let findOrganisationbyName = async (name) => {
+    return await Organisations.findOne({
+                    where: {name}
+                });
+}
+
 let findRepresentative = async (OrganisationName) => {
     return await RepresentativeApplication.findOne({
         where:{representative_name: OrganisationName}
@@ -4921,6 +4927,7 @@ helper.allAssignments = allAssignments;
 helper.allAssignmentsByRepresentativeIDs = allAssignmentsByRepresentativeIDs;
 helper.findAllLawFirms = findAllLawFirms;
 helper.findOrganisationbyID = findOrganisationbyID;
+helper.findOrganisationbyName = findOrganisationbyName;
 helper.findRepresentative = findRepresentative;
 helper.getCompanyListByEmployee = getCompanyListByEmployee;
 helper.getCompanyListByOwnership = getCompanyListByOwnership;

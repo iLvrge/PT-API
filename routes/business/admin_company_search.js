@@ -67,6 +67,7 @@ const SheetsHelper = require('../../helpers/sheets');
 const ClientAddCompany = require("../../model/application/ClientAddCompany");
 const e = require("express");
 const PtabNames = require("../../model/resources/PtabNames");
+const ClientRepresentatives = require("../../model/client/Representatives");
 
 
 const oauth2Client = new google.auth.OAuth2(
@@ -2387,8 +2388,8 @@ route.put("/company/raw/assignments/:id", [authJWT.verifyToken, authJWT.isAdmin,
     try{
 
         const customerID = req.params.id, representativeIDs = JSON.parse(req.query.portfolios != undefined ? req.query.portfolios : "[]");
-        console.log(`php -f /var/www/html/scripts/address_swapping.php ${customerID} ${representativeIDs}`)
-        exec(`php -f /var/www/html/scripts/address_swapping.php ${customerID} ${JSON.stringify(representativeIDs)}`, function (error, stdout, stderr) {
+        console.log(`php -f ${process.env.SCRIPT_PATH}address_swapping.php ${customerID} ${representativeIDs}`)
+        exec(`php -f ${process.env.SCRIPT_PATH}address_swapping.php ${customerID} ${JSON.stringify(representativeIDs)}`, function (error, stdout, stderr) {
             console.log(error);
             console.log(stdout);
             //console.log(stderr);
@@ -2990,10 +2991,7 @@ route.post("/company/report_dashboard:id/", [authJWT.verifyToken, authJWT.isAdmi
 route.post("/company/:id/add_bulk_companies", [authJWT.verifyToken, authJWT.isAdmin, authJWT.addClientID, clientDBConnection.connect], async (req, res, next) => {
     try{
         let {representative_ids, type, group, representatives} = req.body
-        const client_id = req.params.id
-
-        
-        
+        const client_id = req.params.id 
         if( typeof type != 'undefined' && type == 2) {
             /**
              * Create Group
@@ -3020,17 +3018,53 @@ route.post("/company/:id/add_bulk_companies", [authJWT.verifyToken, authJWT.isAd
                 });
             }
 
+            console.log(findGroup);
+
             if(findGroup != null) {
                 const allRepresentativeNames = JSON.parse(representatives)
-                const querySubsidaryCompany = "SELECT aaa.assignor_and_assignee_id, aaa.name, r.representative_name, aaa.instances, r.representative_id, (SELECT sum(a.instances) as counter FROM assignor_and_assignee as a WHERE a.representative_id IN( SELECT representative_id FROM representative WHERE representative_name = r.representative_name) GROUP BY a.representative_id) as representative_instances FROM assignor_and_assignee as aaa LEFT JOIN representative as r ON r.representative_id = aaa.representative_id WHERE aaa.name IN (:names)";
-                        
-                const getList = await connection.resources.query(querySubsidaryCompany,{
-                    type: connection.Sequelize.QueryTypes.SELECT,
-                    replacements: { names: allRepresentativeNames },
-                    raw: true,
-                    logging: console.log,
+
+                let getList = []
+
+                if(allRepresentativeNames.length == 0) {
+
+                    const findOrg = await helpers.findOrganisationbyName(group);
+
+                    if(findOrg !== null) { 
+                        const getNewConnection = await clientDBConnection.connectOnFly(findOrg.organisation_id);
+
+                        if(getNewConnection !== null) { 
+
+                            const ClientRepresentative = getNewConnection.define('ClientRepesentative', ClientRepresentatives.mainStructure, ClientRepresentatives.options);
+                            const findCompanies = await ClientRepresentative.findAll({
+                                attributes:['representative_name'],
+                                where:{ 
+                                    company_id: {[connection.Op.gt]: 0}, 
+                                    status: 1
+                                }, 
+                                group:['company_id']
+                            });
+                            console.log(findCompanies)
+                            if(findCompanies.length > 0) {
+                                await findCompanies.map( company => allRepresentativeNames.push(company.representative_name))
+                            }
+                        }
                     }
-                );  
+                    
+                }
+                console.log(allRepresentativeNames)
+                if(allRepresentativeNames.length > 0) {
+                    const querySubsidaryCompany = "SELECT aaa.assignor_and_assignee_id, aaa.name, r.representative_name, aaa.instances, r.representative_id, (SELECT sum(a.instances) as counter FROM assignor_and_assignee as a WHERE a.representative_id IN( SELECT representative_id FROM representative WHERE representative_name = r.representative_name) GROUP BY a.representative_id) as representative_instances FROM assignor_and_assignee as aaa LEFT JOIN representative as r ON r.representative_id = aaa.representative_id WHERE aaa.name IN (:names)";
+                        
+                    getList = await connection.resources.query(querySubsidaryCompany,{
+                        type: connection.Sequelize.QueryTypes.SELECT,
+                        replacements: { names: allRepresentativeNames },
+                        raw: true,
+                        logging: console.log,
+                        }
+                    );  
+                }
+            
+                
                 let companies = [], originalNames = [], representativeNames = [];
                 if(getList.length > 0) {                
                     const promiseList = getList.map( async company => {
@@ -3129,8 +3163,8 @@ route.post("/company/:id/add_bulk_companies", [authJWT.verifyToken, authJWT.isAd
                         }
                         if(addRecord > 0) { 
                             console.log(JSON.stringify(parentCompaniesID));
-                            console.log(`screen -md php -f /var/www/html/scripts/run_add_companies_script.php "${client_id}" '${JSON.stringify(parentCompaniesID)}'`)
-                            await exec(`screen -md php -f /var/www/html/scripts/run_add_companies_script.php "${client_id}" '${JSON.stringify(parentCompaniesID)}'`, async (error, stdout, stderr) => {
+                            console.log(`screen -md php -f ${process.env.SCRIPT_PATH}run_add_companies_script.php "${client_id}" '${JSON.stringify(parentCompaniesID)}'`)
+                            await exec(`screen -md php -f ${process.env.SCRIPT_PATH}run_add_companies_script.php "${client_id}" '${JSON.stringify(parentCompaniesID)}'`, async (error, stdout, stderr) => {
                                 console.log(error);
                                 console.log(stdout);
                                 console.log(stderr);
@@ -3215,8 +3249,8 @@ route.post("/company/:id/add_bulk_companies", [authJWT.verifyToken, authJWT.isAd
                         } */
                         if(addRecord  > 0) {
                             console.log(JSON.stringify(parentCompaniesID)); 
-                            console.log(`screen -md php -f /var/www/html/scripts/run_add_companies_script.php "${client_id}" "${JSON.stringify(parentCompaniesID)}"`)
-                            await exec(`screen -md php -f /var/www/html/scripts/run_add_companies_script.php "${client_id}" '${JSON.stringify(parentCompaniesID)}'`, async (error, stdout, stderr) => {
+                            console.log(`screen -md php -f ${process.env.SCRIPT_PATH}run_add_companies_script.php "${client_id}" "${JSON.stringify(parentCompaniesID)}"`)
+                            await exec(`screen -md php -f ${process.env.SCRIPT_PATH}run_add_companies_script.php "${client_id}" '${JSON.stringify(parentCompaniesID)}'`, async (error, stdout, stderr) => {
                                 console.log(error);
                                 console.log(stdout);
                                 console.log(stderr);
@@ -3227,7 +3261,7 @@ route.post("/company/:id/add_bulk_companies", [authJWT.verifyToken, authJWT.isAd
                         }
                     }
                 } else {
-                    res.status(402).send("Invalid inputs");
+                    res.status(402).send("No company list found");
                 } 
             } 
         } else {
@@ -3378,8 +3412,8 @@ route.post("/company/:id/add_bulk_companies", [authJWT.verifyToken, authJWT.isAd
                                 }
                                 if(addRecord > 0) { 
                                     console.log(JSON.stringify(parentCompaniesID));
-                                    console.log(`screen -md php -f /var/www/html/scripts/run_add_companies_script.php "${client_id}" "${JSON.stringify(parentCompaniesID)}"`)
-                                    await exec(`screen -md php -f /var/www/html/scripts/run_add_companies_script.php "${client_id}" "${JSON.stringify(parentCompaniesID)}"`, async (error, stdout, stderr) => {
+                                    console.log(`screen -md php -f ${process.env.SCRIPT_PATH}run_add_companies_script.php "${client_id}" "${JSON.stringify(parentCompaniesID)}"`)
+                                    await exec(`screen -md php -f ${process.env.SCRIPT_PATH}run_add_companies_script.php "${client_id}" "${JSON.stringify(parentCompaniesID)}"`, async (error, stdout, stderr) => {
                                         console.log(error);
                                         console.log(stdout);
                                         console.log(stderr);
@@ -3464,8 +3498,8 @@ route.post("/company/:id/add_bulk_companies", [authJWT.verifyToken, authJWT.isAd
                                 } */
                                 if(parentCompaniesID.length > 0) {
                                     console.log(JSON.stringify(parentCompaniesID)); 
-                                    console.log(`screen -md php -f /var/www/html/scripts/run_add_companies_script.php "${client_id}" "${JSON.stringify(parentCompaniesID)}"`)
-                                    await exec(`screen -md php -f /var/www/html/scripts/run_add_companies_script.php "${client_id}" "${JSON.stringify(parentCompaniesID)}"`, async (error, stdout, stderr) => {
+                                    console.log(`screen -md php -f ${process.env.SCRIPT_PATH}run_add_companies_script.php "${client_id}" "${JSON.stringify(parentCompaniesID)}"`)
+                                    await exec(`screen -md php -f ${process.env.SCRIPT_PATH}run_add_companies_script.php "${client_id}" "${JSON.stringify(parentCompaniesID)}"`, async (error, stdout, stderr) => {
                                         console.log(error);
                                         console.log(stdout);
                                         console.log(stderr);
