@@ -4,7 +4,7 @@ const Op = Sequelize.Op;
 
 const helpers = require("./helper");
 
-let connect = async(req, res, next) => {
+const connect = async(req, res, next) => {
     console.log("connection");
     let { check } = req.body
     if(req.orgId && (typeof check == 'undefined' || (typeof check != 'undefined' && check == 0))) {
@@ -53,9 +53,40 @@ let connect = async(req, res, next) => {
     next();
 }
 
+const connectOnFly = async(orgID) => {
+    let newConnection = null
+    try {  
+        if(orgID > 0) { 
+    
+            const organisation = await helpers.findOrganisationbyID(orgID);
+    
+            if( organisation != null && organisation.organisation_id > 0) {
+                /**
+                 * Make DB Connection
+                 */ 
+                newConnection = await new Sequelize(organisation.org_db, organisation.org_usr, organisation.org_pass, {
+                    host: organisation.org_host,
+                    dialect: 'mysql',
+                    operatorsAliases: Op, 
+                    /*pool: {
+                        max: 100,
+                        min: 1,
+                        acquire: 1000000,
+                        idle: 5000
+                    }*/
+                }); 
+            }   
+        }
+    } catch (err) {
+        console.log('Error in connectOnFly', err)
+    }
+    return newConnection
+}
+
 const clientDBConnection = {};
 
 clientDBConnection.connect = connect; 
+clientDBConnection.connectOnFly = connectOnFly; 
 clientDBConnection.Sequelize = Sequelize;
 clientDBConnection.Op = Op;
   
