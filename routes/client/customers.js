@@ -89,6 +89,40 @@ const findCollateralizedAssets = async(replacements, req) => {
     }
 }
 
+const getAllAssets = async (replacements, layout, companies) => {
+    const getList = []
+    try {
+        let query = "SELECT assets.appno_doc_num FROM assets WHERE ( assets.organisation_id = :organisation_id OR assets.organisation_id IS NULL ) "
+        
+        
+        if( typeof layout != 'undefined' ) {
+            query += " AND assets.layout_id IN (:layout)" 
+        }
+
+        if( companies.length > 0 ) {
+            query += " AND assets.company_id IN (:companies)" 
+        } 
+
+        query += " group by assets.appno_doc_num"
+        const list =  await connection.applicationNew.query(query,{
+            type: connection.Sequelize.QueryTypes.SELECT,
+            raw: true,
+            logging: console.log,
+            replacements
+        })
+        
+        if(list !== null && list.length > 0) {
+            list.forEach( row => {
+                getList.push(`${row.appno_doc_num}`)
+            })
+        }
+    } catch (e) {
+        console.log(e)
+    }
+
+    return getList
+}
+
 route.get("/timeline", [authJWT.verifyToken], async(req, res, next) => {
     let {companies, tabs, customers, rf_ids, layout, exclude, start, end, limit, offset } = req.query, list = [], groups = []
     try {                
@@ -333,26 +367,19 @@ route.get("/timeline", [authJWT.verifyToken], async(req, res, next) => {
                 groupQuery += " AND activity_parties_transactions.rf_id IN (:rf_ids)"
                 replacements.rf_ids = rf_ids
             } else {                
-                query += " AND activity_parties_transactions.rf_id IN (SELECT documentid.rf_id FROM db_uspto.documentid AS documentid WHERE /*date_format(documentid.appno_date, '%Y') > :yearAsset AND*/ documentid.appno_doc_num IN (SELECT assets.appno_doc_num FROM assets WHERE ( assets.organisation_id = :organisation_id OR assets.organisation_id IS NULL ) "
 
-                groupQuery += " AND activity_parties_transactions.rf_id IN (SELECT documentid.rf_id FROM db_uspto.documentid AS documentid WHERE /*date_format(documentid.appno_date, '%Y') > :yearAsset AND*/ documentid.appno_doc_num IN (SELECT assets.appno_doc_num FROM assets WHERE ( assets.organisation_id = :organisation_id OR assets.organisation_id IS NULL ) "
-    
-    
-                if( typeof layout != 'undefined' ) {
-                    query += " AND assets.layout_id IN (:layout)"
-    
-                    groupQuery += " AND assets.layout_id IN (:layout)"
-                }
-    
+                /* query += " AND (activity_parties_transactions.organisation_id = :organisation_id OR activity_parties_transactions.organisation_id IS NULL)  "
+                groupQuery += " AND (activity_parties_transactions.organisation_id = :organisation_id OR activity_parties_transactions.organisation_id IS NULL)  "
                 if( companies.length > 0 ) {
-                    query += " AND assets.company_id IN (:companies)"
-    
-                    groupQuery += " AND assets.company_id IN (:companies)"
-                }
-    
-                query += " ) GROUP BY documentid.rf_id)"
-    
-                groupQuery += " ) GROUP BY documentid.rf_id)"
+                    query += " AND activity_parties_transactions.company_id IN (:companies) "
+                    groupQuery += " AND activity_parties_transactions.company_id IN (:companies) "
+                }  */
+
+                const allAssets = await getAllAssets(replacements, layout, companies)
+                replacements.allAssets = allAssets
+                query += " AND activity_parties_transactions.rf_id IN (SELECT documentid.rf_id FROM db_uspto.documentid AS documentid WHERE documentid.appno_doc_num IN (:allAssets) GROUP BY documentid.rf_id ) "
+
+                groupQuery += " AND activity_parties_transactions.rf_id IN (SELECT documentid.rf_id FROM db_uspto.documentid AS documentid WHERE documentid.appno_doc_num IN (:allAssets) GROUP BY documentid.rf_id ) " 
                 
             }
 

@@ -3018,7 +3018,7 @@ route.post("/company/:id/add_bulk_companies", [authJWT.verifyToken, authJWT.isAd
                 });
             }
 
-            console.log(findGroup);
+            //console.log(findGroup);
 
             if(findGroup != null) {
                 const allRepresentativeNames = JSON.parse(representatives)
