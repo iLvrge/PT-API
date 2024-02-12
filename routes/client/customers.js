@@ -2281,8 +2281,7 @@ route.get("/:layout/transactions", [authJWT.verifyToken, clientDBConnection.conn
                 replacements.tabs = tabs.join(',')
             }
     
-            if(customers && customers != '') {
-                customers = JSON.parse( customers )
+            if(customers.length > 0 && Array.isArray(customers)) { 
                 replacements.customers = customers.join(',')
             }  
             
