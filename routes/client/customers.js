@@ -368,18 +368,20 @@ route.get("/timeline", [authJWT.verifyToken], async(req, res, next) => {
                 replacements.rf_ids = rf_ids
             } else {                
 
-                /* query += " AND (activity_parties_transactions.organisation_id = :organisation_id OR activity_parties_transactions.organisation_id IS NULL)  "
+                query += " AND (activity_parties_transactions.organisation_id = :organisation_id OR activity_parties_transactions.organisation_id IS NULL)  "
                 groupQuery += " AND (activity_parties_transactions.organisation_id = :organisation_id OR activity_parties_transactions.organisation_id IS NULL)  "
                 if( companies.length > 0 ) {
                     query += " AND activity_parties_transactions.company_id IN (:companies) "
                     groupQuery += " AND activity_parties_transactions.company_id IN (:companies) "
-                }  */
+                } 
 
-                const allAssets = await getAllAssets(replacements, layout, companies)
+                
+
+                /* const allAssets = await getAllAssets(replacements, layout, companies)
                 replacements.allAssets = allAssets
                 query += " AND activity_parties_transactions.rf_id IN (SELECT documentid.rf_id FROM db_uspto.documentid AS documentid WHERE documentid.appno_doc_num IN (:allAssets) GROUP BY documentid.rf_id ) "
 
-                groupQuery += " AND activity_parties_transactions.rf_id IN (SELECT documentid.rf_id FROM db_uspto.documentid AS documentid WHERE documentid.appno_doc_num IN (:allAssets) GROUP BY documentid.rf_id ) " 
+                groupQuery += " AND activity_parties_transactions.rf_id IN (SELECT documentid.rf_id FROM db_uspto.documentid AS documentid WHERE documentid.appno_doc_num IN (:allAssets) GROUP BY documentid.rf_id ) "  */
                 
             }
 
@@ -2285,7 +2287,7 @@ route.get("/:layout/transactions", [authJWT.verifyToken, clientDBConnection.conn
                 replacements.customers = customers.join(',')
             }  
             
-            const procedureName = req.params.layout == 'correct_details' ? 'routine_correct_details' : 'routine_transactions'
+            const procedureName = req.params.layout == 'correct_details' ? 'routine_correct_details' : layoutID == 15 ? 'routine_transactions_full' : 'routine_transactions'
             
             connection.applicationNew.query(`CALL ${procedureName} (:companies, :organisationID, :tabs, :customers, :layoutID);`,{
                 type: connection.Sequelize.QueryTypes.SELECT,
