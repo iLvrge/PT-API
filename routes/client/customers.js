@@ -399,7 +399,7 @@ route.get("/timeline", [authJWT.verifyToken], async(req, res, next) => {
         if(query != '') {
 
             if(['acquisition_transactions', 'divestitures_transactions', 'licensing_transactions', 'collateralization_transactions', 'litigation_transactions', 'due_dilligence'].includes(layout)) {
-                query = `SELECT temp.*, ao.logo_optimize AS logo FROM (${query}) AS temp LEFT JOIN db_new_application.organisations AS ao ON ao.organisation_name COLLATE utf8mb4_general_ci = temp.customerName COLLATE utf8mb4_general_ci`
+                query = `SELECT temp.*, ao.logo_optimize AS logo FROM (${query}) AS temp LEFT JOIN db_new_application.organisations AS ao ON ao.organisation_name COLLATE utf8mb4_general_ci = temp.customerName COLLATE utf8mb4_general_ci OR (REPLACE(REPLACE(ao.organisation_name, ',', ''), '.', '') COLLATE utf8mb4_general_ci = REPLACE(REPLACE(temp.customerName, ',', ''), '.', '') COLLATE utf8mb4_general_ci)`
             } 
 
             list =  await connection.applicationNew.query(query, {
@@ -2217,13 +2217,15 @@ route.get("/:layout/transactions", [authJWT.verifyToken, clientDBConnection.conn
             let query = `SELECT trans.rf_id, assignment.reel_no, assignment.frame_no, '' AS channel, trans.date, assets, sum(assets) OVER (ORDER BY trans.date) AS grand_total  FROM (SELECT documentid.rf_id, (SELECT date_format(exec_dt,'%m-%d-%Y') FROM db_uspto.assignor AS assignor WHERE assignor.rf_id = documentid.rf_id LIMIT 1) AS date, COUNT(distinct documentid.appno_doc_num) AS assets FROM db_uspto.documentid As documentid WHERE documentid.rf_id IN (SELECT rf_id FROM dashboard_items WHERE organisation_id = :organisationID AND representative_id IN (:companies) AND type = :layoutID  `
             
             if(replacements.layoutID == 41) {   
-                query += ` AND assignor_id IN (
-                    SELECT assignor_and_assignee_id FROM (
-                    SELECT assignor_and_assignee_id FROM db_uspto.assignor_and_assignee WHERE assignor_and_assignee_id IN (:customers)
-                    UNION
-                    SELECT assignor_and_assignee_id FROM db_uspto.assignor_and_assignee WHERE representative_id IN (SELECT representative_id FROM db_uspto.assignor_and_assignee WHERE assignor_and_assignee_id IN (:customers) AND representative_id > 0)) As tempAssignorAndAssignee GROUP BY assignor_and_assignee_id
-
-                ) `
+                if(customers.length > 0) { 
+                    query += ` AND assignor_id IN (
+                        SELECT assignor_and_assignee_id FROM (
+                        SELECT assignor_and_assignee_id FROM db_uspto.assignor_and_assignee WHERE assignor_and_assignee_id IN (:customers)
+                        UNION
+                        SELECT assignor_and_assignee_id FROM db_uspto.assignor_and_assignee WHERE representative_id IN (SELECT representative_id FROM db_uspto.assignor_and_assignee WHERE assignor_and_assignee_id IN (:customers) AND representative_id > 0)) As tempAssignorAndAssignee GROUP BY assignor_and_assignee_id
+    
+                    ) `
+                }
             } else {
                 query += ` AND assignor_id IN (:customers) `
             }

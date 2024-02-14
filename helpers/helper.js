@@ -3495,13 +3495,13 @@ const assignmentData = async(rfID) => {
     return assignment;
 }
 
-const documentData = async(rfID) => {
-    const documentQuery = 'SELECT * FROM documentid WHERE rf_id = :rfID';
+const documentData = async(rfID) => { 
+    const documentQuery = 'SELECT * FROM documentid WHERE rf_id = :rfID GROUP BY appno_doc_num';
     let properties = await connection.resources.query(documentQuery,{
         type: connection.Sequelize.QueryTypes.SELECT,
         raw: true,
-        logging: console.log,
-        replacements: { rfID: rfID },
+        logging: console.log, 
+        replacements: { rfID: rfID }
     });	
     return properties;
 }
@@ -4620,12 +4620,23 @@ const findFilterAssets = async(req, fType) => {
 
 const checkTabs = (tabs) => {
     if(tabs.includes(81) && ( !tabs.includes(5) && !tabs.includes(11) && !tabs.includes(12) && !tabs.includes(13) && !tabs.includes(16)) ) {
+        /**
+         * 5 => lending
+         * 11 => releaseOut
+         * 12 => borrowing
+         * 13 => releaseIn
+         * 16 => Partial release 
+         */
         tabs.push(5)
         tabs.push(11)
         tabs.push(12)
         tabs.push(13)
-        tabs.push(16)
+        tabs.push(16)  
     } else if (tabs.includes(17)) {
+        /**
+         * 1 => acquisitions
+         * 6 => mergersIn
+         */
         tabs.push(1)
         tabs.push(6)
         /**
@@ -4870,6 +4881,49 @@ const getOwnedAssets = async( req, t = 0 ) => {
         } else {
             selectedCompanies = req.body.selectedCompanies;
         }
+
+        if(selectedCompanies != '' && typeof selectedCompanies != 'undefined' && selectedCompanies != null) {
+            selectedCompanies = JSON.parse(selectedCompanies)
+        }
+        /* const query = `SELECT appno_doc_num FROM owned_assets WHERE organisation_id = :organisationID AND company_id IN (:selectedCompanies)` */
+        const query = `SELECT application FROM dashboard_items WHERE organisation_id = :organisationID AND representative_id IN (:selectedCompanies)  ${req.orgType == 2 ? ' AND mode IN (:mode) ' : ''}  AND type = :type AND application <> '' GROUP BY application`
+
+        const replacements = {
+            organisationID: 0 /* req.orgId */,
+            selectedCompanies,
+            type: 30
+        }
+
+        if(req.orgType == 2) {
+            /**
+             * Bank Mode
+             */
+            replacements.mode = 1
+        }
+
+        const list =  await connection.applicationNew.query(query,{
+            type: connection.Sequelize.QueryTypes.SELECT,
+            raw: true,
+            logging: console.log,
+            replacements
+        }) 
+        if(list !== null && list.length > 0) {
+            list.forEach( row => {
+                getList.push(`${row.application}`)
+            })
+        }
+        return getList
+    } catch (err) {
+        console.log('errrrrrr', err)
+        return []
+    }
+}
+
+
+const getAllAssets = async( req ) => {
+    try {
+        let getList = [], selectedCompanies = [];
+        selectedCompanies = req.body.selectedCompanies;
 
         if(selectedCompanies != '' && typeof selectedCompanies != 'undefined' && selectedCompanies != null) {
             selectedCompanies = JSON.parse(selectedCompanies)
