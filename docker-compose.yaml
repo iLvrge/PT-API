@@ -1,0 +1,13 @@
+version: '3'
+services:
+  api:
+    image: node:14.16.1-api
+    container_name: "${PROJECT_NAME}_api"
+    volumes:
+    - ./:/usr/src/app
+    ports:
+      - "8014:4200"
+    command: >
+         bash -c "cd /usr/src/app &&
+                  npm install -f &&
+                  node app.js"
