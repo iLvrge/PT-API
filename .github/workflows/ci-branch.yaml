@@ -21,7 +21,7 @@ jobs:
     ### docker checkout and re-build
       - name: cd into folder
         run: |
-          sudo cd /stack-on-docker/ci/PT-API
+          cd /stack-on-docker/ci/PT-API
           git branch
           git status
           git log
