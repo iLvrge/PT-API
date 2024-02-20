@@ -28,14 +28,7 @@ jobs:
           git pull
           docker-compose stop
           docker-compose start
-      # # checkout 
-      # - uses: actions/checkout@v3
-      # # Docker build
-      # - name: Restart docker-compose file to fetch new code
-      #   run: |
-      #     git log
-      #     git branch
-      #     git status
+
 
  #         echo Add other actions to build,
  #         echo test, and deploy your project.
