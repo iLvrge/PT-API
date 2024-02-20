@@ -21,15 +21,16 @@ jobs:
     ### docker checkout and re-build
       - name: cd into folder
         run: |
-          sudo cd /
-          docker-compose start
+          sudo cd /stack-on-docker/ci/PT-API
           git branch
           git status
+          git log
       # checkout 
       - uses: actions/checkout@v3
       # Docker build
       - name: Restart docker-compose file to fetch new code
         run: |
+          git log
           git branch
           git status
           docker-compose stop
