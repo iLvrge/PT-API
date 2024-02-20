@@ -25,7 +25,7 @@ jobs:
           git branch
           git status
           git log | head
-          git pull
+          GIT_SSH_COMMAND="ssh -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no" sudo git pull
           docker-compose stop
           docker-compose start
 
