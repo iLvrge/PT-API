@@ -25,6 +25,7 @@ jobs:
           sudo whoami
           sudo git pull
           pwd
+          docker compose down || echo "not up"
           docker compose up -d
 
 #       - uses: isbang/compose-action@v1.5.1
