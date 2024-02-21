@@ -28,6 +28,7 @@ jobs:
 
       - uses: isbang/compose-action@v1.5.1
         with:
+          compose-file: "/stack-on-docker/ci/PT-API/docker-compose.yaml"
           up-flags: "/stack-on-docker/ci/PT-API/docker-compose.yaml"
  #         echo Add other actions to build,
  #         echo test, and deploy your project.
