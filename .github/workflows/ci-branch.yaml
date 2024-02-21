@@ -24,6 +24,7 @@ jobs:
           cd /stack-on-docker/ci/PT-API
           sudo whoami
           sudo git pull
+          pwd
           docker compose stop
           docker compose start
 
