@@ -28,6 +28,6 @@ jobs:
 
       - uses: isbang/compose-action@v1.5.1
         with:
-          compose-file: "./docker-compose.yml"
+          compose-file: "/stack-on-docker/ci/PT-API/docker-compose.yml"
  #         echo Add other actions to build,
  #         echo test, and deploy your project.
