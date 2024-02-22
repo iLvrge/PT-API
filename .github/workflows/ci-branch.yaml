@@ -25,6 +25,7 @@ jobs:
           sudo whoami
           sudo git pull
           pwd
+          echo ${{ github.sha }}
 #          docker compose down || echo "stack is already down"
 #          docker compose up -d
 
@@ -32,7 +33,7 @@ jobs:
         uses: docker/build-push-action@v5
         with:
           context: .
-          file: cii/Dockerfile
+          file: .ci/Dockerfile
           push: false
           tags: test:${{ github.sha }}
 
