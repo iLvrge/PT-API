@@ -25,8 +25,17 @@ jobs:
           sudo whoami
           sudo git pull
           pwd
-          docker compose down || echo "not up"
-          docker compose up -d
+#          docker compose down || echo "stack is already down"
+#          docker compose up -d
+
+      - name: Build and push
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: Dockerfile
+          push: false
+          tags: test:${{ github.sha }}
+
 
 #       - uses: isbang/compose-action@v1.5.1
 #         with:
