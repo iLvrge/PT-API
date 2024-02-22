@@ -33,7 +33,7 @@ jobs:
           context: .
           file: .ci/Dockerfile
           push: false
-          tags: test:${{ steps.vars.outputs.sha_short }}
+          tags: test:${GITHUB_SHA::7}
 
 
 #       - uses: isbang/compose-action@v1.5.1
