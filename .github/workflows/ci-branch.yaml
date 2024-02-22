@@ -25,12 +25,13 @@ jobs:
           sudo whoami
           sudo git pull
           pwd
-          echo ${{ github.sha }}
+          echo "SHORT_SHA=$("${{ github.sha }}".SubString(0, 8))" >> $env:GITHUB_ENV
+          echo "Short SHA is ${{ env.SHORT_SHA }}"
 #          docker compose down || echo "stack is already down"
 #          docker compose up -d
 
       - name: Build and push
-        uses: docker/build-push-action@v5
+        uses: docker/build-push-action@v4
         with:
           context: .
           file: .ci/Dockerfile
