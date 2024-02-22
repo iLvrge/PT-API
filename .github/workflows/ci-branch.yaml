@@ -25,14 +25,8 @@ jobs:
           sudo whoami
           sudo git pull
           pwd
-
-      - name: Set outputs
-        id: vars
-        run: |
           echo "sha_short=$(git rev-parse --short HEAD)" >> $GITHUB_OUTPUT
           echo "Short SHA is ${{ env.SHORT_SHA }}"
-#          docker compose down || echo "stack is already down"
-#          docker compose up -d
 
       - name: Build and push
         uses: docker/build-push-action@v4
