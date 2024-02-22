@@ -26,14 +26,15 @@ jobs:
           sudo git pull
           pwd
           echo "Short SHA is echo ${GITHUB_SHA::7}"
+          docker build --tag test:${GITHUB_SHA::7} .
 
-      - name: Build and push
-        uses: docker/build-push-action@v4
-        with:
-          context: .
-          file: .ci/Dockerfile
-          push: false
-          tags: 2
+      # - name: Build and push
+      #   uses: docker/build-push-action@v4
+      #   with:
+      #     context: .
+      #     file: .ci/Dockerfile
+      #     push: false
+      #     tags: 2
 
 
 #       - uses: isbang/compose-action@v1.5.1
