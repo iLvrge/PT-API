@@ -1907,7 +1907,7 @@ let getAllCompaniesList = async (DBConnection) => {
 
 let getCompaniesWithChildren = async (DBConnection, organisationID) => {
     let companies = [];
-    const parentCompanyQuery = "SELECT representative_id as id, '' AS slack, original_name, representative_name, instances, instances + (Select sum(instances) FROM representative as r1 WHERE r1.parent_id = r.representative_id) as counter, type, status FROM representative as r WHERE r.parent_id = 0";
+    const parentCompanyQuery = "SELECT *, CAST(counter AS UNSIGNED) AS counter FROM ( SELECT representative_id as id, '' AS slack, original_name, representative_name, instances, (Select SUM(instances) FROM representative as r1 WHERE r1.parent_id = r.representative_id) as counter, type, status FROM representative as r WHERE r.parent_id = 0) AS tempT";
 
     companies = await DBConnection.query(parentCompanyQuery,{
         type: connection.Sequelize.QueryTypes.SELECT,
