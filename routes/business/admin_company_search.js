@@ -1244,7 +1244,7 @@ route.get("/company/lenders/:id/companies", [authJWT.verifyToken, authJWT.isAdmi
                     AND representative_assignment_conveyance.convey_ty IN (:conveyanceTypes) GROUP BY assignor.rf_id ) AS temp_total
                 ) AS total_occurences,  normalize_name, 
                 (select rr.representative_name FROM representative as rr WHERE rr.representative_name = name GROUP BY rr.representative_name) as representative_company,
-                COUNT(DISTINCT assetIN) as inn, COUNT(DISTINCT assetOut) as outt
+                COUNT(DISTINCT assetIN) as inn, COUNT(DISTINCT assetOut) as outt, assigneeRFID
                 
                 FROM (
                 
