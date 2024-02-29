@@ -1245,43 +1245,32 @@ route.get("/company/lenders/:id/companies", [authJWT.verifyToken, authJWT.isAdmi
                     AND representative_assignment_conveyance.convey_ty IN (:conveyanceTypes) GROUP BY assignor.rf_id ) AS temp_total
                 ) AS total_occurences,  normalize_name, 
                 (select rr.representative_name FROM representative as rr WHERE rr.representative_name = name GROUP BY rr.representative_name) as representative_company,
-                COUNT(DISTINCT assetIN) as inn, COUNT(DISTINCT assetOut) as outt
+                (SELECT COUNT(*) FROM (SELECT docID.appno_doc_num FROM assignee AS ass
+                    INNER JOIN representative_assignment_conveyance AS rac ON rac.rf_id = ass.rf_id 
+                    INNER JOIN conveyance AS con ON con.convey_name = rac.convey_ty AND con.is_ota = 1
+                    INNER JOIN documentid AS docID ON docID.rf_id = ass.rf_id
+                    INNER JOIN assignor_and_assignee AS aaa ON aaa.assignor_and_assignee_id = ass.assignor_and_assignee_id
+                    LEFT JOIN representative as r ON r.representative_id = aaa.representative_id
+                    WHERE (ass.assignor_and_assignee_id = dumpData.assignor_and_assignee_id OR aaa.assignor_and_assignee_id = dumpData.assignor_and_assignee_id)
+                  GROUP BY docID.appno_doc_num)AS ownedAssets) AS inn,
+                  (SELECT COUNT(*) FROM(
+                        SELECT docID1.appno_doc_num FROM assignor AS aor
+                                    INNER JOIN representative_assignment_conveyance AS rac ON rac.rf_id = aor.rf_id 
+                                    INNER JOIN conveyance AS con ON con.convey_name = rac.convey_ty AND con.is_ota = 1
+                                    INNER JOIN assignor_and_assignee AS aaa ON aaa.assignor_and_assignee_id = aor.assignor_and_assignee_id 
+                                    INNER JOIN documentid AS docID1 ON docID1.rf_id = aor.rf_id
+                                    WHERE (aor.assignor_and_assignee_id = dumpData.assignor_and_assignee_id OR aaa.assignor_and_assignee_id = dumpData.assignor_and_assignee_id)
+                                    GROUP BY docID1.appno_doc_num
+                    ) AS tranferAssets )as outt 
                 
                 FROM (
                 
                 
-                SELECT id, representativeID, assignor_and_assignee_id, name, appno_doc_num, normalize_name, representative_company, rf_id, assigneeRFID, assignorRFID,  owned AS assetIN,  tranferAssets AS assetOut 
+                SELECT id, representativeID, assignor_and_assignee_id, name, appno_doc_num, normalize_name, representative_company, rf_id, assigneeRFID, assignorRFID
                 FROM (
                     SELECT a.assignor_and_assignee_id AS id, a.representative_id AS representativeID, a.assignor_and_assignee_id, a.name, doc.appno_doc_num, c.representative_name as normalize_name, 
                 (select rr.representative_name FROM representative as rr WHERE rr.representative_name = a.name GROUP BY rr.representative_name) as representative_company,
-                concat(assignment.reel_no,'-', assignment.frame_no) as assigneeRFID, null as assignorRFID, assignor.rf_id ,
-                (SELECT docID.appno_doc_num FROM assignee AS ass
-                INNER JOIN representative_assignment_conveyance AS rac ON rac.rf_id = ass.rf_id 
-                INNER JOIN conveyance AS con ON con.convey_name = rac.convey_ty AND con.is_ota = 1
-                INNER JOIN assignor_and_assignee AS aaa ON aaa.assignor_and_assignee_id = ass.assignor_and_assignee_id 
-                INNER JOIN documentid AS docID ON docID.rf_id = ass.rf_id
-                WHERE (aaa.assignor_and_assignee_id = assignor.assignor_and_assignee_id OR aaa.assignor_and_assignee_id IN (
-                    SELECT assignor_and_assignee_id FROM assignor_and_assignee
-                    WHERE representative_id IN (
-                        SELECT representative_id FROM assignor_and_assignee
-                        WHERE assignor_and_assignee_id = assignor.assignor_and_assignee_id
-                    )
-                )) AND docID.appno_doc_num =  doc.appno_doc_num  GROUP BY docID.appno_doc_num) AS owned,
-                (
-                    SELECT docID1.appno_doc_num FROM assignor AS aor
-                                INNER JOIN representative_assignment_conveyance AS rac ON rac.rf_id = aor.rf_id 
-                                INNER JOIN conveyance AS con ON con.convey_name = rac.convey_ty AND con.is_ota = 1
-                                INNER JOIN assignor_and_assignee AS aaa ON aaa.assignor_and_assignee_id = aor.assignor_and_assignee_id 
-                                INNER JOIN documentid AS docID1 ON docID1.rf_id = aor.rf_id
-                                WHERE (aaa.assignor_and_assignee_id = assignor.assignor_and_assignee_id OR aaa.assignor_and_assignee_id IN (
-                                    SELECT assignor_and_assignee_id FROM assignor_and_assignee
-                                    WHERE representative_id IN (
-                                        SELECT representative_id FROM assignor_and_assignee
-                                        WHERE assignor_and_assignee_id = assignor.assignor_and_assignee_id
-                                    )
-                                )) AND docID1.appno_doc_num =  doc.appno_doc_num
-                                GROUP BY docID1.appno_doc_num
-                ) AS tranferAssets 
+                concat(assignment.reel_no,'-', assignment.frame_no) as assigneeRFID, null as assignorRFID, assignor.rf_id 
                 FROM assignor_and_assignee as a 
                 LEFT JOIN representative as c ON c.representative_id = a.representative_id 
                 INNER JOIN assignor ON assignor.assignor_and_assignee_id = a.assignor_and_assignee_id 
