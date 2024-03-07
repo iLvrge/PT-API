@@ -1150,7 +1150,7 @@ route.put("/company/transactions/:customerID", [authJWT.verifyToken, authJWT.isA
                 /**
                  * Update RFIDs already exists in USPTO 
                  */
-                const updateFields = {convey_ty: updateConveyType};
+                const updateFields = {convey_ty: updateConveyType, flag: 1};
 
                 if(updateConveyType == 'employee') {
                     updateFields.flag = 1;
