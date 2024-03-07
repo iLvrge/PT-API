@@ -16,6 +16,10 @@ const RepresentativeAssignmentConveyance = connection.resources.define('represen
     employer_assign:{
         type: Sequelize.INTEGER,
         allowNull: false,
+    },
+    flag:{
+        type: Sequelize.INTEGER,
+        allowNull: false,
     }
 },
 {
