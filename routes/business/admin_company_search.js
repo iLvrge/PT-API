@@ -1277,7 +1277,9 @@ route.get("/company/lenders/:id/companies", [authJWT.verifyToken, authJWT.isAdmi
                 INNER JOIN assignment ON assignment.rf_id = assignor.rf_id 
                 INNER JOIN documentid AS doc ON doc.rf_id = assignment.rf_id 
                 INNER JOIN representative_assignment_conveyance ON assignment.rf_id = representative_assignment_conveyance.rf_id 
-                WHERE representative_assignment_conveyance.convey_ty IN (:conveyanceTypes)
+                WHERE (representative_assignment_conveyance.convey_ty IN (:conveyanceTypes) OR (
+                    MATCH(assignment.convey_text) AGAINST('\"SECURITY\" -RELEASE -DISCHARGE' IN BOOLEAN MODE) 
+                    OR MATCH(assignment.convey_text) AGAINST('\"SUCCESSION OF AGENCY\" -RELEASE -DISCHARGE' IN BOOLEAN MODE) ))
                 AND date_format(assignment.record_dt, '%Y') >= :year
                 AND assignor.rf_id IN (SELECT rf_id FROM assignee WHERE assignor_and_assignee_id IN (:assignorAndAssigneeIDs)) 
                 ) AS allDataTemp 
@@ -1288,7 +1290,7 @@ route.get("/company/lenders/:id/companies", [authJWT.verifyToken, authJWT.isAdmi
                 querySearchResult = await connection.resources.query(queryCompany,{
                     type: connection.Sequelize.QueryTypes.SELECT,
                     raw: true,
-                    replacements: { assignorAndAssigneeIDs: firmIDs, year: connection.DEFAULT_YEAR, conveyanceTypes: ['security', 'restatedsecurity'] },
+                    replacements: { assignorAndAssigneeIDs: firmIDs, year: connection.DEFAULT_YEAR, conveyanceTypes: ['security', 'restatedsecurity'], conveyanceText: ['SECURITY INTEREST (SEE DOCUMENT FOR DETAILS).', 'SECURITY INTEREST'] },
                     logging: console.log,
                 });
             }
