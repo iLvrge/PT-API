@@ -2301,9 +2301,10 @@ route.post("/customers/retrieve_cited_patents_logo",[authJWT.verifyToken, authJW
         /* logger.info('Sending request to RapidAPI script')
         console.log('/var/www/html/script/name_to_domain_api.js', client_id, api_name, assignees, 1, company_id, all, type) */
         /* const assigneeLogos = spawn('node', ['/var/www/html/script/name_to_domain_api.js', client_id, api_name, assignees, 1, company_id, all, type, source_data]); */
-        const assigneeLogos = spawn('node', [`${process.env.SCRIPT_PATH}name_to_domain_api.js`, client_id, api_name, assignees, 1, company_id, all, type, source_data]);
+        console.log(`${process.env.SCRIPT_PATH}name_to_domain_api.js`);
+        spawn('node', [`${process.env.SCRIPT_PATH}name_to_domain_api.js`, client_id, api_name, assignees, 1, company_id, all, type, source_data]);
     
-        assigneeLogos.stdout.on('data', (data) => {
+        /*assigneeLogos.stdout.on('data', (data) => {
             logger.info(data)
             console.log(`assigneeLogos downloadFileSpawn.stdout: ${data}`)
         });
@@ -2316,7 +2317,7 @@ route.post("/customers/retrieve_cited_patents_logo",[authJWT.verifyToken, authJW
         assigneeLogos.on('close', (code) => {
             logger.info(code)
             resolve(`download assigneeLogos downloadFileSpawn.close ${code}`)    
-        })  
+        })  */
     
     
         res.status(200).send("run logo script");
