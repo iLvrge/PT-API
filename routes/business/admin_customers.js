@@ -1796,12 +1796,21 @@ route.get("/customers/:organisation_id/flag_automatic", [authJWT.verifyToken, au
                 }
 
                 if(companyID.length > 0) {
-                    companyID.map( ID => {
+                    if(companyID.length > 1) { 
+                        exec(`php -f ${process.env.SCRIPT_PATH}run_script_for_update_flag.php "${organisationID}" "${JSON.stringify(companyID)}"`, (error, stdout, stderr) => {  
+                            console.log(error, stdout, stderr);
+                        });
+                    } else {
+                        exec(`php -f ${process.env.SCRIPT_PATH}update_flag.php "${organisationID}" "${companyID[0]}"`, (error, stdout, stderr) => {  
+                            console.log(error, stdout, stderr);
+                        });
+                    }
+                    /* companyID.map( ID => {
                         console.log(`tab   php -f ${process.env.SCRIPT_PATH}update_flag.php "${organisationID}" "${ID}"`);
                         exec(`php -f ${process.env.SCRIPT_PATH}update_flag.php "${organisationID}" "${ID}"`, (error, stdout, stderr) => {  
                             console.log(error, stdout, stderr);
                         });
-                    })
+                    }) */
                 } else {
                     console.log(`php -f ${process.env.SCRIPT_PATH}update_flag.php "${organisationID}" ""`);
                         exec(`php -f ${process.env.SCRIPT_PATH}update_flag.php "${organisationID}" ""`, (error, stdout, stderr) => {  
