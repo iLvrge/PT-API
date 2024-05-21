@@ -4172,25 +4172,24 @@ const findMaxMinLifeSpan = async(timelineSpan) => {
     const {max, min} = await minMax2DArray(timelineSpan, 'year');
     const currentYear = moment(new Date()).format('YYYY');
     let entered = false
-    console.log(max, min, timelineSpan.length)
+    console.log(max, min, timelineSpan.length, currentYear)
     for(let i = min; i < max; i++) {
 
         let getList = await timelineSpan.filter( item => {
             return i == parseInt(item.year) ? item : undefined;
-        });
-        console.log(i, getList.length)
+        }); 
         if(getList != undefined && getList.length > 0) {
             
-            let Counter = await getList.reduce((a, b) => +a + +b.count, 0);
+            let Counter = await getList.reduce((a, b) => +a + +b.count, 0); 
             let counterWithYear = []
             counterWithYear.push(i)
             counterWithYear.push(Counter)
             counterWithYear.push('stroke-width:1;stroke-color:#2196f3;fill-color:#1565C0;')
             counterWithYear.push(`Year: ${i}\nPatents Alive: ${Counter}`)
-            if(i >= currentYear) { 
+            if(i <= currentYear) { 
                 assetsLifeSpan.push(counterWithYear)
             }
-        }
+        } 
         /* if(currentYear == i) {
             assetsLifeSpan.push([currentYear, 0, null, null])  
             entered = true
