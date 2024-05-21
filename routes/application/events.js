@@ -1881,7 +1881,7 @@ route.post("/events/abandoned/yearly/assets", [authJWT.verifyToken], async(req, 
 route.post("/events/assets", [authJWT.verifyToken], async(req, res, next) => {
     try{
         let { list, total, type, selectedCompanies, tabs, customers, assignments, other_mode } = req.body, assetsLifeSpan = []
-
+        console.log("/events/assets");
         if( list != '' ) {
             list = JSON.parse(list)
             const where = { year: connection.DEFAULT_YEAR, organisationID: 0 /* req.orgId */, otherORGID: req.orgId}  
@@ -2089,7 +2089,7 @@ route.post("/events/assets", [authJWT.verifyToken], async(req, res, next) => {
                     raw: true,
                     logging: console.log,
                 })
-                console.log(queryBiblio)
+                console.log('queryBiblio', queryBiblio)
                 if(queryBiblio != '' ) {
                     let notFindItems = [];
                     if(getList.length > 0) {
@@ -2105,7 +2105,7 @@ route.post("/events/assets", [authJWT.verifyToken], async(req, res, next) => {
                     } else {
                         notFindItems = [...list]
                     }  
-                    console.log('notFindItems', notFindItems)
+                    console.log('notFindItems1ß', notFindItems)
                     if(notFindItems.length > 0) {
                         const anotherList = await connection.applicationNew.query(queryBiblio, {
                             type: connection.Sequelize.QueryTypes.SELECT,
@@ -2151,7 +2151,7 @@ route.post("/events/assets", [authJWT.verifyToken], async(req, res, next) => {
                     }
                     
                     const timelineSpan = [], applicationNumberAdded = [], dateAdded = [];
-                    console.log(getList.length)
+                    console.log('getList', getList.length)
                     const tabItems = []
                     let cp = 0
                     const promises = getList.map( async item => {
@@ -2190,8 +2190,7 @@ route.post("/events/assets", [authJWT.verifyToken], async(req, res, next) => {
                         } 
                         return item;                            
                     });            
-                    await Promise.all(promises);
-                    //console.log('cp', cp)
+                    await Promise.all(promises); 
                     assetsLifeSpan = await helpers.findMaxMinLifeSpan(timelineSpan)   
 
                 }
