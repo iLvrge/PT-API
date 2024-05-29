@@ -530,44 +530,49 @@ route.get("/list", [authJWT.verifyToken, clientDBConnection.connect], async(req,
 
             const list = await Representative.findAll( where )
 
-            let companiesList = []
-
+            let companiesList = [] 
             if(list.length > 0) {
-                let representativeNames = [], representativeIDs = []
+                let representativeNames = [], representativeIDs = [], findChild = []
 
                 const promises = list.map( representative => {
-                    if(representative.company_id == 0) {
+                    if(representative.company_id > 0) {
                         representativeNames.push(representative.representative_name != '' ? representative.representative_name : representative.original_name)
+                    }
+                    if(representative.company_id == 0) { 
                         representativeIDs.push(representative.representative_id)
                     }
-                })
-    
+                }) 
                 await Promise.all(promises)
 
-                const findChild = await Representative.findAll({
-                    attributes: ['representative_id', 'company_id', 'parent_id', 'representative_name', 'original_name', 'status'],
-                    where: {                            
-                        parent_id: representativeIDs, 
-                        child: 1
-                    },
-                    order: [
-                        ['type', 'ASC'],
-                        ['status', 'DESC'],
-                        ['original_name', 'ASC'],
-                        ['representative_name', 'ASC']
-                    ]
-                })
+                if(representativeIDs.length > 0) {
+                    findChild = await Representative.findAll({
+                        attributes: ['representative_id', 'company_id', 'parent_id', 'representative_name', 'original_name', 'status'],
+                        where: {                            
+                            parent_id: representativeIDs, 
+                            child: 1
+                        },
+                        order: [
+                            ['type', 'ASC'],
+                            ['status', 'DESC'],
+                            ['original_name', 'ASC'],
+                            ['representative_name', 'ASC']
+                        ]
+                    })
 
-                const checkGroupsPromise = list.map( representative => {
-                    if(representative.type == 1) {
-                        const childNames = findChild.filter( row => row.parent_id == representative.representative_id).map(obj => obj.representative_name != '' ? obj.representative_name : obj.original_name)
-                        if(childNames.length > 0) {
-                            representativeNames = [...representativeNames, ...childNames]
+                    const checkGroupsPromise = list.map( representative => {
+                        if(representative.type == 1) {
+                            const childNames = findChild.filter( row => row.parent_id == representative.representative_id).map(obj => obj.representative_name != '' ? obj.representative_name : obj.original_name)
+                            if(childNames.length > 0) {
+                                representativeNames = [...representativeNames, ...childNames]
+                            }
                         }
-                    }
-                })
+                    })
+    
+                    await Promise.all(checkGroupsPromise)
+                }
+                
 
-                await Promise.all(checkGroupsPromise)
+                
 
                 const findReports = await RepresentativeReport.findAll({
                     attributes: ['representative_name', 'no_of_assets', 'no_of_transactions', 'no_of_parties', 'no_of_inventor', 'no_of_activities'],
@@ -596,9 +601,9 @@ route.get("/list", [authJWT.verifyToken, clientDBConnection.connect], async(req,
                             selectedCompany = sharedData.selectedCompanies
                         }
                     }
-                } 
+                }  
                 for(let i = 0; i < list.length; i++) { 
-                    let representative = list[i]
+                    let representative = list[i] 
                     let representaitveJSON = representative.toJSON();
                     if(representaitveJSON.company_id > 0) {
                         representaitveJSON.representative_id = representaitveJSON.company_id
@@ -702,7 +707,7 @@ route.get("/list", [authJWT.verifyToken, clientDBConnection.connect], async(req,
                         no_of_inventor: no_of_inventor,
                         no_of_activities: no_of_activities,
                         product
-                    }
+                    } 
                     companiesList.push(representaitveJSON)
                     //return representative
                 }    
