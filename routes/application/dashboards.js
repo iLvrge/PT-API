@@ -555,7 +555,7 @@ route.post("/timeline", [authJWT.verifyToken], async(req, res, next) => {
                     INNER JOIN db_uspto.assignor_and_assignee AS aaa ON aaa.assignor_and_assignee_id = apt.assignor_and_assignee_id LEFT JOIN db_uspto.representative AS r ON r.representative_id = aaa.representative_id WHERE (apt.organisation_id = :organisationID  OR apt.organisation_id IS NULL)  AND company_id IN (:companyIDs)  AND apt.activity_id IN (:activityIDs) ${parties.length > 0 ? ' AND apt.assignor_and_assignee_id IN (:assignor_id) ' : ''} AND apt.recorded_assignor_and_assignee_id IN (:assignorAssigneeIDs) AND date_format(apt.exec_dt, '%Y') > :year GROUP BY apt.rf_id ORDER BY exec_dt DESC`;
 
                     if(parseInt(type) != 5) {
-                        query = `SELECT temp.*, ao.logo_optimize AS logo FROM (${query}) AS temp LEFT JOIN db_new_application.organisations AS ao ON ao.organisation_name COLLATE utf8mb4_general_ci = temp.customerName COLLATE utf8mb4_general_ci`
+                        query = `SELECT temp.*, ao.logo_optimize AS logo FROM (${query}) AS temp LEFT JOIN db_new_application.organisations AS ao ON REPLACE(REPLACE(ao.organisation_name, ',', ''), '.', '') COLLATE utf8mb4_general_ci = temp.customerName COLLATE utf8mb4_general_ci`
                     }
 
                     getList =  await connection.applicationNew.query(query,{
