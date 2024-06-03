@@ -4201,7 +4201,7 @@ const findMaxMinLifeSpan = async(timelineSpan) => {
    /*  if(entered === false) {
         assetsLifeSpan.push([currentYear, 0, null, null])  
     } */
-    return assetsLifeSpan
+    return assetsLifeSpan.length > 1 ? assetsLifeSpan : [];
 }
 
 const findMaxMinWithCompanies = async(companies, timelineSpan) => {
