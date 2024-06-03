@@ -4186,7 +4186,10 @@ const findMaxMinLifeSpan = async(timelineSpan) => {
             counterWithYear.push(Counter)
             counterWithYear.push('stroke-width:1;stroke-color:#2196f3;fill-color:#1565C0;')
             counterWithYear.push(`Year: ${i}\nPatents Alive: ${Counter}`)
-            if(i <= currentYear) { 
+            /**
+             * Show data from current year
+             */
+            if(i >= currentYear) {  
                 assetsLifeSpan.push(counterWithYear)
             }
         } 
@@ -4198,7 +4201,7 @@ const findMaxMinLifeSpan = async(timelineSpan) => {
    /*  if(entered === false) {
         assetsLifeSpan.push([currentYear, 0, null, null])  
     } */
-    return assetsLifeSpan
+    return assetsLifeSpan.length > 1 ? assetsLifeSpan : [];
 }
 
 const findMaxMinWithCompanies = async(companies, timelineSpan) => {
