@@ -556,15 +556,15 @@ route.post("/timeline", [authJWT.verifyToken], async(req, res, next) => {
 
                     if(parseInt(type) != 5) {
                         query = `SELECT temp.*, ao.logo_optimize AS logo FROM (${query}) AS temp LEFT JOIN db_new_application.organisations AS ao ON 
-                            REPLACE(
-                                REPLACE( 
-                                    REPLACE( 
-                                        REPLACE(
-                                            LOWER(REPLACE(REPLACE(ao.organisation_name, ',', ''), '.', '')),
-                                        'corporation', 'corp'),
-                                    'incorporated', 'inc'),
-                                'limited', 'ltd'),
-                            'company', 'co')  COLLATE utf8mb4_general_ci = LOWER(temp.customerName) COLLATE utf8mb4_general_ci`
+                        REGEXP_REPLACE(
+                            REGEXP_REPLACE( 
+                                REGEXP_REPLACE( 
+                                    REGEXP_REPLACE(
+                                        LOWER(REPLACE(REPLACE(ao.organisation_name, ',', ''), '.', '')),
+                                        'corporation$', 'corp'),
+                                    'incorporated$', 'inc'),
+                                'limited$', 'ltd'),
+                            'company$', 'co')   COLLATE utf8mb4_general_ci = LOWER(temp.customerName) COLLATE utf8mb4_general_ci`
                     }
 
                     getList =  await connection.applicationNew.query(query,{
