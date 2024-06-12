@@ -1206,7 +1206,7 @@ route.post("/asset_types/assets/family", [authJWT.verifyToken, clientDBConnectio
         
         const {type} = req.body
         let list = await helpers.findFilterAssets(req, 1);
-        
+        const totalUS = list.length;
         let result = [['Country', 'Assets']]
         if(list != '' && Array.isArray(list) && list.length > 0) {
             /* const query = `SELECT application_country, SUM(country_count) AS number FROM( SELECT  application_number,application_country, COUNT(application_country)  AS country_count FROM db_uspto.assets_family             
@@ -1281,10 +1281,10 @@ route.post("/asset_types/assets/family", [authJWT.verifyToken, clientDBConnectio
                 getList.forEach(row => {
                     result.push([row.name, parseInt(row.number)])
                 })
-
+                console.log('list.length', list.length)
                 const findIndex = result.findIndex( item => item[0] == 'United States');
                 if(findIndex !== -1){
-                    result[findIndex][1] =  result[findIndex][1] + ( list.length - result[findIndex][1] )
+                    result[findIndex][1] =  totalUS
                 } else {
                     result.push(['United States', list.length ])
                 }
