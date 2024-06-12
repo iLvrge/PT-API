@@ -605,8 +605,6 @@ route.post("/count", [authJWT.verifyToken], async(req, res, next) => {
             where.mode = 1
         }
 
-        console.log(req)
-
         let parties = [];
         let qType = parseInt(type);
        /*  if(typeof format_type != 'undefined' && format_type.toLowerCase() == 'bank') {
