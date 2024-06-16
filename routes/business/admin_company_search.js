@@ -2981,7 +2981,7 @@ route.post("/company/report_dashboard:id/", [authJWT.verifyToken, authJWT.isAdmi
  * Family
  */
 
-route.post("/company/family/:id", [authJWT.verifyToken, authJWT.isAdmin, authJWT.addClientID, clientDBConnection.connect], async (req, res, next) => {
+route.get("/company/family/:id", [authJWT.verifyToken, authJWT.isAdmin, authJWT.addClientID, clientDBConnection.connect], async (req, res, next) => {
     try{
         const customerID = req.params.id
         
@@ -2999,7 +2999,7 @@ route.post("/company/family/:id", [authJWT.verifyToken, authJWT.isAdmin, authJWT
     }  
 })
 
-route.post("/company/family/:id/:representativeID", [authJWT.verifyToken, authJWT.isAdmin, authJWT.addClientID, clientDBConnection.connect], async (req, res, next) => {
+route.get("/company/family/:id/:representativeID", [authJWT.verifyToken, authJWT.isAdmin, authJWT.addClientID, clientDBConnection.connect], async (req, res, next) => {
     try{
         const customerID = req.params.id, representativeIDs = JSON.parse(req.params.representativeID)
         
