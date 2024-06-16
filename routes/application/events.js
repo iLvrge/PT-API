@@ -1900,6 +1900,13 @@ route.post("/events/assets", [authJWT.verifyToken], async(req, res, next) => {
                  */
                 where.mode = 1
             } 
+            if(tabs && tabs != '') {
+                tabs = JSON.parse( tabs )
+                if(tabs.includes(81, tabs)) {
+                    tabs = [...tabs, 5,11,12,13,16]
+                    tabs = JSON.stringify(tabs)
+                }
+            }
             /* console.log('Abh', parseInt(total), list.length); */
             if(((parseInt(total) != list.length || (list.length == 0 && parseInt(total) == 0))) && findList === true) {
                 /**
