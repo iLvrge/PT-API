@@ -1288,6 +1288,8 @@ route.post("/asset_types/assets/family", [authJWT.verifyToken, clientDBConnectio
                 } else {
                     result.push(['United States', list.length ])
                 }
+            } else {
+                result.push(['United States', list.length ])
             }
 
             
