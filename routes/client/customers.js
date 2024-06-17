@@ -1286,10 +1286,10 @@ route.post("/asset_types/assets/family", [authJWT.verifyToken, clientDBConnectio
                 if(findIndex !== -1){
                     result[findIndex][1] =  totalUS
                 } else {
-                    result.push(['United States', list.length ])
+                    result.push(['United States', totalUS ])
                 }
             } else {
-                result.push(['United States', list.length ])
+                result.push(['United States', totalUS ])
             }
 
             
