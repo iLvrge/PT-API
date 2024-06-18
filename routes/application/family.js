@@ -407,13 +407,16 @@ const getFamilyDataFromXML = async(req) => {
         console.log("sendNewRequest", sendNewRequest)
         if(sendNewRequest === true) {
             const token = await epo.readToken('HedCET') 
+
+            console.log('token', token)
             if(token !== 'undefined' && token != '') {
                 const publication = findPatent != null && findPatent.grant_doc_num != null && findPatent.grant_doc_num != '' ? 'publication' : 'application'
                 console.log('SENDING nEW REQUEST');
                 getFamilyData = await epo.runUrl(token, 'family', publication, 'docdb', `${formatAsset}/legal`);
-               
+                console.log('SENDING nEW REQUEST', getFamilyData);
                 if( !getFamilyData  || getFamilyData.indexOf('EntityNotFound') !== -1) {
                     getFamilyData = await epo.runUrl(token, 'family', publication,'epodoc', `${formatAsset}/legal`);
+                    console.log('SENDING nEW REQUEST1', getFamilyData);
                 }
             }
         }

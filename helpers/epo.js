@@ -85,9 +85,9 @@ const runUrl = async(token,A,B,C,D) => {
     if(typeof token === 'string') {
         token = JSON.parse(token)
     }
-    const requestHeader = ['Accept: application/xml', `Authorization: Bearer ${token.access_token}`, 'Connection: Keep-Alive', 'Host: ops.epo.org', 'X-Target-URI: http://ops.epo.org']
+    const requestHeader = ['Accept: application/xml', `Authorization: Bearer ${token.access_token}`, 'Connection: Keep-Alive', 'Host: ops.epo.org', 'X-Target-URI: https://ops.epo.org']
     console.log('requestHeader', requestHeader)
-    const request_url = util.format("http://ops.epo.org/3.2/rest-services/%s/%s/%s/%s", A, B, C, D);
+    const request_url = util.format("https://ops.epo.org/3.2/rest-services/%s/%s/%s/%s", A, B, C, D);
     console.log('runUrl', request_url)
     return curlRequest(false, requestHeader, 'GET', request_url, {})
 }
@@ -96,12 +96,12 @@ const singleUrl = async(token,A, contentType) => {
     if(typeof token === 'string') {
         token = JSON.parse(token)
     }
-    const requestHeader = [`Authorization: Bearer ${token.access_token}`, 'Connection: Keep-Alive', 'Host: ops.epo.org', 'X-Target-URI: http://ops.epo.org']
+    const requestHeader = [`Authorization: Bearer ${token.access_token}`, 'Connection: Keep-Alive', 'Host: ops.epo.org', 'X-Target-URI: https://ops.epo.org']
     if(typeof contentType === 'undefined') {
         requestHeader.push("application/xml")
     }
     console.log('requestHeader', requestHeader)
-    const request_url = util.format("http://ops.epo.org/3.2/rest-services/%s", A);
+    const request_url = util.format("https://ops.epo.org/3.2/rest-services/%s", A);
     console.log('runUrl', request_url)
     return curlRequest(false, requestHeader, 'GET', request_url, {})
 }
