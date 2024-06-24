@@ -558,12 +558,12 @@ let searchLenders = async( search ) => {
     INNER JOIN assignee ON assignee.assignor_and_assignee_id = a.assignor_and_assignee_id
     INNER JOIN assignment ON assignment.rf_id = assignee.rf_id
     INNER JOIN representative_assignment_conveyance ON assignment.rf_id = representative_assignment_conveyance.rf_id
-    WHERE representative_assignment_conveyance.convey_ty IN (:conveyanceType) AND date_format(assignment.record_dt, '%Y') >= :year AND MATCH(a.name) AGAINST (:search IN BOOLEAN MODE) GROUP BY a.name ORDER BY counter DESC ` ;
+    WHERE ((representative_assignment_conveyance.convey_ty IN (:conveyanceType)) OR (representative_assignment_conveyance.convey_ty IN (:missingType) AND MATCH(assignment.convey_text) AGAINST (:searchSecurityText IN BOOLEAN MODE) ) ) AND date_format(assignment.record_dt, '%Y') >= :year AND MATCH(a.name) AGAINST (:search IN BOOLEAN MODE) GROUP BY a.name ORDER BY counter DESC ` ;
 
     const querySearchResult = await connection.resources.query(queryLender,{
         type: connection.Sequelize.QueryTypes.SELECT,
         raw: true,
-        replacements: { search: search, year: connection.DEFAULT_YEAR, conveyanceType: ['security', 'restatedsecurity'] },
+        replacements: { search: search, year: connection.DEFAULT_YEAR, conveyanceType: ['security', 'restatedsecurity'], missingType: 'missing', searchSecurityText: '"SECURITY INTEREST"' },
         logging: console.log,
     });
 
