@@ -384,11 +384,11 @@ route.post("/comments/:subjectType", [authJWT.verifyToken, clientDBConnection.co
                     }
                 }
             } else {
-                res.status(401).send("Bad inputs.");
+                res.status(402).send("Bad inputs.");
             }
         } else {
             console.log("Client DB not connected");
-            res.status(401).send("Bad inputs.");
+            res.status(402).send("Bad inputs.");
         }
     } catch (err) {
         console.log( err );
@@ -422,7 +422,7 @@ route.put("/comments/:ID", [authJWT.verifyToken, clientDBConnection.connect], as
                 res.status(402).send("No record found");
             }
         } else {
-            res.status(401).send("Bad inputs.");
+            res.status(402).send("Bad inputs.");
         }
     } catch (err) {
         console.log( err );
@@ -456,7 +456,7 @@ route.delete("/comments/:ID", [authJWT.verifyToken, clientDBConnection.connect],
                 res.status(402).send("No record found");
             }
         } else {
-            res.status(401).send("Bad inputs.");
+            res.status(402).send("Bad inputs.");
         }
     } catch (err) {
         console.log( err );

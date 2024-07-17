@@ -2900,7 +2900,7 @@ route.put("/company/assignments", [authJWT.verifyToken, authJWT.isAdmin, authJWT
 
                     res.status(200).send("Records Updated");
                 } else {
-                    res.status(401).send("Unable to update records");
+                    res.status(402).send("Unable to update records");
                 } */
             } else {
                 res.status(402).send("Invalid inputs");
@@ -3653,13 +3653,13 @@ route.post("/company/cited/:id/export", [authJWT.verifyToken, authJWT.isAdmin, a
                         res.status(402).send('Assignee list is empty');
                     }
                 } else {
-                    res.status(401).send('Invalid input');
+                    res.status(402).send('Invalid input');
                 }
             } else {
-                res.status(401).send('Invalid input');
+                res.status(402).send('Invalid input');
             }
         } else {
-            res.status(401).send('Invalid input');
+            res.status(402).send('Invalid input');
         }
     } catch (e) {
         
@@ -4184,10 +4184,10 @@ route.put("/company/assignees/query_name", [authJWT.verifyToken, authJWT.isAdmin
                 }           
                 res.status(200).send("Record updated.");
             } else {
-                res.status(401).send("Invalid data");
+                res.status(402).send("Invalid data");
             }
         } else {
-            res.status(401).send("Invalid data");
+            res.status(402).send("Invalid data");
         }
     } catch (err) {
         console.log('Error /company/assignees/query_name', err)
@@ -4214,10 +4214,10 @@ route.put("/company/assignees/logos", [authJWT.verifyToken, authJWT.isAdmin, aut
                     res.status(200).send("Assignee logo download script start.");
                 }
             } else {
-                res.status(401).send("Invalid data");
+                res.status(402).send("Invalid data");
             }
         } else {
-            res.status(401).send("Invalid data");
+            res.status(402).send("Invalid data");
         }
     } catch (err) {
         console.log('Error /company/assignees/logos', err)
@@ -4468,7 +4468,7 @@ route.get("/company/auth_token", [authJWT.verifyToken, authJWT.isAdmin], async(r
             console.log('token', token)
             res.status(200).json(token);
         } else {
-            res.status(401).send("Authentication code is missing");
+            res.status(402).send("Authentication code is missing");
         }
     } catch(e) {
         console.log(e)

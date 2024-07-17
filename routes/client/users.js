@@ -294,7 +294,7 @@ route.post("/", [authJWT.verifyToken, clientDBConnection.connect], async(req, re
                 res.status(400).send("You are not authorized user to perform this action.");  
             } 
         } else {
-            res.status(401).send("Error to connect user list.");  
+            res.status(402).send("Error to connect user list.");  
         } 
     } catch (err) {
         console.log(err);
@@ -432,7 +432,7 @@ route.put("/:user_id", [authJWT.verifyToken, clientDBConnection.connect], async(
                 res.status(400).send("Invalid inputs2");
             }
         } else {
-            res.status(401).send("Error to connect user list.");  
+            res.status(402).send("Error to connect user list.");  
         } 
     } catch( err ) {
         console.log(err);
@@ -479,7 +479,7 @@ route.delete("/:user_id", [authJWT.verifyToken, clientDBConnection.connect], asy
                             })
                             .catch(err => {
                                 console.log(err);
-                                res.status(401).send("Not found");
+                                res.status(402).send("Not found");
                             })
                             /* if(checkActivities == 0) {
                                 User.destroy({
@@ -495,7 +495,7 @@ route.delete("/:user_id", [authJWT.verifyToken, clientDBConnection.connect], asy
                                 })
                                 .catch(err => {
                                     console.log(err);
-                                    res.status(401).send("Not found");
+                                    res.status(402).send("Not found");
                                 })  
                             } else {
                                 const updateUser =  await LoginUsers.update({status: 1},{where: {user_id: findUser.user_id}});
@@ -515,7 +515,7 @@ route.delete("/:user_id", [authJWT.verifyToken, clientDBConnection.connect], asy
                     res.status(400).send("You are not authorized user to perform this action.");  
                 } 
         } else {
-            res.status(401).send("Error to connect user list.");  
+            res.status(402).send("Error to connect user list.");  
         } 
     } catch( err ) {
         console.log(err);
@@ -559,14 +559,14 @@ route.post("/invite", [authJWT.verifyToken], async(req, res, next) => {
                         })
                         
                     } else {
-                        res.status(401).send("No team found");
+                        res.status(402).send("No team found");
                     }
                 } else {
-                    res.status(401).send("No team found");
+                    res.status(402).send("No team found");
                 }
             })
         } else {
-            res.status(401).send("No team found");
+            res.status(402).send("No team found");
         }
     } catch (err) {
         console.log(err);

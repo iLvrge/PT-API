@@ -96,7 +96,7 @@ route.get("/auth_token", authJWT.verifyToken, async(req, res, next) => {
             console.log('token', token)
             res.status(200).json(token);
         } else {
-            res.status(401).send("Authentication code is missing");
+            res.status(402).send("Authentication code is missing");
         }
     } catch(e) {
         console.log(e)
@@ -995,7 +995,7 @@ route.post("/product_sheet", [authJWT.verifyToken], async(req, res, next) =>{
                 } 
                 res.status(200).send("File system created");               
             } else {
-                res.status(401).send("Unable to create file system");           
+                res.status(402).send("Unable to create file system");           
             }
         })
     } catch(err) {
@@ -1230,10 +1230,10 @@ route.put("/sheet/:type", [authJWT.verifyToken], async(req, res, next) =>{
                         }                        
                     })
                 } else {
-                    res.status(401).send("Create sheet first");
+                    res.status(402).send("Create sheet first");
                 }
             } else {
-                res.status(401).send("Create sheet first");
+                res.status(402).send("Create sheet first");
             }
         } else {
             res.status(402).send("Invalid token");
@@ -1278,7 +1278,7 @@ route.post("/sheet/:type", [authJWT.verifyToken], async(req, res, next) =>{
                 res.status(402).send("No file created");           
             }
         } else {
-            res.status(401).send("Invalid token");           
+            res.status(402).send("Invalid token");           
         }        
     } catch (err) {
         console.log("Error reteriving sheet data", err)
@@ -1366,7 +1366,7 @@ route.post("/sheet/:type/:asset", [authJWT.verifyToken], async(req, res, next) =
                 res.status(402).send("No file created");           
             }
         } else {
-            res.status(401).send("Invalid token");           
+            res.status(402).send("Invalid token");           
         }        
     } catch (err) {
         console.log("Error reteriving sheet data", err)
@@ -1490,7 +1490,7 @@ route.get("/", [authJWT.verifyToken, clientDBConnection.connect], async(req, res
             });
             //.finally(() => req.connection_db.close());
         } else {
-            res.status(401).send("Unable to retrieve documents");
+            res.status(402).send("Unable to retrieve documents");
         }
     } catch (err) {
         console.log(err);
@@ -1581,19 +1581,19 @@ route.post("/", [authJWT.verifyToken, clientDBConnection.connect], async(req, re
                             res.status(402).send("We are not supporting this file format.");
                         }
                     } else {
-                        res.status(401).send("Please select a file.");
+                        res.status(402).send("Please select a file.");
                     }                    
                 }            
             } else {
-                res.status(401).send("You are not authorized user to perform this action");
+                res.status(402).send("You are not authorized user to perform this action");
             }
         } else {
             console.log("Unable to connect to document table");
-            res.status(401).send("Unable to connect to document table");
+            res.status(402).send("Unable to connect to document table");
         }
     } catch (err) {
         console.log( err );
-        res.status(401).send("Unable to connect to document table");
+        res.status(402).send("Unable to connect to document table");
     }
 });
 /**Update document */
@@ -1687,11 +1687,11 @@ route.put("/:document_id", [authJWT.verifyToken, clientDBConnection.connect], as
             }
         } else {
             console.log("Unable to connect to document table");
-            res.status(401).send("Error to connect document list.");
+            res.status(402).send("Error to connect document list.");
         }
     } catch (err) {
         console.log( err );
-        res.status(401).send("Error to connect document list.");
+        res.status(402).send("Error to connect document list.");
     }
 });    
 /**Delete document */
@@ -1722,18 +1722,18 @@ route.delete("/:document_id", [authJWT.verifyToken, clientDBConnection.connect],
                         res.status(500).send("Unable to delete document.");
                     }
                 } else {
-                    res.status(401).send("Not found");
+                    res.status(402).send("Not found");
                 }
             } else {
                 res.status(400).send("You are not authorized user to perform this action.");
             }            
         } else {
             console.log("Unable to connect to document table");
-            res.status(401).send("Error to connect document table.");
+            res.status(402).send("Error to connect document table.");
         }
     } catch (err) {
         console.log( err );
-        res.status(401).send("Error to connect document table.");
+        res.status(402).send("Error to connect document table.");
     }
 });    		
 module.exports = route;

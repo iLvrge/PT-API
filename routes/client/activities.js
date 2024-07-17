@@ -483,11 +483,11 @@ route.post("/activities/:type", [authJWT.verifyToken, clientDBConnection.connect
                     }
                 }  
             } else {
-                res.status(401).send("Bad inputs.");
+                res.status(402).send("Bad inputs.");
             }            
         } else {
             console.log("Client DB not connected");
-            res.status(401).send("Bad inputs.");
+            res.status(402).send("Bad inputs.");
         }
     } catch ( err ) {
         console.log( err );
@@ -513,11 +513,11 @@ route.put("/activities/:ID", [authJWT.verifyToken, clientDBConnection.connect], 
                 if (t) await t.commit();
                 res.status(200).send("Updated successfully");
             } else {
-                res.status(401).send("Bad inputs.");
+                res.status(402).send("Bad inputs.");
             }
         }  else {
             console.log("Client DB not connected");
-            res.status(401).send("Bad inputs.");
+            res.status(402).send("Bad inputs.");
         }  
     } catch( err ) {
         console.log(err);

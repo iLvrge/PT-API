@@ -2,6 +2,8 @@ const express = require("express");
 
 const crypto = require('crypto');
 
+const base64Url = require('base64url');
+
 const nodemailer = require("nodemailer");
 
 const   jwt = require('jsonwebtoken'),
@@ -70,7 +72,7 @@ route.get("/authenticate/:code/:type", async(req, res, next) => {
         res.status(200).send(response);
     } catch( err ) {
         console.log('err', err)
-        res.status(401).send('Bad inputs');
+        res.status(402).send('Bad inputs');
     }    
 })
 
@@ -89,7 +91,7 @@ route.post("/verify", (req, res, next) => {
         }
     }).then(user => {
         if (!user) {
-            return res.status(401).send("Incorrect credentials.");
+            return res.status(402).send("Incorrect credentials.");
         }
         /**
          * Send six digit code via email
@@ -188,13 +190,13 @@ route.post("/signin", (req, res, next) => {
         }
     }).then(user => {
         if (!user) {
-            return res.status(401).send("Incorrect credentials.");
+            return res.status(402).send("Incorrect credentials.");
         }
 
         const passwordIsValid = bcrypt.compareSync(req.body.password, user.password);
 
         if (!passwordIsValid) {
-            return res.status(401).send("Incorrect credentials.");
+            return res.status(402).send("Incorrect credentials.");
         }
 
         const currentDate = Date.now();
@@ -303,6 +305,43 @@ route.post("/update_password_via_email", (req, res) => {
         console.log("Error: "+err);
         res.status(400).send({message: 'Password reset link is invalid.'});
     });
+});
+
+
+route.get("/refresh-token", async(req, res) => {
+    let token = req.headers['x-auth-token'];
+
+    console.log("Verifying token...", token);
+
+    if (!token){
+      return res.status(402).send('Invalid token');
+    }
+
+    const base64Payload = token.split('.')[1]; // Get the payload part of the JWT
+    const payload = base64Url.decode(base64Payload); // Decode the base64 payload
+    const decodedPayload = JSON.parse(payload); // Parse the JSON payload
+    
+    const user = await  User.findOne({
+        where: {
+            user_id: decodedPayload.id,
+            status:0
+        }
+    });
+
+    if(!user) {
+        return res.status(402).send('Invalid user');
+    }
+
+    const currentDate = Date.now();
+
+    const expiredDate = moment(new Date(currentDate)).add(1,'days').valueOf(); 
+    
+    token = jwt.sign({ id: user.user_id, orgId: user.organisation_id, org_type: user.organisation.organisation_type , subscription: user.organisation.subscribtion, iat: currentDate, expired: expiredDate, show_other_companies: 1, share_code: '' }, config.config.secret, {
+        expiresIn: 86400 // expires in 24 hours,
+    });
+
+    res.status(200).send({ auth: true, accessToken: token ,message: "Token refresh successfully!"});
+
 });
 
 module.exports = route;

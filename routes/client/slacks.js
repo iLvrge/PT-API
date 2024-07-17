@@ -335,7 +335,7 @@ route.get('/auth/:code', async(req, res, next) => {
         res.status(200).json(token);
     } catch (e) {
         console.log(e)
-        res.status(401).send(`Error: ${e.data.error}`);
+        res.status(402).send(`Error: ${e.data.error}`);
     }
 })
 
@@ -374,7 +374,7 @@ route.get("/conversations/auth/:code", async(req, res, next) => {
         res.status(200).json(grantAccess);
     } catch (e) {
         console.log(e)
-        res.status(401).send(`Error: ${e.data.error}`);
+        res.status(402).send(`Error: ${e.data.error}`);
     }
 })
 
@@ -395,7 +395,7 @@ route.get("/user/info/:token/:userId" , async(req, res, next) => {
         }
     } catch (e) {
         console.log(e)
-        res.status(401).send(`Error: ${e.data.error}`);
+        res.status(402).send(`Error: ${e.data.error}`);
     }
 })
 
@@ -580,7 +580,7 @@ route.post("/conversations/message/:token", [authJWT.verifyToken, clientDBConnec
         }
     } catch (e) {
         console.log("MAINNNNNN", e)
-        res.status(401).send(`Error: ${e.data.error}`);
+        res.status(402).send(`Error: ${e.data.error}`);
     }
 })
 
@@ -606,7 +606,7 @@ route.get("/conversations/message/:token/:channelID/:messageID" , async(req, res
         }
     } catch (e) {
         console.log(e)
-        res.status(401).send(`Error: ${e.data.error}`);
+        res.status(402).send(`Error: ${e.data.error}`);
     }
 })
 
@@ -626,7 +626,7 @@ route.delete("/conversations/message/:token/:channelID/:messageID" , async(req, 
         }
     } catch (e) {
         console.log(e)
-        res.status(401).send(`Error: ${e.data.error}`);
+        res.status(402).send(`Error: ${e.data.error}`);
     }
 })
 
@@ -652,7 +652,7 @@ route.get("/conversations/history/:token/:channelID" , async(req, res, next) => 
         }   
     } catch (e) {
         console.log(e)
-        res.status(401).send(`Error: ${e.data.error}`);
+        res.status(402).send(`Error: ${e.data.error}`);
     }
 })
 
@@ -670,7 +670,7 @@ route.get("/conversations/search/assigned/:token" , async(req, res, next) => {
          
     } catch (e) {
         console.log(e)
-        res.status(401).send(`Error: ${e.data.error}`);
+        res.status(402).send(`Error: ${e.data.error}`);
     }
 })
 
@@ -718,7 +718,7 @@ route.get("/conversations/users/:token" , async(req, res, next) => {
         }
     } catch (e) {
         console.log(e)
-        res.status(401).send(`Error: ${e.data.error}`);
+        res.status(402).send(`Error: ${e.data.error}`);
     }
 })
 
@@ -823,7 +823,7 @@ route.get("/channel/:channelID/files/:token" , async(req, res, next) => {
         }
     } catch (e) {
         console.log(e)
-        res.status(401).send(`Error: ${e.data.error}`);
+        res.status(402).send(`Error: ${e.data.error}`);
     }
 })
 

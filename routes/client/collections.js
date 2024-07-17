@@ -33,7 +33,7 @@ route.get("/collections", [authJWT.verifyToken, clientDBConnection.connect], asy
 
             res.status(200).json(getCollectionList);
         } else {
-            res.status(401).send("Unable to retrieve collections");
+            res.status(402).send("Unable to retrieve collections");
         }
     } catch (err) {
         console.log(err);
@@ -197,7 +197,7 @@ route.put("/collections/:collection_id", [authJWT.verifyToken, clientDBConnectio
                 res.status(404).send("Invalid collection ID.");
             }            
         } else {
-            res.status(401).send("Unable to retrieve collections");
+            res.status(402).send("Unable to retrieve collections");
         }
     } catch (err) {
         console.log(err);
@@ -245,7 +245,7 @@ route.delete("/collections/:collection_id", [authJWT.verifyToken, clientDBConnec
                 res.status(403).send("No collection exist.");
             }
         } else {
-            res.status(401).send("Unable to retrieve collections");
+            res.status(402).send("Unable to retrieve collections");
         }
     } catch (err) {
         console.log(err);

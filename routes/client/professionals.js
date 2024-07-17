@@ -40,7 +40,7 @@ route.get("/", [authJWT.verifyToken, clientDBConnection.connect], async(req, res
             });
             //.finally(() => req.connection_db.close());
         } else {
-            res.status(401).send("Unable to retrieve professionals");
+            res.status(402).send("Unable to retrieve professionals");
         }
     } catch (err) {
         console.log(err);
@@ -99,11 +99,11 @@ route.post("/", [authJWT.verifyToken, clientDBConnection.connect], async(req, re
             }            
         } else {
             console.log("Unable to connect to professional table");
-            res.status(401).send("Error to connect professional table.");
+            res.status(402).send("Error to connect professional table.");
         }
     } catch (err) {
         console.log( err );
-        res.status(401).send("Error to connect professional table.");
+        res.status(402).send("Error to connect professional table.");
     }
 });
 
@@ -167,11 +167,11 @@ route.put("/:professional_id", [authJWT.verifyToken, clientDBConnection.connect]
             })
         } else {
             console.log("Unable to connect to professional table");
-            res.status(401).send("Error to connect user list.");
+            res.status(402).send("Error to connect user list.");
         }
     } catch (err) {
         console.log( err );
-        res.status(401).send("Error to connect user list.");
+        res.status(402).send("Error to connect user list.");
     }
 });    
 
@@ -200,15 +200,15 @@ route.delete("/:professional_id", [authJWT.verifyToken, clientDBConnection.conne
             })
             .catch(err => {
                 console.log(err);
-                res.status(401).send("Not found");
+                res.status(402).send("Not found");
             })
         } else {
             console.log("Unable to connect to professional table");
-            res.status(401).send("Error to connect professional table.");
+            res.status(402).send("Error to connect professional table.");
         }
     } catch (err) {
         console.log( err );
-        res.status(401).send("Error to connect professional table.");
+        res.status(402).send("Error to connect professional table.");
     }
 });    		
 module.exports = route;
