@@ -314,7 +314,7 @@ route.get("/refresh-token", async(req, res) => {
     console.log("Verifying token...", token);
 
     if (!token){
-      return res.status(402).send('Invalid token');
+      return res.status(403).send('Refresh token failed');
     }
 
     const base64Payload = token.split('.')[1]; // Get the payload part of the JWT
@@ -329,7 +329,7 @@ route.get("/refresh-token", async(req, res) => {
     });
 
     if(!user) {
-        return res.status(402).send('Invalid user');
+        return res.status(403).send('Refresh token failed');
     }
 
     const currentDate = Date.now();
