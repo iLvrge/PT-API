@@ -147,7 +147,7 @@ route.get("/citation/:asset", [authJWT.verifyToken], async (req, res) => {
         const {counter} = req.query; 
         if(typeof asset !== 'undefined' && asset !== '' && asset !== null) {
             const queryString = ``
-            const url = `https://api.patentsview.org/patents/query?q={"cited_patent_number":"${asset}"}&f=["patent_number","patent_date","patent_num_combined_citations","patent_title","inventor_first_name", "inventor_last_name","assignee_organization", "assignee_first_name","assignee_last_name", "app_date"]`
+            const url = `https://api.patentsview.org/patents/query?q={"cited_patent_number":"${asset}"}&o={"page": 1, "per_page": 1000, "include_subentity_total_counts": "false"}&f=["patent_number","patent_date","patent_num_combined_citations","patent_title","inventor_first_name", "inventor_last_name","assignee_organization", "assignee_first_name","assignee_last_name", "app_date"]`
             console.log(url)
             request(url, async(error, response, body) => { 
                 if (!error && response.statusCode == 200) {
