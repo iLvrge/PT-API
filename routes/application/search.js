@@ -18,7 +18,7 @@ route.get("/:search_string", [ authJWT.verifyToken, clientDBConnection.connect ]
             
             res.status(200).json({list: searchList, total_records: searchList.length, txn_ids: uniquerfIDs});
         } else {
-            res.status(401).send("Invalid request");
+            res.status(402).send("Invalid request");
         }
     } catch ( err ) {
         console.log( err )
@@ -71,7 +71,7 @@ route.get("/:search_string/:type", [ authJWT.verifyToken, clientDBConnection.con
             }            
             res.status(200).json({list, total_records: list.length});
         } else {
-            res.status(401).send("Invalid request");
+            res.status(402).send("Invalid request");
         }
     } catch ( err ) {
         console.log( err )

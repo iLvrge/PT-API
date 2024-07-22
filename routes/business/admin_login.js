@@ -24,13 +24,13 @@ route.post("/signin", (req, res, next) => {
     }).then(user => {
         console.log(user);
         if (!user) {
-            return res.status(401).send("Invalid Username and/or Password!");
+            return res.status(402).send("Invalid Username and/or Password!");
         }
 
         const passwordIsValid = bcrypt.compareSync(req.body.password, user.password);
 
         if (!passwordIsValid) {
-            return res.status(401).send("Invalid Username and/or Password!");
+            return res.status(402).send("Invalid Username and/or Password!");
         }
         
         const currentDate = Date.now();

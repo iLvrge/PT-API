@@ -118,7 +118,7 @@ route.get("/", [authJWT.verifyToken, clientDBConnection.connect], async(req, res
             const getCompaniesList = await helpers.getCompaniesWithChildren(req.connection_db, req.orgId);
             res.status(200).json(getCompaniesList);
         } else {
-            res.status(401).send("Unable to retrieve companies");
+            res.status(402).send("Unable to retrieve companies");
         }
     } catch (err) {
         console.log(err);
@@ -433,7 +433,7 @@ route.get("/:companyID/list", [authJWT.verifyToken, clientDBConnection.connect],
             }            
             res.status(200).json({list: companiesList, total_records});
         } else {
-            res.status(401).send("Unable to retrieve companies");
+            res.status(402).send("Unable to retrieve companies");
         }
     } catch (err) {
         console.log(err);
@@ -728,7 +728,7 @@ route.get("/list", [authJWT.verifyToken, clientDBConnection.connect], async(req,
             }            
             res.status(200).json({list: companiesList, total_records});
         } else {
-            res.status(401).send("Unable to retrieve companies");
+            res.status(402).send("Unable to retrieve companies");
         }
     } catch (err) {
         console.log(err);
@@ -830,7 +830,7 @@ route.get("/lawfirm", [authJWT.verifyToken, clientDBConnection.connect], async(r
 
             res.status(200).json(list);
         } else {
-            res.status(401).send("Unable to retrieve companies");
+            res.status(402).send("Unable to retrieve companies");
         }
     } catch (err) {
         console.log(err);
@@ -1397,7 +1397,7 @@ const createSlackWorkSpace = async (name, organisation) => {
                 res.status(402).send("Please select companies first.");
             }            
         } else {
-            res.status(401).send("Name cannot be blank");
+            res.status(402).send("Name cannot be blank");
         } 
     } catch( err ) {
         console.log(err);

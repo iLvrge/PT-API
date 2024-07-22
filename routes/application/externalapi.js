@@ -91,7 +91,7 @@ route.get("/ptab/:asset", [authJWT.verifyToken], async (req, res) => {
             })
         } else {
             console.log('ERROR => /ptab/')
-            res.status(401).send('Invalid inputs')
+            res.status(402).send('Invalid inputs')
         }
     } catch (e) {
         console.log('ERROR => /ptab/', error)
@@ -132,7 +132,7 @@ route.get("/ptab/document/:identifier",  async (req, res) => {
 
         } else {
             console.log('ERROR => /ptab/', )
-            res.status(401).send('Invalid inputs')
+            res.status(402).send('Invalid inputs')
         }
     } catch (e) {
         console.log('ERROR => /ptab/', e)
@@ -269,7 +269,7 @@ route.get("/citation/:asset", [authJWT.verifyToken], async (req, res) => {
             })
         }  else {
             console.log('ERROR => /citation/', error)
-            res.status(401).send('Asset number is empty')
+            res.status(402).send('Asset number is empty')
         }   
     } catch (e) {
         console.log('ERROR => /citation/', e)

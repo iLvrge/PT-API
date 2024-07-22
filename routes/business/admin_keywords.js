@@ -44,7 +44,7 @@ route.post("/keywords", [authJWT.verifyToken, authJWT.isAdmin], async(req, res, 
                 res.status(402).send("Error while adding new record.");
             }
         } else {
-            res.status(401).send("Keyword name cannot be empty.");
+            res.status(402).send("Keyword name cannot be empty.");
         }
     } catch(err){
         console.log(err);
@@ -76,13 +76,13 @@ route.put("/keywords/:keywordID", [authJWT.verifyToken, authJWT.isAdmin], async(
                         res.status(402).send("Error while update record.");
                     }
                 } else {
-                    res.status(401).send("Keyword name cannot be empty.");
+                    res.status(402).send("Keyword name cannot be empty.");
                 }
             } else {
                 res.status(404).send("No record found.");
             }
         } else {
-            res.status(401).send("Invalid Inputs.");
+            res.status(402).send("Invalid Inputs.");
         }
     } catch(err){
         console.log(err);
@@ -110,7 +110,7 @@ route.delete("/keywords/:keywordID", [authJWT.verifyToken, authJWT.isAdmin], asy
                 res.status(404).send("No record found.");
             }
         } else {
-            res.status(401).send("Invalid Inputs.");
+            res.status(402).send("Invalid Inputs.");
         }
     } catch(err){
         console.log(err);
@@ -151,7 +151,7 @@ route.post("/super_keywords", [authJWT.verifyToken, authJWT.isAdmin], async(req,
                 res.status(402).send("Error while adding new record.");
             }
         } else {
-            res.status(401).send("Keyword name cannot be empty.");
+            res.status(402).send("Keyword name cannot be empty.");
         }
     } catch(err){
         console.log(err);
@@ -184,13 +184,13 @@ route.put("/super_keywords/:keywordID", [authJWT.verifyToken, authJWT.isAdmin], 
                         res.status(402).send("Error while update record.");
                     }
                 } else {
-                    res.status(401).send("Keyword name cannot be empty.");
+                    res.status(402).send("Keyword name cannot be empty.");
                 }
             } else {
                 res.status(404).send("No record found.");
             }
         } else {
-            res.status(401).send("Invalid Inputs.");
+            res.status(402).send("Invalid Inputs.");
         }
     } catch(err){
         console.log(err);
@@ -219,7 +219,7 @@ route.delete("/super_keywords/:keywordID", [authJWT.verifyToken, authJWT.isAdmin
                 res.status(404).send("No record found.");
             }
         } else {
-            res.status(401).send("Invalid Inputs.");
+            res.status(402).send("Invalid Inputs.");
         }
     } catch(err){
         console.log(err);
@@ -261,7 +261,7 @@ route.post("/state", [authJWT.verifyToken, authJWT.isAdmin], async(req, res, nex
                 res.status(402).send("Error while adding new record.");
             }
         } else {
-            res.status(401).send("Keyword name cannot be empty.");
+            res.status(402).send("Keyword name cannot be empty.");
         }
     } catch(err){
         console.log(err);
@@ -294,13 +294,13 @@ route.put("/state/:stateID", [authJWT.verifyToken, authJWT.isAdmin], async(req, 
                         res.status(402).send("Error while update record.");
                     }
                 } else {
-                    res.status(401).send("Keyword name cannot be empty.");
+                    res.status(402).send("Keyword name cannot be empty.");
                 }
             } else {
                 res.status(404).send("No record found.");
             }
         } else {
-            res.status(401).send("Invalid Inputs.");
+            res.status(402).send("Invalid Inputs.");
         }
     } catch(err){
         console.log(err);
@@ -329,7 +329,7 @@ route.delete("/state/:stateID", [authJWT.verifyToken, authJWT.isAdmin], async(re
                 res.status(404).send("No record found.");
             }
         } else {
-            res.status(401).send("Invalid Inputs.");
+            res.status(402).send("Invalid Inputs.");
         }
     } catch(err){
         console.log(err);
@@ -371,7 +371,7 @@ route.delete("/state/:stateID", [authJWT.verifyToken, authJWT.isAdmin], async(re
                 res.status(402).send("Error while adding new record.");
             }
         } else {
-            res.status(401).send("Keyword name cannot be empty.");
+            res.status(402).send("Keyword name cannot be empty.");
         }
     } catch(err){
         console.log(err);
@@ -403,13 +403,13 @@ route.put("/company_keywords/:keywordID", [authJWT.verifyToken, authJWT.isAdmin]
                         res.status(402).send("Error while update record.");
                     }
                 } else {
-                    res.status(401).send("Keyword name cannot be empty.");
+                    res.status(402).send("Keyword name cannot be empty.");
                 }
             } else {
                 res.status(404).send("No record found.");
             }
         } else {
-            res.status(401).send("Invalid Inputs.");
+            res.status(402).send("Invalid Inputs.");
         }
     } catch(err){
         console.log(err);
@@ -437,7 +437,7 @@ route.delete("/company_keywords/:keywordID", [authJWT.verifyToken, authJWT.isAdm
                 res.status(404).send("No record found.");
             }
         } else {
-            res.status(401).send("Invalid Inputs.");
+            res.status(402).send("Invalid Inputs.");
         }
     } catch(err){
         console.log(err);

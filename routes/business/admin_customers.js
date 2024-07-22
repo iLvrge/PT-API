@@ -1169,22 +1169,22 @@ route.post("/customers/:id/users", [authJWT.verifyToken, authJWT.isAdmin, userEx
                         newUser.id = newUser.user_id;
                         res.status(200).json(newUser);
                     }  else {
-                        res.status(401).send("Bad inputs");
+                        res.status(402).send("Bad inputs");
                     }                  
                 })
                 .catch(function(err){
                     console.log(err);
-                    res.status(401).send("Bad inputs");
+                    res.status(402).send("Bad inputs");
                 })
             } else {
-                res.status(401).send("Bad inputs");
+                res.status(402).send("Bad inputs");
             }
         } else {
-            res.status(401).send("Bad inputs");
+            res.status(402).send("Bad inputs");
         }
     } catch( err ) {
         console.log(err);
-        res.status(401).send("Invalid inputs");
+        res.status(402).send("Invalid inputs");
     }
 });
 	
