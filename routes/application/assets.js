@@ -470,7 +470,7 @@ route.post("/assets/cpc", [authJWT.verifyToken, clientDBConnection.connect], asy
                 INNER JOIN db_patent_application_bibliographic.application_grant AS ag ON ag.grant_doc_num =  application_cpc.grant_doc_num AND ag.appno_doc_num IN (:list)
                 WHERE application_cpc.application_number IN (:list) AND application_cpc.type = 0  ${scopeCondition} ) AS temp1 GROUP_STRING `
             } else { 
-                query = `SELECT REPLACE_STRING FROM ( 
+                query = `SELECT REPLACE_STRING FROM ( Select temp3.* FROM (
                         SELECT temp.grant_doc_num AS patent_number, temp.appno_doc_num AS application_number, date_format(temp.appno_date, '%Y') AS fillingYear, ${rangeConcat} AS cpc_code, section, class, sub_class, main_group, sub_group, (SELECT GROUP_CONCAT(distinct IF(representative_name <> '' , representative_name, name) SEPARATOR '@@ ') FROM db_uspto.assignee INNER JOIN db_uspto.assignor_and_assignee ON assignor_and_assignee.assignor_and_assignee_id = assignee.assignor_and_assignee_id LEFT JOIN db_uspto.representative ON representative.representative_id = assignor_and_assignee.representative_id INNER JOIN db_uspto.representative_assignment_conveyance ON representative_assignment_conveyance.rf_id = assignee.rf_id WHERE assignee.rf_id IN (     SELECT rf_id FROM db_uspto.documentid WHERE documentid.appno_doc_num = application_cpc.application_number) AND representative_assignment_conveyance.employer_assign = 1 ) AS origin FROM db_patent_application_bibliographic.patent_cpc AS application_cpc INNER JOIN (SELECT documentid.appno_doc_num, documentid.grant_doc_num, documentid.appno_date FROM db_uspto.documentid AS documentid WHERE date_format(documentid.appno_date, '%Y') ${stringYear} AND documentid.appno_doc_num IN(:list) AND documentid.grant_doc_num <> ''  GROUP BY documentid.appno_doc_num) AS temp ON temp.appno_doc_num = application_cpc.application_number WHERE application_cpc.type = 0  ${scopeCondition} GROUP BY temp.appno_doc_num
                         UNION 
                         SELECT application_grant.grant_doc_num AS patent_number, application_grant.appno_doc_num AS application_number, date_format(application_grant.appno_date, '%Y') AS fillingYear, ${rangeConcat} AS cpc_code, section, class, sub_class, main_group, sub_group, '' AS origin
@@ -483,7 +483,7 @@ route.post("/assets/cpc", [authJWT.verifyToken, clientDBConnection.connect], asy
                         FROM db_patent_grant_bibliographic.application_cpc AS application_cpc 
                         INNER JOIN db_patent_grant_bibliographic.application_publication AS application_publication ON application_publication.appno_doc_num = application_cpc.application_number AND application_cpc.application_number IN(:list)
                         WHERE date_format(application_publication.appno_date, '%Y') ${stringYear} AND application_publication.appno_doc_num IN(:list) 
-                        AND application_cpc.type = 0  ${scopeCondition} GROUP BY application_publication.appno_doc_num 
+                        AND application_cpc.type = 0  ${scopeCondition} GROUP BY application_publication.appno_doc_num ) AS temp3 GROUP BY temp3.application_number
                 ) AS temp1 GROUP_STRING `
             } 
 
