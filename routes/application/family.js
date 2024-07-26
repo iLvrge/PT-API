@@ -434,9 +434,8 @@ const getFamilyDataFromXML = async(req) => {
             if( xmlData.hasOwnProperty('ops:world-patent-data') ){ 
                 if(sendNewRequest === true) {  
                     fs.writeFileSync(`${extraDiskPath}FAMILY/${formatAsset}.XML`, getFamilyData);
-                    
-
-                    exec(`./node_modules/.bin/env-cmd node /var/www/html/script/assets_family_single.js "${formatAsset}"`, async (error, std, stderr) => {
+                     
+                    exec(`node /var/www/html/script/assets_family_single.js "${formatAsset}"`, async (error, std, stderr) => {
                         
                     });
                 }
