@@ -1265,7 +1265,7 @@ route.post("/asset_types/assets/family", [authJWT.verifyToken, clientDBConnectio
                 }
                 query += ` )
                 AND application_country NOT IN ('WO', 'EP') 
-                GROUP BY application_number) AS temp GROUP BY name`;
+                GROUP BY application_number, application_country) AS temp GROUP BY name`;
 
 
 
