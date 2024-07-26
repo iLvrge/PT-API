@@ -5,7 +5,7 @@
   "main": "app.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "start": "env-cmd node app.js --trace-deprecation"
+    "start": "env-cmd node --trace-deprecation app.js"
   },
   "keywords": [],
   "author": "",
