@@ -14,7 +14,9 @@ const express = require("express"),
 
     xmldoc = require('xmldoc'),
     
-    fs = require('fs');
+    fs = require('fs'),
+    
+    path = require('path');
 
 const { decode } = require('html-entities');
 const AWS  = require('aws-sdk');
