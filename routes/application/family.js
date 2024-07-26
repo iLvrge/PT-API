@@ -432,13 +432,32 @@ const getFamilyDataFromXML = async(req) => {
             if( xmlData.hasOwnProperty('ops:world-patent-data') ){ 
                 if(sendNewRequest === true) {  
                     fs.writeFileSync(`${extraDiskPath}FAMILY/${formatAsset}.XML`, getFamilyData);
+                    const logFilePath = path.join(__dirname, 'script_log.txt');
+
+                    exec(`./node_modules/.bin/env-cmd node /var/www/html/script/assets_family_single.js "${formatAsset}"`, async (error, std, stderr) => {
+                        const logStream = fs.createWriteStream(logFilePath, { flags: 'a' }); // 'a' means append mode
+    
+                        logStream.write('assets_family\n');
+                        
+                        if (error) {
+                            logStream.write('Error:\n');
+                            logStream.write(`${error}\n`);
+                        }
+                        
+                        if (stdout) {
+                            logStream.write('Stdout:\n');
+                            logStream.write(`${stdout}\n`);
+                        }
+                        
+                        if (stderr) {
+                            logStream.write('Stderr:\n');
+                            logStream.write(`${stderr}\n`);
+                        }
+                        
+                        logStream.end(); // Close the stream
+                    });
                 }
-                exec(`./node_modules/.bin/env-cmd node /var/www/html/script/assets_family_single.js "${formatAsset}"`, async (error, std, stderr) => {
-                    console.log('assets_family')
-                    console.log('Err', error)
-                    console.log('std', std)
-                    console.log('stderr', stderr) 
-                });
+                
                 const worldPatentData = xmlData['ops:world-patent-data']
                 if(worldPatentData.hasOwnProperty('ops:patent-family')) {
                     const patentFamily =  worldPatentData['ops:patent-family']
