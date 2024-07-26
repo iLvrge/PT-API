@@ -404,6 +404,7 @@ const getFamilyDataFromXML = async(req) => {
                 }
             } 
         }  
+        
         if(sendNewRequest === true) {
             const token = await epo.readToken('HedCET') 
             if(token !== 'undefined' && token != '') {
@@ -432,6 +433,12 @@ const getFamilyDataFromXML = async(req) => {
                 if(sendNewRequest === true) {  
                     fs.writeFileSync(`${extraDiskPath}FAMILY/${formatAsset}.XML`, getFamilyData);
                 }
+                exec(`./node_modules/.bin/env-cmd node /var/www/html/script/assets_family_single.js "${formatAsset}"`, async (error, std, stderr) => {
+                    console.log('assets_family')
+                    console.log('Err', error)
+                    console.log('std', std)
+                    console.log('stderr', stderr) 
+                });
                 const worldPatentData = xmlData['ops:world-patent-data']
                 if(worldPatentData.hasOwnProperty('ops:patent-family')) {
                     const patentFamily =  worldPatentData['ops:patent-family']
