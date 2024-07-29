@@ -2,5 +2,6 @@
 /src
 .env*
 *.log
+*.out
 .DS_Store 
 package-lock.json

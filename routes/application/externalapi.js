@@ -17,6 +17,7 @@ const express = require("express"),
     generatePdfThumbnails = require('pdf-thumbnail');
     
 const { v4: uuidv4  } = require('uuid');
+const helper = require("../../helpers/helper");
 
 route.get("/ptab/:asset", [authJWT.verifyToken], async (req, res) => { 
     try {
@@ -155,6 +156,7 @@ route.get("/citation/:asset", [authJWT.verifyToken], async (req, res) => {
                     const citationEvents = []
                     if(responseBody !== null && responseBody.total_patent_count > 0) {
                         const allAssignee = [], assigneeNameMissing = [], individualList = [];
+                        helper.saveMissingData(responseBody, asset);
                         responseBody.patents.forEach(item => {
                             let assignee = "";
                             if(item.assignees.length > 0) {
