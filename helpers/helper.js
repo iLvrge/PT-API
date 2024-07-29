@@ -64,6 +64,9 @@ const { exec, spawn  } = require("child_process");
 const ASSETS_LIFE_SPAN_DATE_FORMAT = 'YYYY';
 
 const fs = require('fs');
+const AssigneeOrganizations = require("../model/application/AssigneeOrganizations");
+const CitingPatentWithAssignee = require("../model/application/CitingPatentWithAssignee");
+const CitedPatents = require("../model/application/CitedPatents");
  
 
 /**
@@ -4964,6 +4967,122 @@ const getAllAssets = async( req ) => {
     }
 }
 
+const saveMissingData = async(responseBody, assetNumber) => {
+    try {
+
+        const { patents, count, total_patent_count } = responseBody
+        if(count > 0) {
+            let allAssignees = [], tempAssignees = [], allAssigneeWithPatentNumber = []
+            patents.forEach( patent => {
+                if(patent.assignees.length > 0) {
+                    patent.assignees.forEach( assignee => { 
+                        if(assignee.assignee_organization !== null) {
+                           
+                            let appDate = '0000-00-00'
+                            if(patent.applications !== null && patent.applications.length > 0) {
+                                appDate = patent.applications[0].app_date
+                            }
+                            if(moment(new Date(appDate)).format('YYYY') > 1999) {
+                                allAssignees.push(assignee.assignee_organization)
+                                allAssigneeWithPatentNumber.push({
+                                    patent_number: assetNumber,
+                                    citing_patent_number: patent.patent_number,
+                                    assignee_organization: assignee.assignee_organization,
+                                    app_date: appDate,
+                                    assignee_id: 0
+                                })
+                            } 
+                        }
+                    })
+                }                    
+            })
+            tempAssignees = [...allAssignees]
+            console.log('allAssignees', allAssignees.length, JSON.stringify(allAssignees))
+    
+    
+            let getAllAssigneeWithIDs = await AssigneeOrganizations.findAll({
+                attributes:["assignee_id", "assignee_organization"],
+                where: {assignee_organization: allAssignees},
+                group: ["assignee_organization"]
+            })
+    
+            let insertAssignees = []
+    
+            if(getAllAssigneeWithIDs.length > 0) {
+                getAllAssigneeWithIDs.forEach(row => {
+                    if(allAssignees.includes(row.assignee_organization)) {
+                        allAssignees = allAssignees.filter( assignee => assignee.toLowerCase() != row.assignee_organization.toLowerCase())
+                    }
+                })
+            } 
+            if(allAssignees.length > 0){
+                // INSERT FIRST
+                allAssignees.forEach( assignee => {
+                    if(assignee !== null) {
+                        console.log("assignee", assignee)
+                        /*const queryName = optimizeAssigneeName(assignee)*/
+                        insertAssignees.push({assignee_organization: assignee, assignee_query: assignee})
+                    }
+                })
+            }
+            //console.log('allAssignees', allAssignees.length, JSON.stringify(allAssignees))
+            // console.log('insertAssignees', insertAssignees)
+            if(insertAssignees.length > 0) {
+                await AssigneeOrganizations.bulkCreate(insertAssignees, { ignoreDuplicates: true })
+            }
+    
+    
+            if(insertAssignees.length > 0) {
+                getAllAssigneeWithIDs = await AssigneeOrganizations.findAll({
+                    attributes:["assignee_id", "assignee_organization"],
+                    where: {assignee_organization: tempAssignees},
+                    group: ["assignee_organization"]
+                })
+            }
+    
+            if(getAllAssigneeWithIDs.length > 0) {
+                const insertData = []
+                getAllAssigneeWithIDs.forEach( async row => {
+                    insertData.push({
+                        patent_number: assetNumber,
+                        assignee_id: row.assignee_id
+                    })
+    
+                    for (const [index, assignee] of allAssigneeWithPatentNumber.entries()) {
+                        console.log('CHECKING ', assignee.assignee_organization.toLowerCase(), row.assignee_organization.toLowerCase())
+                        if (assignee.assignee_organization.toLowerCase() == row.assignee_organization.toLowerCase()) {
+                            allAssigneeWithPatentNumber[index].assignee_id = row.assignee_id;
+                        }
+                    }
+    
+                    //await Promise.all(promise)
+                })
+    
+                const getIDs = []
+    
+                const promise = allAssigneeWithPatentNumber.map( assignee => {
+                    if(assignee.assignee_id == 0) {
+                        getIDs.push(assignee.assignee_id)
+                    }
+                })
+                await Promise.all(promise);
+    
+                console.log('insertData', insertData)
+                if(insertData.length > 0) {
+                    CitedPatents.bulkCreate(insertData, { ignoreDuplicates: true })
+                }
+                console.log('allAssigneeWithPatentNumber', allAssigneeWithPatentNumber)
+                if(allAssigneeWithPatentNumber.length > 0) {
+                    console.log('IN allAssigneeWithPatentNumber');
+                    CitingPatentWithAssignee.bulkCreate(allAssigneeWithPatentNumber, { ignoreDuplicates: true })
+                }
+            }   
+        } 
+    } catch (e) {
+        console.log('Error in adding citing ', e)
+    }
+}
+
 const helper = {};
 helper.getOwnedAssets = getOwnedAssets
 helper.minMax2DArray = minMax2DArray
@@ -5039,4 +5158,5 @@ helper.getCompaniesListWithReports = getCompaniesListWithReports
 helper.getCompaniesListSumWithReports = getCompaniesListSumWithReports 
 helper.getCompaniesAllList = getCompaniesAllList 
 helper.removeAllOldSharingUrl = removeAllOldSharingUrl
+helper.saveMissingData = saveMissingData
 module.exports = helper;
