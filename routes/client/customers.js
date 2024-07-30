@@ -1267,8 +1267,8 @@ route.post("/asset_types/assets/family", [authJWT.verifyToken, clientDBConnectio
                 AND application_country NOT IN ('WO', 'EP') 
                 GROUP BY application_number, application_country) AS temp GROUP BY name`;
 
-
-
+            const findMissingNumbers = await helper.findMissingPatentNumbers(list)
+ 
             const getList = await connection.application.query(query,{
                     type: connection.Sequelize.QueryTypes.SELECT,
                     raw: true,
@@ -1284,7 +1284,7 @@ route.post("/asset_types/assets/family", [authJWT.verifyToken, clientDBConnectio
                 console.log('list.length', list.length)
                 const findIndex = result.findIndex( item => item[0] == 'United States');
                 if(findIndex !== -1){
-                    result[findIndex][1] =  totalUS
+                    result[findIndex][1] +=  findMissingNumbers.length
                 } else {
                     result.push(['United States', totalUS ])
                 }
