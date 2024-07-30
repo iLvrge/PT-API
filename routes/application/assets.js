@@ -156,6 +156,90 @@ route.post("/assets/cpc", [authJWT.verifyToken, clientDBConnection.connect], asy
             companies = JSON.parse(selectedCompanies)
         }
 
+        if(typeof req.shareCode != 'undefined' && req.shareCode != '') {
+            const getShareCodeData = await helpers.getShareListAssets(req.shareCode)
+            if (getShareCodeData) {
+                const patent = [], application = [] 
+                getShareCodeData.forEach( item => { 
+                    if(item.type == 4) {
+                        patent.push(item.asset)
+                    }
+                    if(item.type == 5) {
+                        application.push(item.asset)
+                    }
+                })
+                const getNewConnection = await clientDBConnection.connectOnFly(req.orgId);
+                if(getNewConnection) { 
+                    const Representative = getNewConnection.define('Representatives', Representatives.mainStructure, Representatives.options);
+
+                    const where = {
+                        where: { parent_id: 0 },
+                        attributes: ['representative_id', 'company_id', 'original_name', 'representative_name', 'type', 'status']
+                    };
+
+                    const list = await Representative.findAll( where )
+                     
+                    if(list.length > 0) { 
+                        let representativeIDs = [], clientCompanies = []
+
+                        list.forEach(representative => {
+                            if (representative.company_id > 0) {
+                                clientCompanies.push(representative.company_id);
+                            } else {
+                                representativeIDs.push(representative.representative_id);
+                            }
+                        });
+                         
+                        if(representativeIDs.length > 0) {
+                            findChild = await Representative.findAll({
+                                attributes: ['representative_id', 'company_id', 'parent_id', 'representative_name', 'original_name', 'status'],
+                                where: {                            
+                                    parent_id: representativeIDs, 
+                                    child: 1
+                                },
+                                order: [
+                                    ['type', 'ASC'],
+                                    ['status', 'DESC'],
+                                    ['original_name', 'ASC'],
+                                    ['representative_name', 'ASC']
+                                ]
+                            })
+        
+                            list.map( representative => {
+                                if(representative.type == 1) {
+                                    const childCompanies = findChild.filter( row => row.parent_id == representative.representative_id).map(obj => obj.company_id > 0 ? obj.company_id : null )
+                                    clientCompanies.push(...childCompanies);
+                                }
+                            }) 
+                        }
+
+                        let dashboardRepresentative = `SELECT representative_id FROM db_new_application.dashboard_items WHERE (organisation_id = 0 OR organisation_id IS NULL) AND representative_id IN (:clientCompanies)  `
+
+                        if(patent.length > 0) {
+                            dashboardRepresentative += ` AND patent IN (:patent) `
+                        }
+
+                        if(application.length > 0) {
+                            dashboardRepresentative += ` AND application IN (:application) `
+                        }
+
+                        dashboardRepresentative += `GROUP BY representative_id ` 
+                        const findRepresentatives = await connection.application.query(dashboardRepresentative,{
+                            type: connection.Sequelize.QueryTypes.SELECT,
+                            raw: true,
+                            logging: console.log,
+                            replacements: {clientCompanies, patent, application},
+                        });  
+                        if (findRepresentatives && findRepresentatives.length > 0) { 
+                            findRepresentatives.map( row => {
+                                companies.push(row.representative_id)
+                            })  
+                        }
+                    }
+                }
+            }
+        }
+
         if(list != '' && total > 0) {
             list = JSON.parse(list)
             if(list.length != total) {
@@ -166,7 +250,7 @@ route.post("/assets/cpc", [authJWT.verifyToken, clientDBConnection.connect], asy
         } else {
             list = []
         }
-
+        
         replacements.type = helpers.findLayout(type);  
         if(typeof type !== 'undefined' && type != 'due_dilligence' && list.length == 0) { 
             if(type == 'top_law_firms') { 

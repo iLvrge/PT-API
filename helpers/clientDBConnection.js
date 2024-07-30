@@ -5,23 +5,21 @@ const Op = Sequelize.Op;
 const helpers = require("./helper");
 
 const connect = async(req, res, next) => {
-    console.log("connection");
     let { check } = req.body
+    console.log("clientDBConnection connect", check);
     if(req.orgId && (typeof check == 'undefined' || (typeof check != 'undefined' && check == 0))) {
         
-        /*if(req.orgId == 46) {
-            req.orgId = 9
-        }else if(req.orgId == 52) {
-            req.orgId = 10;
-        }*/
+        console.log('Going to connect with client DB')
 
         const organisation = await helpers.findOrganisationbyID(req.orgId);
+
+        console.log('Got details of client account')
 
         if( organisation != null && organisation.organisation_id > 0) {
             /**
              * Make DB Connection
              */
-            
+            console.log('Got creating client DB connection')
             try{
                 const newConnection = new Sequelize(organisation.org_db, organisation.org_usr, organisation.org_pass, {
                     host: organisation.org_host,
@@ -36,6 +34,7 @@ const connect = async(req, res, next) => {
                     }*/
                 });
                 req.connection_db = newConnection;
+                console.log('clientDBConnection Connected.........')
             }catch( err ){
                 console.log(err);
                 console.log("Unable to connect with client DB....");
@@ -67,7 +66,6 @@ const connectOnFly = async(orgID) => {
                 newConnection = await new Sequelize(organisation.org_db, organisation.org_usr, organisation.org_pass, {
                     host: organisation.org_host,
                     dialect: 'mysql',
-                    operatorsAliases: Op, 
                     /*pool: {
                         max: 100,
                         min: 1,
