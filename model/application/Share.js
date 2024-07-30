@@ -38,11 +38,11 @@ const Share = connection.applicationNew.define('share',{
     },
     created_at:{
         type: Sequelize.DATE,
-        defaultValue: Sequelize.DATE
+        defaultValue: Sequelize.NOW
     },
     updated_at:{
         type: Sequelize.DATE,
-        defaultValue: Sequelize.DATE
+        defaultValue: Sequelize.NOW
     }
 },
 {

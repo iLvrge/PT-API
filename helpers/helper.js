@@ -3818,6 +3818,21 @@ let getShareDataByCodeWithAssets = async (code, asset) => {
 	});
 }
 
+let getShareListAssets = async (code) => { 
+    
+    let query = "SELECT  `share_lists`.`asset` AS asset, `share_lists`.`type`, `share`.`organisation_id`, share.show_other_companies FROM `share` AS `share` INNER JOIN `share_list` AS `share_lists` ON `share`.`share_id` = `share_lists`.`share_id` WHERE `share`.`code` = :code"
+
+    const shareList = await connection.applicationNew.query(query,{
+        type: connection.Sequelize.QueryTypes.SELECT,
+        raw: true,
+        logging: console.log,
+        replacements: {code},
+        }
+    );
+
+    return shareList
+}
+
 let getShareData = async (code, asset) => {
     return await Share.findOne({
         where:{code},
@@ -5194,6 +5209,7 @@ helper.getShareList = getShareList;
 helper.getShareData = getShareData;
 helper.getShareDataByCode = getShareDataByCode;
 helper.getShareDataByCodeWithAssets = getShareDataByCodeWithAssets;
+helper.getShareListAssets = getShareListAssets;
 helper.getCompaniesMinAndMaxDateTransaction = getCompaniesMinAndMaxDateTransaction;
 helper.findProfessionalFromUserID = findProfessionalFromUserID;
 helper.findFakeDocument = findFakeDocument;
