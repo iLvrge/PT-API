@@ -67,6 +67,7 @@ const fs = require('fs');
 const AssigneeOrganizations = require("../model/application/AssigneeOrganizations");
 const CitingPatentWithAssignee = require("../model/application/CitingPatentWithAssignee");
 const CitedPatents = require("../model/application/CitedPatents");
+const AssetsFamily = require("../model/resources/AssetsFamily");
  
 
 /**
@@ -5108,6 +5109,32 @@ const updateAndRemoveDuplicatesInFamily = (familyData) => {
     return familyData;
 }
 
+const findMissingPatentNumbers = async(list) => {
+    let missingPatentNumbers = []
+    try {
+      // Step 1: Retrieve existing patent numbers from the database
+      const existingPatents = await AssetsFamily.findAll({
+        attributes: ['grant_doc_num'],
+        where: {
+          grant_doc_num: {
+            [connection.Op.in]: list
+          }
+        }
+      });
+  
+      // Convert the result to a plain array of patent numbers
+      const existingPatentNumbers = existingPatents.map(record => record.grant_doc_num);
+  
+      // Step 2: Find patent numbers not in the database
+      missingPatentNumbers = list.filter(grant_doc_num => !existingPatentNumbers.includes(grant_doc_num));
+   
+    } catch (error) {
+      console.error('Error fetching patent numbers:', error);
+      //throw error;
+    }
+    return missingPatentNumbers;
+  }
+
 const helper = {};
 helper.getOwnedAssets = getOwnedAssets
 helper.minMax2DArray = minMax2DArray
@@ -5185,4 +5212,5 @@ helper.getCompaniesAllList = getCompaniesAllList
 helper.removeAllOldSharingUrl = removeAllOldSharingUrl
 helper.saveMissingData = saveMissingData
 helper.updateAndRemoveDuplicatesInFamily = updateAndRemoveDuplicatesInFamily
+helper.findMissingPatentNumbers = findMissingPatentNumbers
 module.exports = helper;
