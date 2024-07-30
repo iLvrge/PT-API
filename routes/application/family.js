@@ -433,16 +433,17 @@ const getFamilyDataFromXML = async(req) => {
             //const xmlData = JSON.stringify(result)    
             if( xmlData.hasOwnProperty('ops:world-patent-data') ){ 
                 if(sendNewRequest === true) {  
-                    fs.writeFileSync(`${extraDiskPath}FAMILY/${formatAsset}.XML`, getFamilyData);
-                    console.log('Calling assets_family_single.js to save data')
-                    exec(`node /var/www/html/script/assets_family_single.js "${asset}"`, async (error, std, stderr) => {
-                        console.log('From assets_family_single.js')
-                        console.log(error)
-                        console.log(std)
-                        console.log(stderr)
-                        console.log('END assets_family_single.js')
-                    }); 
+                    fs.writeFileSync(`${extraDiskPath}FAMILY/${formatAsset}.XML`, getFamilyData); 
                 }
+
+                console.log('Calling assets_family_single.js to save data')
+                exec(`node /var/www/html/script/assets_family_single.js "${asset}"`, async (error, std, stderr) => {
+                    console.log('From assets_family_single.js')
+                    console.log(error)
+                    console.log(std)
+                    console.log(stderr)
+                    console.log('END assets_family_single.js')
+                });
                 
                 const worldPatentData = xmlData['ops:world-patent-data']
                 if(worldPatentData.hasOwnProperty('ops:patent-family')) {
