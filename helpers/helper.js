@@ -5083,6 +5083,31 @@ const saveMissingData = async(responseBody, assetNumber) => {
     }
 }
 
+const updateAndRemoveDuplicatesInFamily = (familyData) => {
+    let seen = new Map();
+
+    for (let i = 0; i < familyData.length; i++) {
+        const item = familyData[i];
+        const key = `${item.application_number}-${item.application_country}-${item.publication_country}`;
+
+        if (seen.has(key)) {
+            const existingItem = seen.get(key);
+
+            // Update the patent number if it is empty or different
+            if ((!existingItem.patent_number || existingItem.patent_number !== item.patent_number) && item.patent_number != '') {
+                existingItem.patent_number = item.patent_number;
+            }
+
+            // Remove duplicate item from the array
+            familyData.splice(i, 1);
+            i--; // Adjust the index after removing an item
+        } else {
+            seen.set(key, item);
+        }
+    }
+    return familyData;
+}
+
 const helper = {};
 helper.getOwnedAssets = getOwnedAssets
 helper.minMax2DArray = minMax2DArray
@@ -5159,4 +5184,5 @@ helper.getCompaniesListSumWithReports = getCompaniesListSumWithReports
 helper.getCompaniesAllList = getCompaniesAllList 
 helper.removeAllOldSharingUrl = removeAllOldSharingUrl
 helper.saveMissingData = saveMissingData
+helper.updateAndRemoveDuplicatesInFamily = updateAndRemoveDuplicatesInFamily
 module.exports = helper;

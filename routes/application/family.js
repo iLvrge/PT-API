@@ -26,6 +26,7 @@ const { exec, spawn  } = require('child_process');
 const PatentFamilyMember = require("../../model/resources/PatentFamilyMember");
 const PatentFamilyRelation = require("../../model/resources/PatentFamilyRelation");
 const Documentid = require("../../model/application/DocumentIds");
+const helper = require("../../helpers/helper.js");
 
 const mainFolderPath = process.env.MAIN_FOLDER_PATH , extraDiskPath =   process.env.EXTRA_DISK_PATH,  extraDiskPathApplications =   process.env.EXTRA_DISK_PATH + 'applications/',  extraDiskPathPatents =   process.env.EXTRA_DISK_PATH + 'patent/'
 
@@ -715,6 +716,7 @@ const getFamilyDataFromXML = async(req) => {
                                         })
                                     }                                        
                                 }) 
+                                getFamily = helper.updateAndRemoveDuplicatesInFamily(getFamily)
                                 /* if(allApplicationNumbers.length > 1) {
                                     //Find Duplicates and remove it from array and at the time of removing element check if publication number character length of one index is greater than the patent number character length then remove the publication number index from array
 
