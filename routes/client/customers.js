@@ -1267,8 +1267,9 @@ route.post("/asset_types/assets/family", [authJWT.verifyToken, clientDBConnectio
                 AND application_country NOT IN ('WO', 'EP') 
                 GROUP BY application_number, application_country) AS temp GROUP BY name`;
 
-            const findMissingNumbers = await helper.findMissingPatentNumbers(list)
- 
+            const findMissingNumbers = await helpers.findMissingPatentNumbers(list)
+            //console.log('findMissingNumbers', findMissingNumbers)
+            
             const getList = await connection.application.query(query,{
                     type: connection.Sequelize.QueryTypes.SELECT,
                     raw: true,
