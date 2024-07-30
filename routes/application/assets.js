@@ -260,7 +260,7 @@ route.post("/assets/cpc", [authJWT.verifyToken, clientDBConnection.connect], asy
                 } else {
                     
                     replacements.companies = companies
-                    const ownedAssets = `SELECT application FROM db_new_application.dashboard_items WHERE organisation_id = :organisation_id AND representative_id = :companies AND type = :type  ${req.orgType == 2 ? ' AND mode IN (:mode) ' : ''} GROUP BY application `;
+                    const ownedAssets = `SELECT application FROM db_new_application.dashboard_items WHERE organisation_id = :organisation_id AND representative_id IN (:companies) AND type = :type  ${req.orgType == 2 ? ' AND mode IN (:mode) ' : ''} GROUP BY application `;
     
                     const getAssetsData = await connection.application.query(ownedAssets,{
                             type: connection.Sequelize.QueryTypes.SELECT,
