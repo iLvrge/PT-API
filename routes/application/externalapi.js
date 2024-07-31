@@ -148,7 +148,7 @@ route.get("/citation/:asset", [authJWT.verifyToken], async (req, res) => {
         const {counter} = req.query; 
         if(typeof asset !== 'undefined' && asset !== '' && asset !== null) {
             const queryString = ``
-            const url = `https://api.patentsview.org/patents/query?q={"cited_patent_number":"${asset}"}&o={"page": 1, "per_page": 1000, "include_subentity_total_counts": "false"}&f=["patent_number","patent_date","patent_num_combined_citations","patent_title","inventor_first_name", "inventor_last_name","assignee_organization", "assignee_first_name","assignee_last_name", "app_date"]`
+            const url = `https://api.patentsview.org/patents/query?q={"cited_patent_number":"${asset}"}&o={"page": 1, "per_page": 10000, "include_subentity_total_counts": "false"}&f=["patent_number","patent_date","patent_num_combined_citations","patent_title","inventor_first_name", "inventor_last_name","assignee_organization", "assignee_first_name","assignee_last_name", "app_date"]`
             console.log(url)
             request(url, async(error, response, body) => { 
                 if (!error && response.statusCode == 200) {
@@ -158,46 +158,75 @@ route.get("/citation/:asset", [authJWT.verifyToken], async (req, res) => {
                         const allAssignee = [], assigneeNameMissing = [], individualList = [];
                         helper.saveMissingData(responseBody, asset);
                         responseBody.patents.forEach(item => {
-                            let assignee = "";
-                            if(item.assignees.length > 0) {
-                                assignee = item.assignees[item.assignees.length - 1].assignee_organization 
-                                if(assignee == '' || assignee == 'null' || assignee == null) {  
-                                    if(item.assignees[item.assignees.length - 1].assignee_first_name != null) { 
-                                        const name  = `${item.assignees[item.assignees.length - 1].assignee_first_name} ${item.assignees[item.assignees.length - 1].assignee_last_name}`
+                            const itemAssignees = []
+                            if(item.assignees.length > 0) { 
+                                item.assignees.forEach(row => {
+                                    let assignee = "";
+                                    assignee = row.assignee_organization 
+                                    if(assignee == '' || assignee == 'null' || assignee == null) {  
+                                        if(row.assignee_first_name != null) { 
+                                            const name  = `${row.assignee_first_name} ${row.assignee_last_name}`
+                                            assignee = name
+                                            individualList.push(name)
+                                        }
+                                    }
+                                    if(assignee != '') {  
+                                        itemAssignees.push(assignee)
+                                    }  
+                                })
+
+                                if(itemAssignees.length == 0 && item.inventors.length > 0) {  
+                                    let assignee = "";
+                                    item.inventors.forEach(row => {
+                                        const name = `${row.inventor_first_name} ${row.inventor_last_name}`
                                         assignee = name
                                         individualList.push(name)
+                                    }) 
+                                    if(assignee != '') {  
+                                        itemAssignees.push(assignee)
                                     }
                                 }
 
-                                if((assignee == ''  || assignee == 'null' || assignee == null) && item.inventors.length > 0) {  
-                                    const name = `${item.inventors[item.inventors.length - 1].inventor_first_name} ${item.inventors[item.inventors.length - 1].inventor_last_name}`
-                                    assignee = name
-                                    individualList.push(name)
+                                if(itemAssignees.length > 0) {
+                                    allAssignee.push(...itemAssignees)
+                                } else {
+                                    assigneeNameMissing.push(item.patent_number)
                                 }
                             } 
-                            if(assignee !== '') {
-                                allAssignee.push(assignee)
-                            } else {
-                                assigneeNameMissing.push(item.patent_number)
-                            }
+                            
                             let appDate = ''
                             if(item.applications !== null && item.applications.length > 0) {
                                 appDate = item.applications[0].app_date + ' 00:00:00'
                             } else {
                                 appDate = item.patent_date + ' 00:00:00'
                             }
-                            
-                            citationEvents.push({
-                                id: uuidv4(),
-                                start: appDate,
-                                end: appDate,
-                                title: item.patent_title,
-                                number: item.patent_number,
-                                combined: item.patent_num_combined_citations,
-                                logo: '',
-                                assignee,
-                                all_assignee: item.assignees
-                            })
+                            if(itemAssignees.length > 0) {
+                                itemAssignees.forEach( assignee => {
+                                    citationEvents.push({
+                                        id: uuidv4(),
+                                        start: appDate,
+                                        end: appDate,
+                                        title: item.patent_title,
+                                        number: item.patent_number,
+                                        combined: item.patent_num_combined_citations,
+                                        logo: '',
+                                        assignee,
+                                        all_assignee: item.assignees
+                                    })
+                                })
+                            } else {
+                                citationEvents.push({
+                                    id: uuidv4(),
+                                    start: appDate,
+                                    end: appDate,
+                                    title: item.patent_title,
+                                    number: item.patent_number,
+                                    combined: item.patent_num_combined_citations,
+                                    logo: '',
+                                    assignee: '',
+                                    all_assignee: item.assignees
+                                })
+                            }
                         })
                         if(assigneeNameMissing.length > 0) {
                             const queryAssginee = `SELECT ag.grant_doc_num, ee.name from db_patent_application_bibliographic.assignee AS ee INNER JOIN db_patent_application_bibliographic.application_grant AS ag ON ag.appno_doc_num = ee.appno_doc_num
