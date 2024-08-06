@@ -176,7 +176,7 @@ route.put("/:companyID", [authJWT.verifyToken, clientDBConnection.connect], asyn
                         const updateItem = {status: 1}
 
                         if(childCount == 0) {
-                            updateItem.status = 0
+                            //updateItem.status = 0
                         }
                         console.log(childCount, updateItem)
                         await Representative.update(updateItem, {
