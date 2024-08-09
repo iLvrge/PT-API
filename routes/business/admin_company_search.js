@@ -2984,10 +2984,10 @@ route.post("/company/report_dashboard:id/", [authJWT.verifyToken, authJWT.isAdmi
 route.get("/company/family/:id", [authJWT.verifyToken, authJWT.isAdmin, authJWT.addClientID, clientDBConnection.connect], async (req, res, next) => {
     try{
         const customerID = req.params.id
-        
+        const retrievedAll = req.query.retrievedAll;
         console.log(customerID);
-        console.log(`screen -md php -f ${process.env.SCRIPT_PATH}assets_family.php "${customerID}"`)
-        exec(`screen -md php -f ${process.env.SCRIPT_PATH}assets_family.php "${customerID}" `, async (error, stdout, stderr) => {
+        console.log(`screen -md php -f ${process.env.SCRIPT_PATH}assets_family.php "${customerID}" '[]' ${retrievedAll}`)
+        exec(`screen -md php -f ${process.env.SCRIPT_PATH}assets_family.php "${customerID}" "[]" ${retrievedAll} `, async (error, stdout, stderr) => {
             console.log(error);
             console.log(stdout);
             console.log(stderr);
@@ -3002,11 +3002,11 @@ route.get("/company/family/:id", [authJWT.verifyToken, authJWT.isAdmin, authJWT.
 route.get("/company/family/:id/:representativeID", [authJWT.verifyToken, authJWT.isAdmin, authJWT.addClientID, clientDBConnection.connect], async (req, res, next) => {
     try{
         const customerID = req.params.id, representativeIDs = JSON.parse(req.params.representativeID)
-        
+        const retrievedAll = req.query.retrievedAll;
         console.log(customerID);
         if(representativeIDs.length > 0) {
-            console.log(`screen -md php -f ${process.env.SCRIPT_PATH}assets_family.php "${customerID}"`)
-            exec(`screen -md php -f ${process.env.SCRIPT_PATH}assets_family.php "${customerID}" '${JSON.stringify(representativeIDs)}'`, async (error, stdout, stderr) => {
+            console.log(`screen -md php -f ${process.env.SCRIPT_PATH}assets_family.php "${customerID}" '${JSON.stringify(representativeIDs)}' ${retrievedAll}`)
+            exec(`screen -md php -f ${process.env.SCRIPT_PATH}assets_family.php "${customerID}" '${JSON.stringify(representativeIDs)}' ${retrievedAll}`, async (error, stdout, stderr) => {
                 console.log(error);
                 console.log(stdout);
                 console.log(stderr);
