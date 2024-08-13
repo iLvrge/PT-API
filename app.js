@@ -13,6 +13,8 @@ const upload = require("express-fileupload");
 
 const socket = require("./socket");
 
+const { logErrorToFile } = require('./helpers/logger');
+
 // load the agent
 /* const newrelic = require('newrelic'); */
 
@@ -282,13 +284,14 @@ app.use((error, req, res, next)=>{
 });
 
 process.on('uncaughtException', (err) => {
-    console.error('There was an uncaught error', err);
-    process.exit(1); // mandatory (as per the Node.js docs)
+    logErrorToFile('--------uncaughtException----------');
+    logErrorToFile(err); 
+    process.exit(1); 
 });
 
 process.on('unhandledRejection', (reason, promise) => {
-    console.error('Unhandled Rejection at:', promise, 'reason:', reason);
-    // Application specific logging, throwing an error, or other logic here
+    logErrorToFile('--------unhandledRejection----------');
+    logErrorToFile(reason);   
 });
 
 //listen function for Node / express
@@ -299,5 +302,6 @@ const server = app.listen({port, host:'0.0.0.0'}, ()=>{
 try{
     socket.connect(server); 
 } catch (err) {
-    console.log(`Error in socket connect`, err)
+    logErrorToFile('--------Error in socket connect----------');
+    logErrorToFile(err);   
 } 
