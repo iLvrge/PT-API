@@ -15,7 +15,7 @@
     "@microsoft/microsoft-graph-client": "^3.0.5",
     "@paralleldrive/cuid2": "^2.2.0",
     "@sentry/node": "7.118.0",
-    "@sentry/profiling-node": "^8.25.0",
+    "@sentry/profiling-node": "7.118.0",
     "@slack/web-api": "^5.14.0",
     "aws-sdk": "^2.797.0",
     "base64url": "^3.0.1",
