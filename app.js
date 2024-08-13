@@ -1,5 +1,6 @@
 //Express server
-require("./helpers/instrument");
+require("./helpers/instrument"); 
+
 const express = require("express");
 
 const cors = require("cors");
@@ -18,7 +19,8 @@ const { logErrorToFile } = require('./helpers/logErrors');
 
 const app = express();
  
-Sentry.setupExpressErrorHandler(app);
+app.use(Sentry.Handlers.requestHandler());
+app.use(Sentry.Handlers.errorHandler());
 
 app.use(express.json({limit: '100mb', type:'application/json'}));
 app.use(express.urlencoded({limit: '100mb', extended:false, parameterLimit:100000, type:'application/x-www-form-urlencoded'}));
