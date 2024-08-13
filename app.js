@@ -5,9 +5,9 @@ const cors = require("cors");
 
 const bodyParser = require("body-parser");
 
-/* const Sentry = require('@sentry/node');
+const Sentry = require('@sentry/node');
 
-const Tracing = require("@sentry/tracing"); */
+const Tracing = require("@sentry/tracing"); 
 
 const upload = require("express-fileupload");
 
@@ -19,15 +19,14 @@ const { logErrorToFile } = require('./helpers/logger');
 /* const newrelic = require('newrelic'); */
 
 const app = express();
-/* 
+ 
 // instrument express after the agent has been loaded
 newrelic.instrumentLoadedModule(
     'express',    // the module's name, as a string
     express // the module instance
-);
-
+); 
 Sentry.init({
-    dsn: "https://9b208378541b4e1ca9201363140d27f4@o4504419505012736.ingest.sentry.io/4504419571466240",
+    dsn: "https://9dbb99721e484a939592c18830855a52@o487723.ingest.us.sentry.io/5547034",
     integrations: [
       // enable HTTP calls tracing
       new Sentry.Integrations.Http({ tracing: true }),
@@ -46,7 +45,7 @@ const transaction = Sentry.startTransaction({
 
 app.use(Sentry.Handlers.requestHandler());
 app.use(Sentry.Handlers.tracingHandler());
-app.use(Sentry.Handlers.errorHandler()); */
+app.use(Sentry.Handlers.errorHandler()); 
 
 app.use(express.json({limit: '100mb', type:'application/json'}));
 app.use(express.urlencoded({limit: '100mb', extended:false, parameterLimit:100000, type:'application/x-www-form-urlencoded'}));
