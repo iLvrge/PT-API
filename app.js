@@ -21,10 +21,10 @@ const { logErrorToFile } = require('./helpers/logger');
 const app = express();
  
 // instrument express after the agent has been loaded
-newrelic.instrumentLoadedModule(
+/* newrelic.instrumentLoadedModule(
     'express',    // the module's name, as a string
     express // the module instance
-); 
+); */ 
 Sentry.init({
     dsn: "https://9dbb99721e484a939592c18830855a52@o487723.ingest.us.sentry.io/5547034",
     integrations: [
