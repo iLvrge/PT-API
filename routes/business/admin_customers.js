@@ -70,6 +70,7 @@ const Organisations = require("../../model/business/Organisations"),
 
     AWS  = require('aws-sdk');
 const LogMessages = require("../../model/application/LogMessages");
+const LogFamilyAssetsMessages = require("../../model/application/LogFamilyAssetsMessages");
 
 const socket = require("../../socket");
    
@@ -971,48 +972,108 @@ route.get("/customers/:id/reports", [authJWT.verifyToken, authJWT.isAdmin, authJ
     } 
 });
 
-route.get("/customers/:id/reclassify", [authJWT.verifyToken, authJWT.isAdmin], async (req, res, next) => {
-    try{
-        const organisationID = req.params.id;
-        let {companies} = req.query
-        if(organisationID > 0){
-            const where = {organisation_id: organisationID, company_id: 0}
-            if(companies != '') {
-                companies = JSON.parse(companies);
-                if(companies.length > 0 ) {
-                    where.company_id =  companies
-                } 
-            }
-            const getClassifyData = await LogMessages.findAll({
-                where,
-                order: [['id','ASC']]
-            })
-
-            const logData = [];
-
-            console.log(getClassifyData);
-
-            if(getClassifyData.length > 0) {
-
-                const promise = await getClassifyData.map((row, index) => {
-                    const item = row.toJSON()
-                    if(index > 0) { 
-                        item.start_time = getClassifyData[index - 1].end_time 
+route.get("/customers/:id/family", [authJWT.verifyToken, authJWT.isAdmin], async (req, res, next) => {
+    try {
+        const organisationID = Number(req.params.id);
+        let { companies } = req.query;
+    
+        if (organisationID > 0) {
+            const where = { organisation_id: organisationID };
+    
+            if (companies) {
+                try {
+                    companies = JSON.parse(companies);
+                    if (Array.isArray(companies) && companies.length > 0) {
+                        where.company_id = companies;
                     }
-                    logData.push(item)
-                })
-
-                await Promise.all(promise)
-            } 
-            console.log(logData)
+                } catch (parseError) {
+                    console.log("Error parsing companies:", parseError);
+                    return res.status(400).send("Invalid company data format");
+                }
+            }
+    
+            const query = `
+                SELECT l.*, CONCAT(l.retrieved_assets, ' / ', l.total_assets) AS message, org.name, r.representative_name 
+                FROM db_new_application.log_family_assets_messages AS l
+                INNER JOIN db_business.organisation AS org ON org.organisation_id = l.organisation_id
+                INNER JOIN db_uspto.representative AS r ON r.representative_id = l.company_id
+                WHERE l.organisation_id = :organisation_id
+                ${where.company_id ? "AND l.company_id IN (:company_id)" : ""}
+                ORDER BY l.id ASC
+            `;
+    
+            const logData = await connection.resources.query(query, {
+                type: connection.Sequelize.QueryTypes.SELECT,
+                replacements: where,
+                raw: true,
+                logging: console.log,
+            });
+    
             res.status(200).json(logData);
         } else {
-            res.status(400).send("Invalid inputs");
-        }       
-    } catch( err ) {
-        console.log(err);
-        res.status(400).send("Invalid inputs");
-    } 
+            res.status(400).send("Invalid organisation ID");
+        }
+    } catch (err) {
+        console.log("Error:", err);
+        res.status(500).send("Server error");
+    }
+})
+
+route.get("/customers/:id/reclassify", [authJWT.verifyToken, authJWT.isAdmin], async (req, res, next) => {
+    try {
+        const organisationID = Number(req.params.id);
+        let { companies } = req.query;
+    
+        if (organisationID > 0) {
+            const where = { organisation_id: organisationID };
+    
+            if (companies) {
+                try {
+                    companies = JSON.parse(companies);
+                    if (Array.isArray(companies) && companies.length > 0) {
+                        where.company_id = companies;
+                    }
+                } catch (parseError) {
+                    console.log("Error parsing companies:", parseError);
+                    return res.status(400).send("Invalid company data format");
+                }
+            }
+    
+            const query = `
+                SELECT l.*, org.name, r.representative_name 
+                FROM db_new_application.log_messages AS l
+                INNER JOIN db_business.organisation AS org ON org.organisation_id = l.organisation_id
+                LEFT JOIN db_uspto.representative AS r ON r.representative_id = l.company_id
+                WHERE l.organisation_id = :organisation_id
+                ${where.company_id ? "AND l.company_id IN (:company_id)" : ""}
+                ORDER BY l.id ASC
+            `;
+    
+            const getClassifyData = await connection.resources.query(query, {
+                type: connection.Sequelize.QueryTypes.SELECT,
+                replacements: where,
+                raw: true,
+                logging: console.log,
+            });
+    
+            const logData = getClassifyData.map((row, index, array) => {
+                const item = { ...row };
+                if (index > 0) {
+                    item.start_time = array[index - 1].end_time;
+                }
+                return item;
+            });
+    
+            console.log(logData);
+            res.status(200).json(logData);
+        } else {
+            res.status(400).send("Invalid organisation ID");
+        }
+    } catch (err) {
+        console.log("Error:", err);
+        res.status(500).send("Server error");
+    }
+    
 });
 
 
