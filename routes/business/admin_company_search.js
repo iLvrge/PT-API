@@ -3075,7 +3075,7 @@ route.post("/company/:id/add_bulk_companies", [authJWT.verifyToken, authJWT.isAd
                                 attributes:['representative_name'],
                                 where:{ 
                                     company_id: {[connection.Op.gt]: 0}, 
-                                    status: 1
+                                    /* status: 1 */
                                 }, 
                                 group:['company_id']
                             });
