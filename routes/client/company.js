@@ -1636,7 +1636,7 @@ const createSlackWorkSpace = async (name, organisation) => {
                     (async () => {
                         const parentCompanies = [];
                         const promise = findParentCompanies.map(c => {
-                            if(company_id > 0 && !parentCompanies.includes(c.company_id)){ 
+                            if(c.company_id > 0 && !parentCompanies.includes(c.company_id)){ 
                                 parentCompanies.push(c.company_id);
                             }
                             return c;
