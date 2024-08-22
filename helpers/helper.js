@@ -1647,7 +1647,7 @@ let getCompaniesListWithReports = async (DBConnection, organisationID) => {
     WHERE parent_id = :companyParentID AND type = :companyType ORDER BY original_name`
  */   
 
-    const queryRepresentatives = `SELECT company_id AS representative_id, original_name, representative_name, status FROM representative WHERE company_id > 0 GROUP BY company_id`
+    const queryRepresentatives = `SELECT company_id AS representative_id, original_name, representative_name, status FROM representative WHERE company_id > 0 GROUP BY company_id order by representative_name ASC, original_name ASC`
     let getList = await DBConnection.query(queryRepresentatives,{
             type: DBConnection.Sequelize.QueryTypes.SELECT,
             replacements: { companyType: 0, companyParentID: 0, groupType: 1},
