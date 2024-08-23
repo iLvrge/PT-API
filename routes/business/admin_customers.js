@@ -72,6 +72,8 @@ const Organisations = require("../../model/business/Organisations"),
 
 const socket = require("../../socket");
 const ReclassifyLog = require("../../model/resources/ReclassifyLog");
+const LogMessages = require("../../model/application/LogMessages");
+const LogFamilyAssetsMessages = require("../../model/application/LogFamilyAssetsMessages");
    
 /**Get all documents */
 const logger = createLogger({
@@ -1030,6 +1032,35 @@ route.get("/customers/:id/reclassify-log", [authJWT.verifyToken, authJWT.isAdmin
         });
     }
     res.status(200).json(reclassifyLog);
+})
+
+route.delete("/customers/:id/reclassify-log", [authJWT.verifyToken, authJWT.isAdmin], async (req, res, next) => {
+    const organisationID = Number(req.params.id); 
+    let reclassifyLog = ''
+    if (organisationID > 0) {
+        await ReclassifyLog.destroy({ 
+            where: {organisation_id: organisationID}, 
+        });
+
+        await LogMessages.destroy({
+            where: {organisation_id: organisationID}, 
+        })
+
+        reclassifyLog = 'Deleted successfully';
+    }
+    res.status(200).json(reclassifyLog);
+})
+
+route.delete("/customers/:id/family-log", [authJWT.verifyToken, authJWT.isAdmin], async (req, res, next) => {
+    const organisationID = Number(req.params.id); 
+    let familyLog = ''
+    if (organisationID > 0) {  
+        await LogFamilyAssetsMessages.destroy({
+            where: {organisation_id: organisationID}, 
+        })
+        familyLog = 'Deleted successfully';
+    }
+    res.status(200).json(familyLog);
 })
 
 route.get("/customers/:id/reclassify", [authJWT.verifyToken, authJWT.isAdmin], async (req, res, next) => {
