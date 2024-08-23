@@ -68,11 +68,10 @@ const Organisations = require("../../model/business/Organisations"),
 
     RepresentativeTransactions = require("../../model/resources/RepresentativeTransactions"),
 
-    AWS  = require('aws-sdk');
-const LogMessages = require("../../model/application/LogMessages");
-const LogFamilyAssetsMessages = require("../../model/application/LogFamilyAssetsMessages");
+    AWS  = require('aws-sdk'); 
 
 const socket = require("../../socket");
+const ReclassifyLog = require("../../model/resources/ReclassifyLog");
    
 /**Get all documents */
 const logger = createLogger({
@@ -1017,6 +1016,20 @@ route.get("/customers/:id/family", [authJWT.verifyToken, authJWT.isAdmin], async
         console.log("Error:", err);
         res.status(500).send("Server error");
     }
+})
+
+route.get("/customers/:id/reclassify-log", [authJWT.verifyToken, authJWT.isAdmin], async (req, res, next) => {
+    const organisationID = Number(req.params.id);
+    let reclassifyLog = null;
+    if (organisationID > 0) {
+        reclassifyLog = await ReclassifyLog.findOne({ 
+            where: {organisation_id: organisationID},
+            order: [
+                ['id', 'DESC']
+            ]
+        });
+    }
+    res.status(200).json(reclassifyLog);
 })
 
 route.get("/customers/:id/reclassify", [authJWT.verifyToken, authJWT.isAdmin], async (req, res, next) => {
