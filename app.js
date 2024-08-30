@@ -14,6 +14,7 @@ const upload = require("express-fileupload");
 const socket = require("./socket");
 
 const { logErrorToFile } = require('./helpers/logErrors');
+const requestLogger = require('./helpers/requestLogger');
 
 // load the agent 
 
@@ -84,7 +85,7 @@ app.options('*', (req, res) => {
 }) */
 
 /**nginx client_max_body_size 100M; #100mb */
-
+app.use(requestLogger);
 const port = process.env.PORT || 4200;
 /**
  * Route for Applications database
@@ -146,6 +147,7 @@ const svgFlagIcons = require('./routes/application/svg_flag_icon');
 
 const userCompanySelections = require('./routes/business/user_company_selections');
 const userActivitySelection = require('./routes/business/user_activity_selection');
+
 
 //routes for application / client
 app.use("/", appLogin);
@@ -244,11 +246,15 @@ app.use((req,res,next)=>{
     //send a status code error
     error.status= 404;
     //forward the request with the error
+    logErrorToFile('--------Invalid route----------');
+    logErrorToFile('Invalid route'); 
     next(error);
 })
 
 //------------- error message
 app.use((error, req, res, next)=>{
+    logErrorToFile('--------Global Error----------');
+    logErrorToFile(error.message); 
     res.status(error.status || 500);
     res.json({
         "error": {
@@ -265,7 +271,8 @@ process.on('uncaughtException', (err) => {
 
 process.on('unhandledRejection', (reason, promise) => {
     logErrorToFile('--------unhandledRejection----------');
-    logErrorToFile(reason);   
+    logErrorToFile(reason);  
+    Sentry.captureException(reason); 
 });
 
 //listen function for Node / express

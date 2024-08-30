@@ -63,7 +63,7 @@ route.get("/profile", [authJWT.verifyToken], (req, res, next) => {
             "user": userData
         });
     }).catch(err => {
-        res.status(500).json({
+        res.status(401).json({
             "message": "Invalid token",
             "error": err
         });

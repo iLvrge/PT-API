@@ -118,7 +118,7 @@ route.get("/", [authJWT.verifyToken, clientDBConnection.connect], async(req, res
             const getCompaniesList = await helpers.getCompaniesWithChildren(req.connection_db, req.orgId);
             res.status(200).json(getCompaniesList);
         } else {
-            res.status(402).send("Unable to retrieve companies");
+            res.status(204).send("No data found");
         }
     } catch (err) {
         console.log(err);
@@ -189,10 +189,10 @@ route.put("/:companyID", [authJWT.verifyToken, clientDBConnection.connect], asyn
                     res.status(200).json(getCompaniesList); 
                 }
             } else {
-                res.status(500).json({message: "Invalid input data."})
+                res.status(400).json({message: "Bad request."})
             } 
         } else {
-            res.status(500).json({message: "Invalid input data."})
+            res.status(400).json({message: "Bad request."})
         }
     } catch (err) {
         console.log(err);
@@ -433,7 +433,7 @@ route.get("/:companyID/list", [authJWT.verifyToken, clientDBConnection.connect],
             }            
             res.status(200).json({list: companiesList, total_records});
         } else {
-            res.status(402).send("Unable to retrieve companies");
+            res.status(404).send("Unable to retrieve companies");
         }
     } catch (err) {
         console.log(err);
@@ -728,7 +728,7 @@ route.get("/list", [authJWT.verifyToken, clientDBConnection.connect], async(req,
             }            
             res.status(200).json({list: companiesList, total_records});
         } else {
-            res.status(402).send("Unable to retrieve companies");
+            res.status(404).send("Unable to retrieve companies");
         }
     } catch (err) {
         console.log(err);
@@ -760,27 +760,6 @@ route.get("/maintainence_assets", [authJWT.verifyToken], async(req, res, next) =
             ); 
         }
         res.status(200).json({total_records: list.length, list})
-    }  catch (err) {
-        console.log(err);
-        res.status(500).json({message: "Unable to retrieve assets"})
-    }
-})
-
-/**Get all maintaince assets */
-route.get("/maintainence_assets_events", [authJWT.verifyToken], async(req, res, next) => {
-    try{
-        const { representative_id, offset } = req.query
-        let list = [
-            ['Year', 'Sales'],
-            ['2013',  1000],
-            ['2014',  1170],
-            ['2015',  660],
-            ['2016',  1030]
-        ]
-        if(JSON.parse( representative_id ).length > 0 ) {
-
-        }
-        res.status(200).json(list)
     }  catch (err) {
         console.log(err);
         res.status(500).json({message: "Unable to retrieve assets"})
@@ -830,7 +809,7 @@ route.get("/lawfirm", [authJWT.verifyToken, clientDBConnection.connect], async(r
 
             res.status(200).json(list);
         } else {
-            res.status(402).send("Unable to retrieve companies");
+            res.status(404).send("Unable to retrieve companies");
         }
     } catch (err) {
         console.log(err);
@@ -902,28 +881,28 @@ route.post("/group", [authJWT.verifyToken, clientDBConnection.connect], async(re
             }
         })
 
-        if(findGroup === null) {
-            const addGroup = await Representative.create({
-                original_name: group_name,
-                representative_name: group_name,
-                instances: 0,
-                type: 1,
-                company_id: 0
-            });
-            if(addGroup !== null) {            
-                const organisation  = await helpers.findOrganisationbyID(req.orgId);
-                
-                if(organisation != null && organisation.organisation_id > 0 && organisation.team !== '') {
-                    /**
-                    * Create new workspace in slack
-                    */
-                    //await createSlackWorkSpace(group_name, organisation)                
-                }
-            }
-            res.status(200).json(addGroup);
-        } else {
+        if(findGroup !== null) {
             res.status(200).json(findGroup);
         }
+
+        const addGroup = await Representative.create({
+            original_name: group_name,
+            representative_name: group_name,
+            instances: 0,
+            type: 1,
+            company_id: 0
+        });
+        if(addGroup !== null) {            
+            const organisation  = await helpers.findOrganisationbyID(req.orgId);
+            
+            if(organisation != null && organisation.organisation_id > 0 && organisation.team !== '') {
+                /**
+                * Create new workspace in slack
+                */
+                //await createSlackWorkSpace(group_name, organisation)                
+            }
+        }
+        res.status(200).json(addGroup);
     } catch( err ) {
         console.log(err)
         res.status(500).send("Internal error");
@@ -961,7 +940,7 @@ const createSlackWorkSpace = async (name, organisation) => {
  * Add new company 
  */
 
- route.post("/", [authJWT.verifyToken, clientDBConnection.connect], async(req, res, next) => {
+route.post("/", [authJWT.verifyToken, clientDBConnection.connect], async(req, res, next) => {
     try {
         
         const subsidaryName = req.body.name, parentCompany = req.body.parent_company; 
@@ -1408,7 +1387,7 @@ const createSlackWorkSpace = async (name, organisation) => {
 /**
  * Delete Parent Companies
  */
- route.delete("/", [authJWT.verifyToken, clientDBConnection.connect], async(req, res, next) => {
+route.delete("/", [authJWT.verifyToken, clientDBConnection.connect], async(req, res, next) => {
     try{
         let {companies, type}  = req.query;
         
@@ -1605,7 +1584,7 @@ const createSlackWorkSpace = async (name, organisation) => {
  * Delete Child Companies
  */
      
- route.delete("/subcompanies", [authJWT.verifyToken, clientDBConnection.connect], async(req, res, next) => {
+route.delete("/subcompanies", [authJWT.verifyToken, clientDBConnection.connect], async(req, res, next) => {
     try{
         let IDs = req.query.companies;
         if(IDs.length == 0) {

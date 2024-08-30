@@ -59,19 +59,15 @@ route.get("/", [authJWT.verifyToken, clientDBConnection.connect], async(req, res
         if(typeof req.connection_db != "undefined" && req.connection_db != null ) {
             
             const User = req.connection_db.define('Users', Users.mainStructure, Users.options);            
-            User.findAll({
+            const list = await User.findAll({
                 attributes:['user_id', 'first_name', 'last_name', 'job_title', 'email_address', 'logo', 'telephone', 'telephone1', 'role_id', [connection.Sequelize.literal(0, 'username'), 'slack']]
-            })
-            .then((list)=>{
-                res.status(200).json(list);
-            }).catch((err)=>{
-                console.log(err);
-                res.status(500).json({message: "Unable to retrieve user list"})
-            });
-            //.finally(() => req.connection_db.close());
+            }) 
+            return res.status(200).json(list);
+        } else {
+            return res.status(400).json({ message: "Invalid database connection" });
         }
     } catch (err) {
-
+        return res.status(500).json({ message: "Unable to retrieve user list" });
     }
 });
 /**Add User */

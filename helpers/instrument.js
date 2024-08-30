@@ -16,4 +16,6 @@ Sentry.init({
   // Set sampling rate for profiling
   // This is relative to tracesSampleRate
   profilesSampleRate: 1.0,
+  debug: true, 
 });
+// Sentry.captureException(new Error("Test error for Sentry"));
