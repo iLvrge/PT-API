@@ -1195,94 +1195,100 @@ route.get("/assets/:patentNumber/files/:channelID/slack/:token", [authJWT.verify
 });
 
 route.get("/assets/download/:itemID",[authJWT.verifyToken], async (req, res) =>{   
-    let {itemID} = req.params, link = ''
+    try {
 
-    if(itemID > 0) {
-
-        const assignmentData = await ResourceAssignments.findOne({
-            attributes: ['reel_no', 'frame_no', 'status'],
-            where:{
-                rf_id: itemID
-            }
-        })
-        /* const query = 'SELECT reel_no, frame_no FROM assignment WHERE rf_id = :itemID'
+        let {itemID} = req.params, link = ''
     
-        const assignmentData =  await connection.resources.query(query,{
-            type: connection.Sequelize.QueryTypes.SELECT,
-            replacements: {itemID},
-            raw: true,
-            plain: true,
-            logging: console.log,
-        }) */
-        console.log(assignmentData)
-        if(assignmentData !== null) {
-            const usptoLink = `https://legacy-assignments.uspto.gov/assignments/assignment-pat-${assignmentData.reel_no}-${assignmentData.frame_no}.pdf`
-            const downloadFileProcess = new Promise( (resolve, reject) => {
-                if(assignmentData.status == 1) {
-                    link = `https://s3-us-west-1.amazonaws.com/static.patentrack.com/assignments/var/www/html/beta/resources/shared/data/assignment-pat-${assignmentData.reel_no}-${assignmentData.frame_no}.pdf`;
-                    resolve('FROM CDN')  
-                } else {
-                    
-                    request.head(usptoLink, (err, response, body) => {
-                        console.log(usptoLink)
-                        const path = usptoLink.split('/').pop(), pathDirectory = '/var/www/html/beta/resources/shared/data/'
-                        console.log(`${pathDirectory}${path}`)
-                        request(usptoLink)
-                        .pipe(fs.createWriteStream(`${pathDirectory}${path}`))
-                        .on('close', () => {
-                            const pdfFile = fs.readFileSync(`${pathDirectory}${path}`, {flag:'r'});
-                            if(pdfFile) {
-
-                                const bucketConfig = connection.bucketConfig;              
-                                const filename = path.replace(/\s+/g, '-');
-                            
-                                let s3 = new AWS.S3({
-                                    credentials: {
-                                        accessKeyId: bucketConfig.accessKeyId,
-                                        secretAccessKey: bucketConfig.secretAccessKey,
-                                    },
-                                    region: bucketConfig.region
-                                })
-                                const serverDIR = 'assignments/var/www/html/beta/resources/shared/data/'
-                                console.log(pdfFile)
-                                console.log(`${serverDIR}${filename}`)
-
-                                const params = {
-                                    Key: `${serverDIR}${filename}`,
-                                    Bucket: bucketConfig.bucketName,
-                                    Body: pdfFile,
-                                    ACL: 'public-read',
-                                    ContentType: 'application/pdf',
-                                    ContentDisposition: 'inline'
-                                }
-                                s3.putObject(params, async function(err, data) {
-                                    console.log(err, data);
-                                    if(err == null) {
-                                        link = `https://s3-${bucketConfig.region}.amazonaws.com/${bucketConfig.bucketName}/${serverDIR}${filename}`;                                    
-                                        //spawn('rm', [`${pathDirectory}${path}`]);
-
-                                        ResourceAssignments.update({status: 1}, {where: {reel_no: assignmentData.reel_no, frame_no: assignmentData.frame_no}})
-                                        
-                                        resolve(`${pathDirectory}${path}`)  
-                                    }  else {
-                                        reject('DOWNLOADED/UPLOADED')
+        if(itemID > 0) {
+    
+            const assignmentData = await ResourceAssignments.findOne({
+                attributes: ['reel_no', 'frame_no', 'status'],
+                where:{
+                    rf_id: itemID
+                }
+            })
+            /* const query = 'SELECT reel_no, frame_no FROM assignment WHERE rf_id = :itemID'
+        
+            const assignmentData =  await connection.resources.query(query,{
+                type: connection.Sequelize.QueryTypes.SELECT,
+                replacements: {itemID},
+                raw: true,
+                plain: true,
+                logging: console.log,
+            }) */
+            console.log(assignmentData)
+            if(assignmentData !== null) {
+                const usptoLink = `https://legacy-assignments.uspto.gov/assignments/assignment-pat-${assignmentData.reel_no}-${assignmentData.frame_no}.pdf`
+                const downloadFileProcess = new Promise( (resolve, reject) => {
+                    if(assignmentData.status == 1) {
+                        link = `https://s3-us-west-1.amazonaws.com/static.patentrack.com/assignments/var/www/html/beta/resources/shared/data/assignment-pat-${assignmentData.reel_no}-${assignmentData.frame_no}.pdf`;
+                        resolve('FROM CDN')  
+                    } else {
+                        
+                        request.head(usptoLink, (err, response, body) => {
+                            console.log(usptoLink)
+                            const path = usptoLink.split('/').pop(), pathDirectory = '/var/www/html/beta/resources/shared/data/'
+                            console.log(`${pathDirectory}${path}`)
+                            request(usptoLink)
+                            .pipe(fs.createWriteStream(`${pathDirectory}${path}`))
+                            .on('close', () => {
+                                const pdfFile = fs.readFileSync(`${pathDirectory}${path}`, {flag:'r'});
+                                if(pdfFile) {
+    
+                                    const bucketConfig = connection.bucketConfig;              
+                                    const filename = path.replace(/\s+/g, '-');
+                                
+                                    let s3 = new AWS.S3({
+                                        credentials: {
+                                            accessKeyId: bucketConfig.accessKeyId,
+                                            secretAccessKey: bucketConfig.secretAccessKey,
+                                        },
+                                        region: bucketConfig.region
+                                    })
+                                    const serverDIR = 'assignments/var/www/html/beta/resources/shared/data/'
+                                    console.log(pdfFile)
+                                    console.log(`${serverDIR}${filename}`)
+    
+                                    const params = {
+                                        Key: `${serverDIR}${filename}`,
+                                        Bucket: bucketConfig.bucketName,
+                                        Body: pdfFile,
+                                        ACL: 'public-read',
+                                        ContentType: 'application/pdf',
+                                        ContentDisposition: 'inline'
                                     }
-                                });
-                            }  else {
-                                reject('DOWNLOADED/UPLOADED')
-                            }
+                                    s3.putObject(params, async function(err, data) {
+                                        console.log(err, data);
+                                        if(err == null) {
+                                            link = `https://s3-${bucketConfig.region}.amazonaws.com/${bucketConfig.bucketName}/${serverDIR}${filename}`;                                    
+                                            //spawn('rm', [`${pathDirectory}${path}`]);
+    
+                                            ResourceAssignments.update({status: 1}, {where: {reel_no: assignmentData.reel_no, frame_no: assignmentData.frame_no}})
+                                            
+                                            resolve(`${pathDirectory}${path}`)  
+                                        }  else {
+                                            reject('DOWNLOADED/UPLOADED')
+                                        }
+                                    });
+                                }  else {
+                                    reject('DOWNLOADED/UPLOADED')
+                                }
+                            })
                         })
-                    })
-                }                    
-            }) 
-            downloadFileProcess
-            .then(async (data) => {
-                splitPDFFile(data)
-                res.status(200).json({link})
-            }).catch(function(err) {
-                console.log(`File not downloaded: ${err}`)
-            });
+                    }                    
+                }) 
+                downloadFileProcess
+                .then(async (data) => {
+                    splitPDFFile(data)
+                    res.status(200).json({link})
+                }).catch(function(err) {
+                    console.log(`File not downloaded: ${err}`)
+                });
+            }
         }
+    } catch (err) {
+        console.log(`File not downloaded: ${err}`)
+        res.status(500).send("Unable to download file")
     }
 }) 
 
@@ -1311,122 +1317,134 @@ const splitPDFFile = (item) => {
 /**
  * Get patent JSON data
  */
-route.get("/assets/:asset",[authJWT.verifyToken], async (req, res) =>{        
-    let asset = req.params.asset, flag = req.query.flag;
+route.get("/assets/:asset",[authJWT.verifyToken], async (req, res) =>{  
+    try {
+        let asset = req.params.asset, flag = req.query.flag;
 
-    let where = {
-        [connection.Op.or]:[{grant_doc_num: asset},{appno_doc_num: asset}]
-    }
-    if(typeof flag !== 'undefined' && flag >= 0) {
-        if(flag == 1) {
-            where = {
-                grant_doc_num: asset
-            }
-        } else if(flag == 0) {
-            where = {
-                appno_doc_num: asset
+        let where = {
+            [connection.Op.or]:[{grant_doc_num: asset},{appno_doc_num: asset}]
+        }
+        if(typeof flag !== 'undefined' && flag >= 0) {
+            if(flag == 1) {
+                where = {
+                    grant_doc_num: asset
+                }
+            } else if(flag == 0) {
+                where = {
+                    appno_doc_num: asset
+                }
             }
         }
-    }
-
-    let findDocument = await Documentids.findAll({
-        where,
-        attributes:['rf_id',['grant_doc_num','number'], ['appno_doc_num','application']],
-    })
-    if(findDocument.length == 0 && typeof flag !== 'undefined' && flag >= 0) {
-        let queryDocument  = '';
-        if(flag == 1) {
-            queryDocument = "SELECT appno_doc_num, appno_date, grant_doc_num, grant_date, 0 AS rf_id  FROM db_patent_application_bibliographic.application_grant WHERE grant_doc_num = :asset " ;
+    
+        let findDocument = await Documentids.findAll({
+            where,
+            attributes:['rf_id',['grant_doc_num','number'], ['appno_doc_num','application']],
+        })
+        if(findDocument.length == 0 && typeof flag !== 'undefined' && flag >= 0) {
+            let queryDocument  = '';
+            if(flag == 1) {
+                queryDocument = "SELECT appno_doc_num, appno_date, grant_doc_num, grant_date, 0 AS rf_id  FROM db_patent_application_bibliographic.application_grant WHERE grant_doc_num = :asset " ;
+            } else {
+                queryDocument = "SELECT appno_doc_num, appno_date, '' AS grant_doc_num, '' AS grant_date, 0 AS rf_id, '' FROM db_patent_grant_bibliographic.application_publication WHERE appno_doc_num = :asset" ;
+            }
+            findDocument =  await connection.resources.query(queryDocument,{
+                type: connection.Sequelize.QueryTypes.SELECT,
+                replacements: {asset},
+                raw: true,
+                logging: console.log,
+            });
+        }
+        if(findDocument != null && findDocument.length > 0){
+            console.log(findDocument); 
+            helpers.generateJSON(req, res);
         } else {
-            queryDocument = "SELECT appno_doc_num, appno_date, '' AS grant_doc_num, '' AS grant_date, 0 AS rf_id, '' FROM db_patent_grant_bibliographic.application_publication WHERE appno_doc_num = :asset" ;
-        }
-        findDocument =  await connection.resources.query(queryDocument,{
-            type: connection.Sequelize.QueryTypes.SELECT,
-            replacements: {asset},
-            raw: true,
-            logging: console.log,
-        });
-    }
-    if(findDocument != null && findDocument.length > 0){
-        console.log(findDocument); 
-        helpers.generateJSON(req, res);
-    } else {
-        res.status(400).send("Invalid number");
-    } 
+            res.status(400).send("Invalid number");
+        } 
+    } catch (err) {
+        console.log(err)
+        res.status(500).send("Invalid number")
+    }   
+    
 });
 
 /**
  * route.get("/assets/:patentNumber/:type/outsource",[authJWT.verifyToken], async (req, res) =>{   
  */
 
-route.get("/assets/:patentNumber/:type/outsource",[], async (req, res) =>{        
-    let { patentNumber, type } = req.params, flag = req.query.flag;
-    
-    if(type == 1) {
-        let type = "patNum";
-        let where = {
-            [connection.Op.or]:[{grant_doc_num: patentNumber},{appno_doc_num: patentNumber}]
-        }
-        if(typeof flag !== 'undefined' && flag >= 0) {
-            if(flag == 1) {
-                type = "patNum";
-                where = {
-                    grant_doc_num: patentNumber
-                }
-            } else if(flag == 0) {
-                type = "applNum";
-                where = {
-                    appno_doc_num: patentNumber
+route.get("/assets/:patentNumber/:type/outsource",[], async (req, res) =>{   
+    try {
+
+        let { patentNumber, type } = req.params, flag = req.query.flag;
+        
+        if(type == 1) {
+            let type = "patNum";
+            let where = {
+                [connection.Op.or]:[{grant_doc_num: patentNumber},{appno_doc_num: patentNumber}]
+            }
+            if(typeof flag !== 'undefined' && flag >= 0) {
+                if(flag == 1) {
+                    type = "patNum";
+                    where = {
+                        grant_doc_num: patentNumber
+                    }
+                } else if(flag == 0) {
+                    type = "applNum";
+                    where = {
+                        appno_doc_num: patentNumber
+                    }
                 }
             }
-        }
-
-        let record = await Documentids.findOne({
-            where,
-            attributes:[['grant_doc_num','number']],
-        }) 
-        if(record == null) { 
-            record =  await connection.resources.query(`SELECT grant_doc_num from db_patent_application_bibliographic.application_grant WHERE grant_doc_num = :number`,{
-                    type: connection.Sequelize.QueryTypes.SELECT,
-                    replacements: {number: patentNumber},
-                    raw: true,
-                    logging: console.log,
-                }
-            );
-
-            if(record === null) {
-                record =  await connection.resources.query(`SELECT appno_doc_num from db_patent_grant_bibliographic.application_publication WHERE grant_doc_num = :number`,{
+    
+            let record = await Documentids.findOne({
+                where,
+                attributes:[['grant_doc_num','number']],
+            }) 
+            if(record == null) { 
+                record =  await connection.resources.query(`SELECT grant_doc_num from db_patent_application_bibliographic.application_grant WHERE grant_doc_num = :number`,{
                         type: connection.Sequelize.QueryTypes.SELECT,
                         replacements: {number: patentNumber},
                         raw: true,
                         logging: console.log,
                     }
                 );
+    
+                if(record === null) {
+                    record =  await connection.resources.query(`SELECT appno_doc_num from db_patent_grant_bibliographic.application_publication WHERE grant_doc_num = :number`,{
+                            type: connection.Sequelize.QueryTypes.SELECT,
+                            replacements: {number: patentNumber},
+                            raw: true,
+                            logging: console.log,
+                        }
+                    );
+                }
             }
-        }
-        if(record !== null) {            
-            console.log('%j',record);                  
-            res.status(200).json({url:`https://assignment.uspto.gov/patent/index.html#/patent/search/resultAbstract?id=${patentNumber}&type=${type}`});
-        } else {
-            res.status(200).send("");
-        }
-    } else if(type == 0){
-        ResourceAssignments.findOne({
-            where:{rf_id: patentNumber},
-            attributes:['reel_no', 'frame_no']
-        })
-        .then( a => {
-            if(a != null) {
-                let frame = a.frame_no.toString();
-                frame = frame.length == 1 ? '000'+frame : frame.length == 2 ? '00'+frame : frame.length == 3 ? '0'+frame : frame;
-                let searchInput = `${a.reel_no}-${frame}`;
-                let ID = `${a.reel_no}-${a.frame_no}`;
-                res.status(200).json({url:`https://assignment.uspto.gov/patent/index.html#/patent/search/resultAssignment?searchInput=${searchInput}&id=${ID}`});
+            if(record !== null) {            
+                console.log('%j',record);                  
+                res.status(200).json({url:`https://assignment.uspto.gov/patent/index.html#/patent/search/resultAbstract?id=${patentNumber}&type=${type}`});
             } else {
                 res.status(200).send("");
             }
-        })
-    }    
+        } else if(type == 0){
+            ResourceAssignments.findOne({
+                where:{rf_id: patentNumber},
+                attributes:['reel_no', 'frame_no']
+            })
+            .then( a => {
+                if(a != null) {
+                    let frame = a.frame_no.toString();
+                    frame = frame.length == 1 ? '000'+frame : frame.length == 2 ? '00'+frame : frame.length == 3 ? '0'+frame : frame;
+                    let searchInput = `${a.reel_no}-${frame}`;
+                    let ID = `${a.reel_no}-${a.frame_no}`;
+                    res.status(200).json({url:`https://assignment.uspto.gov/patent/index.html#/patent/search/resultAssignment?searchInput=${searchInput}&id=${ID}`});
+                } else {
+                    res.status(200).send("");
+                }
+            })
+        }    
+    } catch (err) {
+        console.log("Outsourcing", err)
+        res.status(500).send("")
+    }   
 });
 
 /**
