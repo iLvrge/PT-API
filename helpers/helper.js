@@ -1707,7 +1707,7 @@ let getCompaniesListWithReports = async (DBConnection, organisationID) => {
         company.arrow_transactions = company.product && company.no_of_transactions ? Math.floor(company.product / company.no_of_transactions) : 0;
         console.log(representative.representative_id, findFamily.id, findUpdate.id)
         company.family = findFamily.retrieved_assets || 0;
-        company.updated = findUpdate.end_time || null;
+        company.updated = moment(new Date(findUpdate.end_time)).format('YYYY-MM-DD') || null;
 
         return company;
     }); 
