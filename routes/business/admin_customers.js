@@ -74,6 +74,7 @@ const socket = require("../../socket");
 const ReclassifyLog = require("../../model/resources/ReclassifyLog");
 const LogMessages = require("../../model/application/LogMessages");
 const LogFamilyAssetsMessages = require("../../model/application/LogFamilyAssetsMessages");
+const LogUpdateCompany = require("../../model/application/LogUpdateCompany");
    
 /**Get all documents */
 const logger = createLogger({
@@ -972,6 +973,50 @@ route.get("/customers/:id/reports", [authJWT.verifyToken, authJWT.isAdmin, authJ
         res.status(400).send("Invalid inputs");
     } 
 });
+
+route.get("/customers/:id/run_update_log", [authJWT.verifyToken, authJWT.isAdmin, authJWT.addClientID, clientDBConnection.connect], async (req, res, next) => {
+    const organisationID = Number(req.params.id);
+    let reclassifyLog = null;
+    if (organisationID > 0) {
+        let { companies } = req.query;
+        if (companies) {
+            companies = JSON.parse(companies);
+        } else {
+            const getAllCompaniesList = await helpers.getCompaniesWithRepresentativeIDs(req.connection_db, organisationID);
+
+            companies = getAllCompaniesList 
+                    .map(company => company.company_id);
+        }
+        reclassifyLog = await LogUpdateCompany.findAll({ 
+            where: {company_id: companies}, 
+            order: [
+                ['id', 'DESC']
+            ]
+        });
+    }
+    res.status(200).json(reclassifyLog);
+})
+
+route.delete("/customers/:id/run_update_log", [authJWT.verifyToken, authJWT.isAdmin, authJWT.addClientID, clientDBConnection.connect], async (req, res, next) => {
+    const organisationID = Number(req.params.id);
+    let reclassifyLog = null;
+    if (organisationID > 0) {
+        let { companies } = req.query;
+        if (companies) {
+            companies = JSON.parse(companies);
+        } else {
+            const getAllCompaniesList = await helpers.getCompaniesWithRepresentativeIDs(req.connection_db, organisationID);
+
+            companies = getAllCompaniesList
+                    .map(company => company.company_id);
+        }
+        await LogUpdateCompany.destroy({
+            where: {company_id: companies}, 
+        }) 
+        reclassifyLog = 'Deleted successfully';
+    }
+    res.status(200).send(reclassifyLog);
+})
 
 route.get("/customers/:id/family", [authJWT.verifyToken, authJWT.isAdmin], async (req, res, next) => {
     try {

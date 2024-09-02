@@ -68,6 +68,8 @@ const AssigneeOrganizations = require("../model/application/AssigneeOrganization
 const CitingPatentWithAssignee = require("../model/application/CitingPatentWithAssignee");
 const CitedPatents = require("../model/application/CitedPatents");
 const AssetsFamily = require("../model/resources/AssetsFamily");
+const LogFamilyAssetsMessages = require("../model/application/LogFamilyAssetsMessages"); 
+const LogUpdateCompany = require("../model/application/LogUpdateCompany");
  
 
 /**
@@ -1633,98 +1635,83 @@ let getCompaniesCount = async (DBConnection) => {
  */
 
 let getCompaniesListWithReports = async (DBConnection, organisationID) => {
-    const Representative = DBConnection.define('ClientRepesentative', ClientRepesentative.mainStructure, ClientRepesentative.options);
-    /*
-    const getList =  await Representative.findAll({
-        where: {type: 0},
+    const queryRepresentatives = `
+        SELECT 
+            company_id AS representative_id, 
+            original_name, 
+            representative_name, 
+            status 
+        FROM representative 
+        WHERE company_id > 0 
+        GROUP BY company_id 
+        ORDER BY representative_name ASC, original_name ASC
+    `;
+    
+    // Fetch representatives
+    const getList = await DBConnection.query(queryRepresentatives, {
+        type: DBConnection.Sequelize.QueryTypes.SELECT,
+        raw: true,
+        logging: console.log,
+    });
 
-    });*/
+    if (getList.length === 0) {
+        return getList;
+    } 
 
-    /* const queryRepresentatives = `SELECT representative_id, original_name, representative_name, status FROM representative
-    WHERE parent_id IN (SELECT representative_id from representative WHERE type = :groupType)
-    UNION
-    SELECT representative_id, original_name, representative_name, status FROM representative 
-    WHERE parent_id = :companyParentID AND type = :companyType ORDER BY original_name`
- */   
+  
+    const allCompanies = getList
+    .filter(company => company.representative_id !== 0)
+    .map(company => company.representative_id);
+  
 
-    const queryRepresentatives = `SELECT company_id AS representative_id, original_name, representative_name, status FROM representative WHERE company_id > 0 GROUP BY company_id order by representative_name ASC, original_name ASC`
-    let getList = await DBConnection.query(queryRepresentatives,{
-            type: DBConnection.Sequelize.QueryTypes.SELECT,
-            replacements: { companyType: 0, companyParentID: 0, groupType: 1},
-            raw: true,
-            logging: console.log,
-        }
-    ); 
-    if(getList.length > 0) {
-        const allCompanies = []
-        const promises = getList.map( company => {
-            if(company.representative_id > 0) {
-                allCompanies.push(company.representative_id)
-            }
-        })
-        await Promise.all(promises)
-        const query = `SELECT company_id, companies, activities, entities AS no_of_entities, parties AS no_of_parties, employees AS no_of_employees, transactions AS no_of_transactions, assets AS assets, arrows AS product, 0 AS documents FROM db_uspto.summary WHERE organisation_id = :organisationID AND company_id IN (:allCompanies)`;
+    const query = `SELECT company_id, companies, activities, entities AS no_of_entities, parties AS no_of_parties, employees AS no_of_employees, transactions AS no_of_transactions, assets AS assets, arrows AS product, 0 AS documents FROM db_uspto.summary WHERE organisation_id = :organisationID AND company_id IN (:allCompanies)`;
 
-        let reports = await connection.resources.query(query, {
-            type: connection.Sequelize.QueryTypes.SELECT,
-            replacements: { organisationID: 0 /* organisationID */, allCompanies },
-            raw: true, 
-            logging: console.log, 
-        }) 
-        const representativeList = [];
-/* 
-
-        const representativeList = [], representativeNames = []
-
-        const promiseList = getList.map( representative => {
-            representativeNames.push(representative.representative_name)
-        })
-        await Promise.all(promiseList)
-
-        const queryRepresentativeReports = `SELECT representative_name, no_of_assets as assets, no_of_transactions, no_of_parties, (no_of_parties - no_of_transactions) as product FROM representative_reports WHERE representative_name IN (:representativeNames)`
-
-        let reports = await connection.resources.query(queryRepresentativeReports,{
-                type: connection.Sequelize.QueryTypes.SELECT,
-                replacements: { representativeNames},
-                raw: true,
-                logging: console.log,
-            }
-        );  */
-
-        if(reports.length > 0) {
-            const updatePromise = getList.map( representative => {
-               /*  const company = representative.toJSON() */
-               const company = {...representative}
-                const filter = reports.filter( row => row.company_id == representative.representative_id)
-                if(filter.length > 0) {
-                    company.assets = filter[0].assets
-                    company.no_of_transactions = filter[0].no_of_transactions
-                    company.no_of_entities = filter[0].no_of_entities
-                    company.no_of_employees = filter[0].no_of_employees
-                    company.no_of_parties = filter[0].no_of_parties
-                    company.product = filter[0].product
-                    company.arrow_assets = parseInt(filter[0].product / filter[0].assets)
-                    company.arrow_transactions = parseInt(filter[0].product / filter[0].no_of_transactions)
-                } else {
-                    company.assets = 0
-                    company.no_of_transactions = 0
-                    company.no_of_entities = 0
-                    company.no_of_employees = 0
-                    company.no_of_parties = 0
-                    company.product = 0
-                    company.arrow_assets = 0
-                    company.arrow_transactions = 0
-                }
-                representativeList.push(company)
-            })
-            await Promise.all(updatePromise)
-            return representativeList
-        } else {
-            return getList
-        }
-    } else {
-        return getList
+    let reports = await connection.resources.query(query, {
+        type: connection.Sequelize.QueryTypes.SELECT,
+        replacements: { organisationID: 0 /* organisationID */, allCompanies },
+        raw: true, 
+        logging: console.log, 
+    }) 
+    if (reports.length === 0) {
+        return getList;
     }
+
+    const [logUpdates, logFamilies] = await Promise.all([
+        LogUpdateCompany.findAll({
+            where: { company_id: allCompanies },
+            group: ['company_id'],
+            order: [['id', 'desc']]
+        }),
+        LogFamilyAssetsMessages.findAll({
+            where: { company_id: allCompanies },
+            group: ['company_id'],
+            order: [['id', 'desc']]
+        })
+    ]);
+
+    const logUpdatesMap = new Map(logUpdates.map(item => [item.company_id, item]));
+    const logFamiliesMap = new Map(logFamilies.map(item => [item.company_id, item]));
+
+    const representativeList = getList.map( representative => {
+        const company = { ...representative };
+        const report = reports.find(row => row.company_id === representative.representative_id) || {};
+        const findFamily = logFamiliesMap.get(representative.representative_id) || {};
+        const findUpdate = logUpdatesMap.get(representative.representative_id) || {};
+        company.assets = report.assets || 0;
+        company.no_of_transactions = report.no_of_transactions || 0;
+        company.no_of_entities = report.no_of_entities || 0;
+        company.no_of_employees = report.no_of_employees || 0;
+        company.no_of_parties = report.no_of_parties || 0;
+        company.product = report.product || 0;
+        company.arrow_assets = company.product && company.assets ? Math.floor(company.product / company.assets) : 0;
+        company.arrow_transactions = company.product && company.no_of_transactions ? Math.floor(company.product / company.no_of_transactions) : 0;
+        console.log(representative.representative_id, findFamily.id, findUpdate.id)
+        company.family = findFamily.retrieved_assets || 0;
+        company.updated = findUpdate.end_time || null;
+
+        return company;
+    }); 
+    return representativeList 
 }
 
 
@@ -1799,6 +1786,18 @@ let getCompaniesList = async (DBConnection) => {
 
     return await Representative.findAll({
         where: { type: 0}
+    });
+}
+
+let getCompaniesWithRepresentativeIDs = async (DBConnection) => {
+    const Representative = DBConnection.define('ClientRepesentative', ClientRepesentative.mainStructure, ClientRepesentative.options);
+
+    return await Representative.findAll({
+        where: {
+            company_id: {
+                [connection.Op.gt]: 0
+            }
+        }
     });
 }
 
@@ -5229,4 +5228,5 @@ helper.removeAllOldSharingUrl = removeAllOldSharingUrl
 helper.saveMissingData = saveMissingData
 helper.updateAndRemoveDuplicatesInFamily = updateAndRemoveDuplicatesInFamily
 helper.findMissingPatentNumbers = findMissingPatentNumbers
+helper.getCompaniesWithRepresentativeIDs = getCompaniesWithRepresentativeIDs
 module.exports = helper;
