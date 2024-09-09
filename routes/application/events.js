@@ -2765,39 +2765,56 @@ route.get("/events/all/assets/:category_type", [authJWT.verifyToken], async (req
                         assets.push(`${item.application}`)
                     })
                     await Promise.all(promise)
-                    const event_code = ['EXP', 'EXP.'], attributes = ['grant_doc_num', 'appno_doc_num', 'grant_date', [connection.Sequelize.fn('date_format', connection.Sequelize.col('event_date'), '%Y-%m-%d'), 'eventdate'], [connection.Sequelize.fn('date_format', connection.Sequelize.col('event_date'), '%Y-%m-%d'), 'eventExpiredDate'], 'event_code', 'event_icon'], group = ['eventdate','event_code'], include = [
-                        {
-                            model: MaintainenceCode,
-                            as: 'maintainence_code',
-                            attributes: ['event_code', 'event_description', 'template', 'template_string', 'icon1', 'icon2', 'icon3']
-                        }
-                    ];
-                    let where = {appno_doc_num: assets, event_code}, assetData;
-    
-                    findData = await MaintainenceFees.findAll({
-                        attributes: attributes,
-                        where: where, 
-                        include: include,
-                        group: ['appno_doc_num', 'eventdate']
-                    });
+
+                    if (category_type == 'abandoned') {
+                        const queryCode = `SELECT temp.*, doc.grant_doc_num, doc.grant_date, maintainence_code.*  FROM (SELECT appno_doc_num, status, MAX(status_date) AS eventdate, MAX(status_date) AS eventExpiredDate , 'EXP.' AS event_code FROM db_uspto.application_status WHERE 
+                        appno_doc_num IN (:assets) 
+                        AND status IN ('Patent Expired Due to NonPayment of Maintenance Fees Under 37 CFR 1.362', 'Provisional Application Expired', 'Final Rejection Mailed', 'Expressly Abandoned  --  During Publication Process', 'Expressly Abandoned  --  During Examination', "Abandoned  --  After Examiner's Answer or Board of Appeals Decision", 'Abandoned  --  Failure to Pay Issue Fee', 'Abandoned  --  File-Wrapper-Continuation Parent Application', 'Abandoned  --  Failure to Respond to an Office Action', 'Abandoned  --  Incomplete (Filing Date Under Rule 53 (b) - PreExam)', 'Abandoned  --  Incomplete Application (Pre-examination)', 'Abandonment for Failure to Correct Drawings/Oath/NonPub Request') GROUP BY  appno_doc_num) 
+                        AS temp 
+                        INNER JOIN db_uspto.documentid as doc ON doc.appno_doc_num = temp.appno_doc_num
+                        LEFT OUTER JOIN db_patent_maintainence_fee.event_maintainence_code AS maintainence_code ON maintainence_code.event_code = temp.event_code 
+                        GROUP BY  appno_doc_num`;
+                        try { 
+                            findData = await connection.resources.query(queryCode,{
+                                type: connection.Sequelize.QueryTypes.SELECT,
+                                raw: true,
+                                logging: console.log,
+                                replacements: {
+                                    assets: assets
+                                }
+                            });
+                        } catch (err) {
+                            console.log(err)
+                        } 
+                    } else {
+                        const event_code = ['EXP', 'EXP.'], attributes = ['grant_doc_num', 'appno_doc_num', 'grant_date', [connection.Sequelize.fn('date_format', connection.Sequelize.col('event_date'), '%Y-%m-%d'), 'eventdate'], [connection.Sequelize.fn('date_format', connection.Sequelize.col('event_date'), '%Y-%m-%d'), 'eventExpiredDate'], 'event_code', 'event_icon'], group = ['eventdate','event_code'], include = [
+                            {
+                                model: MaintainenceCode,
+                                as: 'maintainence_code',
+                                attributes: ['event_code', 'event_description', 'template', 'template_string', 'icon1', 'icon2', 'icon3']
+                            }
+                        ];
+                        let where = {appno_doc_num: assets, event_code}, assetData;
+        
+                        findData = await MaintainenceFees.findAll({
+                            attributes: attributes,
+                            where: where, 
+                            include: include,
+                            group: ['appno_doc_num', 'eventdate']
+                        });
+                    }
+
+                    
                     if(findData.length > 0) {
-                        const promise = findData.map( event => { 
-                            let eventCodeIcons = {}
-                            if(event.maintainence_code.icon1 != null) {
-                                eventCodeIcons['icon1'] = SvgIconsContent[event.maintainence_code.icon1]
-                            } 
-                            
-                            if(event.maintainence_code.icon2 != null) {
-                                eventCodeIcons['icon2'] = SvgIconsContent[event.maintainence_code.icon2]
-                            }
-    
-                            if(event.maintainence_code.icon3 != null) {
-                                eventCodeIcons['icon3'] = SvgIconsContent[event.maintainence_code.icon3]
-                            }
-                            icons[event.event_code] = eventCodeIcons
-                            return event
-                        })
-                        Promise.all(promise)
+                        findData.forEach(event => { 
+                            const eventCodeIcons = {};
+                     
+                            eventCodeIcons['icon1'] = SvgIconsContent[event.maintainence_code?.icon1 ?? event.icon1] || null;
+                            eventCodeIcons['icon2'] = SvgIconsContent[event.maintainence_code?.icon2 ?? event.icon2] || null;
+                            eventCodeIcons['icon3'] = SvgIconsContent[event.maintainence_code?.icon3 ?? event.icon3] || null;
+                             
+                            icons[event.event_code] = eventCodeIcons;
+                        });
                     }
                 }
             }
