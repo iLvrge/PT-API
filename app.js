@@ -256,8 +256,8 @@ app.use((req,res,next)=>{
 app.use((error, req, res, next)=>{
     logErrorToFile('--------Global Error----------');
     logErrorToFile(error.message); 
-    if (!err.status) {
-        Sentry.captureException(err);
+    if (!error.status) {
+        Sentry.captureException(error);
     } 
     res.status(error.status || 500);
     res.json({

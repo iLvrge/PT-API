@@ -106,11 +106,13 @@ route.post("/verify", (req, res, next) => {
            console.log(u);
            console.log("INMAIL");
            const transporter = nodemailer.createTransport({
-               service: 'gmail',
-               auth:{
-                   user: 'no-reply@ilvrge.com',
-                   pass: '!QAZ2wsx3edc'
-               }
+            host: 'smtp.gmail.com',
+            port: 465,
+            secure: true,
+                auth:{
+                   user: process.env.EMAIL,
+                   pass: process.env.EMAIL_APP,
+                }
             });
            const mailOptions = {
                 from: '"PatenTrack" <no-reply@patentrack.com>',
@@ -237,12 +239,14 @@ route.post("/forgot_password", (req, res) => {
                 console.log(u);
                 console.log("INMAIL");
                 const transporter = nodemailer.createTransport({
-                    service: 'gmail',
-                    auth:{
-                        user: 'no-reply@ilvrge.com',
-                        pass: '!QAZ2wsx3edc'
-                    }
-                 });
+                    host: 'smtp.gmail.com',
+                    port: 465,
+                    secure: true,
+                        auth:{
+                           user: process.env.EMAIL,
+                           pass: process.env.EMAIL_APP,
+                        }
+                });
                 const mailOptions = {
                      from: 'no-reply@patentrack.com',
                      to: `${user.email_address}`,
