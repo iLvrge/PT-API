@@ -435,6 +435,80 @@ route.put("/:user_id", [authJWT.verifyToken, clientDBConnection.connect], async(
         res.status(400).send("Invalid inputs1");
     }
 });
+/**
+ * Delete multiple users
+ */
+route.delete("/", [authJWT.verifyToken, clientDBConnection.connect], async (req, res, next) => {
+    try {
+        if (typeof req.connection_db != "undefined" && req.connection_db != null) {
+            const User = req.connection_db.define('Users', Users.mainStructure, Users.options);  
+            const Activity = req.connection_db.define('Activities', Activities.mainStructure, Activities.options);  
+            
+            // Get the list of user IDs from the query string
+            const userList = req.query.list ? req.query.list.split(',').map(Number) : [];
+            
+            if (!userList.length) {
+                return res.status(400).send("No user IDs provided.");
+            }
+            
+            // Check if the requester is authorized (role_id == 1)
+            const userDetail = await User.findOne({
+                where: {user_id: req.userId, role_id: 1},
+                attributes: ['user_id'],
+            });
+
+            if (userDetail != null && userDetail.user_id > 0) {
+                // Filter out the current user's ID to prevent self-deletion
+                const filteredUserList = userList.filter(userId => userId !== req.userId);
+                
+                if (!filteredUserList.length) {
+                    return res.status(400).send("You cannot delete your own account or invalid users.");
+                }
+
+                // Find the users to be deleted
+                const findUsers = await User.findAll({
+                    where: {user_id: filteredUserList}
+                });
+
+                if (findUsers && findUsers.length > 0) {
+                    const userIDs = findUsers.map(user => user.user_id);
+
+                    // Start the transaction
+                    await req.connection_db.transaction(async (transaction) => {
+                        // Delete associated activities first
+                        await Activity.destroy({
+                            where: {user_id: userIDs},
+                            transaction
+                        });
+
+                        // Delete the users
+                        await User.destroy({
+                            where: {user_id: userIDs},
+                            transaction
+                        });
+
+                        // Optionally delete from LoginUsers table
+                        await LoginUsers.destroy({
+                            where: {user_id: userIDs},
+                            transaction
+                        });
+                    });
+
+                    res.status(200).send("Users deleted successfully.");
+                } else {
+                    res.status(400).send("No valid users found to delete.");
+                }
+            } else {
+                res.status(403).send("You are not authorized to perform this action.");
+            }
+        } else {
+            res.status(500).send("Error connecting to the database.");
+        }
+    } catch (err) {
+        console.error(err);
+        res.status(500).send("An error occurred while deleting users.");
+    }
+});
 /**Delete user */
 route.delete("/:user_id", [authJWT.verifyToken, clientDBConnection.connect], async(req, res, next) => {
     try{
