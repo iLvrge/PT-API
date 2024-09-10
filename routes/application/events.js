@@ -2767,7 +2767,7 @@ route.get("/events/all/assets/:category_type", [authJWT.verifyToken], async (req
                     await Promise.all(promise)
 
                     if (category_type == 'abandoned') {
-                        const queryCode = `SELECT temp.*, doc.grant_doc_num, doc.grant_date, maintainence_code.*  FROM (SELECT appno_doc_num, status, MAX(status_date) AS eventdate, MAX(status_date) AS eventExpiredDate , 'EXP.' AS event_code FROM db_uspto.application_status WHERE 
+                        const queryCode = `SELECT temp.*, doc.grant_doc_num, doc.grant_date, maintainence_code.*, CASE WHEN doc.grant_doc_num != '' THEN doc.grant_doc_num ELSE temp.appno_doc_num END AS template_string  FROM (SELECT appno_doc_num, status, MAX(status_date) AS eventdate, MAX(status_date) AS eventExpiredDate , 'EXP.' AS event_code FROM db_uspto.application_status WHERE 
                         appno_doc_num IN (:assets) 
                         AND status IN ('Patent Expired Due to NonPayment of Maintenance Fees Under 37 CFR 1.362', 'Provisional Application Expired', 'Final Rejection Mailed', 'Expressly Abandoned  --  During Publication Process', 'Expressly Abandoned  --  During Examination', "Abandoned  --  After Examiner's Answer or Board of Appeals Decision", 'Abandoned  --  Failure to Pay Issue Fee', 'Abandoned  --  File-Wrapper-Continuation Parent Application', 'Abandoned  --  Failure to Respond to an Office Action', 'Abandoned  --  Incomplete (Filing Date Under Rule 53 (b) - PreExam)', 'Abandoned  --  Incomplete Application (Pre-examination)', 'Abandonment for Failure to Correct Drawings/Oath/NonPub Request') GROUP BY  appno_doc_num) 
                         AS temp 
