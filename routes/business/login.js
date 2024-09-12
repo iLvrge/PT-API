@@ -329,7 +329,14 @@ route.get("/refresh-token", async(req, res) => {
         where: {
             user_id: decodedPayload.id,
             status:0
-        }
+        },
+        include:[
+            {
+              model: Organisation,
+              as: "organisation",
+              attributes: ['subscribtion', 'organisation_type'],
+            }
+        ],
     });
 
     if(!user) {
