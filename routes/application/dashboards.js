@@ -564,7 +564,7 @@ route.post("/timeline", [authJWT.verifyToken], async(req, res, next) => {
                                         'corporation$', 'corp'),
                                     'incorporated$', 'inc'),
                                 'limited$', 'ltd'),
-                            'company$', 'co')   COLLATE utf8mb4_general_ci = LOWER(temp.customerName) COLLATE utf8mb4_general_ci`
+                            'company$', 'co')   COLLATE utf8mb4_general_ci = LOWER(temp.customerName) COLLATE utf8mb4_general_ci GROUP BY temp.id`
                     }
 
                     getList =  await connection.applicationNew.query(query,{
