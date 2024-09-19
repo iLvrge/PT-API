@@ -535,31 +535,38 @@ route.put("/users/:user_id", [authJWT.verifyToken, authJWT.isAdmin], async (req,
  * Delete admin user
  */
 
-route.delete("/users/:orgId/:user_id", [authJWT.verifyToken, authJWT.isAdmin, clientDBConnection.connect], async (req, res, next) =>{
+route.delete("/users/:orgId/:user_id", [authJWT.verifyToken, authJWT.isAdmin], async (req, res, next) =>{
     try{
         const user = await Users.findOne({
             where: {user_id: req.params.user_id, organisation_id: req.params.orgId}
         })
 
         if( user != null && user.user_id > 0){
-            const dbClientUser = await req.connection_db.define('Users', ClientUsers.mainStructure, ClientUsers.options);
 
-            const userDetail = await dbClientUser.findOne({
-                where: {user_id: req.params.user_id, role_id: 1},
-                attributes: ['user_id'],
-            });
+            const connectuserDB = await clientDBConnection.connectOnFly(req.params.orgId)
 
-            if(userDetail) {
-                const deleteClientUser = await userDetail.destroy();
-                const deleteUser = await user.destroy();
-                if(deleteUser && deleteClientUser) {
-                    res.status(200).send("User deleted successfully.");
+            if(connectuserDB !== null) { 
+                const dbClientUser = await connectuserDB.define('Users', ClientUsers.mainStructure, ClientUsers.options);
+
+                const userDetail = await dbClientUser.findOne({
+                    where: {user_id: req.params.user_id, role_id: 1},
+                    attributes: ['user_id'],
+                });
+
+                if(userDetail) {
+                    const deleteClientUser = await userDetail.destroy();
+                    const deleteUser = await user.destroy();
+                    if(deleteUser && deleteClientUser) {
+                        res.status(200).send("User deleted successfully.");
+                    } else {
+                        res.status(500).send("Error while deleting user.");
+                    }
                 } else {
                     res.status(500).send("Error while deleting user.");
-                }
+                }  
             } else {
-                res.status(500).send("Error while deleting user.");
-            }  
+                res.status(500).send("Unable to connect with client.");
+            }
         } else {
             res.status(500).send("Error while deleting user.");
         }
