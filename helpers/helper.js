@@ -1924,7 +1924,7 @@ let getCompaniesWithChildren = async (DBConnection, organisationID) => {
         companies.map( c => getAllIDs.push(c.id));
         /* let childCompaniesQuery = "SELECT representative_id as id, original_name, representative_name, instances as counter, parent_id FROM representative as r WHERE r.parent_id IN (:parentCompany) ORDER BY r.parent_id ASC, counter DESC"; */
 
-        let childCompaniesQuery = "SELECT representative_id as id, '' AS slack, original_name, representative_name, instances as counter, parent_id, status FROM representative as r WHERE r.parent_id IN (:parentCompany) AND child = :child ORDER BY r.parent_id ASC, counter DESC";
+        let childCompaniesQuery = "SELECT representative_id as id, '' AS slack, original_name, representative_name, instances as counter, parent_id, status FROM representative as r WHERE r.parent_id IN (:parentCompany) AND child = :child ORDER BY r.parent_id ASC, representative_name ASC, counter DESC";
 
         let childCompanies = await DBConnection.query(childCompaniesQuery,{
                 type: connection.Sequelize.QueryTypes.SELECT,
@@ -1933,19 +1933,28 @@ let getCompaniesWithChildren = async (DBConnection, organisationID) => {
                 logging: console.log,
             }
         ); 
-        if(childCompanies.length == 0) {
-            for(let i = 0; i < companies.length; i++) {
-                /* let newC = {...companies[i]};
-                newC.counter = newC.instances;
-                companies[i]['children'] = [newC]; */
+
+        const childCompanyMap = new Map();
+        childCompanies.forEach(child => {
+            if (!childCompanyMap.has(child.parent_id)) {
+                childCompanyMap.set(child.parent_id, []);
+            }
+            childCompanyMap.get(child.parent_id).push(child);
+        });
+
+        // Attach children to each parent company
+        companies.forEach(company => {
+            company.children = childCompanyMap.get(company.id) || [];
+        });
+
+
+        /* if(childCompanies.length == 0) {
+            for(let i = 0; i < companies.length; i++) { 
                 companies[i]['children'] = []
             }
         } else {
             for(let i = 0; i < companies.length; i++) {
-                let children = [];
-                /* let newC = {...companies[i]};
-                newC.counter = newC.instances;
-                children.push(newC); */
+                let children = []; 
                 for(let j = 0; j< childCompanies.length; j++) {
                     if(parseInt(companies[i].id) === parseInt(childCompanies[j].parent_id)) {
                         children.push({...childCompanies[j]});
@@ -1953,7 +1962,7 @@ let getCompaniesWithChildren = async (DBConnection, organisationID) => {
                 }
                 companies[i]['children'] = children;
             }
-        }
+        } */
 
         /*const queryCustomer = "SELECT tab_id, assignor_and_assignee_id as customer_id, name, representative_id as company_id FROM tree_parties WHERE organisation_id = :organisationID AND representative_id IN (:representativeID) GROUP BY organisation_id, representative_id, assignor_and_assignee_id, tab_id";
 

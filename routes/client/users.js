@@ -330,6 +330,7 @@ route.put("/:user_id", [authJWT.verifyToken, clientDBConnection.connect], async(
                         user.last_name = req.body.last_name;
                         user.email_address = req.body.email_address;
                         user.linkedin_url = req.body.linkedin_url;
+                        user.job_title =  req.body.job_title;
                         user.telephone = req.body.telephone;
                         user.telephone1 = req.body.telephone1;
                         console.log(req.body);
@@ -410,6 +411,7 @@ route.put("/:user_id", [authJWT.verifyToken, clientDBConnection.connect], async(
                                 if(req.body.email_address != findUser.email_address) { 
                                     updateUserType.email_address = req.body.email_address;
                                 }
+                                updateUserType.job_title =  req.body.job_title;
                                 await LoginUsers.update(updateUserType,{where:{user_id: findUser.user_id}});
                                 res.status(200).send("Updated successfully");
                             } else {
