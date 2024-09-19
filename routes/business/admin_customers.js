@@ -1382,6 +1382,7 @@ route.put("/customers/:id/users/:user_id", [authJWT.verifyToken, authJWT.isAdmin
                                 user.last_name = req.body.last_name;
                                 user.email_address = req.body.email_address;
                                 user.username = req.body.email_address;
+                                user.job_title = req.body.job_title,
                                 user.linkedin_url = req.body.linkedin_url;
                                 user.type = req.body.type;
                                 user.role_id = req.body.type == 0 ? 1 : 2;
@@ -1401,6 +1402,7 @@ route.put("/customers/:id/users/:user_id", [authJWT.verifyToken, authJWT.isAdmin
                                     updateCurrentUser.first_name = req.body.first_name;
                                     updateCurrentUser.last_name = req.body.last_name;
                                     updateCurrentUser.email_address = req.body.email_address;
+                                    updateCurrentUser.job_title = req.body.job_title;
                                     updateCurrentUser.username = req.body.email_address;
                                     updateCurrentUser.linkedin_url = req.body.linkedin_url;
                                     updateCurrentUser.role_id = req.body.type == 0 ? 1 : 2,
