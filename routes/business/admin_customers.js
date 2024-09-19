@@ -562,7 +562,7 @@ route.delete("/users/:orgId/:user_id", [authJWT.verifyToken, authJWT.isAdmin], a
                         res.status(500).send("Error while deleting user.");
                     }
                 } else {
-                    res.status(500).send("Error while deleting user.");
+                    res.status(404).send("User not found in client database.");
                 }  
             } else {
                 res.status(500).send("Unable to connect with client.");
