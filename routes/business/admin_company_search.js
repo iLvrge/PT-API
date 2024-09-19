@@ -2938,7 +2938,7 @@ route.put("/company/assignments", [authJWT.verifyToken, authJWT.isAdmin, authJWT
             })
 
             if(findParentData !== null && findParentData.parent_id > 0 ) {
-                const findChild = await Representative.count({
+                /* const findChild = await Representative.count({
                     where: {parent_id: findParentData.parent_id, status: 1}
                 })
                 let groupStatus = 0
@@ -2948,7 +2948,7 @@ route.put("/company/assignments", [authJWT.verifyToken, authJWT.isAdmin, authJWT
 
                 await Representative.update({
                     status: groupStatus
-                }, {where: {representative_id: findParentData.parent_id}});
+                }, {where: {representative_id: findParentData.parent_id}}); */
             }
 
             res.status(200).json(updateCompany);
