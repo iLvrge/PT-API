@@ -453,7 +453,7 @@ route.delete("/", [authJWT.verifyToken, clientDBConnection.connect], async (req,
             
             // Check if the requester is authorized (role_id == 1)
             const userDetail = await User.findOne({
-                where: {user_id: req.userId, role_id: 1},
+                where: {user_id: req.userId},
                 attributes: ['user_id'],
             });
 
