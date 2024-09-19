@@ -549,7 +549,7 @@ route.delete("/users/:orgId/:user_id", [authJWT.verifyToken, authJWT.isAdmin], a
                 const dbClientUser = await connectuserDB.define('Users', ClientUsers.mainStructure, ClientUsers.options);
 
                 const userDetail = await dbClientUser.findOne({
-                    where: {user_id: req.params.user_id, role_id: 1},
+                    where: {user_id: req.params.user_id},
                     attributes: ['user_id'],
                 });
 
