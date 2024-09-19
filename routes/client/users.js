@@ -445,10 +445,10 @@ route.delete("/", [authJWT.verifyToken, clientDBConnection.connect], async (req,
             const Activity = req.connection_db.define('Activities', Activities.mainStructure, Activities.options);  
             
             // Get the list of user IDs from the query string
-            const userList = req.query.list ? req.query.list.split(',').map(Number) : [];
+            const userList = req.query.list ? JSON.parse(req.query.list) : [];
             
-            if (!userList.length) {
-                return res.status(400).send("No user IDs provided.");
+            if (!Array.isArray(userList) || userList.length === 0 || userList.some(isNaN)) {
+                return res.status(400).send("No valid user IDs provided.");
             }
             
             // Check if the requester is authorized (role_id == 1)
@@ -456,7 +456,7 @@ route.delete("/", [authJWT.verifyToken, clientDBConnection.connect], async (req,
                 where: {user_id: req.userId},
                 attributes: ['user_id'],
             });
-
+            console.log(userList)
             if (userDetail != null && userDetail.user_id > 0) {
                 // Filter out the current user's ID to prevent self-deletion
                 const filteredUserList = userList.filter(userId => userId !== req.userId);
@@ -464,7 +464,7 @@ route.delete("/", [authJWT.verifyToken, clientDBConnection.connect], async (req,
                 if (!filteredUserList.length) {
                     return res.status(400).send("You cannot delete your own account or invalid users.");
                 }
-
+                console.log(filteredUserList)
                 // Find the users to be deleted
                 const findUsers = await User.findAll({
                     where: {user_id: filteredUserList}
