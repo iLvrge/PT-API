@@ -187,16 +187,20 @@ async function processPatentResponse(responseBody, asset) {
 }
 
 function processAssignees(item, individualList) {
-    return item.assignees?.filter(row => {
-        let assignee = row.assignee_organization;
-        if (!assignee || assignee === 'null') {
-            if (row.assignee_first_name) {
-                assignee = `${row.assignee_first_name} ${row.assignee_last_name}`;
-                individualList.push(assignee);
+    return item.assignees?.map(row => {
+        // Check if the organization name is valid
+        let assignee = row.assignee_organization || (row.assignee_first_name && row.assignee_last_name ? `${row.assignee_first_name} ${row.assignee_last_name}` : null);
+        
+        // If the assignee is determined to be a name and it's valid, push to individualList
+        if (assignee && assignee !== 'null') {
+            if (row.assignee_organization === '') {
+                individualList.push(assignee); // Push to individualList only if it's a name
             }
+            return assignee; // Return the assignee name or organization
         }
-        return assignee;
-    }) || [];
+        
+        return null; // Return null if no valid assignee found
+    }).filter(assignee => assignee !== null) || []; // Filter out null values
 }
 
 function processInventors(item, itemAssignees, individualList) {
