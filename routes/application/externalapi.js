@@ -141,167 +141,177 @@ route.get("/ptab/document/:identifier",  async (req, res) => {
     }
 }) 
 
+async function processPatentResponse(responseBody, asset) {
+    if (!responseBody || responseBody.total_patent_count === 0 || !Array.isArray(responseBody.patents)) {
+        return { counter: 0, list: [] };
+    }
+
+    const allAssignee = [], assigneeNameMissing = [], individualList = [], citationEvents = [];
+    
+    helper.saveMissingData(responseBody, asset);
+    
+    // Process each patent
+    responseBody.patents.forEach(item => {
+        const itemAssignees = processAssignees(item, individualList);
+
+        // If no assignees, check inventors
+        if (itemAssignees.length === 0 && Array.isArray(item.inventors)) {
+            processInventors(item, itemAssignees, individualList);
+        }
+
+        const appDate = getAppDate(item);
+        
+        // Add citation events
+        if (itemAssignees.length > 0) {
+            itemAssignees.forEach(assignee => addCitationEvent(citationEvents, item, assignee, appDate));
+        } else {
+            assigneeNameMissing.push(item.patent_number);
+            addCitationEvent(citationEvents, item, '', appDate);
+        }
+    });
+
+    // Fetch missing assignees from the database
+    if (assigneeNameMissing.length > 0) {
+        await fetchMissingAssignees(assigneeNameMissing, citationEvents, allAssignee);
+    }
+
+    // Fetch company logos and update citation events
+    if (allAssignee.length > 0) {
+        await updateCompanyLogos(allAssignee, citationEvents, individualList);
+    }
+
+    return {
+        counter: citationEvents.length,
+        list: citationEvents
+    };
+}
+
+function processAssignees(item, individualList) {
+    return item.assignees?.filter(row => {
+        let assignee = row.assignee_organization;
+        if (!assignee || assignee === 'null') {
+            if (row.assignee_first_name) {
+                assignee = `${row.assignee_first_name} ${row.assignee_last_name}`;
+                individualList.push(assignee);
+            }
+        }
+        return assignee;
+    }) || [];
+}
+
+function processInventors(item, itemAssignees, individualList) {
+    item.inventors.forEach(row => {
+        const name = `${row.inventor_first_name} ${row.inventor_last_name}`;
+        itemAssignees.push(name);
+        individualList.push(name);
+    });
+}
+
+function getAppDate(item) {
+    return (item.applications?.[0]?.app_date || item.patent_date) + ' 00:00:00';
+}
+
+
+function addCitationEvent(citationEvents, item, assignee, appDate) {
+    citationEvents.push({
+        id: uuidv4(),
+        start: appDate,
+        end: appDate,
+        title: item.patent_title,
+        number: item.patent_number,
+        combined: item.patent_num_combined_citations,
+        logo: '',
+        assignee,
+        all_assignee: item.assignees
+    });
+}
+
+async function fetchMissingAssignees(assigneeNameMissing, citationEvents, allAssignee) {
+    const queryAssginee = `SELECT ag.grant_doc_num, ee.name 
+                           FROM db_patent_application_bibliographic.assignee AS ee 
+                           INNER JOIN db_patent_application_bibliographic.application_grant AS ag 
+                           ON ag.appno_doc_num = ee.appno_doc_num
+                           WHERE ag.grant_doc_num IN (:patentNumbers)`;
+
+    const findAssignees = await connection.applicationNew.query(queryAssginee, {
+        type: connection.Sequelize.QueryTypes.SELECT,
+        raw: true,
+        replacements: { patentNumbers: assigneeNameMissing },
+    });
+
+    findAssignees?.forEach(row => {
+        const index = citationEvents.findIndex(c => c.number === row.grant_doc_num);
+        if (index !== -1) {
+            const event = citationEvents[index];
+            event.assignee = event.all_assignee.length === 0 ? row.name : [...event.all_assignee, row.name];
+            allAssignee.push(row.name);
+        }
+    });
+}
+
+async function updateCompanyLogos(allAssignee, citationEvents, individualList) {
+    const companyLogos = await OrganisationApplication.findAll({
+        where: { organisation_name: allAssignee },
+        group: ['organisation_name'],
+    });
+
+    if (companyLogos.length > 0) {
+        updateEventLogos(citationEvents, companyLogos, 'organisation_name', 'company');
+    }
+
+    if (individualList.length > 0) {
+        updateEventLogos(citationEvents, individualList, 'assignee', 'individual');
+    }
+}
+
+function updateEventLogos(citationEvents, list, assigneeKey, type) {
+    citationEvents.forEach((item, index) => {
+        const match = list.find(assignee => item.assignee?.toLowerCase() === assignee[assigneeKey]?.toLowerCase());
+        if (match) {
+            citationEvents[index].logo = (type === 'company')
+                ? match.original_logo || match.logo_optimize
+                : 'https://s3.us-west-1.amazonaws.com/static.patentrack.com/images/psychology.svg';
+        }
+    });
+}
 
 route.get("/citation/:asset", [authJWT.verifyToken], async (req, res) => { 
     try {
         const {asset} = req.params
         const {counter} = req.query; 
-        if(typeof asset !== 'undefined' && asset !== '' && asset !== null) {
-            const queryString = ``
-            const url = `https://api.patentsview.org/patents/query?q={"cited_patent_number":"${asset}"}&o={"page": 1, "per_page": 10000, "include_subentity_total_counts": "false"}&f=["patent_number","patent_date","patent_num_combined_citations","patent_title","inventor_first_name", "inventor_last_name","assignee_organization", "assignee_first_name","assignee_last_name", "app_date"]`
-            console.log(url)
-            request(url, async(error, response, body) => { 
-                if (!error && response.statusCode == 200) {
-                    const responseBody = JSON.parse(body)
-                    const citationEvents = []
-                    if(responseBody !== null && responseBody.total_patent_count > 0) {
-                        const allAssignee = [], assigneeNameMissing = [], individualList = [];
-                        helper.saveMissingData(responseBody, asset);
-                        responseBody.patents.forEach(item => {
-                            const itemAssignees = []
-                            if(item.assignees.length > 0) { 
-                                item.assignees.forEach(row => {
-                                    let assignee = "";
-                                    assignee = row.assignee_organization 
-                                    if(assignee == '' || assignee == 'null' || assignee == null) {  
-                                        if(row.assignee_first_name != null) { 
-                                            const name  = `${row.assignee_first_name} ${row.assignee_last_name}`
-                                            assignee = name
-                                            individualList.push(name)
-                                        }
-                                    }
-                                    if(assignee != '') {  
-                                        itemAssignees.push(assignee)
-                                    }  
-                                })
+        if (!asset) {
+            console.log('ERROR => /citation/: Asset number is empty or undefined');
+            return res.status(402).send('Asset number is empty');
+        }
+        const url = `https://api.patentsview.org/patents/query?q={"cited_patent_number":"${asset}"}&o={"page": 1, "per_page": 10000, "include_subentity_total_counts": "false"}&f=["patent_number","patent_date","patent_num_combined_citations","patent_title","inventor_first_name", "inventor_last_name","assignee_organization", "assignee_first_name","assignee_last_name", "app_date"]`;
+    
+        console.log(`Request URL: ${url}`);
 
-                                if(itemAssignees.length == 0 && item.inventors.length > 0) {  
-                                    let assignee = "";
-                                    item.inventors.forEach(row => {
-                                        const name = `${row.inventor_first_name} ${row.inventor_last_name}`
-                                        assignee = name
-                                        individualList.push(name)
-                                    }) 
-                                    if(assignee != '') {  
-                                        itemAssignees.push(assignee)
-                                    }
-                                }
-
-                                if(itemAssignees.length > 0) {
-                                    allAssignee.push(...itemAssignees)
-                                } else {
-                                    assigneeNameMissing.push(item.patent_number)
-                                }
-                            } 
-                            
-                            let appDate = ''
-                            if(item.applications !== null && item.applications.length > 0) {
-                                appDate = item.applications[0].app_date + ' 00:00:00'
-                            } else {
-                                appDate = item.patent_date + ' 00:00:00'
-                            }
-                            if(itemAssignees.length > 0) {
-                                itemAssignees.forEach( assignee => {
-                                    citationEvents.push({
-                                        id: uuidv4(),
-                                        start: appDate,
-                                        end: appDate,
-                                        title: item.patent_title,
-                                        number: item.patent_number,
-                                        combined: item.patent_num_combined_citations,
-                                        logo: '',
-                                        assignee,
-                                        all_assignee: item.assignees
-                                    })
-                                })
-                            } else {
-                                citationEvents.push({
-                                    id: uuidv4(),
-                                    start: appDate,
-                                    end: appDate,
-                                    title: item.patent_title,
-                                    number: item.patent_number,
-                                    combined: item.patent_num_combined_citations,
-                                    logo: '',
-                                    assignee: '',
-                                    all_assignee: item.assignees
-                                })
-                            }
-                        })
-                        if(assigneeNameMissing.length > 0) {
-                            const queryAssginee = `SELECT ag.grant_doc_num, ee.name from db_patent_application_bibliographic.assignee AS ee INNER JOIN db_patent_application_bibliographic.application_grant AS ag ON ag.appno_doc_num = ee.appno_doc_num
-                            where ag.grant_doc_num IN (:patentNumbers) `;
-
-                            const findAssignees =  await connection.applicationNew.query(queryAssginee,{
-                                type: connection.Sequelize.QueryTypes.SELECT,
-                                raw: true,
-                                logging: console.log,
-                                replacements: {patentNumbers: assigneeNameMissing},
-                            })
-                
-                            if(findAssignees !== null && findAssignees.length > 0) {
-                                findAssignees.forEach( row => {
-                                    const findIndex = citationEvents.findIndex( c => c.number == row.grant_doc_num)
-                                    if(findIndex !== -1) {
-                                        let oldAssignee = citationEvents[findIndex].assignee, oldAllAssignee = citationEvents[findIndex].all_assignee
-                                        if(oldAllAssignee.length == 0) {
-                                            oldAllAssignee = [row.name];
-                                            oldAssignee = row.name
-                                        } else {
-                                            oldAllAssignee = [...oldAllAssignee, row.name]
-                                            oldAssignee = row.name
-                                        }
-                                        citationEvents[findIndex].assignee = oldAssignee
-                                        citationEvents[findIndex].all_assignee = oldAllAssignee
-
-                                        allAssignee.push(row.name)
-                                    }
-                                })
-                            }
-                        }
-                        if(allAssignee.length > 0) {
-                            const getCompanyLogos = await OrganisationApplication.findAll({
-                                where: {organisation_name: allAssignee},
-                                group: ['organisation_name']
-                            })
-                            if(getCompanyLogos.length > 0) {
-                                getCompanyLogos.forEach( company => {
-                                    citationEvents.forEach( (item, index) => {
-                                        if(item.assignee !== null && item.assignee != '' && item.assignee.toString().toLocaleLowerCase() == company.organisation_name.toString().toLocaleLowerCase()){
-                                            citationEvents[index].logo = company.original_logo !== '' ? company.original_logo : company.logo_optimize
-                                        }
-                                    })
-                                })
-                            }
-                            if(individualList.length > 0) {
-                                individualList.forEach( inventor => {
-                                    citationEvents.forEach( (item, index) => {
-                                        if(item.assignee !== null && item.assignee != '' && item.assignee.toString().toLocaleLowerCase() == inventor.toString().toLocaleLowerCase()){
-                                            citationEvents[index].logo = 'https://s3.us-west-1.amazonaws.com/static.patentrack.com/images/psychology.svg'
-                                        }
-                                    })
-                                })
-                            }
-                        }
-                    } 
-                    if(typeof counter !== 'undefined') {
-                        res.status(200).send(`${citationEvents.length}`);
+        request(url, async (error, response, body) => {
+            if (error) {
+                console.error(`ERROR => /citation/: ${error}`);
+                return res.status(500).send('Error while making request');
+            }
+    
+            if (response.statusCode === 200) {
+                try {
+                    const responseBody = JSON.parse(body);
+                    const { counter: total, list } = await processPatentResponse(responseBody, asset);
+    
+                    if (counter !== undefined) {
+                        res.status(200).send(`${total}`);
                     } else {
-                        res.status(200).json(citationEvents);
+                        res.status(200).json(list);
                     }
-                } else {
-                    console.log('ERROR => /citation/', error)
-                    if(typeof counter !== 'undefined') {
-                        res.status(200).send(`0`);
-                    } else {
-                        res.status(200).json({});
-                    }
+                } catch (parseError) {
+                    console.error(`ERROR => /citation/: Failed to parse response body: ${parseError}`);
+                    res.status(500).send('Error while processing response');
                 }
-            })
-        }  else {
-            console.log('ERROR => /citation/', error)
-            res.status(402).send('Asset number is empty')
-        }   
+            } else {
+                console.error(`ERROR => /citation/: Request failed with status code ${response.statusCode}`);
+                res.status(response.statusCode).send(`Failed with status code ${response.statusCode}`);
+            }
+        });
     } catch (e) {
         console.log('ERROR => /citation/', e)
         res.status(500).send('Error while rendering asset details')
