@@ -3986,94 +3986,139 @@ route.post("/company/cited/:id", [authJWT.verifyToken, authJWT.isAdmin, authJWT.
                     await addNewDataToSheet(sheetHelper, spreadsheetID, sheetID, sourceList.values[0].length, assignees, res)
                 }
             }
-        })
-
-
+        }) 
     } catch (err) {
-
+        console.log('Error /company/cited/:id', err)
+        res.status(500).send("Error while retrieving data"); 
     }
 })
+
+
+const getParties = async (req, savedLogoCompanies = 0) => {
+
+    const customerID = req.params.id;
+    const { portfolios, sort_by, sort_direction, rows_per_page, current_page, assignee_id } = req.query 
+    let list = [],   total_records = 0;
+    if(customerID > 0) {  
+        let representativeIDs = JSON.parse(portfolios != undefined ? portfolios : "[]");
+        if(representativeIDs.length == 0) {
+            representativeIDs = await getAllCompanyIDs(req)
+        }
+
+        let queryParties = `Select partyName FROM (SELECT IF(r.representative_name <> '', r.representative_name, aaa.name) AS partyName FROM (  SELECT apt.assignor_and_assignee_id FROM db_new_application.activity_parties_transactions AS apt LEFT JOIN db_uspto.inventors AS inv ON inv.assignor_and_assignee_id = apt.assignor_and_assignee_id WHERE activity_id IN (:activityID) AND (organisation_id = :organisationID OR organisation_id IS NULL) `;
+
+        if(representativeIDs.length > 0) {
+            queryParties += `AND company_id IN (:representativeIDs) `
+        }
+
+        queryParties += ` AND date_format(apt.exec_dt, '%Y') > :year AND inv.assignor_and_assignee_id IS NULL GROUP BY apt.assignor_and_assignee_id ) AS temp INNER JOIN db_uspto.assignor_and_assignee AS aaa ON aaa.assignor_and_assignee_id = temp.assignor_and_assignee_id LEFT JOIN db_uspto.representative AS r ON r.representative_id = aaa.representative_id ) AS temp GROUP BY partyName`; 
+
+        const partiesResult = await connection.applicationNew.query( queryParties,{
+            type: connection.Sequelize.QueryTypes.SELECT,
+            raw: true,
+            replacements: {organisationID: 0 /* customerID */, activityID: [1, 6, 2, 7, 3, 4, 5, 12, 9, 14, 8, 11, 15, 16, 17, 18], representativeIDs, year: 1998},
+            logging: console.log,
+        }); 
+        if(partiesResult.length > 0) {
+            const allParties = [], insertBulkRecord = []
+            const promise =  partiesResult.map( row => {
+                allParties.push(row.partyName)
+                insertBulkRecord.push({
+                    assignee_organization: row.partyName,
+                    assignee_query: row.partyName
+                })
+            })
+            await Promise.all(promise)
+
+            if(savedLogoCompanies == 0) { 
+                const addBlukData = await AssigneeOrganizations.bulkCreate(insertBulkRecord, {ignoreDuplicates: true})
+            }
+
+            let queryPartiesAssignee = `SELECT ao.assignee_id, COUNT(ao.assignee_id) AS occurences, ao.assignee_organization, ao.assignee_query, ao.domain, ao.domain2, ao.domain3, ` 
+
+            if(savedLogoCompanies == 1) {
+                queryPartiesAssignee += ` IF(o.logo_optimize <> "null", o.logo_optimize, ao.api_logo) AS api_logo, `
+            } else {
+                queryPartiesAssignee += ` IF(ao.api_logo <> "null", ao.api_logo, "") AS api_logo, `
+            }
+            
+            queryPartiesAssignee += ` IF(ao.api_logo1 <> "null", ao.api_logo1, "") AS api_logo1, IF(ao.api_logo2 <> "null", ao.api_logo2, "") AS api_logo2, IF(ao.api_logo3 <> "null", ao.api_logo3, "") AS api_logo3, IF(ao.api_logo4 <> "null", ao.api_logo4, "") AS api_logo4, IF(ao.api_logo5 <> "null", ao.api_logo5, "") AS api_logo5, IF(ao.api_logo6 <> "null", ao.api_logo6, "") AS api_logo6, IF(ao.api_logo7 <> "null", ao.api_logo7, "") AS api_logo7, IF(ao.api_logo8 <> "null", ao.api_logo8, "") AS api_logo8, IF(ao.api_logo9 <> "null", ao.api_logo9, "") AS api_logo9, without_square, image_url, '' AS img FROM assignee_organizations AS ao  `;
+
+            if(savedLogoCompanies == 1) {
+                queryPartiesAssignee += ` INNER JOIN organisations AS o ON ao.organisation_id = o.organisation_id `
+            }
+
+            queryPartiesAssignee += ` WHERE ao.assignee_organization IN (:allParties) ` 
+
+            if(savedLogoCompanies == 1) {
+                queryPartiesAssignee += ` AND ao.organisation_id <> 0 `;
+            } else {
+                queryPartiesAssignee += ` AND ao.organisation_id = 0 `;
+            }
+
+
+            if(assignee_id != undefined) {
+                queryPartiesAssignee += ` AND ao.assignee_id = :assignee_id `
+            }  
+            queryPartiesAssignee += ` GROUP BY ao.assignee_id`
+
+            const recordsResult = await connection.applicationNew.query(`SELECT COUNT(*) as total_records FROM (${queryPartiesAssignee}) as temp`,{
+                type: connection.Sequelize.QueryTypes.SELECT,
+                raw: true,
+                replacements: {allParties, assignee_id},
+                logging: console.log,
+                plain: true
+            });
+
+            if(recordsResult !== null) {
+                total_records = recordsResult.total_records
+            }
+            
+            queryPartiesAssignee += ` ORDER BY   ${typeof sort_by !== "undefined" ? sort_by : "occurences "} ${typeof sort_direction !== "undefined" ? sort_direction : "desc "} `
+
+
+            queryPartiesAssignee += ` LIMIT  ${typeof current_page !== "undefined" ? current_page * rows_per_page + ", " : " 0, "} ${typeof rows_per_page !== "undefined" ? rows_per_page : " 50 "} `
+            
+            list = await connection.applicationNew.query(queryPartiesAssignee,{
+                    type: connection.Sequelize.QueryTypes.SELECT,
+                    raw: true,
+                    replacements: {allParties, assignee_id},
+                    logging: console.log,
+                }
+            );
+        }
+    }
+
+    return {list, total_records};
+
+}
+
+/**
+ * Account Saved Parties Logos
+ */
+
+route.get("/company/saved_logo/parties/all/:id", [authJWT.verifyToken, authJWT.isAdmin, authJWT.addClientID, clientDBConnection.connect], async (req, res, next) => {
+    try{ 
+        const result  = await getParties(req, 1); 
+        res.status(200).json(result); 
+    } catch (err) {
+        console.log('Error /company/saved_logo/parties/all', err)
+        res.status(500).send("Error while retrieving data"); 
+    }
+})
+
 
 /**
  * Account Parties
  */
 
  route.get("/company/parties/all/:id", [authJWT.verifyToken, authJWT.isAdmin, authJWT.addClientID, clientDBConnection.connect], async (req, res, next) => {
-    try{
-
-        const customerID = req.params.id;
-        const { portfolios, sort_by, sort_direction, rows_per_page, current_page, assignee_id } = req.query
-        let representativeIDs = JSON.parse(portfolios != undefined ? portfolios : "[]");
-        let list = [],   total_records = 0;
-        if(customerID > 0) { 
-            if(representativeIDs.length == 0) {
-                representativeIDs = await getAllCompanyIDs(req)
-            }
-            console.log("ALL", representativeIDs)
-            let queryParties = `Select partyName FROM (SELECT IF(r.representative_name <> '', r.representative_name, aaa.name) AS partyName FROM (  SELECT apt.assignor_and_assignee_id FROM db_new_application.activity_parties_transactions AS apt LEFT JOIN db_uspto.inventors AS inv ON inv.assignor_and_assignee_id = apt.assignor_and_assignee_id WHERE activity_id IN (:activityID) AND (organisation_id = :organisationID OR organisation_id IS NULL) `;
-
-            if(representativeIDs.length > 0) {
-                queryParties += `AND company_id IN (:representativeIDs) `
-            }
-
-            queryParties += ` AND date_format(apt.exec_dt, '%Y') > :year AND inv.assignor_and_assignee_id IS NULL GROUP BY apt.assignor_and_assignee_id ) AS temp INNER JOIN db_uspto.assignor_and_assignee AS aaa ON aaa.assignor_and_assignee_id = temp.assignor_and_assignee_id LEFT JOIN db_uspto.representative AS r ON r.representative_id = aaa.representative_id ) AS temp GROUP BY partyName`; 
-
-            const partiesResult = await connection.applicationNew.query( queryParties,{
-                type: connection.Sequelize.QueryTypes.SELECT,
-                raw: true,
-                replacements: {organisationID: 0 /* customerID */, activityID: [1, 6, 2, 7, 3, 4, 5, 12, 9, 14, 8, 11, 15, 16, 17, 18], representativeIDs, year: 1998},
-                logging: console.log,
-            });
-
-            if(partiesResult.length > 0) {
-                const allParties = [], insertBulkRecord = []
-                const promise =  partiesResult.map( row => {
-                    allParties.push(row.partyName)
-                    insertBulkRecord.push({
-                        assignee_organization: row.partyName,
-                        assignee_query: row.partyName
-                    })
-                })
-                await Promise.all(promise)
-
-                const addBlukData = await AssigneeOrganizations.bulkCreate(insertBulkRecord, {ignoreDuplicates: true})
-
-                let queryPartiesAssignee = `SELECT ao.assignee_id, COUNT(ao.assignee_id) AS occurences, ao.assignee_organization, ao.assignee_query, ao.domain, ao.domain2, ao.domain3, IF(ao.api_logo <> "null", ao.api_logo, "") AS api_logo, IF(ao.api_logo1 <> "null", ao.api_logo1, "") AS api_logo1, IF(ao.api_logo2 <> "null", ao.api_logo2, "") AS api_logo2, IF(ao.api_logo3 <> "null", ao.api_logo3, "") AS api_logo3, IF(ao.api_logo4 <> "null", ao.api_logo4, "") AS api_logo4, IF(ao.api_logo5 <> "null", ao.api_logo5, "") AS api_logo5, IF(ao.api_logo6 <> "null", ao.api_logo6, "") AS api_logo6, IF(ao.api_logo7 <> "null", ao.api_logo7, "") AS api_logo7, IF(ao.api_logo8 <> "null", ao.api_logo8, "") AS api_logo8, IF(ao.api_logo9 <> "null", ao.api_logo9, "") AS api_logo9, without_square, image_url, '' AS img FROM assignee_organizations AS ao  
-                WHERE ao.assignee_organization IN (:allParties) AND ao.organisation_id = 0 ` 
-                if(assignee_id != undefined) {
-                    queryPartiesAssignee += ` AND ao.assignee_id = :assignee_id `
-                }  
-                queryPartiesAssignee += ` GROUP BY ao.assignee_id`
-
-                const recordsResult = await connection.applicationNew.query(`SELECT COUNT(*) as total_records FROM (${queryPartiesAssignee}) as temp`,{
-                    type: connection.Sequelize.QueryTypes.SELECT,
-                    raw: true,
-                    replacements: {allParties, assignee_id},
-                    logging: console.log,
-                    plain: true
-                });
-
-                if(recordsResult !== null) {
-                    total_records = recordsResult.total_records
-                }
-                
-                queryPartiesAssignee += ` ORDER BY   ${typeof sort_by !== "undefined" ? sort_by : "occurences "} ${typeof sort_direction !== "undefined" ? sort_direction : "desc "} `
-    
-    
-                queryPartiesAssignee += ` LIMIT  ${typeof current_page !== "undefined" ? current_page * rows_per_page + ", " : " 0, "} ${typeof rows_per_page !== "undefined" ? rows_per_page : " 50 "} `
-                
-                list = await connection.applicationNew.query(queryPartiesAssignee,{
-                        type: connection.Sequelize.QueryTypes.SELECT,
-                        raw: true,
-                        replacements: {allParties, assignee_id},
-                        logging: console.log,
-                    }
-                );
-            } 
-        }
-        res.status(200).json({list, total_records});
+    try{ 
+        const result  = await getParties(req); 
+        res.status(200).json(result); 
     } catch (e) {
-        console.log('Error', e)
+        console.log('Error /company/parties/all', err)
+        res.status(500).send("Error while retrieving data"); 
     }
 })
 
