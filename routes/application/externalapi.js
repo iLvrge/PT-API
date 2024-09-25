@@ -146,7 +146,7 @@ async function processPatentResponse(responseBody, asset) {
         return { counter: 0, list: [] };
     }
 
-    const allAssignee = [], assigneeNameMissing = [], individualList = [], citationEvents = [];
+    let allAssignee = [], assigneeNameMissing = [], individualList = [], citationEvents = [];
     
     helper.saveMissingData(responseBody, asset);
     
@@ -163,10 +163,11 @@ async function processPatentResponse(responseBody, asset) {
         
         // Add citation events
         if (itemAssignees.length > 0) {
-            itemAssignees.forEach(assignee => addCitationEvent(citationEvents, item, assignee, appDate));
+            allAssignee = [...allAssignee, ...itemAssignees];
+            itemAssignees.forEach(assignee => addCitationEvent(citationEvents, item, assignee, itemAssignees, appDate));
         } else {
             assigneeNameMissing.push(item.patent_number);
-            addCitationEvent(citationEvents, item, '', appDate);
+            addCitationEvent(citationEvents, item, '', [], appDate);
         }
     });
 
@@ -216,7 +217,7 @@ function getAppDate(item) {
 }
 
 
-function addCitationEvent(citationEvents, item, assignee, appDate) {
+function addCitationEvent(citationEvents, item, assignee, allAssignee, appDate) {
     citationEvents.push({
         id: uuidv4(),
         start: appDate,
@@ -226,7 +227,7 @@ function addCitationEvent(citationEvents, item, assignee, appDate) {
         combined: item.patent_num_combined_citations,
         logo: '',
         assignee,
-        all_assignee: item.assignees
+        all_assignee: allAssignee
     });
 }
 
@@ -247,7 +248,9 @@ async function fetchMissingAssignees(assigneeNameMissing, citationEvents, allAss
         const index = citationEvents.findIndex(c => c.number === row.grant_doc_num);
         if (index !== -1) {
             const event = citationEvents[index];
-            event.assignee = event.all_assignee.length === 0 ? row.name : [...event.all_assignee, row.name];
+            event.assignee = row.name; 
+            event.all_assignee = event.all_assignee.length === 0 ? [row.name] : [...event.all_assignee, row.name];
+            citationEvents[index] = event
             allAssignee.push(row.name);
         }
     });
