@@ -74,9 +74,15 @@ const slackConfig = {
     botToken: process.env.SLACK_BOT_TOKEN
 }
 
+const microsoftConfig = {
+    clientID: process.env.MICROSOFT_CLIENT_ID,
+    clientSecret: process.env.MICROSOFT_SECRET_KEY, 
+    tenantId: process.env.MICROSOFT_TENANT_ID,
+}
+
 const DEFAULT_LIMIT = 100;
 const DEFAULT_YEAR = moment(new Date()).subtract(24, 'year').format('YYYY');
 
-const db = { Sequelize, Op, application, applicationNew, resources, business, maintainence, biblioGrant, biblioApplication, config, bucketConfig, slackConfig, DEFAULT_LIMIT, DEFAULT_YEAR };
+const db = { Sequelize, Op, application, applicationNew, resources, business, maintainence, biblioGrant, biblioApplication, config, bucketConfig, slackConfig, microsoftConfig, DEFAULT_LIMIT, DEFAULT_YEAR };
 
 module.exports = db;

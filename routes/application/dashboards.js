@@ -57,7 +57,7 @@ const getOwnedAssets = async( req ) => {
         const replacements = {
             organisationID: 0 /* req.orgId */,
             selectedCompanies,
-            type: 30
+            type: req?.type ? req.type : req?.layoutID ? req.layoutID : 30
         }
         if(req.orgType == 2) {
             replacements.mode = 1
@@ -359,9 +359,16 @@ route.post('/parties', [authJWT.verifyToken, clientDBConnection.connect], async(
 
                 where.activityID = type == 'lenders' ? [5, 12] : [3, 4]
                 where.layoutID = 15
-                subQuery = `SELECT appno_doc_num FROM assets WHERE organisation_id = :organisationID AND company_id IN (:selectedCompanies) AND layout_id = :layoutID`;
+
+                req.layoutID = layoutID
+                const getAssets = await getOwnedAssets(req)
+                where.list = [...getAssets]
+                subQuery = `:list`;
+                //subQuery = `SELECT appno_doc_num FROM assets WHERE organisation_id = :organisationID AND company_id IN (:selectedCompanies) AND layout_id = :layoutID`;
             }  else {
-                subQuery = `SELECT application COLLATE utf8mb4_0900_ai_ci FROM dashboard_items WHERE organisation_id = :organisationID AND representative_id IN (:selectedCompanies) AND type = :layoutID` 
+                //subQuery = `SELECT application COLLATE utf8mb4_0900_ai_ci FROM dashboard_items WHERE organisation_id = :organisationID AND representative_id IN (:selectedCompanies) AND type = :layoutID` 
+                
+
                 if(layoutID == 15 && total == list.length) {    
                     subQuery = `:list`;
                     where.list = list;
@@ -380,8 +387,13 @@ route.post('/parties', [authJWT.verifyToken, clientDBConnection.connect], async(
                         getRepresentativeName = await helpers.findCompanyName(req.connection_db, [companyData.representative_id])
                     }
     
-                } else if(typeof search != 'undefined' && search == 'all') {
+                } /* else if(typeof search != 'undefined' && search == 'all') {
                     subQuery = `SELECT appno_doc_num FROM assets WHERE (organisation_id = :organisationID OR organisation_id IS NULL) AND company_id IN (:selectedCompanies) AND layout_id = :layoutID`;
+                } */ else {
+                    req.layoutID = layoutID
+                    const getAssets = await getOwnedAssets(req)
+                    where.list = [...getAssets]
+                    subQuery = `:list`;
                 }
             }
             
