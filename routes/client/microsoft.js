@@ -20,6 +20,7 @@ const   jwt = require('jsonwebtoken'),
 
  
 const {  Client  } = require("@microsoft/microsoft-graph-client");
+const { error } = require("winston");
 require('isomorphic-fetch');
 const TEAMNAME = 'PatenTrack'
 /* const getAuthenticatedClient = async(accessToken) => {  
@@ -108,9 +109,12 @@ route.get('/team', [authJWT.verifyToken, microsoftTokenMiddleware], async (req, 
             message: teamId ? "Team found" : "Team not found",
             teamId
         }); 
-    } catch (err) {
-        console.error(err);
-        res.status(500).send("Error retrieving teams");
+    } catch (err) { 
+        if(err.code == "InvalidAuthenticationToken") {
+            res.status(401).send("Refresh microsoft token");
+        } else {
+            res.status(500).send("Error retrieving teams");
+        } 
     }
 }); 
 
@@ -308,23 +312,82 @@ route.get('/channel/:teamID/:name', [authJWT.verifyToken, microsoftTokenMiddlewa
     }
 }) 
 
+const getChannelFilesFolder = async (client, teamId, channelId, maxRetries = 5, delay = 5000) => {
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+      try {
+        // Attempt to get the channel's files folder
+        const folder = await client.api(`/teams/${teamId}/channels/${channelId}/filesFolder`).get();
+        console.log("Channel's files folder is ready:", folder);
+        return folder; // Return the folder if ready
+      } catch (error) {
+        if (error.message.includes("Folder location for this channel is not ready yet")) {
+          console.warn(`Attempt ${attempt} - Folder not ready. Retrying in ${delay / 1000} seconds...`);
+          
+          if (attempt < maxRetries) {
+            await new Promise(resolve => setTimeout(resolve, delay)); // Wait before retrying
+          } else {
+            throw new Error("Max retries reached. Folder is still not ready.");
+          }
+        } else {
+          throw error; // Throw if it's an unexpected error
+        }
+      }
+    }
+  };
+
+route.get('/:teamId/channels/:channelId/filesFolder', [authJWT.verifyToken, microsoftTokenMiddleware], async(req, res) => {
+    try {
+        const {teamId, channelId} = req.params
+        
+        const client  =  getAuthenticatedClient(req.microsoftTokens.accessToken) 
+        const folder = await getChannelFilesFolder(client, teamId, channelId); 
+        res.status(200).json({ folder });  
+    } catch (err) {
+        console.log('channel files folder', err)
+        res.status(500).json({ error: 'An error occurred while retreiving channel files folder.' });
+    }
+})
+
 const uploadFileToChannel = async(client, teamId, channelId, fileContent, fileName, mimeType) => {
-    const uploadUrl = `https://graph.microsoft.com/v1.0/teams/${teamId}/channels/${channelId}/filesFolder`;
-  
+    console.log("I am in uploadFileToChannel");
+
+    /* let driveItem = await client.api('/me/drive/root')
+	.get();
+    console.log('driveItem', driveItem)
+
+    let groups = await client.api('/groups')
+	.get();
+
+    console.log('groups', groups) */
+
+    /* const site = await client.api(`/sites/root`).get();
+    console.log('site', site)
+    const siteId = site.id; */
+    
+
+    // Fetch the SharePoint site ID for the team
+    /* const siteTeam = await client.api(`/teams/${teamId}/group/sites/root`).get();
+    console.log('site', siteTeam)
+    const siteId = siteTeam.id; */
+
     // Fetch the folder where to upload
-    const folderResponse = await client.api(uploadUrl).get();
+    const folderResponse = await getChannelFilesFolder(client, teamId, channelId);
+    console.log('folderResponse', folderResponse);
+
     const folderId = folderResponse.id;
-  
-    // Construct the upload URL
-    const uploadFileUrl = `https://graph.microsoft.com/v1.0/sites/${teamId}/drive/items/${folderId}:/${fileName}:/content`;
-  
+
+    // Construct the upload URL using siteId
+    // const uploadFileUrl = `https://graph.microsoft.com/v1.0/sites/${siteId}/drive/items/${folderId}:/${fileName}:/content`;
+
+    const uploadFileUrl = `https://graph.microsoft.com/v1.0/drives/${folderResponse.parentReference.driveId}/items/${folderId}:/${fileName}:/content`;
+
     // Upload the file
     const uploadResponse = await client
-      .api(uploadFileUrl)
-      .put(fileContent, { headers: { 'Content-Type': mimeType } });
-  
+        .api(uploadFileUrl)
+        .put(fileContent, { headers: { 'Content-Type': mimeType } });
+
     console.log('File uploaded successfully:', uploadResponse);
-    return uploadResponse.id;  
+    return uploadResponse;
 }
 
 const sendMessageToChannel = async(client, teamId, channelId, messageContent, remote_file, edit, reply, user, req) => {
@@ -335,21 +398,23 @@ const sendMessageToChannel = async(client, teamId, channelId, messageContent, re
                 content: messageContent,
             },
         };
-
+        console.log('sendMessageChannel', client, teamId, channelId, messageContent, remote_file, edit, reply, user)
         if(remote_file != '' && remote_file != null && remote_file != undefined) {
             let remoteFiles = JSON.parse(remote_file)
             if(remoteFiles.length > 0) {
                 let attachments = [];
-                files.map( async file => {
+                files.map( (file, index)  => {
+                    message.body.content += ` <attachment id="${index}"></attachment>` 
                     attachments.push({
+                        id: index,
                         contentType: file.mimeType,
                         content: {
                             title: file.name,
                             subtitle: 'Click to view the document',
                             buttons: [
                             {
-                              title: file.name,
-                              value: file.webViewLink,
+                                title: file.name,
+                                value: file.webViewLink,
                             }]
                         }
                     })
@@ -359,15 +424,22 @@ const sendMessageToChannel = async(client, teamId, channelId, messageContent, re
         } 
 
         if(user != null && user != '') {
-            const mention = [{
-                id: 0,  
-                mentionText: `<at>${user.userDisplayName}</at>`, 
-                mentioned: {
-                  id: user.userId,
-                  name: user.userDisplayName  
-                }
-            }]
-            message.mentions = mention
+            const getUser = await getUsersInTeam(client, teamId)
+            const findUser = getUser.findIndex(item => item.userId = user)
+            console.log('findUser', findUser)
+            if(findUser != -1) {
+                const mention = [{
+                    id: 0,  
+                    mentionText: getUser[findUser].displayName, 
+                    mentioned: {
+                        user: {
+                            id: user,
+                            name:getUser[findUser].displayName  
+                        }
+                    }
+                }]
+                message.mentions = mention
+            } 
         }
 
         if(req.files != null && req.files != undefined && req.files.file != undefined) { 
@@ -375,16 +447,16 @@ const sendMessageToChannel = async(client, teamId, channelId, messageContent, re
             const fileName = req.files.file.name.replace(/\s+/g, '-')
             const fileContent = req.files.file.data
             if(mimeType != null && mimeType != '' && mimeType.toLowerCase().indexOf('.exe') < 0){
-                const attachmentId = await uploadFileToChannel(client, teamId, channelId, fileContent, fileName, mimeType)
+                const fileUploaded = await uploadFileToChannel(client, teamId, channelId, fileContent, fileName, mimeType)
 
-                if(attachmentId) {
-                    message.body.content += ` <a href="https://graph.microsoft.com/v1.0/teams/${teamId}/channels/${channelId}/files/${attachmentId}">View Attachment</a>` 
+                if(fileUploaded) {
+                    message.body.content += ` <attachment id="${fileUploaded.id}"></attachment>` 
 
                     message.attachments = [
                         {
-                            id: attachmentId,
-                            name: fileName,
-                            contentType: mimeType
+                            id: fileUploaded.id,
+                            contentType: 'reference',
+                            contentUrl: fileUploaded.webUrl
                         }
                     ]
                 }
@@ -395,7 +467,7 @@ const sendMessageToChannel = async(client, teamId, channelId, messageContent, re
         if((edit != null && edit === true) && reply != null && reply != '') {
             sendMessageURl = `/teams/${teamId}/channels/${channelId}/messages/${reply}/replies` 
         } 
-  
+        console.log('message---', message)
         const response = await client
             .api(`/teams/${teamId}/channels/${channelId}/messages`)
             .post(message); 
@@ -452,8 +524,11 @@ route.get('/:teamId/channels/:channelId/messages', [authJWT.verifyToken,  micros
         const members = await getUsersInTeam(client, teamId)
         res.status(200).json({messages, users: members });
     } catch (err) {
-        console.error('Error in route handler:', err);
-        res.status(500).json({ error: 'An error occurred sending message.' });
+        if(err.code == "InvalidAuthenticationToken") {
+            res.status(401).send("Refresh microsoft token");
+        } else {
+            res.status(500).json('An error occurred while retreiving message.');
+        } 
     }
 });
 
@@ -479,8 +554,11 @@ route.get('/:teamId/channels', [authJWT.verifyToken,  microsoftTokenMiddleware],
         const channels = await getAllChannels(client, teamId) 
         res.status(200).json(channels);
     } catch (err) {
-        console.error('Error in route handler:', err);
-        res.status(500).json({ error: 'An error occurred while reteieving channels.' });
+        if(err.code == "InvalidAuthenticationToken") {
+            res.status(401).send("Refresh microsoft token");
+        } else {
+            res.status(500).send("An error occurred while reteieving channels");
+        } 
     }
 });
 
@@ -492,8 +570,11 @@ route.get('/:teamId/users', [authJWT.verifyToken,  microsoftTokenMiddleware],  a
         const members = await getUsersInTeam(client, teamId)
         res.status(200).json(members);
     } catch (err) {
-        console.error('Error in route handler:', err);
-        res.status(500).json({ error: 'An error occurred sending message.' });
+        if(err.code == "InvalidAuthenticationToken") {
+            res.status(401).send("Refresh microsoft token");
+        } else {
+            res.status(500).json('An error occurred while retreiving team members.');
+        }
     }
 });
 
