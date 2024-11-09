@@ -369,7 +369,7 @@ route.post('/parties', [authJWT.verifyToken, clientDBConnection.connect], async(
                 //subQuery = `SELECT application COLLATE utf8mb4_0900_ai_ci FROM dashboard_items WHERE organisation_id = :organisationID AND representative_id IN (:selectedCompanies) AND type = :layoutID` 
                 
 
-                if(layoutID == 15 && total == list.length) {    
+                if(layoutID == 15 && total > 0 && total == list.length) {    
                     subQuery = `:list`;
                     where.list = list;
     
@@ -393,7 +393,9 @@ route.post('/parties', [authJWT.verifyToken, clientDBConnection.connect], async(
                     req.layoutID = layoutID
                     const getAssets = await getOwnedAssets(req)
                     where.list = [...getAssets]
-                    subQuery = `:list`;
+                    if(getAssets.length > 0) { 
+                        subQuery = `:list`;
+                    }
                 }
             }
             
@@ -404,26 +406,30 @@ route.post('/parties', [authJWT.verifyToken, clientDBConnection.connect], async(
                 LEFT JOIN db_uspto.representative As r ON r.representative_id = aaa.representative_id WHERE appno_doc_num IN (${subQuery}) GROUP BY aaa.assignor_and_assignee_id ) AS temp GROUP BY name HAVING assignee <> name ORDER BY number DESC, name ASC `
             } else {
 
-                query += `SELECT assignor_and_assignee_id AS id, name, assignee, SUM(app_count) as number FROM (SELECT aaa.assignor_and_assignee_id, aaa.representative_id, (CASE  WHEN apt.activity_id = 10 THEN "Employees" WHEN r.representative_name <> "" THEN r.representative_name ELSE aaa.name END) AS name, COUNT(DISTINCT appno_doc_num) AS app_count, "${getRepresentativeName.representative_name}" as assignee  FROM db_new_application.activity_parties_transactions AS apt
-                INNER JOIN db_uspto.documentid AS doc ON doc.rf_id = apt.rf_id
-                INNER JOIN db_uspto.assignor_and_assignee AS aaa ON aaa.assignor_and_assignee_id = apt.assignor_and_assignee_id
-                LEFT JOIN db_uspto.representative As r ON r.representative_id = aaa.representative_id
-                WHERE (apt.organisation_id = :organisationID  OR apt.organisation_id IS NULL) ` 
-
-                if(selectedCompanies.length > 0) {
-                    query += ` AND apt.company_id IN (:selectedCompanies) `
+                if(subQuery != '') { 
+                    query += `SELECT assignor_and_assignee_id AS id, name, assignee, SUM(app_count) as number FROM (SELECT aaa.assignor_and_assignee_id, aaa.representative_id, (CASE  WHEN apt.activity_id = 10 THEN "Employees" WHEN r.representative_name <> "" THEN r.representative_name ELSE aaa.name END) AS name, COUNT(DISTINCT appno_doc_num) AS app_count, "${getRepresentativeName.representative_name}" as assignee  FROM db_new_application.activity_parties_transactions AS apt
+                    INNER JOIN db_uspto.documentid AS doc ON doc.rf_id = apt.rf_id
+                    INNER JOIN db_uspto.assignor_and_assignee AS aaa ON aaa.assignor_and_assignee_id = apt.assignor_and_assignee_id
+                    LEFT JOIN db_uspto.representative As r ON r.representative_id = aaa.representative_id
+                    WHERE (apt.organisation_id = :organisationID  OR apt.organisation_id IS NULL) ` 
+    
+                    if(selectedCompanies.length > 0) {
+                        query += ` AND apt.company_id IN (:selectedCompanies) `
+                    }
+    
+                    query += ` AND activity_id IN (:activityID) AND date_format(doc.appno_date, '%Y') > :year AND appno_doc_num IN (${subQuery})
+                    GROUP BY aaa.assignor_and_assignee_id) AS temp GROUP BY name HAVING assignee <> name ORDER BY number DESC, name ASC ` 
                 }
 
-                query += ` AND activity_id IN (:activityID) AND date_format(doc.appno_date, '%Y') > :year AND appno_doc_num IN (${subQuery})
-                GROUP BY aaa.assignor_and_assignee_id) AS temp GROUP BY name HAVING assignee <> name ORDER BY number DESC, name ASC ` 
             } 
-
-            getList =  await connection.applicationNew.query(query,{
-                type: connection.Sequelize.QueryTypes.SELECT,
-                raw: true,
-                logging: console.log,
-                replacements: where
-            })
+            if(query != '') { 
+                getList =  await connection.applicationNew.query(query,{
+                    type: connection.Sequelize.QueryTypes.SELECT,
+                    raw: true,
+                    logging: console.log,
+                    replacements: where
+                })
+            }
         }
         
         res.status(200).json(getList);
