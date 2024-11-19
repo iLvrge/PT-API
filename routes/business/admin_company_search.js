@@ -1211,11 +1211,12 @@ route.get("/company/lender", [authJWT.verifyToken, authJWT.isAdmin], async (req,
 });
 
 route.get("/company/lenders/:id/companies", [authJWT.verifyToken, authJWT.isAdmin], async (req, res, next) => {
-    try{
-        const {id} = req.params
+    try{ 
         let querySearchResult = []
 
-        const query = `SELECT assignor_and_assignee_id FROM db_uspto.assignor_and_assignee AS assignor_and_assignee WHERE assignor_and_assignee.representative_id IN (SELECT representative.representative_id FROM db_uspto.representative AS representative INNER JOIN db_uspto.assignor_and_assignee AS assignor_and_assignee ON representative.representative_id = assignor_and_assignee.representative_id WHERE assignor_and_assignee.assignor_and_assignee_id = :assignor_and_assignee_id) AND assignor_and_assignee.representative_id > 0 GROUP BY assignor_and_assignee_id`
+        let id = JSON.parse(req.params.id)
+
+        const query = `SELECT assignor_and_assignee_id FROM db_uspto.assignor_and_assignee AS assignor_and_assignee WHERE assignor_and_assignee.representative_id IN (SELECT representative.representative_id FROM db_uspto.representative AS representative INNER JOIN db_uspto.assignor_and_assignee AS assignor_and_assignee ON representative.representative_id = assignor_and_assignee.representative_id WHERE assignor_and_assignee.assignor_and_assignee_id IN (:assignor_and_assignee_id)) AND assignor_and_assignee.representative_id > 0 GROUP BY assignor_and_assignee_id`
 
         const findAllLenders = await connection.resources.query(query,{
                 type: connection.Sequelize.QueryTypes.SELECT,
