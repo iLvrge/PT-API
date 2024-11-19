@@ -2857,7 +2857,43 @@ route.get("/:layout/parties", [authJWT.verifyToken, clientDBConnection.connect],
             }
             res.status(200).json(parties);
         } else {
-            connection.applicationNew.query("CALL `routine_parties`(:companies, :organisationID, :tabs, :layoutID, :customerType);",{
+            const queryParties = `SELECT *, sum(totalTransactions) OVER (ORDER BY id) AS grand_total, sum(totalAssets) OVER (ORDER BY id) AS grand_total_assets FROM (
+                SELECT id, entityName, totalTransactions, (SELECT COUNT(*) FROM 
+                    (SELECT appno_doc_num FROM db_uspto.documentid WHERE rf_id IN (totalIDs) GROUP BY appno_doc_num ) AS temp) AS totalAssets FROM(
+                    SELECT id , entityName, group_concat(DISTINCT rfID) AS totalIDs, COUNT(DISTINCT rfID) AS totalTransactions  FROM (
+            
+            SELECT activity_parties_transactions.assignor_and_assignee_id AS id, 
+                    IF(representative.representative_name <> '', representative.representative_name, assignor_and_assignee.name) AS entityName, 
+                    activity_parties_transactions.rf_id AS rfID 
+                    FROM db_new_application.activity_parties_transactions AS activity_parties_transactions
+                    INNER JOIN db_uspto.assignor_and_assignee AS assignor_and_assignee ON assignor_and_assignee.assignor_and_assignee_id = activity_parties_transactions.assignor_and_assignee_id
+                    LEFT JOIN db_uspto.representative AS representative ON representative.representative_id = assignor_and_assignee.representative_id
+                    WHERE activity_parties_transactions.company_id IN (:companies)  AND activity_parties_transactions.organisation_id = :organisationID
+                    AND activity_parties_transactions.rf_id IN (
+                        SELECT documentid.rf_id FROM db_uspto.documentid AS documentid
+                        INNER JOIN db_new_application.assets AS assets  ON assets.appno_doc_num = documentid.appno_doc_num AND assets.grant_doc_num = documentid.grant_doc_num 
+                        WHERE assets.layout_id = :layoutID AND activity_parties_transactions.company_id IN (125616)
+                        AND assets.organisation_id = :organisationID	
+                        GROUP BY documentid.rf_id
+                    )
+                    AND ${tabs != '' ? 'activity_parties_transactions.activity_id IN (:tabs)' : 'activity_parties_transactions.activity_id > 0 ' } 
+                    AND ${replacements.customerType == 1 ? ' activity_parties_transactions.activity_id = 10 ' : ' activity_parties_transactions.activity_id <> 10 '}
+                    GROUP BY entityName, rfID
+                    ) AS party GROUP BY entityName
+                ) AS temp1) AS temp2`;
+                
+            const result = await connection.applicationNew.query(queryParties, {
+                type: connection.Sequelize.QueryTypes.SELECT,
+                raw: true,
+                logging: console.log,
+                replacements: replacements,
+            })
+            if (result) {
+                parties.list = result
+                parties.total_records = parties.list.length
+            }
+            res.status(200).json(parties);
+            /* connection.applicationNew.query("CALL `routine_parties`(:companies, :organisationID, :tabs, :layoutID, :customerType);",{
                 type: connection.Sequelize.QueryTypes.SELECT,
                 raw: true,
                 logging: console.log,
@@ -2869,7 +2905,7 @@ route.get("/:layout/parties", [authJWT.verifyToken, clientDBConnection.connect],
                     parties.total_records = parties.list.length
                 }
                 res.status(200).json(parties);
-            })
+            }) */
         }
         
         
