@@ -399,7 +399,17 @@ route.get("/timeline", [authJWT.verifyToken], async(req, res, next) => {
         if(query != '') {
 
             if(['acquisition_transactions', 'divestitures_transactions', 'licensing_transactions', 'collateralization_transactions', 'litigation_transactions', 'due_dilligence', 'collaterlized', 'deflated_collaterals'].includes(layout)) {
-                query = `SELECT temp.*, ao.logo_optimize AS logo FROM (${query}) AS temp LEFT JOIN db_new_application.organisations AS ao ON ao.organisation_name COLLATE utf8mb4_general_ci = temp.customerName COLLATE utf8mb4_general_ci OR (REPLACE(REPLACE(ao.organisation_name, ',', ''), '.', '') COLLATE utf8mb4_general_ci = REPLACE(REPLACE(temp.customerName, ',', ''), '.', '') COLLATE utf8mb4_general_ci)`
+                query = `
+                        SELECT temp.*, ao.logo_optimize AS logo 
+                        FROM (${query}) AS temp 
+                        LEFT JOIN db_new_application.organisations AS ao 
+                        ON ao.organisation_name COLLATE utf8mb4_general_ci = temp.customerName COLLATE utf8mb4_general_ci 
+                        OR (REPLACE(REPLACE(ao.organisation_name, ',', ''), '.', '') COLLATE utf8mb4_general_ci = 
+                            REPLACE(REPLACE(temp.customerName, ',', ''), '.', '') COLLATE utf8mb4_general_ci)
+                        OR (REPLACE(ao.organisation_name, 'Corporation', 'Corp') COLLATE utf8mb4_general_ci = 
+                            REPLACE(temp.customerName, 'Corporation', 'Corp') COLLATE utf8mb4_general_ci)
+                    `;
+
             } 
 
             list =  await connection.applicationNew.query(query, {

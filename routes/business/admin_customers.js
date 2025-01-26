@@ -887,7 +887,7 @@ route.delete("/customers/:id/companies", [authJWT.verifyToken, authJWT.isAdmin, 
                                 if(findPCompanies.length > 0) {
                                     const promiseAddRFIDs = findPCompanies.map(async (company, index) => {
                                         console.log(`php -f ${process.env.SCRIPT_PATH}add_representative_rfids.php "${req.orgId}" "${company.company_id}"`);
-                                        await exec(`php -f ${process.env.SCRIPT_PATH}add_representative_rfids.php "${req.orgId}" "${company.company_id}"`, async (error, std, stderr) => {
+                                        await exec(`screen -md php -f ${process.env.SCRIPT_PATH}add_representative_rfids.php "${req.orgId}" "${company.company_id}"`, async (error, std, stderr) => {
                                             /*await exec(`php -f /var/www/html/trash/tree_script_client.php "${company.original_name}"`, async (error, stdout, stderr) => {
 
                                             });*/
@@ -896,7 +896,7 @@ route.delete("/customers/:id/companies", [authJWT.verifyToken, authJWT.isAdmin, 
                                             console.log(stderr);
 
 
-                                            exec(`php -f ${process.env.SCRIPT_PATH}create_data_for_company_db_application.php "${req.orgId}" "${company.company_id}"`, (error, stdd, stderr)=> {
+                                            exec(`screen -md php -f ${process.env.SCRIPT_PATH}create_data_for_company_db_application.php "${req.orgId}" "${company.company_id}"`, (error, stdd, stderr)=> {
                                                 console.log("fill database ....")
                                                 console.log(error); 
                                                 console.log(stderr);
@@ -925,7 +925,7 @@ route.delete("/customers/:id/companies", [authJWT.verifyToken, authJWT.isAdmin, 
                              * Recreate KPI and Tree
                              */
                             console.log("DELETE");
-                            exec(`php -f ${process.env.SCRIPT_PATH}create_data_for_company_db_application.php "${req.orgId}" ""`, (error, stdd, stderr)=> {
+                            exec(`screen -md php -f ${process.env.SCRIPT_PATH}create_data_for_company_db_application.php "${req.orgId}" ""`, (error, stdd, stderr)=> {
                                 console.log("fill database ....")
                                 console.log(error); 
                                 console.log(stderr);
@@ -1361,11 +1361,10 @@ route.post("/customers/:id/users", [authJWT.verifyToken, authJWT.isAdmin, userEx
 
 route.put("/customers/:id/users/:user_id", [authJWT.verifyToken, authJWT.isAdmin, authJWT.addClientID, clientDBConnection.connect], async (req, res)=>{
     (async () => {
-        
+        const t = await connection.business.transaction();	
         try{
             let organisationID = req.params.id;
-            if(organisationID > 0){
-                const t = await connection.business.transaction();		
+            if(organisationID > 0){ 
                 const organisation  = await helpers.findOrganisationbyID(organisationID);
                 if(organisation != null && organisation.organisation_id > 0){
                     Users.findOne({
@@ -1855,7 +1854,7 @@ route.post("/customers", [authJWT.verifyToken, authJWT.isAdmin], async (req, res
                 })
                
                 console.log(`php -f ${process.env.SCRIPT_PATH}script_create_customer_db.php "${organisationID}"`);
-                exec(`php -f ${process.env.SCRIPT_PATH}script_create_customer_db.php "${organisationID}"`, async (error, std, stderr) => {
+                exec(`screen -md php -f  ${process.env.SCRIPT_PATH}script_create_customer_db.php "${organisationID}"`, async (error, std, stderr) => {
                     console.log("script_create_customer_db");
                     console.log(error);
                     console.log(stderr);
@@ -1966,11 +1965,11 @@ route.get("/customers/:organisation_id/flag_automatic", [authJWT.verifyToken, au
 
                 if(companyID.length > 0) {
                     if(companyID.length > 1) { 
-                        exec(`php -f ${process.env.SCRIPT_PATH}run_script_for_update_flag.php "${organisationID}" "${JSON.stringify(companyID)}"`, (error, stdout, stderr) => {  
+                        exec(`screen -md php -f  ${process.env.SCRIPT_PATH}run_script_for_update_flag.php "${organisationID}" "${JSON.stringify(companyID)}"`, (error, stdout, stderr) => {  
                             console.log(error, stdout, stderr);
                         });
                     } else {
-                        exec(`php -f ${process.env.SCRIPT_PATH}update_flag.php "${organisationID}" "${companyID[0]}"`, (error, stdout, stderr) => {  
+                        exec(`screen -md php -f ${process.env.SCRIPT_PATH}update_flag.php "${organisationID}" "${companyID[0]}"`, (error, stdout, stderr) => {  
                             console.log(error, stdout, stderr);
                         });
                     }
@@ -1982,7 +1981,7 @@ route.get("/customers/:organisation_id/flag_automatic", [authJWT.verifyToken, au
                     }) */
                 } else {
                     console.log(`php -f ${process.env.SCRIPT_PATH}update_flag.php "${organisationID}" ""`);
-                        exec(`php -f ${process.env.SCRIPT_PATH}update_flag.php "${organisationID}" ""`, (error, stdout, stderr) => {  
+                        exec(`screen -md php -f  ${process.env.SCRIPT_PATH}update_flag.php "${organisationID}" ""`, (error, stdout, stderr) => {  
                             console.log(error, stdout, stderr);
                         });
                 }
@@ -2008,8 +2007,8 @@ route.get("/customers/:organisation_id/transaction_missing_conveyance", [authJWT
             let org = await helpers.findOrganisationbyID( organisationID );
             if(org != null && org.organisation_id > 0) {
                 
-                console.log(`php -f ${process.env.SCRIPT_PATH}update_missing_type.php "${organisationID}" "${companyID}"`);
-                exec(`php -f ${process.env.SCRIPT_PATH}update_missing_type.php "${organisationID}" "${companyID}"`, (error, stdout, stderr) => {  
+                console.log(`screen -md php -f  ${process.env.SCRIPT_PATH}update_missing_type.php "${organisationID}" "${companyID}"`);
+                exec(`screen -md php -f  ${process.env.SCRIPT_PATH}update_missing_type.php "${organisationID}" "${companyID}"`, (error, stdout, stderr) => {  
                     console.log(error, stdout, stderr);
                 });
                 res.status(200).send("Fixing flag in process");
@@ -2040,8 +2039,8 @@ route.get("/customers/:organisation_id/:representative_id/missing_inventor", [au
                     .create({organisation_id: org.organisation_id, representative_id: req.params.representative_id, status: 0})
                     .then( data => {
                         console.log(data);
-                        console.log(`php -f /var/www/html/trash/find_missing_from_api_inventor_xml.php "${organisationID}" "${req.params.representative_id}"`);
-                        exec(`php -f /var/www/html/trash/find_missing_from_api_inventor_xml.php "${organisationID}" "${req.params.representative_id}"`, (error, stdout, stderr) => {  
+                        console.log(`screen -md php -f  /var/www/html/trash/find_missing_from_api_inventor_xml.php "${organisationID}" "${req.params.representative_id}"`);
+                        exec(`screen -md php -f  /var/www/html/trash/find_missing_from_api_inventor_xml.php "${organisationID}" "${req.params.representative_id}"`, (error, stdout, stderr) => {  
                             console.log(error, stdout, stderr);
                         });
                         res.status(200).send("Finding the number of assignment with missing inventor.");
@@ -2106,8 +2105,8 @@ route.get("/customers/:organisation_id/:representative_id/find_inventor", [authJ
                 .create({organisation_id: org.organisation_id, representative_id: req.params.representative_id})
                 .then( data => {
                     console.log(data);
-                    console.log(`php -f /var/www/html/trash/missing_inventor_from_api_2000_2004.php "${organisationID}" "${req.params.representative_id}"`);
-                    exec(`php -f /var/www/html/trash/missing_inventor_from_api_2000_2004.php "${organisationID}" "${req.params.representative_id}"`, (error, stdout, stderr) => {  
+                    console.log(`screen -md php -f  /var/www/html/trash/missing_inventor_from_api_2000_2004.php "${organisationID}" "${req.params.representative_id}"`);
+                    exec(`screen -md php -f  /var/www/html/trash/missing_inventor_from_api_2000_2004.php "${organisationID}" "${req.params.representative_id}"`, (error, stdout, stderr) => {  
                         console.log(error, stdout, stderr);
                     });
                     res.status(200).send("Finding the number of assignment with missing inventor from 2000-2004.");
@@ -2147,8 +2146,8 @@ route.get("/customers/:organisation_id/publish", [authJWT.verifyToken, authJWT.i
                 });
                 if(findUsers > 0) {
                     if(company_id.length == 0) {
-                        console.log(`php -f ${process.env.SCRIPT_PATH}create_data_for_company_db_application.php "${organisationID}"  ""`);
-                        exec(`php -f ${process.env.SCRIPT_PATH}create_data_for_company_db_application.php "${organisationID}"  ""`, async (error, stdout, stderr) => {  
+                        console.log(`screen -md php -f ${process.env.SCRIPT_PATH}create_data_for_company_db_application.php "${organisationID}"  ""`);
+                        exec(`screen -md php -f ${process.env.SCRIPT_PATH}create_data_for_company_db_application.php "${organisationID}"  ""`, async (error, stdout, stderr) => {  
                                                 
                         });
                         res.status(200).send("UPDATED!");   
@@ -2163,8 +2162,8 @@ route.get("/customers/:organisation_id/publish", [authJWT.verifyToken, authJWT.i
                         ); */ 
                         if(Array.isArray(company_id) && company_id.length > 0) {
                             company_id.map( async company => { 
-                                console.log(`php -f ${process.env.SCRIPT_PATH}create_data_for_company_db_application.php "${organisationID}"  "${company}" "1"`)
-                                exec(`php -f ${process.env.SCRIPT_PATH}create_data_for_company_db_application.php "${organisationID}"  "${company}" "1"`, async (error, stdout, stderr) => {   
+                                console.log(`screen -md php -f  ${process.env.SCRIPT_PATH}create_data_for_company_db_application.php "${organisationID}"  "${company}" "1"`)
+                                exec(`screen -md php -f ${process.env.SCRIPT_PATH}create_data_for_company_db_application.php "${organisationID}"  "${company}" "1"`, async (error, stdout, stderr) => {   
                                                          
                                 });
                             })
