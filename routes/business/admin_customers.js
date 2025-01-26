@@ -1361,11 +1361,10 @@ route.post("/customers/:id/users", [authJWT.verifyToken, authJWT.isAdmin, userEx
 
 route.put("/customers/:id/users/:user_id", [authJWT.verifyToken, authJWT.isAdmin, authJWT.addClientID, clientDBConnection.connect], async (req, res)=>{
     (async () => {
-        
+        const t = await connection.business.transaction();	
         try{
             let organisationID = req.params.id;
-            if(organisationID > 0){
-                const t = await connection.business.transaction();		
+            if(organisationID > 0){ 
                 const organisation  = await helpers.findOrganisationbyID(organisationID);
                 if(organisation != null && organisation.organisation_id > 0){
                     Users.findOne({
