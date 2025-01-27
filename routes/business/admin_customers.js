@@ -48,6 +48,8 @@ const Organisations = require("../../model/business/Organisations"),
 
     MissingInventorProcess = require("../../model/resources/MissingInventorProcess"),
 
+    Representatives = require("../../model/resources/Representatives"),
+
     authJWT = require("../../helpers/verifyJwtToken"),
 
     userExist = require("../../helpers/verifySignUp"),
@@ -992,26 +994,44 @@ route.get("/customers/:id/reports", [authJWT.verifyToken, authJWT.isAdmin, authJ
 });
 
 route.get("/customers/:id/run_update_log", [authJWT.verifyToken, authJWT.isAdmin, authJWT.addClientID, clientDBConnection.connect], async (req, res, next) => {
-    const organisationID = Number(req.params.id);
-    let reclassifyLog = null;
-    if (organisationID > 0) {
-        let { companies } = req.query;
-        if (companies) {
-            companies = JSON.parse(companies);
-        } else {
-            const getAllCompaniesList = await helpers.getCompaniesWithRepresentativeIDs(req.connection_db, organisationID);
+    try{
+        const organisationID = Number(req.params.id);
+        let updateLog = null;
+        if (organisationID > 0) {
+            let { companies } = req.query;
+            if (companies) {
+                companies = JSON.parse(companies);
+            } else {
+                const getAllCompaniesList = await helpers.getCompaniesWithRepresentativeIDs(req.connection_db, organisationID);
 
-            companies = getAllCompaniesList 
-                    .map(company => company.company_id);
+                companies = getAllCompaniesList 
+                        .map(company => company.company_id);
+            }
+            updateLog = await LogUpdateCompany.findAll({ 
+                where: {company_id: companies}, 
+                attributes: {
+                    include: [
+                        [
+                            connection.Sequelize.literal(`(
+                                SELECT r.representative_name AS representative_name
+                                FROM db_uspto.representative AS r
+                                WHERE r.representative_id = log_update_company.company_id
+                                LIMIT 1
+                            )`),
+                            'representative_name' // Alias for the subquery
+                        ]
+                    ],
+                },
+                order: [
+                    ['id', 'DESC']
+                ]
+            });
         }
-        reclassifyLog = await LogUpdateCompany.findAll({ 
-            where: {company_id: companies}, 
-            order: [
-                ['id', 'DESC']
-            ]
-        });
-    }
-    res.status(200).json(reclassifyLog);
+        res.status(200).json(updateLog);
+    } catch( err ) {
+        console.log(err);
+        res.status(400).send("Invalid inputs");
+    } 
 })
 
 route.delete("/customers/:id/run_update_log", [authJWT.verifyToken, authJWT.isAdmin, authJWT.addClientID, clientDBConnection.connect], async (req, res, next) => {
