@@ -1,5 +1,5 @@
 const Sentry = require("@sentry/node");
-const { nodeProfilingIntegration } = require("@sentry/profiling-node");
+/* const { nodeProfilingIntegration } = require("@sentry/profiling-node");
 
 // Ensure to call this before requiring any other modules!
 Sentry.init({
@@ -17,5 +17,5 @@ Sentry.init({
   // This is relative to tracesSampleRate
   profilesSampleRate: 1.0,
   debug: true, 
-});
+}); */
 // Sentry.captureException(new Error("Test error for Sentry"));
