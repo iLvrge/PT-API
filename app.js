@@ -1,4 +1,26 @@
 //Express server
+const consoleLog=console.log.bind(console);
+
+console.log = function(){
+    let lines=[''];
+    try {
+        throw new Error('console.log called from file');
+    } catch (e) {
+        lines= e.stack.split('\n');
+    }
+    consoleLog("console.log"+lines[2]);
+    consoleLog(...arguments);
+}
+
+    // if(arguments instanceof String){
+    //     if(arguments.length>0){
+    //         if(arguments[0].indexOf('Error')>-1){
+    //          debugger
+    //         }
+    //     }
+    // }
+// }
+
 require("./helpers/instrument"); 
 
 const express = require("express");
@@ -270,12 +292,14 @@ app.use((error, req, res, next)=>{
 });
 
 process.on('uncaughtException', (err) => {
+    console.log('Uncaught Exception:', err);
     logErrorToFile('--------uncaughtException----------');
     logErrorToFile(err); 
     // process.exit(1); 
 });
 
 process.on('unhandledRejection', (reason, promise) => {
+    console.log('Unhandled Rejection at:', promise, 'reason:', reason);
     logErrorToFile('--------unhandledRejection----------');
     logErrorToFile(reason);  
     Sentry.captureException(reason); 
@@ -284,8 +308,7 @@ process.on('unhandledRejection', (reason, promise) => {
 //listen function for Node / express
 const server = app.listen({port, host:'0.0.0.0'}, (err)=>{
     if(err){
-        logErrorToFile('--------Error in server----------');
-        logErrorToFile(err); 
+        console.log(err); 
     }
     console.log(`The server is running on port: ${port}`);
 })
@@ -293,6 +316,9 @@ const server = app.listen({port, host:'0.0.0.0'}, (err)=>{
 try{
     socket.connect(server); 
 } catch (err) {
+    console.log('--------Error in socket connect----------');
+    console.log(err);
     logErrorToFile('--------Error in socket connect----------');
     logErrorToFile(err);   
 } 
+
