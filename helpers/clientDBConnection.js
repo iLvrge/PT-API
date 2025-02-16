@@ -4,6 +4,17 @@ const Op = Sequelize.Op;
 
 const helpers = require("./helper");
 
+let clientDB; // Store the client DB connection
+
+const process = require('process');
+
+process.on('exit', (code) => {
+    if(clientDB) {
+        console.log(`Closing client DB connection`);
+        clientDB.close();
+    }
+});
+
 const connect = async(req, res, next) => {
     let { check } = req.body
     console.log("clientDBConnection connect", check);
@@ -21,24 +32,26 @@ const connect = async(req, res, next) => {
              */
             console.log('Got creating client DB connection')
             try{
-                const newConnection = new Sequelize(organisation.org_db, organisation.org_usr, organisation.org_pass, {
-                    host: organisation.org_host,
-                    dialect: 'mysql',
-                    operatorsAliases: Op,
-                   
-                    /*pool: {
-                        max: 100,
-                        min: 1,
-                        acquire: 1000000,
-                        idle: 5000
-                    }*/
-                });
-                req.connection_db = newConnection;
+                if (!clientDB) {
+                    clientDB = new Sequelize(organisation.org_db, organisation.org_usr, organisation.org_pass, {
+                        host: organisation.org_host,
+                        dialect: 'mysql',
+                        operatorsAliases: Op,
+                        pool: {
+                            max: 100,
+                            min: 1,
+                            acquire: 30000, // 30 seconds
+                            idle: 10000 // 10 seconds
+                        }
+                    });
+                }
+                req.connection_db = clientDB;
                 console.log('clientDBConnection Connected.........')
             }catch( err ){
                 console.log(err);
                 console.log("Unable to connect with client DB....");
                 req.connection_db = null;
+                clientDB = null; // Reset connection on error
             }
         } else {
             /**
@@ -62,21 +75,25 @@ const connectOnFly = async(orgID) => {
             if( organisation != null && organisation.organisation_id > 0) {
                 /**
                  * Make DB Connection
-                 */ 
-                newConnection = await new Sequelize(organisation.org_db, organisation.org_usr, organisation.org_pass, {
-                    host: organisation.org_host,
-                    dialect: 'mysql',
-                    /*pool: {
-                        max: 100,
-                        min: 1,
-                        acquire: 1000000,
-                        idle: 5000
-                    }*/
-                }); 
+                 */
+                if (!clientDB) {
+                    clientDB = new Sequelize(organisation.org_db, organisation.org_usr, organisation.org_pass, {
+                        host: organisation.org_host,
+                        dialect: 'mysql',
+                        pool: {
+                            max: 100,
+                            min: 1,
+                            acquire: 30000, // 30 seconds
+                            idle: 10000 // 10 seconds
+                        }
+                    });
+                }
+                newConnection = clientDB;
             }   
         }
     } catch (err) {
         console.log('Error in connectOnFly', err)
+        newConnection = null;
     }
     return newConnection
 }
@@ -87,5 +104,6 @@ clientDBConnection.connect = connect;
 clientDBConnection.connectOnFly = connectOnFly; 
 clientDBConnection.Sequelize = Sequelize;
 clientDBConnection.Op = Op;
+clientDBConnection.clientDB = clientDB;
   
 module.exports = clientDBConnection;
