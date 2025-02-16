@@ -21,6 +21,8 @@ const requestLogger = require('./helpers/requestLogger');
 
 const app = express();
  
+app.use(cors());
+
 app.use(Sentry.Handlers.requestHandler());
 app.use(Sentry.Handlers.errorHandler());
 
@@ -49,14 +51,14 @@ app.use(function(req, res, next) {
 }); */
 
 // enable cors
-app.use(
-    cors({
-        origin: '*',
-        exposedHeaders: '*',
-        optionsSuccessStatus: 200,
-        credentials: true,
-    })
-  );
+// app.use(
+//     cors({
+//         origin: '*',
+//         exposedHeaders: '*',
+//         optionsSuccessStatus: 200,
+//         credentials: true,
+//     })
+//   );
 /* app.options(
     '*',
     cors({
@@ -66,12 +68,12 @@ app.use(
         credentials: true,
     })
 ); */
-app.options('*', (req, res) => {
-    res.writeHead(200, '', {
-        'Access-Control-Allow-Origin': '*',
-        'Access-Control-Allow-Methods': 'OPTIONS',
-    }).end();
-});
+// app.options('*', (req, res) => {
+//     res.writeHead(200, '', {
+//         'Access-Control-Allow-Origin': '*',
+//         'Access-Control-Allow-Methods': 'OPTIONS',
+//     }).end();
+// });
 /* app.use((req, res, next) => { //doesn't send response just adjusts it
     res.header("Access-Control-Allow-Origin", "*") //* to give access to any origin
     res.header(
@@ -270,7 +272,7 @@ app.use((error, req, res, next)=>{
 process.on('uncaughtException', (err) => {
     logErrorToFile('--------uncaughtException----------');
     logErrorToFile(err); 
-    process.exit(1); 
+    // process.exit(1); 
 });
 
 process.on('unhandledRejection', (reason, promise) => {
@@ -280,7 +282,11 @@ process.on('unhandledRejection', (reason, promise) => {
 });
 
 //listen function for Node / express
-const server = app.listen({port, host:'0.0.0.0'}, ()=>{
+const server = app.listen({port, host:'0.0.0.0'}, (err)=>{
+    if(err){
+        logErrorToFile('--------Error in server----------');
+        logErrorToFile(err); 
+    }
     console.log(`The server is running on port: ${port}`);
 })
 
