@@ -1,0 +1,5 @@
+helpers/*.log
+name_to_domain_api_exceptions.log
+name_to_domain_api_rejections.log
+node_modules
+.env
