@@ -133,7 +133,7 @@ route.put("/collections/:collection_id", [authJWT.verifyToken, clientDBConnectio
 
             const collectionID = req.params.collection_id;
 
-            if(collectionID > 0) {
+            if(collectionID) {
 
                 const Collection = req.connection_db.define('Collections', Collections.mainStructure, Collections.options);
 
