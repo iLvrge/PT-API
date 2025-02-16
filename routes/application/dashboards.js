@@ -401,7 +401,7 @@ route.post('/parties', [authJWT.verifyToken, clientDBConnection.connect], async(
             
 
             let query = '' 
-            if(typeof type != 'undefined' && type == 'filled') {
+            if(typeof type != 'undefined' && type == 'filled' && subQuery != '') {
                 query += `SELECT assignor_and_assignee_id AS id, name, assignee, SUM(app_count) as number FROM ( SELECT aaa.assignor_and_assignee_id, aaa.representative_id, IF(r.representative_name <> "" , r.representative_name, aaa.name) AS name,  COUNT(DISTINCT appno_doc_num) AS app_count, "${getRepresentativeName.representative_name}" as assignee  FROM db_patent_grant_bibliographic.inventor_new  AS apt INNER JOIN db_patent_application_bibliographic.assignor_and_assignee AS aaa ON aaa.assignor_and_assignee_id = apt.assignor_and_assignee_id
                 LEFT JOIN db_uspto.representative As r ON r.representative_id = aaa.representative_id WHERE appno_doc_num IN (${subQuery}) GROUP BY aaa.assignor_and_assignee_id ) AS temp GROUP BY name HAVING assignee <> name ORDER BY number DESC, name ASC `
             } else {
