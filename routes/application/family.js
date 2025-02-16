@@ -420,7 +420,7 @@ const getFamilyDataFromXML = async(req) => {
                 }
             }
         }
-        console.log('getFamilyData', getFamilyData)
+        // console.log('getFamilyData', getFamilyData)
         if( getFamilyData !== '' ) {
             
             const parser = new xml2js.Parser
