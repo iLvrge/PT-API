@@ -354,7 +354,7 @@ let createJSON = async(itemDetails, rfID) => {
         }];
         
     }
-    let illustrationData = await {box: boxes, connection: connections, line: connections, all_boxes: box, legend: line, box_menu: { border_color:["#e8665d","#e8a41c","#c1ed0e","#ed0e2f"], background_color:["#fae3e3","#f5f5d7","#d7f0f5","#f5d7dc"]}, general:{"background": "#000000" ,patent_number:`${itemDetails.assignment.reel_no + "-" + itemDetails.assignment.frame_no} ${title}`, original_number: rfID, logo_1:"",logo_2:"",copyright:""},popup: popup,comment:"", fakeDate: fakeDate};
+    let illustrationData = await {box: boxes, connection: connections, line: connections, all_boxes: box, legend: line, box_menu: { border_color:["#e8665d","#e8a41c","#c1ed0e","#ed0e2f"], background_color:["#fae3e3","#f5f5d7","#d7f0f5","#f5d7dc"]}, general:{"background": "#000000" ,patent_number:`${itemDetails?.assignment?.reel_no + "-" + itemDetails?.assignment?.frame_no} ${title}`, original_number: rfID, logo_1:"",logo_2:"",copyright:""},popup: popup,comment:"", fakeDate: fakeDate};
 
     return illustrationData
 }
