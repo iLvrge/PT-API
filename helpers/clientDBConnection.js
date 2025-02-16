@@ -42,7 +42,17 @@ const connect = async(req, res, next) => {
                             min: 1,
                             acquire: 30000, // 30 seconds
                             idle: 10000 // 10 seconds
+                        },
+                        hooks: {
+                            // seems not working i'll keep it but anyway
+                            afterConnect: async (connection) => {
+                                connection.on('error', function(err){
+                                    console.log(err.stack);
+                                });
+                                // console.log('Connection to database established successfully.');
+                            },
                         }
+                        
                     });
                 }
                 req.connection_db = clientDB;
