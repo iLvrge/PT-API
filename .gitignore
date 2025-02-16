@@ -4,3 +4,12 @@ name_to_domain_api_rejections.log
 node_modules
 .env
 app_log.log
+
+
+# /node_modules
+# /src
+# .env*
+# *.log
+# *.out
+# .DS_Store 
+# package-lock.json
