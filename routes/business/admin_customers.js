@@ -1873,7 +1873,7 @@ route.post("/customers", [authJWT.verifyToken, authJWT.isAdmin], async (req, res
                 //     }
                 // })
                
-                const cmd = `php -f ${process.env.SCRIPT_PATH}script_create_customer_db.php "${organisationID}"`;
+                const cmd = `screen -md bash -c "source ~/.bash_exports php -f ${process.env.SCRIPT_PATH}script_create_customer_db.php "${organisationID}"`;
                 console.log("Running:", cmd);
 
                 exec(cmd, (error, stdout, stderr) => {
