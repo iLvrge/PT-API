@@ -1845,33 +1845,33 @@ route.post("/customers", [authJWT.verifyToken, authJWT.isAdmin], async (req, res
                 /**
                  * Create new workspace in slack
                  */
-                const randomBytes = crypto.randomBytes(20).toString('hex')
-                const params = {
-                    team_domain: `${randomBytes.substring(0, 20)}`,
-                    team_name: req.body.company_name,
-                    team_discoverability: 'open'
-                }
-                console.log('Slack Params', params)
-                const slack = await new SlackHelper()
-                slack.createWorkSpace(params, function(err, response){
-                    console.log('slack.createWorkSpace', err, response)
-                    if(err === null) {
-                        if(response.team !== null) {
-                            org.update({
-                                team: response.team
-                            })
-                            /**
-                             * create a usergroup
-                             */
-                            slack.createUserGroups({
-                                name: process.env.USERGROUP_NAME,
-                                team_id: response.team
-                            }, function(result){
-                                console.log('usergroupResult', result)
-                            })
-                        }
-                    }
-                })
+                // const randomBytes = crypto.randomBytes(20).toString('hex')
+                // const params = {
+                //     team_domain: `${randomBytes.substring(0, 20)}`,
+                //     team_name: req.body.company_name,
+                //     team_discoverability: 'open'
+                // }
+                // console.log('Slack Params', params)
+                // const slack = await new SlackHelper()
+                // slack.createWorkSpace(params, function(err, response){
+                //     console.log('slack.createWorkSpace', err, response)
+                //     if(err === null) {
+                //         if(response.team !== null) {
+                //             org.update({
+                //                 team: response.team
+                //             })
+                //             /**
+                //              * create a usergroup
+                //              */
+                //             slack.createUserGroups({
+                //                 name: process.env.USERGROUP_NAME,
+                //                 team_id: response.team
+                //             }, function(result){
+                //                 console.log('usergroupResult', result)
+                //             })
+                //         }
+                //     }
+                // })
                
                 console.log(`php -f ${process.env.SCRIPT_PATH}script_create_customer_db.php "${organisationID}"`);
                 exec(`screen -md php -f  ${process.env.SCRIPT_PATH}script_create_customer_db.php "${organisationID}"`, async (error, std, stderr) => {

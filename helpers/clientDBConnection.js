@@ -17,20 +17,14 @@ process.on('exit', (code) => {
 
 const connect = async(req, res, next) => {
     let { check } = req.body
-    console.log("clientDBConnection connect", check);
+    
     if(req.orgId && (typeof check == 'undefined' || (typeof check != 'undefined' && check == 0))) {
         
-        console.log('Going to connect with client DB')
-
         const organisation = await helpers.findOrganisationbyID(req.orgId);
-
-        console.log('Got details of client account')
-
         if( organisation != null && organisation.organisation_id > 0) {
             /**
              * Make DB Connection
              */
-            console.log('Got creating client DB connection')
             try{
                 if (!clientDB) {
                     clientDB = new Sequelize(organisation.org_db, organisation.org_usr, organisation.org_pass, {
@@ -56,10 +50,8 @@ const connect = async(req, res, next) => {
                     });
                 }
                 req.connection_db = clientDB;
-                console.log('clientDBConnection Connected.........')
             }catch( err ){
                 console.log(err);
-                console.log("Unable to connect with client DB....");
                 req.connection_db = null;
                 clientDB = null; // Reset connection on error
             }
