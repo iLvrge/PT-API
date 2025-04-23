@@ -12,8 +12,6 @@ let verifyToken = (req, res, next) => {
 
     let token = req.headers['x-auth-token'];
 
-    console.log("Verifying token...", token);
-
     if (!token){
       return res.status(401).send('Invalid token');
     }
@@ -23,7 +21,6 @@ let verifyToken = (req, res, next) => {
 		    console.log(err);
         return res.status(401).send('Authorization error');
       }
-      console.log(decoded);
 
       User.findOne({
         where:{user_id: decoded.id, organisation_id: decoded.orgId, status: 0}
@@ -50,8 +47,6 @@ let addToken = (req, res, next) => {
 };
 
 let isAdmin = (req, res, next) => {
-    console.log("Checking is Admin");
-    console.log("USER:"+req.userId);
     User.findOne({
       where:{user_id: req.userId,type:'9', status: 0}
     }).then(user => {
