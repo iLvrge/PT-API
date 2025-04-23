@@ -1873,12 +1873,18 @@ route.post("/customers", [authJWT.verifyToken, authJWT.isAdmin], async (req, res
                 //     }
                 // })
                
-                console.log(`php -f ${process.env.SCRIPT_PATH}script_create_customer_db.php "${organisationID}"`);
-                exec(`screen -md php -f  ${process.env.SCRIPT_PATH}script_create_customer_db.php "${organisationID}"`, async (error, std, stderr) => {
-                    console.log("script_create_customer_db");
-                    console.log(error);
-                    console.log(stderr);
-                    console.log(std);
+                const cmd = `php -f ${process.env.SCRIPT_PATH}script_create_customer_db.php "${organisationID}"`;
+                console.log("Running:", cmd);
+
+                exec(cmd, (error, stdout, stderr) => {
+                    console.log("Script Finished");
+                    if (error) {
+                        console.error("Execution Error:", error);
+                    }
+                    if (stderr) {
+                        console.error("Stderr:", stderr);
+                    }
+                    console.log("Stdout:", stdout);
                 });        
 
                 
