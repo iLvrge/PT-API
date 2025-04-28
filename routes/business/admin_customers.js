@@ -1278,7 +1278,6 @@ route.post("/customers/:id/users", [authJWT.verifyToken, authJWT.isAdmin, userEx
                                 }
 
                                 const addClientUser = await dbUser.create(clientUser);
-                                console.log("addClientUser", addClientUser);
 
                                 if(addClientUser != null) {
 
@@ -1286,7 +1285,7 @@ route.post("/customers/:id/users", [authJWT.verifyToken, authJWT.isAdmin, userEx
                                      * Invite user to client workspace
                                     */
                 
-                                    const slack = await new SlackHelper()
+                                    /* const slack = await new SlackHelper()
                                     //find public channels
                                     slack.adminConversationSearch({
 										team_ids: organisation.team
@@ -1307,7 +1306,7 @@ route.post("/customers/:id/users", [authJWT.verifyToken, authJWT.isAdmin, userEx
                                                 }
 											})
 										}
-									})
+									}) */
 
 
 
