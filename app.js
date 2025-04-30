@@ -37,7 +37,7 @@ const socket = require("./socket");
 
 const { logErrorToFile } = require('./helpers/logErrors');
 const requestLogger = require('./helpers/requestLogger');
-
+const { cleanupConnections } = require('./helpers/dbConnectionCache');
 
 // load the agent 
 
@@ -304,6 +304,11 @@ process.on('unhandledRejection', (reason, promise) => {
     logErrorToFile(reason);  
     Sentry.captureException(reason); 
 });
+
+// Start periodic cleanup of stale Sequelize connections
+setInterval(() => {
+    cleanupConnections(5 * 60 * 1000); // close connections unused for >5 mins
+}, 2 * 60 * 1000); // runs every 2 mins
 
 //listen function for Node / express
 const server = app.listen({port, host:'0.0.0.0'}, (err)=>{
