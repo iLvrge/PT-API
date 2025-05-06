@@ -77,6 +77,7 @@ const ReclassifyLog = require("../../model/resources/ReclassifyLog");
 const LogMessages = require("../../model/application/LogMessages");
 const LogFamilyAssetsMessages = require("../../model/application/LogFamilyAssetsMessages");
 const LogUpdateCompany = require("../../model/application/LogUpdateCompany");
+const runPhpScript = require("../../helpers/runPhpScript");
    
 /**Get all documents */
 const logger = createLogger({
@@ -887,26 +888,18 @@ route.delete("/customers/:id/companies", [authJWT.verifyToken, authJWT.isAdmin, 
                                 });
 
                                 if(findPCompanies.length > 0) {
-                                    const promiseAddRFIDs = findPCompanies.map(async (company, index) => {
-                                        console.log(`php -f ${process.env.SCRIPT_PATH}add_representative_rfids.php "${req.orgId}" "${company.company_id}"`);
-                                        await exec(`screen -md php -f ${process.env.SCRIPT_PATH}add_representative_rfids.php "${req.orgId}" "${company.company_id}"`, async (error, std, stderr) => {
-                                            /*await exec(`php -f /var/www/html/trash/tree_script_client.php "${company.original_name}"`, async (error, stdout, stderr) => {
+                                    const promiseAddRFIDs = findPCompanies.map(async (company, index) => {                                        
+                                        await runPhpScript(`${process.env.SCRIPT_PATH}add_representative_rfids.php`, [
+                                            req.orgId,
+                                            company.company_id,
+                                        ], true
+                                        );
 
-                                            });*/
-                                            console.log(error);
-                                            console.log(std);
-                                            console.log(stderr);
-
-
-                                            exec(`screen -md php -f ${process.env.SCRIPT_PATH}create_data_for_company_db_application.php "${req.orgId}" "${company.company_id}"`, (error, stdd, stderr)=> {
-                                                console.log("fill database ....")
-                                                console.log(error); 
-                                                console.log(stderr);
-                                                console.log(stdd);
-                                                console.log("DONE");
-
-                                            }); 
-                                        });
+                                        runPhpScript(`${process.env.SCRIPT_PATH}create_data_for_company_db_application.php`, [
+                                            req.orgId,
+                                            company.company_id,
+                                        ], true
+                                        );
                                         return company;
                                     });
                                     await Promise.all(promiseAddRFIDs);
@@ -1991,25 +1984,21 @@ route.get("/customers/:organisation_id/flag_automatic", [authJWT.verifyToken, au
 
                 if(companyID.length > 0) {
                     if(companyID.length > 1) { 
-                        exec(`screen -md php -f  ${process.env.SCRIPT_PATH}run_script_for_update_flag.php "${organisationID}" "${JSON.stringify(companyID)}"`, (error, stdout, stderr) => {  
-                            console.log(error, stdout, stderr);
-                        });
+                        runPhpScript(`${process.env.SCRIPT_PATH}run_script_for_update_flag.php`, [
+                            organisationID,
+                            JSON.stringify(companyID)
+                        ]);
                     } else {
-                        exec(`screen -md php -f ${process.env.SCRIPT_PATH}update_flag.php "${organisationID}" "${companyID[0]}"`, (error, stdout, stderr) => {  
-                            console.log(error, stdout, stderr);
-                        });
+                        runPhpScript(`${process.env.SCRIPT_PATH}update_flag.php`, [
+                            organisationID,
+                            companyID[0]
+                        ]);
                     }
-                    /* companyID.map( ID => {
-                        console.log(`tab   php -f ${process.env.SCRIPT_PATH}update_flag.php "${organisationID}" "${ID}"`);
-                        exec(`php -f ${process.env.SCRIPT_PATH}update_flag.php "${organisationID}" "${ID}"`, (error, stdout, stderr) => {  
-                            console.log(error, stdout, stderr);
-                        });
-                    }) */
                 } else {
-                    console.log(`php -f ${process.env.SCRIPT_PATH}update_flag.php "${organisationID}" ""`);
-                        exec(`screen -md php -f  ${process.env.SCRIPT_PATH}update_flag.php "${organisationID}" ""`, (error, stdout, stderr) => {  
-                            console.log(error, stdout, stderr);
-                        });
+                    runPhpScript(`${process.env.SCRIPT_PATH}update_flag.php`, [
+                        organisationID,
+                        ""
+                    ]);
                 }
                 
                 

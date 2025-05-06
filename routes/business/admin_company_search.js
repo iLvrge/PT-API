@@ -68,6 +68,7 @@ const ClientAddCompany = require("../../model/application/ClientAddCompany");
 const e = require("express");
 const PtabNames = require("../../model/resources/PtabNames");
 const ClientRepresentatives = require("../../model/client/Representatives");
+const runPhpScript = require("../../helpers/runPhpScript");
 
 
 const oauth2Client = new google.auth.OAuth2(
@@ -2987,12 +2988,11 @@ route.get("/company/family/:id", [authJWT.verifyToken, authJWT.isAdmin, authJWT.
         const customerID = req.params.id
         const retrievedAll = req.query.retrievedAll;
         console.log(customerID);
-        console.log(`screen -md php -f ${process.env.SCRIPT_PATH}assets_family.php "${customerID}" '[]' ${retrievedAll}`)
-        exec(`screen -md php -f ${process.env.SCRIPT_PATH}assets_family.php "${customerID}" "[]" ${retrievedAll} `, async (error, stdout, stderr) => {
-            console.log(error);
-            console.log(stdout);
-            console.log(stderr);
-        })
+        runPhpScript(`${process.env.SCRIPT_PATH}assets_family.php`, [
+            customerID,
+            '[]',
+            retrievedAll
+        ]);
         res.status(200).send('Run assets family');
     } catch(e) {
         console.log(e);
