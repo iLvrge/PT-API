@@ -2161,10 +2161,11 @@ route.get("/customers/:organisation_id/publish", [authJWT.verifyToken, authJWT.i
                 });
                 if(findUsers > 0) {
                     if(company_id.length == 0) {
-                        console.log(`screen -md php -f ${process.env.SCRIPT_PATH}create_data_for_company_db_application.php "${organisationID}"  ""`);
-                        exec(`screen -md php -f ${process.env.SCRIPT_PATH}create_data_for_company_db_application.php "${organisationID}"  ""`, async (error, stdout, stderr) => {  
-                                                
-                        });
+                        runPhpScript(`${process.env.SCRIPT_PATH}create_data_for_company_db_application.php`, [
+                            organisationID,
+                            "",
+                        ]
+                        );
                         res.status(200).send("UPDATED!");   
                     } else {
                         /* const queryRepresentativeName = `SELECT representative_name, company_id FROM db_uspto.list1 WHERE company_id IN (:company_id) AND organisation_id = :organisationID GROUP BY representative_name`;
@@ -2177,10 +2178,12 @@ route.get("/customers/:organisation_id/publish", [authJWT.verifyToken, authJWT.i
                         ); */ 
                         if(Array.isArray(company_id) && company_id.length > 0) {
                             company_id.map( async company => { 
-                                console.log(`screen -md php -f  ${process.env.SCRIPT_PATH}create_data_for_company_db_application.php "${organisationID}"  "${company}" "1"`)
-                                exec(`screen -md php -f ${process.env.SCRIPT_PATH}create_data_for_company_db_application.php "${organisationID}"  "${company}" "1"`, async (error, stdout, stderr) => {   
-                                                         
-                                });
+                                runPhpScript(`${process.env.SCRIPT_PATH}create_data_for_company_db_application.php`, [
+                                    organisationID,
+                                    company,
+                                    "1"
+                                ]
+                                );
                             })
                             res.status(200).send("UPDATED!");   
                         } else {
@@ -2210,14 +2213,12 @@ route.get("/customers/:organisation_id/address/publish", [authJWT.verifyToken, a
         if(organisationID > 0){
             let org = await helpers.findOrganisationbyID( organisationID );
             if(org != null && org.organisation_id > 0) {
-                console.log(`php -f ${process.env.SCRIPT_PATH}update_client_companies_address.php "${organisationID}"  ""`);
-                    await exec(`php -f ${process.env.SCRIPT_PATH}update_client_companies_address.php "${organisationID}"  ""`, async (error, stdout, stderr) => {    
-                        console.log("tree_script");
-                        console.log(error);
-                        console.log(stderr);
-                                             
-                    });
-                    res.status(200).send("UPDATED!");   
+                await runPhpScript(`${process.env.SCRIPT_PATH}update_client_companies_address.php`, [
+                    organisationID,
+                    ""
+                ], true
+                ); 
+                res.status(200).send("UPDATED!");   
             } else {
                 res.status(402).send("Bad Inputs");
             }
