@@ -973,14 +973,10 @@ route.post("/", [authJWT.verifyToken, clientDBConnection.connect], async(req, re
                     /**
                      * exec all account
                      */
-
-                    exec(`php -f ${process.env.SCRIPT_PATH}transferred_data_from_one_account_to_another_accounts.php "${req.orgId}" ${accounts.join(',')}`, (error, stdd, stderr)=> {
-                        console.log("fill transferred_data_from_one_account_to_another_accounts.php ....")
-                        console.log(error); 
-                        console.log(stderr);
-                        console.log(stdd);
-                        console.log("DONE");
-                    }); 
+                    runPhpScript(`${process.env.SCRIPT_PATH}transferred_data_from_one_account_to_another_accounts.php`, [
+                        req.orgId,
+                        accounts.join(',')
+                    ]);
                 }
 
                 if(representativeIDs.length > 0) { 
@@ -1088,17 +1084,15 @@ route.post("/", [authJWT.verifyToken, clientDBConnection.connect], async(req, re
                             console.log(addCompanies);
                             if(addCompanies) {
                                 childCompanies.map( async company => {
-                                    console.log(`php -f ${process.env.SCRIPT_PATH}add_representative_rfids.php "${req.orgId}" "${company}"`);
-                                    await exec(`php -f ${process.env.SCRIPT_PATH}add_representative_rfids.php "${req.orgId}" "${company}"`, async (error, stdout, stderr) => {
-                                        
-                                        exec(`php -f ${process.env.SCRIPT_PATH}create_data_for_company_db_application.php "${req.orgId}" "${company}"`, (error, stdd, stderr)=> {
-                                            console.log("fill database ....")
-                                            console.log(error); 
-                                            console.log(stderr);
-                                            console.log(stdd);
-                                            console.log("DONE");
-                                        });
-                                    });
+                                    
+                                    await runPhpScript(`${process.env.SCRIPT_PATH}add_representative_rfids.php`, [
+                                        req.orgId,
+                                        company
+                                    ]);
+                                    runPhpScript(`${process.env.SCRIPT_PATH}create_data_for_company_db_application.php`, [
+                                        req.orgId,
+                                        company
+                                    ]);
                                 })
                                 
                                 res.status(200).json(companies);
@@ -1236,39 +1230,16 @@ route.post("/", [authJWT.verifyToken, clientDBConnection.connect], async(req, re
                                 //ActivityLogs.bulkCreate(activityLogs);
                                 if(mainCompanies.length > 0){
                                     mainCompanies.map(async (company, index) => {
-                                        console.log(`php -f ${process.env.SCRIPT_PATH}add_representative_rfids.php "${req.orgId}" "${company}"`);
-                                        await exec(`php -f ${process.env.SCRIPT_PATH}add_representative_rfids.php "${req.orgId}" "${company}"`, async (error, stdout, stderr) => {
-                                            console.log("Error add_representative_rfids", error);
-                                            console.log("stdout add_representative_rfids", stdout);
-                                            console.log("stderr add_representative_rfids", stderr);
-                                            console.log(`php -f ${process.env.SCRIPT_PATH}create_data_for_company_db_application.php "${req.orgId}" "${company}"`)
-                                            exec(`php -f ${process.env.SCRIPT_PATH}create_data_for_company_db_application.php "${req.orgId}" "${company}"`, (error, stdd, stderr)=> {
-                                                console.log("error create_data_for_company_db_application", error); 
-                                                console.log("stderr create_data_for_company_db_application", stderr);
-                                                console.log("stdd create_data_for_company_db_application", stdd);
-                                                console.log("create_data_for_company_db_application DONE");
-                                            });
 
-                                            /* exec(`php -f ${process.env.SCRIPT_PATH}admin_report_represetative_assets_transactions_by_account.php "${req.orgId}" "${company}"`, (error, stdd, stderr)=> {
-                                                console.log("error admin_report_represetative_assets_transactions_by_account", error); 
-                                                console.log("stderr admin_report_represetative_assets_transactions_by_account", stderr);
-                                                console.log("stdd admin_report_represetative_assets_transactions_by_account", stdd);
-                                                console.log("error admin_report_represetative_assets_transactions_by_account  DONE");
-                                                exec(`php -f /var/www/scripts/trash/report_represetative_assets_transactions_by_account.php "${req.orgId}" "${company}"`, (error, stdd, stderr)=> {
-                                                    console.log("error report_represetative_assets_transactions_by_account", error); 
-                                                    console.log("stderr report_represetative_assets_transactions_by_account", stderr);
-                                                    console.log("stdd report_represetative_assets_transactions_by_account", stdd);
-                                                    console.log("error report_represetative_assets_transactions_by_account  DONE");
-                                                });
-                                            });
-        
-                                            exec(`php -f ${process.env.SCRIPT_PATH}download_all_pdf.php "${req.orgId}"`, (error, stdd, stderr)=> {
-                                                console.log("error download_all_pdf", error); 
-                                                console.log("stderr download_all_pdf", stderr);
-                                                console.log("stdd download_all_pdf", stdd);
-                                                console.log("error download_all_pdf  DONE");
-                                            }); */
-                                        });
+                                        await runPhpScript(`${process.env.SCRIPT_PATH}add_representative_rfids.php`, [
+                                            req.orgId,
+                                            company
+                                        ]);
+
+                                        runPhpScript(`${process.env.SCRIPT_PATH}create_data_for_company_db_application.php`, [
+                                            req.orgId,
+                                            company
+                                        ]);
                                     });
                                 }
                                 res.status(200).send("Companies added");
@@ -1325,42 +1296,15 @@ route.post("/", [authJWT.verifyToken, clientDBConnection.connect], async(req, re
                                 //ActivityLogs.bulkCreate(activityLogs);
                                 if(mainCompanies.length > 0){
                                     mainCompanies.map(async (company, index) => {
-                                        console.log(`php -f ${process.env.SCRIPT_PATH}add_representative_rfids.php "${req.orgId}" "${company}"`);
-                                        await exec(`php -f ${process.env.SCRIPT_PATH}add_representative_rfids.php "${req.orgId}" "${company}"`, async (error, stdout, stderr) => {
-                                            console.log(error);
-                                            console.log(stdout);
-                                            console.log(stderr);
-                                            exec(`php -f ${process.env.SCRIPT_PATH}create_data_for_company_db_application.php "${req.orgId}" "${company}"`, (error, stdd, stderr)=> {
-                                                console.log("fill database ....")
-                                                console.log(error); 
-                                                console.log(stderr);
-                                                console.log(stdd);
-                                                console.log("DONE");
-                                            });
+                                        await runPhpScript(`${process.env.SCRIPT_PATH}add_representative_rfids.php`, [
+                                            req.orgId,
+                                            company
+                                        ]);
 
-                                            /* exec(`php -f ${process.env.SCRIPT_PATH}admin_report_represetative_assets_transactions_by_account.php "${req.orgId}" "${company}"`, (error, stdd, stderr)=> {
-                                                console.log("fill admin_report_represetative_assets_transactions_by_account.php ....")
-                                                console.log(error); 
-                                                console.log(stderr);
-                                                console.log(stdd);
-                                                console.log("DONE");
-                                                exec(`php -f ${process.env.SCRIPT_PATH}report_represetative_assets_transactions_by_account.php "${req.orgId}" "${company}"`, (error, stdd, stderr)=> {
-                                                    console.log("fill report_represetative_assets_transactions_by_account.php ....")
-                                                    console.log(error); 
-                                                    console.log(stderr);
-                                                    console.log(stdd);
-                                                    console.log("DONE");
-                                                });
-                                            });
-        
-                                            exec(`php -f ${process.env.SCRIPT_PATH}download_all_pdf.php "${req.orgId}"`, (error, stdd, stderr)=> {
-                                                console.log("donwload_all_pdf....")
-                                                console.log(error); 
-                                                console.log(stderr);
-                                                console.log(stdd);
-                                                console.log("DONE");
-                                            }); */
-                                        });
+                                        runPhpScript(`${process.env.SCRIPT_PATH}create_data_for_company_db_application.php`, [
+                                            req.orgId,
+                                            company
+                                        ]);
                                     });
                                 }
                                 res.status(200).send("Companies added");
@@ -1487,51 +1431,19 @@ route.delete("/", [authJWT.verifyToken, clientDBConnection.connect], async(req, 
 
                                 if(findPCompanies.length > 0) {
                                     const promiseAddRFIDs = findPCompanies.map(async (company, index) => {
-                                        console.log(`php -f ${process.env.SCRIPT_PATH}add_representative_rfids.php "${req.orgId}" "${company.company_id}"`);
-                                        await exec(`php -f ${process.env.SCRIPT_PATH}add_representative_rfids.php "${req.orgId}" "${company.company_id}"`, async (error, std, stderr) => {
-                                            /*await exec(`php -f ${process.env.SCRIPT_PATH}tree_script_client.php "${company.original_name}"`, async (error, stdout, stderr) => {
+                                        await runPhpScript(`${process.env.SCRIPT_PATH}add_representative_rfids.php`, [
+                                            req.orgId,
+                                            company.company_id
+                                        ]);
 
-                                            });*/
-                                            console.log(error);
-                                            console.log(std);
-                                            console.log(stderr);
-
-
-                                            exec(`php -f ${process.env.SCRIPT_PATH}create_data_for_company_db_application.php "${req.orgId}" "${company.company_id}"`, (error, stdd, stderr)=> {
-                                                console.log("fill database ....")
-                                                console.log(error); 
-                                                console.log(stderr);
-                                                console.log(stdd);
-                                                console.log("DONE");
-
-                                            });
-                                            /* exec(`php -f ${process.env.SCRIPT_PATH}admin_report_represetative_assets_transactions_by_account.php "${req.orgId}" "${company.original_name}"`, (error, stdd, stderr)=> {
-                                                console.log("fill admin_report_represetative_assets_transactions_by_account.php ....")
-                                                console.log(error); 
-                                                console.log(stderr);
-                                                console.log(stdd);
-                                                console.log("DONE");
-                                                exec(`php -f ${process.env.SCRIPT_PATH}report_represetative_assets_transactions_by_account.php "${req.orgId}" "${company.original_name}"`, (error, stdd, stderr)=> {
-                                                    console.log("fill report_represetative_assets_transactions_by_account.php ....")
-                                                    console.log(error); 
-                                                    console.log(stderr);
-                                                    console.log(stdd);
-                                                    console.log("DONE");
-                                                });
-                                            }); */
-                                        });
+                                        runPhpScript(`${process.env.SCRIPT_PATH}create_data_for_company_db_application.php`, [
+                                            req.orgId,
+                                            company.company_id
+                                        ]);
                                         return company;
                                     });
                                     await Promise.all(promiseAddRFIDs);
 
-                                    /**
-                                     * Recreate KPI and Tree
-                                     */
-                                    /* exec(`php -f ${process.env.SCRIPT_PATH}fix_inventor_timeline_tree_transaction_assests_updates.php "${req.orgId}" ""`, async (error, std, stderr) => {
-                                        console.log(error);
-                                        console.log(std);
-                                        console.log(stderr);
-                                    }); */
                                     res.status(200).send("Companies deleted.");
                                 }
                             }
@@ -1540,27 +1452,11 @@ route.delete("/", [authJWT.verifyToken, clientDBConnection.connect], async(req, 
                              * Recreate KPI and Tree
                              */
                             console.log("DELETE");
-                            exec(`php -f ${process.env.SCRIPT_PATH}create_data_for_company_db_application.php "${req.orgId}" ""`, (error, stdd, stderr)=> {
-                                console.log("fill database ....")
-                                console.log(error); 
-                                console.log(stderr);
-                                console.log(stdd);
-                                console.log("DONE");
-                            });
-                            /* exec(`php -f /var/www/html/trascriptssh/admin_report_represetative_assets_transactions_by_account.php "${req.orgId}" ""`, (error, stdd, stderr)=> {
-                                console.log("fill admin_report_represetative_assets_transactions_by_account.php ....")
-                                console.log(error); 
-                                console.log(stderr);
-                                console.log(stdd);
-                                console.log("DONE");
-                                exec(`php -f ${process.env.SCRIPT_PATH}report_represetative_assets_transactions_by_account.php "${req.orgId}" ""`, (error, stdd, stderr)=> {
-                                    console.log("fill report_represetative_assets_transactions_by_account.php ....")
-                                    console.log(error); 
-                                    console.log(stderr);
-                                    console.log(stdd);
-                                    console.log("DONE");
-                                });
-                            }); */
+                            runPhpScript(`${process.env.SCRIPT_PATH}create_data_for_company_db_application.php`, [
+                                req.orgId,
+                                ""
+                            ]);
+                            
 
                             res.status(200).send("Companies deleted.");
                         }
@@ -1632,65 +1528,28 @@ route.delete("/subcompanies", [authJWT.verifyToken, clientDBConnection.connect],
                                 where: {representative_id: parentCompanies},
                             });
                             if(destroyAllTransactions) {
+                                
                                 const promise = mainCompanies.map(async company => {
-                                    console.log(`php -f ${process.env.SCRIPT_PATH}add_representative_rfids.php "${req.orgId}" "${company.company_id}"`);
-                                    await exec(`php -f ${process.env.SCRIPT_PATH}add_representative_rfids.php "${req.orgId}" "${company.company_id}"`, async (error, stdout, stderr) => {
-                                        console.log(error);
-                                        console.log(stdout);
-                                        console.log(stderr);
-                                        //console.log(`php -f ${process.env.SCRIPT_PATH}tree_script_client.php "${req.orgId}"  "${company.original_name}"`);
-
-                                        exec(`php -f ${process.env.SCRIPT_PATH}create_data_for_company_db_application.php "${req.orgId}" "${company.company_id}" 1`, (error, stdd, stderr)=> {
-                                             
-
-                                        });
-                                        /* exec(`php -f ${process.env.SCRIPT_PATH}admin_report_represetative_assets_transactions_by_account.php "${req.orgId}" "${company.original_name}"`, (error, stdd, stderr)=> {
-                                             
-                                            exec(`php -f ${process.env.SCRIPT_PATH}report_represetative_assets_transactions_by_account.php "${req.orgId}" "${company.original_name}"`, (error, stdd, stderr)=> {
-                                                
-                                            });
-                                        }); */
-                                        
-                                    });
+                                    
+                                    await runPhpScript(`${process.env.SCRIPT_PATH}add_representative_rfids.php`, [
+                                        req.orgId,
+                                        company.company_id
+                                    ]);
+                             
+                                    runPhpScript(`${process.env.SCRIPT_PATH}create_data_for_company_db_application.php`, [
+                                        req.orgId,
+                                        company.company_id,
+                                        1
+                                    ]);
                                     return company;
                                 });
                                 await Promise.all(promise);
-                                /**
-                                 * Recreate KPI and Tree
-                                 */
-                               /*  exec(`php -f ${process.env.SCRIPT_PATH}fix_inventor_timeline_tree_transaction_assests_updates.php "${req.orgId}" ""`, async (error, std, stderr) => {
-
-                                }); */
                             }
                         } else {
-                            /**
-                             * Recreate KPI and Tree
-                             */
-                            /* exec(`php -f ${process.env.SCRIPT_PATH}fix_inventor_timeline_tree_transaction_assests_updates.php "${req.orgId}" ""`, async (error, std, stderr) => {
-
-                            }); */
-                            exec(`php -f ${process.env.SCRIPT_PATH}create_data_for_company_db_application.php "${req.orgId}" ""`, (error, stdd, stderr)=> {
-                                console.log("fill database ....")
-                                console.log(error); 
-                                console.log(stderr);
-                                console.log(stdd);
-                                console.log("DONE");
-
-                            });
-                            /* exec(`php -f ${process.env.SCRIPT_PATH}admin_report_represetative_assets_transactions_by_account.php "${req.orgId}" ""`, (error, stdd, stderr)=> {
-                                console.log("fill admin_report_represetative_assets_transactions_by_account.php ....")
-                                console.log(error); 
-                                console.log(stderr);
-                                console.log(stdd);
-                                console.log("DONE");
-                                exec(`php -f ${process.env.SCRIPT_PATH}report_represetative_assets_transactions_by_account.php "${req.orgId}" ""`, (error, stdd, stderr)=> {
-                                    console.log("fill report_represetative_assets_transactions_by_account.php ....")
-                                    console.log(error); 
-                                    console.log(stderr);
-                                    console.log(stdd);
-                                    console.log("DONE");
-                                });
-                            }); */
+                            runPhpScript(`${process.env.SCRIPT_PATH}create_data_for_company_db_application.php`, [
+                                req.orgId,
+                                ""
+                            ]);
                         }
                     })();
                     res.status(200).send("Companies deleted.");
