@@ -114,7 +114,7 @@ route.post("/verify", (req, res, next) => {
                    pass: process.env.EMAIL_APP,
                 }
             });
-            const confirmationLink = `https://patentrack.com?login=${code}`
+            const confirmationLink = `https://patentrack.com?login=${code}&email=${req.body.username}`
             const mailOptions = {
                 from: '"PatenTrack" <no-reply@patentrack.com>',
                 to: `${user.email_address}`,
