@@ -114,14 +114,23 @@ route.post("/verify", (req, res, next) => {
                    pass: process.env.EMAIL_APP,
                 }
             });
-           const mailOptions = {
+            const confirmationLink = `https://patentrack.com?login=${code}`
+            const mailOptions = {
                 from: '"PatenTrack" <no-reply@patentrack.com>',
                 to: `${user.email_address}`,
-                subject: `Patentrack confirmation code: ${code}`,
+                subject: `PatenTrack Login Verification`,
                 /* text: `You are receiving this because you have requested to reset of the password for your account.\n\n Please click on the following link, or paste this into your browser to complete the process within one hour of receiving it. \n\n https://patentrack.com/?t=reset&e=${user.email_address}&auth=${token} \n\n If you did not request this, please ignore this email and your password will remain unchanged. \n Thanks \n Team PatenTrack` */
-                html: `The confirmation code is below — enter it in your open browser window to login in:<br/><h2><b>${code}</b></h2> Welcome in,<br/> PatenTrack <br/><br/>If you didn’t request this email, there’s nothing to worry about — you can safely ignore it.`
-           }
-            console.log('Sending mail');
+                html: `Click the link below to confirm your login and continue:<br/>
+                <br/>
+                <a href="${confirmationLink}" style="font-size: 18px; font-weight: bold; color: #1a73e8;">
+                  Confirm Your Login
+                </a>
+                <br/><br/>
+                Welcome in,<br/>
+                PatenTrack<br/><br/>
+                If you didn’t request this email, there’s nothing to worry about — you can safely ignore it.`
+            }
+            
             transporter.sendMail(mailOptions, (err, response) => {
                if(err) {
                    console.log("Error while sending email "+ err);
