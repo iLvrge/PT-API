@@ -290,11 +290,20 @@ route.get("/citation/:asset", [authJWT.verifyToken], async (req, res) => {
             console.log('ERROR => /citation/: Asset number is empty or undefined');
             return res.status(402).send('Asset number is empty');
         }
-        const url = `https://api.patentsview.org/patents/query?q={"cited_patent_number":"${asset}"}&o={"page": 1, "per_page": 10000, "include_subentity_total_counts": "false"}&f=["patent_number","patent_date","patent_num_combined_citations","patent_title","inventor_first_name", "inventor_last_name","assignee_organization", "assignee_first_name","assignee_last_name", "app_date"]`;
+        //const url = `https://api.patentsview.org/patents/query?q={"cited_patent_number":"${asset}"}&o={"page": 1, "per_page": 10000, "include_subentity_total_counts": "false"}&f=["patent_number","patent_date","patent_num_combined_citations","patent_title","inventor_first_name", "inventor_last_name","assignee_organization", "assignee_first_name","assignee_last_name", "app_date"]`;
+
+        const url = `https://search.patentsview.org/api/v1/patent/us_patent_citation/?q={"citation_patent_id":"${asset}"}&o={"page": 1, "per_page": 10000, "include_subentity_total_counts": "false"}&f=["patent_number","patent_date","patent_num_combined_citations","patent_title","inventor_first_name", "inventor_last_name","assignee_organization", "assignee_first_name","assignee_last_name", "app_date"]`
     
         console.log(`Request URL: ${url}`);
 
-        request(url, async (error, response, body) => {
+        const options = {
+            url: url,
+            headers: {
+                'X-Api-Key': process.env.PATENTS_VIEW_API_KEYS
+            }
+        };
+        
+        request(options, async (error, response, body) => {
             if (error) {
                 console.error(`ERROR => /citation/: ${error}`);
                 return res.status(500).send('Error while making request');
