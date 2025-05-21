@@ -476,7 +476,7 @@ route.post("/assets/cpc", [authJWT.verifyToken, clientDBConnection.connect], asy
                         query += ` GROUP BY activity_parties_transactions.rf_id ) GROUP BY documentid.appno_doc_num) `
                     } else  if(Array.isArray(tabs) && tabs.length === 0 && (typeof type !== 'undefined' && type !== 'top_law_firms')) {
                         /**exclude employees */
-                        query += ` AND assets.appno_doc_num IN (  SELECT documentid.appno_doc_num FROM db_uspto.documentid WHERE rf_id  IN ( SELECT activity_parties_transactions.rf_id  FROM db_new_application.activity_parties_transactions WHERE activity_parties_transactions.organisation_id = :organisationID OR activity_parties_transactions.organisation_id IS NULL ) AND activity_parties_transactions.activity_id <> 10  ` 
+                        query += ` AND assets.appno_doc_num IN (  SELECT documentid.appno_doc_num FROM db_uspto.documentid WHERE rf_id  IN ( SELECT activity_parties_transactions.rf_id  FROM db_new_application.activity_parties_transactions WHERE activity_parties_transactions.organisation_id = :organisationID OR activity_parties_transactions.organisation_id IS NULL  AND activity_parties_transactions.activity_id <> 10  ` 
 
                         if(Array.isArray(companies) && companies.length > 0 ) {
                             query += ` AND activity_parties_transactions.company_id IN (:company_id) `
