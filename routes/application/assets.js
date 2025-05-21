@@ -476,13 +476,31 @@ route.post("/assets/cpc", [authJWT.verifyToken, clientDBConnection.connect], asy
                         query += ` GROUP BY activity_parties_transactions.rf_id ) GROUP BY documentid.appno_doc_num) `
                     } else  if(Array.isArray(tabs) && tabs.length === 0 && (typeof type !== 'undefined' && type !== 'top_law_firms')) {
                         /**exclude employees */
-                        query += ` AND assets.appno_doc_num IN (  SELECT documentid.appno_doc_num FROM db_uspto.documentid WHERE rf_id  IN ( SELECT activity_parties_transactions.rf_id  FROM db_new_application.activity_parties_transactions WHERE activity_parties_transactions.organisation_id = :organisationID OR activity_parties_transactions.organisation_id IS NULL  AND activity_parties_transactions.activity_id <> 10  ` 
+
+                        let filterAssetsQuery = `SELECT documentid.appno_doc_num FROM db_uspto.documentid WHERE rf_id  IN ( SELECT activity_parties_transactions.rf_id  FROM db_new_application.activity_parties_transactions WHERE (activity_parties_transactions.organisation_id = :organisationID OR activity_parties_transactions.organisation_id IS NULL)  AND activity_parties_transactions.activity_id <> 10  `;
 
                         if(Array.isArray(companies) && companies.length > 0 ) {
-                            query += ` AND activity_parties_transactions.company_id IN (:company_id) `
+                            filterAssetsQuery += ` AND activity_parties_transactions.company_id IN (:company_id) `
                         }
 
-                        query += ` GROUP BY activity_parties_transactions.rf_id )  GROUP BY documentid.appno_doc_num) `
+                        filterAssetsQuery += ` GROUP BY activity_parties_transactions.rf_id)  GROUP BY documentid.appno_doc_num `;
+
+                        const getFilteredAssetsData = await connection.application.query(filterAssetsQuery,{
+                                type: connection.Sequelize.QueryTypes.SELECT,
+                                raw: true,
+                                replacements: where,
+                            }
+                        ); 
+                        const getFilteredAssets = [];
+                        const promise = getFilteredAssetsData.map( row => {
+                            getFilteredAssets.push(`${row.appno_doc_num}`)
+                        })
+    
+                        await Promise.all(promise)
+                        if(getFilteredAssets.length) { 
+                            query += ` AND assets.appno_doc_num IN (:filteredAssets)  `
+                            where.filteredAssets = getFilteredAssets;
+                        }
                     }
                 }
                 
@@ -584,7 +602,7 @@ route.post("/assets/cpc", [authJWT.verifyToken, clientDBConnection.connect], asy
                     type: connection.Sequelize.QueryTypes.SELECT,
                     replacements: replacements,
                     raw: true,
-                    logging: console.log,
+                    /* logging: console.log, */
                 })
                 let remainigItems = [], k = 1;
                 
@@ -642,7 +660,7 @@ route.post("/assets/cpc", [authJWT.verifyToken, clientDBConnection.connect], asy
                         type: connection.Sequelize.QueryTypes.SELECT,
                         replacements: replacements,
                         raw: true,
-                        logging: console.log,
+                        /* logging: console.log, */
                     })
     
                     if(remainingList.length > 0) {
@@ -687,7 +705,7 @@ route.post("/assets/cpc", [authJWT.verifyToken, clientDBConnection.connect], asy
                     type: connection.Sequelize.QueryTypes.SELECT,
                     replacements: {code: cpcCode},
                     raw: true,
-                    logging: console.log,
+                    /* logging: console.log, */
                 })
 
                 if(titleData.length > 0) {
@@ -736,7 +754,7 @@ route.post("/assets/cpc/:year/:cpcCode", [authJWT.verifyToken, clientDBConnectio
                     const getAssetsData = await connection.application.query(ownedAssets,{
                             type: connection.Sequelize.QueryTypes.SELECT,
                             raw: true,
-                            logging: console.log,
+                           /*  logging: console.log, */
                             replacements: replacements,
                         }
                     ); 
@@ -765,7 +783,7 @@ route.post("/assets/cpc/:year/:cpcCode", [authJWT.verifyToken, clientDBConnectio
                     const assetsWithLawFirm =  await connection.applicationNew.query(queryFillingLawFirm, {
                         type: connection.Sequelize.QueryTypes.SELECT,
                         raw: true,
-                        logging: console.log,
+                       /*  logging: console.log, */
                         replacements: replacements,
                     }); 
     
@@ -792,7 +810,7 @@ route.post("/assets/cpc/:year/:cpcCode", [authJWT.verifyToken, clientDBConnectio
                 const getAssetsData = await connection.application.query(queryAssets,{
                         type: connection.Sequelize.QueryTypes.SELECT,
                         raw: true,
-                        logging: console.log,
+                        /* logging: console.log, */
                         replacements: replacements,
                     }
                 ); 
@@ -889,7 +907,7 @@ route.post("/assets/cpc/:year/:cpcCode", [authJWT.verifyToken, clientDBConnectio
                     type: connection.Sequelize.QueryTypes.SELECT,
                     replacements: replacements,
                     raw: true,
-                    logging: console.log,
+                    /* logging: console.log, */
                 })
             }
         }
@@ -950,7 +968,7 @@ route.get("/assets/:patentNumber/files/:channelID/slack/:token", [authJWT.verify
                     type: connection.Sequelize.QueryTypes.SELECT,
                     replacements: where,
                     raw: true,
-                    logging: console.log,
+                    /* logging: console.log, */
                 }
             );
         } else if(type == 0){
@@ -1005,7 +1023,7 @@ route.get("/assets/:patentNumber/files/:channelID/slack/:token", [authJWT.verify
                     type: connection.Sequelize.QueryTypes.SELECT,
                     replacements: replacementAssets,
                     raw: true,
-                    logging: console.log,
+                    /* logging: console.log, */
                 });
 
                 if(getAssets.length > 0) {
@@ -1085,7 +1103,7 @@ route.get("/assets/:patentNumber/files/:channelID/slack/:token", [authJWT.verify
                     type: connection.Sequelize.QueryTypes.SELECT,
                     raw: true,
                     plain: true,
-                    logging: console.log,
+                    /* logging: console.log, */
                     replacements: {lawyers},
                 })  
                 if(getLawFirmData != null ) { 
@@ -1131,7 +1149,7 @@ route.get("/assets/:patentNumber/files/:channelID/slack/:token", [authJWT.verify
                         type: connection.Sequelize.QueryTypes.SELECT,
                         replacements: replacements,
                         raw: true,
-                        logging: console.log,
+                        /* logging: console.log, */
                     }
                 );
             }  
