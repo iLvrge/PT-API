@@ -142,7 +142,8 @@ route.get("/ptab/document/:identifier",  async (req, res) => {
 }) 
 
 async function processPatentResponse(responseBody, asset) {
-    if (!responseBody || responseBody.total_patent_count === 0 || !Array.isArray(responseBody.patents)) {
+    //console.log("I am in process");
+    if (!responseBody || responseBody.count === 0 || !Array.isArray(responseBody.patents)) {
         return { counter: 0, list: [] };
     }
 
@@ -164,10 +165,10 @@ async function processPatentResponse(responseBody, asset) {
         // Add citation events
         if (itemAssignees.length > 0) {
             allAssignee = [...allAssignee, ...itemAssignees];
-            itemAssignees.forEach(assignee => addCitationEvent(citationEvents, item, assignee, itemAssignees, appDate));
+            itemAssignees.forEach(assignee => addCitationEvent(citationEvents, item, assignee, itemAssignees, appDate, asset));
         } else {
-            assigneeNameMissing.push(item.patent_number);
-            addCitationEvent(citationEvents, item, '', [], appDate);
+            assigneeNameMissing.push(item.patent_id);
+            addCitationEvent(citationEvents, item, '', [], appDate, asset);
         }
     });
 
@@ -190,7 +191,7 @@ async function processPatentResponse(responseBody, asset) {
 function processAssignees(item, individualList) {
     return item.assignees?.map(row => {
         // Check if the organization name is valid
-        let assignee = row.assignee_organization || (row.assignee_first_name && row.assignee_last_name ? `${row.assignee_first_name} ${row.assignee_last_name}` : null);
+        let assignee = row.assignee_organization || (row.assignee_individual_name_first && row.assignee_individual_name_last ? `${row.assignee_individual_name_first} ${row.assignee_individual_name_last}` : null);
         
         // If the assignee is determined to be a name and it's valid, push to individualList
         if (assignee && assignee !== 'null') {
@@ -206,25 +207,25 @@ function processAssignees(item, individualList) {
 
 function processInventors(item, itemAssignees, individualList) {
     item.inventors.forEach(row => {
-        const name = `${row.inventor_first_name} ${row.inventor_last_name}`;
+        const name = `${row.inventor_name_first} ${row.inventor_name_last}`;
         itemAssignees.push(name);
         individualList.push(name);
     });
 }
 
 function getAppDate(item) {
-    return (item.applications?.[0]?.app_date || item.patent_date) + ' 00:00:00';
+    return (item.application?.[0]?.app_date || item.patent_date) + ' 00:00:00';
 }
 
 
-function addCitationEvent(citationEvents, item, assignee, allAssignee, appDate) {
+function addCitationEvent(citationEvents, item, assignee, allAssignee, appDate, asset) {
     citationEvents.push({
         id: uuidv4(),
         start: appDate,
         end: appDate,
         title: item.patent_title,
-        number: item.patent_number,
-        combined: item.patent_num_combined_citations,
+        number: item.patent_id,
+        combined: `${asset}_${item.patent_id}`,
         logo: '',
         assignee,
         all_assignee: allAssignee
@@ -282,56 +283,61 @@ function updateEventLogos(citationEvents, list, assigneeKey, type) {
     });
 }
 
-route.get("/citation/:asset", [authJWT.verifyToken], async (req, res) => { 
-    try {
-        const {asset} = req.params
-        const {counter} = req.query; 
-        if (!asset) {
-            console.log('ERROR => /citation/: Asset number is empty or undefined');
-            return res.status(402).send('Asset number is empty');
-        }
-        //const url = `https://api.patentsview.org/patents/query?q={"cited_patent_number":"${asset}"}&o={"page": 1, "per_page": 10000, "include_subentity_total_counts": "false"}&f=["patent_number","patent_date","patent_num_combined_citations","patent_title","inventor_first_name", "inventor_last_name","assignee_organization", "assignee_first_name","assignee_last_name", "app_date"]`;
-
-        const url = `https://search.patentsview.org/api/v1/patent/us_patent_citation/?q={"citation_patent_id":"${asset}"}&o={"page": 1, "per_page": 10000, "include_subentity_total_counts": "false"}&f=["patent_number","patent_date","patent_num_combined_citations","patent_title","inventor_first_name", "inventor_last_name","assignee_organization", "assignee_first_name","assignee_last_name", "app_date"]`
-    
-        console.log(`Request URL: ${url}`);
-
-        const options = {
-            url: url,
-            headers: {
-                'X-Api-Key': process.env.PATENTS_VIEW_API_KEYS
-            }
+const makeRequest = (url) => {
+    return new Promise((resolve, reject) => {
+        const headers = {
+            'X-Api-Key': process.env.PATENTS_VIEW_API_KEYS
         };
-        
-        request(options, async (error, response, body) => {
-            if (error) {
-                console.error(`ERROR => /citation/: ${error}`);
-                return res.status(500).send('Error while making request');
+        request({ url, headers }, (error, response, body) => {
+            if (error || response.statusCode !== 200) {
+                return reject(error || new Error(`Status Code: ${response.statusCode}`));
             }
-    
-            if (response.statusCode === 200) {
-                try {
-                    const responseBody = JSON.parse(body);
-                    const { counter: total, list } = await processPatentResponse(responseBody, asset);
-    
-                    if (counter !== undefined) {
-                        res.status(200).send(`${total}`);
-                    } else {
-                        res.status(200).json(list);
-                    }
-                } catch (parseError) {
-                    console.error(`ERROR => /citation/: Failed to parse response body: ${parseError}`);
-                    res.status(500).send('Error while processing response');
-                }
-            } else {
-                console.error(`ERROR => /citation/: Request failed with status code ${response.statusCode}`);
-                res.status(response.statusCode).send(`Failed with status code ${response.statusCode}`);
+            try {
+                return resolve(JSON.parse(body));
+            } catch (e) {
+                return reject(e);
             }
         });
-    } catch (e) {
-        console.log('ERROR => /citation/', e)
-        res.status(500).send('Error while rendering asset details')
-    } 
+    });
+};
+
+route.get("/citation/:asset", [authJWT.verifyToken], async (req, res) => {
+    const { asset } = req.params;
+    const { counter } = req.query;
+
+    if (!asset) {
+        console.error('ERROR => /citation/: Asset number is empty');
+        return res.status(400).send('Asset number is empty');
+    }
+ 
+    try {
+        const citationUrl = `https://search.patentsview.org/api/v1/patent/us_patent_citation/?q=${encodeURIComponent(JSON.stringify({ patent_id: asset }))}&o=${encodeURIComponent(JSON.stringify({ page: 1, per_page: 10000 }))}`;
+        const citationData = await makeRequest(citationUrl);
+        const { us_patent_citations, count } = citationData;
+
+        if (count === 0) {
+            return counter !== undefined ? res.send("0") : res.json([]);
+        }
+
+        const citationIds = us_patent_citations.map(c => c.citation_patent_id);
+        const query = { patent_id: citationIds };
+        const fields = [
+            "inventors.inventor_name_first", "inventors.inventor_name_last",
+            "assignees.assignee_id", "assignees.assignee_organization",
+            "assignees.assignee_individual_name_first", "assignees.assignee_individual_name_last",
+            "applicants.applicant_name_first", "applicants.applicant_name_last",
+            "application.filing_date", "patent_id", "patent_date", "patent_title"
+        ];
+        const detailUrl = `https://search.patentsview.org/api/v1/patent/?q=${encodeURIComponent(JSON.stringify(query))}&f=${encodeURIComponent(JSON.stringify(fields))}`;
+        const detailData = await makeRequest(detailUrl);
+
+        const { counter: total, list } = await processPatentResponse(detailData, asset);
+        return counter !== undefined ? res.send(`${total}`) : res.json(list);
+
+    } catch (err) {
+        console.error('ERROR => /citation/:', err.message || err);
+        return counter !== undefined ? res.send("0") : res.status(500).json([]);
+    }
 });
 
 route.post("/citation", [authJWT.verifyToken], async (req, res) => {  

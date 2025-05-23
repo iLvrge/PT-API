@@ -4998,19 +4998,19 @@ const saveMissingData = async(responseBody, assetNumber) => {
         if(count > 0) {
             let allAssignees = [], tempAssignees = [], allAssigneeWithPatentNumber = []
             patents.forEach( patent => {
-                if(patent.assignees.length > 0) {
+                if (Array.isArray(patent.assignees) && patent.assignees.length > 0) {
                     patent.assignees.forEach( assignee => { 
                         if(assignee.assignee_organization !== null) {
                            
                             let appDate = '0000-00-00'
-                            if(patent.applications !== null && patent.applications.length > 0) {
-                                appDate = patent.applications[0].app_date
+                            if(patent.application !== null && patent.application.length > 0) {
+                                appDate = patent.application[0].app_date
                             }
                             if(moment(new Date(appDate)).format('YYYY') > 1999) {
                                 allAssignees.push(assignee.assignee_organization)
                                 allAssigneeWithPatentNumber.push({
                                     patent_number: assetNumber,
-                                    citing_patent_number: patent.patent_number,
+                                    citing_patent_number: patent.patent_id,
                                     assignee_organization: assignee.assignee_organization,
                                     app_date: appDate,
                                     assignee_id: 0
@@ -5021,7 +5021,7 @@ const saveMissingData = async(responseBody, assetNumber) => {
                 }                    
             })
             tempAssignees = [...allAssignees]
-            console.log('allAssignees', allAssignees.length, JSON.stringify(allAssignees))
+            //console.log('allAssignees', allAssignees.length, JSON.stringify(allAssignees))
     
     
             let getAllAssigneeWithIDs = await AssigneeOrganizations.findAll({
