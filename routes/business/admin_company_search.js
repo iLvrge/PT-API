@@ -1442,7 +1442,7 @@ route.get("/company/law_firms/:id/companies", [authJWT.verifyToken, authJWT.isAd
                     WHERE date_format(assignment.record_dt, '%Y') >= :year AND assignee.assignor_and_assignee_id = a.assignor_and_assignee_id
                     GROUP BY assignee.ee_name                
                 ) as tempAssignorAndAssignee 
-                WHERE a.assignor_and_assignee_id IN (SELECT assignor_and_assignee_id FROM assignee INNER JOIN assignment ON assignment.rf_id = assignee.rf_id WHERE (assignment.cname IN (:lawFirmNames) OR assignment.caddress_1 IN (:lawFirmNames)) GROUP BY assignor_and_assignee_id) GROUP BY a.name ORDER BY counter DESC`;
+                WHERE a.assignor_and_assignee_id IN (SELECT assignor_and_assignee_id FROM assignee INNER JOIN assignment ON assignment.rf_id = assignee.rf_id WHERE (assignment.cname IN (:lawFirmNames) OR assignment.caddress_1 IN (:lawFirmNames) OR assignment.caddress_2 IN (:lawFirmNames)) GROUP BY assignor_and_assignee_id) GROUP BY a.name ORDER BY counter DESC`;
 
                 querySearchResult = await connection.resources.query(queryCompany,{
                     type: connection.Sequelize.QueryTypes.SELECT,
@@ -3138,9 +3138,10 @@ route.post("/company/:id/add_bulk_companies", [authJWT.verifyToken, authJWT.isAd
                     }
                     whereC.parent_id = 0;
                     const findParentCompanies = await Representative.findAll({
-                        where: whereC
+                        where: whereC,
+                        group:["company_id"]
                     });
-                    console.log('ParentLength', findParentCompanies.length)
+                    // console.log('ParentLength', findParentCompanies.length)
                     if(findParentCompanies.length == 0) {
                         let addRecord = 0,  mainCompanies = [], parentCompaniesID = [];  
 
