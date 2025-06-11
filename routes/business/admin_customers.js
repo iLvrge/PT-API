@@ -2461,7 +2461,7 @@ route.post("/customers/retrieve_cited_patents_logo",[authJWT.verifyToken, authJW
         /* logger.info('Sending request to RapidAPI script')
         console.log('/var/www/html/script/name_to_domain_api.js', client_id, api_name, assignees, 1, company_id, all, type) */
         /* const assigneeLogos = spawn('node', ['/var/www/html/script/name_to_domain_api.js', client_id, api_name, assignees, 1, company_id, all, type, source_data]); */
-        console.log(`${process.env.SCRIPT_PATH}name_to_domain_api.js`);
+        console.log(`${process.env.SCRIPT_PATH}name_to_domain_api.js`, client_id, api_name, assignees, 1, company_id, all, type, source_data);
         spawn('node', [`${process.env.SCRIPT_PATH}name_to_domain_api.js`, client_id, api_name, assignees, 1, company_id, all, type, source_data]);
     
         /*assigneeLogos.stdout.on('data', (data) => {

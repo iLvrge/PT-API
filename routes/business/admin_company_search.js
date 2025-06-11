@@ -1435,7 +1435,21 @@ route.get("/company/law_firms/:id/companies", [authJWT.verifyToken, authJWT.isAd
             await Promise.all(promise)
 
             if( names.length > 0 ) {
-                const  queryCompany = `SELECT a.assignor_and_assignee_id as id, a.assignor_and_assignee_id, a.name,  (SELECT COUNT(*) FROM ( SELECT assignment1.rf_id FROM db_uspto.assignment AS assignment1 INNER JOIN (SELECT rf_id FROM db_uspto.assignor where assignor_and_assignee_id = a.assignor_and_assignee_id UNION SELECT rf_id FROM db_uspto.assignee where assignor_and_assignee_id = a.assignor_and_assignee_id) as aTemp ON aTemp.rf_id = assignment1.rf_id  WHERE (assignment1.cname IN (:lawFirmNames) OR assignment1.caddress_1 IN (:lawFirmNames)) GROUP BY assignment1.rf_id ) as temp) as counter, a.instances as total_occurences, c.representative_name as normalize_name, (select rr.representative_name FROM representative as rr WHERE rr.representative_name = a.name GROUP BY rr.representative_name) as representative_company, (SELECT concat(ass.reel_no,'-', ass.frame_no) FROM assignee as ee INNER JOIN assignment as ass ON ass.rf_id = ee.rf_id  WHERE ee.assignor_and_assignee_id = a.assignor_and_assignee_id  LIMIT 1) as assigneeRFID, '' as assignorRFID  FROM assignor_and_assignee as a 
+                const  queryCompany = `SELECT a.assignor_and_assignee_id as id, a.assignor_and_assignee_id, a.name,  (
+                    SELECT COUNT(*) FROM (
+                        SELECT DISTINCT assignment1.rf_id FROM db_uspto.assignment AS assignment1 
+                        INNER JOIN (
+                            SELECT rf_id FROM db_uspto.assignor where assignor_and_assignee_id = a.assignor_and_assignee_id 
+                            UNION 
+                            SELECT rf_id FROM db_uspto.assignee where assignor_and_assignee_id = a.assignor_and_assignee_id
+                        ) as aTemp ON aTemp.rf_id = assignment1.rf_id  
+                        WHERE (
+                            assignment1.cname IN (:lawFirmNames) OR 
+                            assignment1.caddress_1 IN (:lawFirmNames) OR 
+                            assignment1.caddress_2 IN (:lawFirmNames)
+                        )
+                    ) as temp) as counter,
+                    a.instances as total_occurences, c.representative_name as normalize_name, (select rr.representative_name FROM representative as rr WHERE rr.representative_name = a.name GROUP BY rr.representative_name) as representative_company, (SELECT concat(ass.reel_no,'-', ass.frame_no) FROM assignee as ee INNER JOIN assignment as ass ON ass.rf_id = ee.rf_id  WHERE ee.assignor_and_assignee_id = a.assignor_and_assignee_id  LIMIT 1) as assigneeRFID, '' as assignorRFID  FROM assignor_and_assignee as a 
                 LEFT JOIN representative as c ON c.representative_id = a.representative_id 
                 INNER JOIN LATERAL (Select assignee.assignor_and_assignee_id from assignment
                     INNER JOIN assignee ON assignee.rf_id = assignment.rf_id
@@ -1444,10 +1458,62 @@ route.get("/company/law_firms/:id/companies", [authJWT.verifyToken, authJWT.isAd
                 ) as tempAssignorAndAssignee 
                 WHERE a.assignor_and_assignee_id IN (SELECT assignor_and_assignee_id FROM assignee INNER JOIN assignment ON assignment.rf_id = assignee.rf_id WHERE (assignment.cname IN (:lawFirmNames) OR assignment.caddress_1 IN (:lawFirmNames) OR assignment.caddress_2 IN (:lawFirmNames)) GROUP BY assignor_and_assignee_id) GROUP BY a.name ORDER BY counter DESC`;
 
+                /* const queryCompany = `SELECT 
+                        a.assignor_and_assignee_id AS id,
+                        a.assignor_and_assignee_id,
+                        a.name,
+                        COUNT(DISTINCT assignment1.rf_id) AS counter,
+                        a.instances AS total_occurences,
+                        c.representative_name AS normalize_name,
+                        rr.representative_name AS representative_company,
+                        CONCAT(ass.reel_no, '-', ass.frame_no) AS assigneeRFID,
+                        '' AS assignorRFID
+                    FROM 
+                        assignor_and_assignee AS a
+                    LEFT JOIN 
+                        representative AS c ON c.representative_id = a.representative_id
+                    LEFT JOIN 
+                        representative AS rr ON rr.representative_name = a.name
+                    LEFT JOIN 
+                        assignee ee ON ee.assignor_and_assignee_id = a.assignor_and_assignee_id
+                    LEFT JOIN 
+                        assignment ass ON ass.rf_id = ee.rf_id
+                    INNER JOIN 
+                        assignment assignment1 ON assignment1.rf_id IN (
+                            SELECT rf_id FROM assignor WHERE assignor_and_assignee_id = a.assignor_and_assignee_id
+                            UNION
+                            SELECT rf_id FROM assignee WHERE assignor_and_assignee_id = a.assignor_and_assignee_id
+                        )
+                        AND (
+                            assignment1.cname IN (:lawFirmNames) OR 
+                            assignment1.caddress_1 IN (:lawFirmNames) OR 
+                            assignment1.caddress_2 IN (:lawFirmNames)
+                        )
+                    INNER JOIN 
+                        assignee ON assignee.assignor_and_assignee_id = a.assignor_and_assignee_id
+                    INNER JOIN 
+                        assignment assign2 ON assign2.rf_id = assignee.rf_id
+                        AND assign2.record_dt >= :year
+                    WHERE 
+                        a.assignor_and_assignee_id IN (
+                            SELECT assignor_and_assignee_id 
+                            FROM assignee 
+                            INNER JOIN assignment ON assignment.rf_id = assignee.rf_id
+                            WHERE 
+                                assignment.cname IN (:lawFirmNames) OR 
+                                assignment.caddress_1 IN (:lawFirmNames) OR 
+                                assignment.caddress_2 IN (:lawFirmNames)
+                        )
+                    GROUP BY 
+                        a.assignor_and_assignee_id
+                    ORDER BY 
+                        counter DESC
+                `; */
+
                 querySearchResult = await connection.resources.query(queryCompany,{
                     type: connection.Sequelize.QueryTypes.SELECT,
                     raw: true,
-                    replacements: { lawFirmNames: names, year: 1998 },
+                    replacements: { lawFirmNames: names, year: '1998-01-01' },
                     logging: console.log,
                 });
             }
