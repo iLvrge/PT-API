@@ -120,10 +120,10 @@ route.post("/verify", (req, res, next) => {
                 to: `${user.email_address}`,
                 subject: `PatenTrack Login Verification`,
                 /* text: `You are receiving this because you have requested to reset of the password for your account.\n\n Please click on the following link, or paste this into your browser to complete the process within one hour of receiving it. \n\n https://patentrack.com/?t=reset&e=${user.email_address}&auth=${token} \n\n If you did not request this, please ignore this email and your password will remain unchanged. \n Thanks \n Team PatenTrack` */
-                html: `Click the link below to confirm your login and continue:<br/>
+                html: `We received a request for access to your PatenTrack account.  Please click the link below to enter:<br/>
                 <br/>
                 <a href="${confirmationLink}" style="font-size: 18px; font-weight: bold; color: #1a73e8;">
-                  Confirm Your Login
+                Enter to PatenTrack
                 </a>
                 <br/><br/>
                 Welcome in,<br/>
