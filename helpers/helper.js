@@ -4420,6 +4420,9 @@ const findLayout = (layout) => {
         case 'deflated_collaterals':
             layoutID = 26
             break
+        case 'unpaid_due':
+            layoutID = 27
+            break
         case 'assigned':
             layoutID = 30
             break
