@@ -3,13 +3,13 @@ const moment = require('moment');
 const Op = Sequelize.Op;
 
 const application = new Sequelize(process.env.DATABASE_APPLICATION, process.env.USER, process.env.PASSWORD, {
-    host: '167.172.195.92',
+    host: process.env.HOST,
     dialect: 'mysql',
     // Removed operatorsAliases
 });
 
 const applicationNew = new Sequelize(process.env.DATABASE_APPLICATION_NEW, process.env.USER, process.env.PASSWORD, {
-    host: '167.172.195.92',
+    host: process.env.HOST,
     dialect: 'mysql',
     // Removed operatorsAliases
 });
@@ -17,31 +17,31 @@ const applicationNew = new Sequelize(process.env.DATABASE_APPLICATION_NEW, proce
 applicationNew.dialect.supports.schemas = true;
 
 const resources = new Sequelize(process.env.DATABASE_RAW, process.env.USER, process.env.PASSWORD, {
-    host: '167.172.195.92',
+    host: process.env.HOST,
     dialect: 'mysql',
     // Removed operatorsAliases
 });
 
 const business = new Sequelize(process.env.DATABASE_BUSINESS, process.env.USER, process.env.PASSWORD, {
-    host: '167.172.195.92',
+    host: process.env.HOST,
     dialect: 'mysql',
     // Removed operatorsAliases
 });
 
 const maintainence = new Sequelize(process.env.DATABASE_MAINTAINENCE, process.env.USER, process.env.PASSWORD, {
-    host: '167.172.195.92',
+    host: process.env.HOST,
     dialect: 'mysql',
     // Removed operatorsAliases
 });
 
 const biblioGrant = new Sequelize(process.env.DATABASE_GRANT_BIBLIO, process.env.USER, process.env.PASSWORD, {
-    host: '167.172.195.92',
+    host: process.env.HOST,
     dialect: 'mysql',
     // Removed operatorsAliases
 });
 
 const biblioApplication = new Sequelize(process.env.DATABASE_APPLICATION_BIBLIO, process.env.USER, process.env.PASSWORD, {
-    host: '167.172.195.92',
+    host: process.env.HOST,
     dialect: 'mysql',
     // Removed operatorsAliases
 });
