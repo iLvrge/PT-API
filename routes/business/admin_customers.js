@@ -1217,18 +1217,11 @@ route.get("/customers/:id/users", [authJWT.verifyToken, authJWT.isAdmin, authJWT
         // Get all users for the organisation
         const users = await helpers.getAllUsers(organisationID);
         
-        return res.status(200).json({
-            success: true,
-            data: users
-        });
+        return res.status(200).json(users);
 
     } catch (error) {
         console.error('Error fetching users:', error);
-        return res.status(500).json({ 
-            success: false, 
-            message: 'Failed to fetch users',
-            error: process.env.NODE_ENV === 'development' ? error.message : undefined
-        });
+        return res.status(500).json('Failed to fetch users');
     }
 });
 
