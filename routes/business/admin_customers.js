@@ -1184,37 +1184,52 @@ route.get("/customers/:id/reclassify", [authJWT.verifyToken, authJWT.isAdmin], a
 });
 
 
-route.get("/customers/:id/users", [authJWT.verifyToken, authJWT.isAdmin, authJWT.addClientID, clientDBConnection.connect], (req, res, next) => {
-    (async () => {
-        try{
-            let organisationID = req.params.id;
-            if(organisationID > 0){
-                const organisation  = await helpers.findOrganisationbyID(organisationID);
-                if(organisation != null && organisation.organisation_id > 0){
-                    /* const list = await helpers.getAllUsers(organisation.organisation_id);
-                    res.status(200).json(list); */
-                    if(typeof req.connection_db != "undefined" && req.connection_db != null ) {
+/**
+ * @route GET /customers/:id/users
+ * @group Admin - Admin operations
+ * @param {number} id.path.required - Organisation ID
+ * @returns {Array} 200 - List of users
+ * @returns {Error}  400 - Invalid organisation ID
+ * @returns {Error}  404 - Organisation not found
+ * @returns {Error}  500 - Internal server error
+ */
+route.get("/customers/:id/users", [authJWT.verifyToken, authJWT.isAdmin, authJWT.addClientID, clientDBConnection.connect], async (req, res) => {
+    try {
+        const organisationID = parseInt(req.params.id, 10);
 
-                        const userQuery = `SELECT * FROM user`
-
-                        const list = await req.connection_db.query(userQuery, {
-                            type: req.connection_db.Sequelize.QueryTypes.SELECT,
-                            raw: true,
-                            logging: console.log,
-                        }); 
-                        res.status(200).json(list);
-                    }
-                } else {
-                    res.status(200).json([]);
-                }
-            } else {
-                res.status(400).send("Invalid inputs2");
-            }       
-        } catch( err ) {
-            console.log(err);
-            res.status(400).send("Invalid inputs1");
+        // Input validation
+        if (isNaN(organisationID) || organisationID <= 0) {
+            return res.status(400).json({ 
+                success: false, 
+                message: 'Invalid organisation ID' 
+            });
         }
-    })(); 
+
+        // Check if organisation exists
+        const organisation = await helpers.findOrganisationbyID(organisationID);
+        if (!organisation) {
+            return res.status(404).json({ 
+                success: false, 
+                message: 'Organisation not found' 
+            });
+        }
+
+        // Get all users for the organisation
+        const users = await helpers.getAllUsers(organisationID);
+        
+        return res.status(200).json({
+            success: true,
+            data: users
+        });
+
+    } catch (error) {
+        console.error('Error fetching users:', error);
+        return res.status(500).json({ 
+            success: false, 
+            message: 'Failed to fetch users',
+            error: process.env.NODE_ENV === 'development' ? error.message : undefined
+        });
+    }
 });
 
 /**
