@@ -11,20 +11,20 @@ const express = require("express"),
     https = require('https'),
 
     Stream = require('stream').Transform,
-    
+
     request = require('request'),
 
     crypto = require("crypto");
 
 const { createLogger, format, transports } = require("winston");
 
-const {google} = require('googleapis');
+const { google } = require('googleapis');
 
 const SlackHelper = require('../../helpers/slack')
 
-const { v4: uuidv4  } = require('uuid');
+const { v4: uuidv4 } = require('uuid');
 
-const { exec, spawn  } = require("child_process");
+const { exec, spawn } = require("child_process");
 
 const { WebClient } = require('@slack/web-api')
 
@@ -70,7 +70,7 @@ const Organisations = require("../../model/business/Organisations"),
 
     RepresentativeTransactions = require("../../model/resources/RepresentativeTransactions"),
 
-    AWS  = require('aws-sdk'); 
+    AWS = require('aws-sdk');
 
 const socket = require("../../socket");
 const ReclassifyLog = require("../../model/resources/ReclassifyLog");
@@ -78,7 +78,7 @@ const LogMessages = require("../../model/application/LogMessages");
 const LogFamilyAssetsMessages = require("../../model/application/LogFamilyAssetsMessages");
 const LogUpdateCompany = require("../../model/application/LogUpdateCompany");
 const runPhpScript = require("../../helpers/runPhpScript");
-   
+
 /**Get all documents */
 const logger = createLogger({
     format: format.combine(format.timestamp(), format.json()),
@@ -87,51 +87,51 @@ const logger = createLogger({
     rejectionHandlers: [new transports.File({ filename: "./name_to_domain_api_rejections.log" })],
 });
 
-route.get('socket', async(req, res, next) => {
-    try{
+route.get('socket', async (req, res, next) => {
+    try {
         const connection = socket.connection();
         if (connection) {
-        connection.emit("notification", 'First socket connection message.');
+            connection.emit("notification", 'First socket connection message.');
         }
     } catch (err) {
         console.log(`Error in socket`, err)
     }
-    
-}) 
+
+})
 
 
-route.put("/customers/:organisation_id/buttons", [authJWT.verifyToken, authJWT.isAdmin], async(req, res, next) => {
-    try{
+route.put("/customers/:organisation_id/buttons", [authJWT.verifyToken, authJWT.isAdmin], async (req, res, next) => {
+    try {
         const { organisation_id } = req.params;
         const { button_id, status } = req.body;
 
         let findButton = await AdminAccountProcess.findOne({
-            where: { organisation_id, button_id}
+            where: { organisation_id, button_id }
         })
 
-        if( findButton != null ) {
+        if (findButton != null) {
             findButton.status = status
             buttonData = await findButton.save()
         } else {
-            findButton = await AdminAccountProcess.create({organisation_id, button_id, status: 1 })           
+            findButton = await AdminAccountProcess.create({ organisation_id, button_id, status: 1 })
         }
         res.status(200).json(findButton);
-    } catch(err) {
+    } catch (err) {
         console.log(err);
         res.status(400).send("Bad inputs");
     }
 })
 
-route.get("/customers/:organisation_id/buttons" , [authJWT.verifyToken, authJWT.isAdmin], async(req, res, next) => {
-    try{
+route.get("/customers/:organisation_id/buttons", [authJWT.verifyToken, authJWT.isAdmin], async (req, res, next) => {
+    try {
         const { organisation_id } = req.params;
 
         const findButtons = await AdminAccountProcess.findAll({
-            where: { organisation_id}
+            where: { organisation_id }
         })
-        
+
         res.status(200).json(findButtons);
-    } catch(err) {
+    } catch (err) {
         console.log(err);
         res.status(400).send("Bad inputs");
     }
@@ -141,11 +141,11 @@ route.get("/customers/:organisation_id/buttons" , [authJWT.verifyToken, authJWT.
  * List all customers
  */
 
-route.get("/customers/run_query/:representative_name/:query_no", [authJWT.verifyToken, authJWT.isAdmin], async(req, res, next) => {
-    try{
+route.get("/customers/run_query/:representative_name/:query_no", [authJWT.verifyToken, authJWT.isAdmin], async (req, res, next) => {
+    try {
         const { representative_name, query_no } = req.params
         console.log("ad", representative_name, query_no)
-        let  procedureName = null
+        let procedureName = null
         /* switch(parseInt(query_no)) {
             case 1:
                 procedureName = 'Table_A'
@@ -266,25 +266,25 @@ route.get("/customers/run_query/:representative_name/:query_no", [authJWT.verify
             "105",  "Panasonic Semiconductor Solutions Co Ltd"],[
             "106",  "Panasonic Wanbao Appliances Compressor (guangzhou) Co Ltd"]] */
 
-            const companyArray = [["1", "Avaya Inc"],[
-                "2", "Avaya Canada Corp"],[
-                "3", "Avaya Communication Israel Ltd"],[
-                "4", "Avaya Communications Inc"],[
-                "5", "Avaya Ecs Ltd"],[
-                "6", "Avaya Gmbh & Co Kg"],[
-                "7", "Avaya Holdings Ltd"],[
-                "17", "Avaya Integrated Cabinet Solutions Inc"],[
-                "18", "Avaya Integrated Cabinet Solutions Llc"],[
-                "19", "Avaya Licensing Llc"],[
-                "20", "Avaya Management Lp"],[
-                "21", "Avaya Technology Corp"],[
-                "29", "Avaya Technology Llc"],[
-                "30", "Avaya Uk"],[
-                "31", "Avaya-tenovis Gmbh & Co Kg"],[
-                "54", "Avaya Cloud Canada Inc"]
-                ]
+        const companyArray = [["1", "Avaya Inc"], [
+            "2", "Avaya Canada Corp"], [
+            "3", "Avaya Communication Israel Ltd"], [
+            "4", "Avaya Communications Inc"], [
+            "5", "Avaya Ecs Ltd"], [
+            "6", "Avaya Gmbh & Co Kg"], [
+            "7", "Avaya Holdings Ltd"], [
+            "17", "Avaya Integrated Cabinet Solutions Inc"], [
+            "18", "Avaya Integrated Cabinet Solutions Llc"], [
+            "19", "Avaya Licensing Llc"], [
+            "20", "Avaya Management Lp"], [
+            "21", "Avaya Technology Corp"], [
+            "29", "Avaya Technology Llc"], [
+            "30", "Avaya Uk"], [
+            "31", "Avaya-tenovis Gmbh & Co Kg"], [
+            "54", "Avaya Cloud Canada Inc"]
+        ]
 
-        switch(parseInt(query_no)) {
+        switch (parseInt(query_no)) {
             case 1:
                 procedureName = 'routine_list1'
                 break;
@@ -310,23 +310,23 @@ route.get("/customers/run_query/:representative_name/:query_no", [authJWT.verify
                 procedureName = 'routine_correct_chain'
                 break;
         }
-        if(procedureName != null) {
-            const replacements = {representative_name, company_id: 99999, organisation_id: 68}
+        if (procedureName != null) {
+            const replacements = { representative_name, company_id: 99999, organisation_id: 68 }
 
             const findIndex = companyArray.findIndex(row => row[1] === representative_name)
-            if(findIndex !== null) {
+            if (findIndex !== null) {
                 replacements.company_id = companyArray[findIndex][0]
             }
             let procedureRun = `CALL ${procedureName}(:representative_name, :company_id, :organisation_id);`
-            if(parseInt(query_no) === 6 || parseInt(query_no) === 8) {
+            if (parseInt(query_no) === 6 || parseInt(query_no) === 8) {
                 procedureRun = `CALL ${procedureName}(:company_id, :organisation_id);`
             }
-            await connection.resources.query(procedureRun,{
-                    type: connection.Sequelize.QueryTypes.SELECT,
-                    raw: true,
-                    logging: console.log,
-                    replacements
-                }
+            await connection.resources.query(procedureRun, {
+                type: connection.Sequelize.QueryTypes.SELECT,
+                raw: true,
+                logging: console.log,
+                replacements
+            }
             )
             console.log("QUERY")
 
@@ -362,50 +362,50 @@ route.get("/customers/run_query/:representative_name/:query_no", [authJWT.verify
                 query += " GROUP BY rf_id"
             } */
 
-            let name = parseInt(query_no) === 1 
-                            ? 'db_uspto.list1'
-                            : parseInt(query_no) === 2
-                                ? 'db_uspto.list2'
-                                :
-                                    parseInt(query_no) === 3 || parseInt(query_no) === 6 || parseInt(query_no) === 7
-                                    ? 'db_new_application.assets'
-                                    : parseInt(query_no) === 4
-                                        ? 'db_uspto.table_b'
-                                        : 'db_uspto.table_c'
+            let name = parseInt(query_no) === 1
+                ? 'db_uspto.list1'
+                : parseInt(query_no) === 2
+                    ? 'db_uspto.list2'
+                    :
+                    parseInt(query_no) === 3 || parseInt(query_no) === 6 || parseInt(query_no) === 7
+                        ? 'db_new_application.assets'
+                        : parseInt(query_no) === 4
+                            ? 'db_uspto.table_b'
+                            : 'db_uspto.table_c'
 
-            let query = `SELECT * FROM ${name}  `;    
-            if(parseInt(query_no) === 1 ) {
+            let query = `SELECT * FROM ${name}  `;
+            if (parseInt(query_no) === 1) {
                 query = `SELECT assignor_and_assignee_id FROM ${name}  `
-            } else if(parseInt(query_no) === 2) {
+            } else if (parseInt(query_no) === 2) {
                 query = `SELECT rf_id FROM ${name}  `
-            } else if(parseInt(query_no)  === 4 || parseInt(query_no)  === 5) {
+            } else if (parseInt(query_no) === 4 || parseInt(query_no) === 5) {
                 query = `SELECT appno_doc_num FROM ${name}  `
             }
             query += ' WHERE '
-            if(parseInt(query_no) < 3) {
+            if (parseInt(query_no) < 3) {
                 query += `representative_name = :representative_name AND `;
             }
 
             query += ` company_id = :company_id AND organisation_id = :organisation_id `
 
 
-            if(parseInt(query_no)  === 3 || parseInt(query_no)  === 6 || parseInt(query_no)  === 7) {
-                replacements.layout_id = parseInt(query_no)  === 6 ? 1 : parseInt(query_no)  === 7 ? 4 : parseInt(query_no)  === 8 ? 99 : 15
+            if (parseInt(query_no) === 3 || parseInt(query_no) === 6 || parseInt(query_no) === 7) {
+                replacements.layout_id = parseInt(query_no) === 6 ? 1 : parseInt(query_no) === 7 ? 4 : parseInt(query_no) === 8 ? 99 : 15
                 query += ` AND layout_id = :layout_id `
             }
 
-            if(parseInt(query_no) < 6) {
-                if(parseInt(query_no) === 1 ) {                    
+            if (parseInt(query_no) < 6) {
+                if (parseInt(query_no) === 1) {
                     query = `SELECT * FROM (SELECT appno_doc_num, grant_doc_num FROM documentid WHERE rf_id IN (SELECT rf_id FROM assignor WHERE assignor_and_assignee_id IN (${query}) GROUP BY rf_id) UNION SELECT appno_doc_num, grant_doc_num FROM documentid WHERE rf_id IN (SELECT rf_id FROM assignee WHERE assignor_and_assignee_id IN (${query}) GROUP BY rf_id)) AS temp GROUP BY appno_doc_num `;
-                } else if(parseInt(query_no) === 2) {                    
+                } else if (parseInt(query_no) === 2) {
                     query = `SELECT appno_doc_num, grant_doc_num FROM documentid WHERE rf_id IN (${query}) GROUP BY appno_doc_num `;
-                } else if(parseInt(query_no)  === 4 || parseInt(query_no)  === 5) {
+                } else if (parseInt(query_no) === 4 || parseInt(query_no) === 5) {
                     query = `SELECT appno_doc_num, grant_doc_num FROM documentid WHERE appno_doc_num IN (${query}) GROUP BY appno_doc_num `;
                 }
             }
-            
+
             console.log(query)
-            const reports = await connection.resources.query(query,{
+            const reports = await connection.resources.query(query, {
                 type: connection.Sequelize.QueryTypes.SELECT,
                 raw: true,
                 replacements,
@@ -414,8 +414,8 @@ route.get("/customers/run_query/:representative_name/:query_no", [authJWT.verify
             res.status(200).json(reports);
         } else {
             res.status(200).json([]);
-        }        
-    } catch( err ) {
+        }
+    } catch (err) {
         console.log("Error: ", err)
     }
 })
@@ -425,39 +425,39 @@ route.get("/customers/run_query/:representative_name/:query_no", [authJWT.verify
  */
 
 route.get("/customers", [authJWT.verifyToken, authJWT.isAdmin], (req, res, next) => {
-    try{
+    try {
 
         Organisations.findAll({
-            attributes: [['organisation_id', 'id'], 'name','logo', 'organisation_type', [connection.Sequelize.literal(0, 'no_of_parties'), 'share_url'], [connection.Sequelize.literal(0, 'assets'), 'assets'], [connection.Sequelize.literal(0, 'no_of_transactions'),'no_of_transactions'], [connection.Sequelize.literal(0, 'no_of_parties'), 'no_of_parties'], [connection.Sequelize.literal(0, 'no_of_entities'), 'no_of_entities'], [connection.Sequelize.literal(0, 'no_of_employees'), 'no_of_employees'], [connection.Sequelize.literal(0, 'product'), 'product']],
-            where: {type:{[connection.Op.ne]: 2}},
-            order:[
+            attributes: [['organisation_id', 'id'], 'name', 'logo', 'organisation_type', [connection.Sequelize.literal(0, 'no_of_parties'), 'share_url'], [connection.Sequelize.literal(0, 'assets'), 'assets'], [connection.Sequelize.literal(0, 'no_of_transactions'), 'no_of_transactions'], [connection.Sequelize.literal(0, 'no_of_parties'), 'no_of_parties'], [connection.Sequelize.literal(0, 'no_of_entities'), 'no_of_entities'], [connection.Sequelize.literal(0, 'no_of_employees'), 'no_of_employees'], [connection.Sequelize.literal(0, 'product'), 'product']],
+            where: { type: { [connection.Op.ne]: 2 } },
+            order: [
                 ['name', 'ASC']
             ]
         })
-        .then((list)=>{
-            res.status(200).json(list);
-        }).catch((err)=>{
-            console.log(err);
-            res.status(500).json({message: "Unable to retrieve customer list"})
-        });
+            .then((list) => {
+                res.status(200).json(list);
+            }).catch((err) => {
+                console.log(err);
+                res.status(500).json({ message: "Unable to retrieve customer list" })
+            });
     } catch (e) {
-        
+
     }
 });
 
 /**
  * List all admin users
  */
-route.get("/users", [authJWT.verifyToken, authJWT.isAdmin], async(req, res, next) => {
-    try{
-        
+route.get("/users", [authJWT.verifyToken, authJWT.isAdmin], async (req, res, next) => {
+    try {
+
         const adminUsers = await Users.findAll({
             attributes: ['user_id', 'first_name', 'last_name', 'username'],
-            where: {role_id: 1, type: '9', organisation_id: 3}
+            where: { role_id: 1, type: '9', organisation_id: 3 }
         })
-        
-        res.status(200).json(adminUsers);     
-    } catch( err ) {
+
+        res.status(200).json(adminUsers);
+    } catch (err) {
         console.log(err);
         res.status(400).send("Invalid inputs");
     }
@@ -467,13 +467,13 @@ route.get("/users", [authJWT.verifyToken, authJWT.isAdmin], async(req, res, next
  * Add admin user
  */
 
-route.post("/users", [authJWT.verifyToken, authJWT.isAdmin, userExist.checkDuplicateAdminUsername], async (req, res, next) =>{
-    try{
+route.post("/users", [authJWT.verifyToken, authJWT.isAdmin, userExist.checkDuplicateAdminUsername], async (req, res, next) => {
+    try {
         const addUser = await Users.create({
             first_name: req.body.first_name,
             last_name: req.body.last_name,
             email_address: '',
-            username: req.body.username,						
+            username: req.body.username,
             password: bcrypt.hashSync(req.body.password ? req.body.password : 123456, 8),
             job_title: '',
             linkedin_url: '',
@@ -482,16 +482,16 @@ route.post("/users", [authJWT.verifyToken, authJWT.isAdmin, userExist.checkDupli
             role_id: 1,
             organisation_id: 3
         })
-        if(addUser != null) {   
+        if (addUser != null) {
             const newUser = addUser.toJSON();
             newUser.id = newUser.user_id;
             newUser.password = '';
             newUser.organisation_id = '';
             res.status(200).json(newUser);
-        }  else {
+        } else {
             res.status(400).send("Bad inputs");
-        } 
-    } catch( err ) {
+        }
+    } catch (err) {
         console.log(err);
         res.status(400).send("Bad inputs");
     }
@@ -501,35 +501,35 @@ route.post("/users", [authJWT.verifyToken, authJWT.isAdmin, userExist.checkDupli
  * Update admin user
  */
 
-route.put("/users/:user_id", [authJWT.verifyToken, authJWT.isAdmin], async (req, res, next) =>{
-   
-    try{
-        
-        
+route.put("/users/:user_id", [authJWT.verifyToken, authJWT.isAdmin], async (req, res, next) => {
+
+    try {
+
+
         const user = await Users.findOne({
-            where: {user_id: req.params.user_id, organisation_id: 3, type: '9'}
+            where: { user_id: req.params.user_id, organisation_id: 3, type: '9' }
         })
 
-        if( user != null && user.user_id > 0){				
-            if(req.body.password != undefined && req.body.password != null && req.body.password != ""){
+        if (user != null && user.user_id > 0) {
+            if (req.body.password != undefined && req.body.password != null && req.body.password != "") {
                 user.first_name = req.body.first_name;
                 user.password = bcrypt.hashSync(req.body.password, 8);
                 const update = await user.save();
                 console.log(update)
-                if(update) {
+                if (update) {
                     res.status(200).send("Updated successfully");
                 } else {
                     res.status(500).send("Error while updating user.");
-                }                
+                }
             } else {
                 res.status(400).send("Invalid inputs");
             }
         } else {
             res.status(400).send("Invalid inputs");
         }
-    } catch( err ) {
+    } catch (err) {
         console.log(err);
-        
+
         res.status(400).send("Invalid inputs");
     }
 })
@@ -538,42 +538,53 @@ route.put("/users/:user_id", [authJWT.verifyToken, authJWT.isAdmin], async (req,
  * Delete admin user
  */
 
-route.delete("/users/:orgId/:user_id", [authJWT.verifyToken, authJWT.isAdmin], async (req, res, next) =>{
-    try{
+route.delete("/users/:orgId/:user_id", [authJWT.verifyToken, authJWT.isAdmin], async (req, res, next) => {
+    try {
         const user = await Users.findOne({
-            where: {user_id: req.params.user_id, organisation_id: req.params.orgId}
+            where: { user_id: req.params.user_id, organisation_id: req.params.orgId }
         })
 
-        if( user != null && user.user_id > 0){
+        if (user != null && user.user_id > 0) {
 
             const connectuserDB = await clientDBConnection.connectOnFly(req.params.orgId)
 
-            if(connectuserDB !== null) { 
+            if (connectuserDB !== null) {
                 const dbClientUser = await connectuserDB.define('Users', ClientUsers.mainStructure, ClientUsers.options);
 
                 const userDetail = await dbClientUser.findOne({
-                    where: {user_id: req.params.user_id},
+                    where: { user_id: req.params.user_id },
                     attributes: ['user_id'],
                 });
 
-                if(userDetail) {
-                    const deleteClientUser = await userDetail.destroy();
-                    const deleteUser = await user.destroy();
-                    if(deleteUser && deleteClientUser) {
-                        res.status(200).send("User deleted successfully.");
-                    } else {
+                if (userDetail) {
+                    // Use a transaction to ensure both deletes succeed or both fail
+                    const t = await connection.business.transaction();
+                    try {
+                        const deleteClientUser = await userDetail.destroy({ transaction: t });
+                        const deleteUser = await user.destroy({ transaction: t });
+
+                        if (deleteUser && deleteClientUser) {
+                            await t.commit();
+                            res.status(200).send("User deleted successfully.");
+                        } else {
+                            await t.rollback();
+                            res.status(500).send("Error while deleting user.");
+                        }
+                    } catch (error) {
+                        await t.rollback();
+                        console.log("Transaction error:", error);
                         res.status(500).send("Error while deleting user.");
                     }
                 } else {
                     res.status(404).send("User not found in client database.");
-                }  
+                }
             } else {
                 res.status(500).send("Unable to connect with client.");
             }
         } else {
             res.status(500).send("Error while deleting user.");
         }
-    } catch( err ) {
+    } catch (err) {
         console.log(err);
         res.status(400).send("Invalid inputs");
     }
@@ -583,35 +594,35 @@ route.delete("/users/:orgId/:user_id", [authJWT.verifyToken, authJWT.isAdmin], a
  * Get customer by ID
  */
 
-route.get("/customers/:id", [authJWT.verifyToken, authJWT.isAdmin], async(req, res, next) => {
+route.get("/customers/:id", [authJWT.verifyToken, authJWT.isAdmin], async (req, res, next) => {
     (async () => {
-        try{
+        try {
             let organisationID = req.params.id;
-            if(organisationID > 0){
+            if (organisationID > 0) {
 
-                const query = "SELECT BIN_TO_UUID(`uuid`) AS `standard`, `organisation_id`, `name`, `subscribtion`,  `organisation_type`, `address`, `team`, `phone_number`, `email_address`, `logo`, `linkedin_url`, `zipcode`, `city`, `state`, `country_id`, `type`, `status` FROM db_business.`organisation` AS `organisation` WHERE `organisation`.`organisation_id` = :organisationID";   
+                const query = "SELECT BIN_TO_UUID(`uuid`) AS `standard`, `organisation_id`, `name`, `subscribtion`,  `organisation_type`, `address`, `team`, `phone_number`, `email_address`, `logo`, `linkedin_url`, `zipcode`, `city`, `state`, `country_id`, `type`, `status` FROM db_business.`organisation` AS `organisation` WHERE `organisation`.`organisation_id` = :organisationID";
 
-                const org =  await connection.resources.query(query,{
+                const org = await connection.resources.query(query, {
                     type: connection.Sequelize.QueryTypes.SELECT,
                     replacements: { organisationID: organisationID },
                     raw: true,
                     plain: true,
                     logging: console.log,
-                    }
-                );               
-                if(org != null && org.organisation_id > 0) {
-                    res.status(200).json({name: org.name, organisation_type: org.organisation_type, organisation_id: org.organisation_id, subscribtion: org.subscribtion, logo: org.logo, standard: org.standard});
+                }
+                );
+                if (org != null && org.organisation_id > 0) {
+                    res.status(200).json({ name: org.name, organisation_type: org.organisation_type, organisation_id: org.organisation_id, subscribtion: org.subscribtion, logo: org.logo, standard: org.standard });
                 } else {
                     res.status(402).send("Not found");
-                } 
+                }
             } else {
                 res.status(402).send("Not found ");
-            } 
+            }
         } catch (e) {
             console.log(e);
             res.status(402).send("Not found ");
-        }         
-    })();     
+        }
+    })();
 });
 
 /**
@@ -619,16 +630,16 @@ route.get("/customers/:id", [authJWT.verifyToken, authJWT.isAdmin], async(req, r
  * 
  */
 route.get("/customers/customers/:id/:type", [authJWT.verifyToken, authJWT.isAdmin, authJWT.addClientID, clientDBConnection.connect], async (req, res, next) => {
-    try{            
+    try {
         /*const companyName = req.params.company_name, type = req.params.type;*/
         const organisationID = req.params.id, type = req.params.type;
-        const {suggestions, fixed_identicals} = req.query
-        let list = []; 
-        if(typeof req.connection_db != "undefined" && req.connection_db != null ) {
+        const { suggestions, fixed_identicals } = req.query
+        let list = [];
+        if (typeof req.connection_db != "undefined" && req.connection_db != null) {
             //list = await helpers.findCompanyEntitiesByAccountID(organisationID, type, req.connection_db, suggestions, fixed_identicals); 
-            if(typeof suggestions == 'undefined' && typeof fixed_identicals == 'undefined') {  
-                list = await helpers.findCompanyEntitiesByAccountID(organisationID, type, req.connection_db, suggestions, fixed_identicals); 
-            } else { 
+            if (typeof suggestions == 'undefined' && typeof fixed_identicals == 'undefined') {
+                list = await helpers.findCompanyEntitiesByAccountID(organisationID, type, req.connection_db, suggestions, fixed_identicals);
+            } else {
                 console.log('Run File Account')
                 exec(`node /var/www/html/script/normalize_names.js ${req.orgId} '[]' ${type} ${suggestions} ${fixed_identicals}`, async (error, std, stderr) => {
                     console.log('Accound Suggestion')
@@ -636,50 +647,50 @@ route.get("/customers/customers/:id/:type", [authJWT.verifyToken, authJWT.isAdmi
                     console.log('std', std)
                     console.log('stderr', stderr)
                     return []
-                }) 
-            } 
+                })
+            }
         }
-        res.status(200).json(list); 
-    } catch (e){
+        res.status(200).json(list);
+    } catch (e) {
         console.log(e);
         res.status(402).send("No customers found");
     }
 });
 
 route.get("/customers/read_static_file/read_entity_file/:id/:portfolios/:type", [authJWT.verifyToken, authJWT.isAdmin], async (req, res, next) => {
-    try{            
+    try {
         /*const companyName = req.params.company_name, type = req.params.type;*/
-        let {id, type, portfolios} = req.params;
+        let { id, type, portfolios } = req.params;
 
-        if(portfolios != '') {
+        if (portfolios != '') {
             portfolios = JSON.parse(portfolios)
         }
         const fileName = `normalizeNames_${id}_${type == 1 ? portfolios.join('') + '_file' : 'file'}.json`
-       console.log(fileName)
-        let list = []; 
-        if(fileName != '') {
+        console.log(fileName)
+        let list = [];
+        if (fileName != '') {
             const fullPath = `/var/www/html/script/${fileName}`
 
-            fs.readFile(fullPath, async function(err, data) {
+            fs.readFile(fullPath, async function (err, data) {
                 if (!err) {
-                    try {            
-                        if(data != '') {
+                    try {
+                        if (data != '') {
                             list = JSON.parse(data)
                             res.status(200).json(list);
                         }
-                    } catch( e ) { 
-                        console.log("Error while reading entity file", e) 
+                    } catch (e) {
+                        console.log("Error while reading entity file", e)
                         res.status(200).json(list);
-                    } 
+                    }
                 } else {
-                    console.log("Error while reading entity file", err) 
+                    console.log("Error while reading entity file", err)
                     res.status(200).json(list);
                 }
             })
-        } else { 
+        } else {
             res.status(200).json(list);
         }
-    } catch (e){
+    } catch (e) {
         console.log(e);
         res.status(402).send("No customers found");
     }
@@ -687,35 +698,35 @@ route.get("/customers/read_static_file/read_entity_file/:id/:portfolios/:type", 
 });
 
 route.get("/customers/static_file/read_entity_file", [authJWT.verifyToken, authJWT.isAdmin], async (req, res, next) => {
-    try{            
+    try {
         /*const companyName = req.params.company_name, type = req.params.type;*/
-        
-        const {fileName} = req.query
-       
+
+        const { fileName } = req.query
+
         let list = [];
         console.log(fileName)
-        if(fileName != '') {
+        if (fileName != '') {
             const fullPath = `/var/www/html/script/${fileName}`
-            fs.readFile(fullPath, async function(err, data) {
+            fs.readFile(fullPath, async function (err, data) {
                 if (!err) {
-                    try {            
-                        if(data != '') {
+                    try {
+                        if (data != '') {
                             list = JSON.parse(data)
                             res.status(200).json(list);
                         }
-                    } catch( e ) { 
-                        console.log("Error while reading entity file", e) 
+                    } catch (e) {
+                        console.log("Error while reading entity file", e)
                         res.status(200).json(list);
-                    } 
+                    }
                 } else {
-                    console.log("Error while reading entity file", err) 
+                    console.log("Error while reading entity file", err)
                     res.status(200).json(list);
                 }
             })
-        } else { 
+        } else {
             res.status(200).json(list);
         }
-    } catch (e){
+    } catch (e) {
         console.log(e);
         res.status(402).send("No customers found");
     }
@@ -727,26 +738,26 @@ route.get("/customers/static_file/read_entity_file", [authJWT.verifyToken, authJ
  * 
  */
 route.get("/customers/customers/:id/:representativeID/:type", [authJWT.verifyToken, authJWT.isAdmin, authJWT.addClientID, clientDBConnection.connect], async (req, res, next) => {
-    try{            
+    try {
         /*const companyName = req.params.company_name, type = req.params.type;*/
         const organisationID = req.params.id, type = req.params.type, representativeIDs = JSON.parse(req.params.representativeID);
-        const {suggestions, fixed_identicals} = req.query
+        const { suggestions, fixed_identicals } = req.query
         console.log(req.query)
-        let list = []; 
+        let list = [];
 
-        if(typeof req.connection_db != "undefined" && req.connection_db != null ) {
+        if (typeof req.connection_db != "undefined" && req.connection_db != null) {
             //list = await helpers.findCompanyEntitiesByAccountIDByRepresentativeIDs(organisationID, representativeIDs, type, req.connection_db, suggestions, fixed_identicals);
 
-            
-            if(typeof suggestions == 'undefined' && typeof fixed_identicals == 'undefined') { 
+
+            if (typeof suggestions == 'undefined' && typeof fixed_identicals == 'undefined') {
                 list = await helpers.findCompanyEntitiesByAccountIDByRepresentativeIDs(organisationID, representativeIDs, type, req.connection_db, suggestions, fixed_identicals);
-            } else { 
+            } else {
                 console.log('Run File')
                 exec(`node /var/www/html/script/normalize_names.js ${req.orgId} ${req.params.representativeID}  ${type} ${suggestions} ${fixed_identicals}`);
             }
         }
         res.status(200).json(list);
-    } catch (e){
+    } catch (e) {
         console.log(e);
         res.status(402).send("No customers found");
     }
@@ -756,12 +767,12 @@ route.get("/customers/customers/:id/:representativeID/:type", [authJWT.verifyTok
  */
 
 route.get("/customers/:id/companies", [authJWT.verifyToken, authJWT.isAdmin, authJWT.addClientID, clientDBConnection.connect], async (req, res, next) => {
-    try{
+    try {
         let organisationID = req.params.id;
-        if(organisationID > 0){
-            const organisation  = await helpers.findOrganisationbyID(organisationID);
-            if(organisation != null && organisation.organisation_id > 0){
-                if(typeof req.connection_db != "undefined" && req.connection_db != null ) {
+        if (organisationID > 0) {
+            const organisation = await helpers.findOrganisationbyID(organisationID);
+            if (organisation != null && organisation.organisation_id > 0) {
+                if (typeof req.connection_db != "undefined" && req.connection_db != null) {
                     /*const getCompaniesList = await helpers.getCompaniesWithChildren(req.connection_db);*/
                     const getCompaniesList = await helpers.getCompaniesListWithReports(req.connection_db, organisationID);
                     res.status(200).json(getCompaniesList);
@@ -773,55 +784,55 @@ route.get("/customers/:id/companies", [authJWT.verifyToken, authJWT.isAdmin, aut
             }
         } else {
             res.status(400).send("Invalid inputs");
-        }       
-    } catch( err ) {
+        }
+    } catch (err) {
         console.log(err);
         res.status(400).send("Invalid inputs");
-    } 
+    }
 });
 
 /**
  * Delete Parent Companies
  */
-route.delete("/customers/:id/companies", [authJWT.verifyToken, authJWT.isAdmin, authJWT.addClientID, clientDBConnection.connect], async(req, res, next) => {
-    try{
+route.delete("/customers/:id/companies", [authJWT.verifyToken, authJWT.isAdmin, authJWT.addClientID, clientDBConnection.connect], async (req, res, next) => {
+    try {
         let IDs = req.query.companies;
-        if(IDs === undefined || IDs.length == 0) { 
+        if (IDs === undefined || IDs.length == 0) {
             IDs = req.body.companies;
         }
-        if(IDs.length > 0) {
+        if (IDs.length > 0) {
             IDs = JSON.parse(IDs)
             const Representative = req.connection_db.define('ClientRepesentative', ClientRepesentative.mainStructure, ClientRepesentative.options);
             const findCompanies = await Representative.findAll({
-                attributes:['representative_id', 'parent_id', 'original_name', 'company_id'],
-                where:{company_id: IDs},
-                group:['company_id']
+                attributes: ['representative_id', 'parent_id', 'original_name', 'company_id'],
+                where: { company_id: IDs },
+                group: ['company_id']
             });
-            const updateKPICompanies=[],  deleteParentCompanies = [], reUpdateCompanies = [], deleteCompanies = [], activityLogs = [], currentDate = moment(new Date()).format('YYYY-MM-DD hh:mm:ss');
-            if(findCompanies.length > 0) {
+            const updateKPICompanies = [], deleteParentCompanies = [], reUpdateCompanies = [], deleteCompanies = [], activityLogs = [], currentDate = moment(new Date()).format('YYYY-MM-DD hh:mm:ss');
+            if (findCompanies.length > 0) {
                 const promise = findCompanies.map(c => {
-                    if(c.parent_id == 0) {
+                    if (c.parent_id == 0) {
                         deleteParentCompanies.push(c.representative_id);
                         updateKPICompanies.push(c.company_id);
                     } else {
-                        if(!updateKPICompanies.includes(c.company_id)){
-                            updateKPICompanies.push(c.company_id); 
+                        if (!updateKPICompanies.includes(c.company_id)) {
+                            updateKPICompanies.push(c.company_id);
                             reUpdateCompanies.push(c.company_id);
                         }
                     }
-                    deleteCompanies.push(c.representative_id);                   
+                    deleteCompanies.push(c.representative_id);
                     return c;
                 });
 
                 await Promise.all(promise);
 
-                if(deleteParentCompanies.length > 0) {
+                if (deleteParentCompanies.length > 0) {
                     const findParentSubCompanies = await Representative.findAll({
-                        attributes:['representative_id'],
-                        where:{parent_id: deleteParentCompanies}                        
+                        attributes: ['representative_id'],
+                        where: { parent_id: deleteParentCompanies }
                     });
 
-                    if(findParentSubCompanies.length) {
+                    if (findParentSubCompanies.length) {
                         const promise = findParentSubCompanies.map(c => {
                             deleteCompanies.push(c.representative_id);
                             return c;
@@ -831,20 +842,20 @@ route.delete("/customers/:id/companies", [authJWT.verifyToken, authJWT.isAdmin, 
                 }
 
 
-                if(deleteCompanies.length > 0) {
-                    
-                    const destroyAllCompanies = await  Representative.destroy({
-                        where: {representative_id: deleteCompanies},
+                if (deleteCompanies.length > 0) {
+
+                    const destroyAllCompanies = await Representative.destroy({
+                        where: { representative_id: deleteCompanies },
                     })
 
-                    if(destroyAllCompanies != null) {
-                        
-                        if(deleteParentCompanies.length > 0) {
+                    if (destroyAllCompanies != null) {
+
+                        if (deleteParentCompanies.length > 0) {
                             const destroyAllTransactions = await RepresentativeTransactions.destroy({
-                                where: {representative_id: deleteParentCompanies, organisation_id: req.orgId},
+                                where: { representative_id: deleteParentCompanies, organisation_id: req.orgId },
                             });
                             console.log("destroyAllTransactions", destroyAllTransactions);
-                            if(destroyAllTransactions) {
+                            if (destroyAllTransactions) {
                                 /**
                                  * Delete KPI counter, Tree, Timeline, Error
                                  */
@@ -873,22 +884,22 @@ route.delete("/customers/:id/companies", [authJWT.verifyToken, authJWT.isAdmin, 
                         }
 
 
-                        if(reUpdateCompanies.length > 0) {
+                        if (reUpdateCompanies.length > 0) {
                             /**
                              * Delete from Representative Transaction and add transactions again
                              */
                             const destroyAllTransactions = await RepresentativeTransactions.destroy({
-                                where: {representative_id: reUpdateCompanies},
+                                where: { representative_id: reUpdateCompanies },
                             });
 
-                            if(destroyAllTransactions) {
+                            if (destroyAllTransactions) {
                                 const findPCompanies = await Representative.findAll({
-                                    attributes:['company_id'],
-                                    where:{representative_id: reUpdateCompanies, type: 0}                        
+                                    attributes: ['company_id'],
+                                    where: { representative_id: reUpdateCompanies, type: 0 }
                                 });
 
-                                if(findPCompanies.length > 0) {
-                                    const promiseAddRFIDs = findPCompanies.map(async (company, index) => {                                        
+                                if (findPCompanies.length > 0) {
+                                    const promiseAddRFIDs = findPCompanies.map(async (company, index) => {
                                         await runPhpScript(`${process.env.SCRIPT_PATH}add_representative_rfids.php`, [
                                             req.orgId,
                                             company.company_id,
@@ -903,7 +914,7 @@ route.delete("/customers/:id/companies", [authJWT.verifyToken, authJWT.isAdmin, 
                                         return company;
                                     });
                                     await Promise.all(promiseAddRFIDs);
-                                  
+
                                     res.status(200).send("Companies deleted.");
                                 }
                             }
@@ -920,7 +931,7 @@ route.delete("/customers/:id/companies", [authJWT.verifyToken, authJWT.isAdmin, 
                         }
                     } else {
                         res.status(500).send("Error while deleting companies.");
-                    }                    
+                    }
                 } else {
                     res.status(402).send("No company found");
                 }
@@ -928,34 +939,34 @@ route.delete("/customers/:id/companies", [authJWT.verifyToken, authJWT.isAdmin, 
                 res.status(402).send("No company found");
             }
         }
-    } catch( err ) {
+    } catch (err) {
         console.log(err);
-        res.status(500).json({message: "Error while deleting companies."})
-    }    
+        res.status(500).json({ message: "Error while deleting companies." })
+    }
 });
 
 route.delete("/customers/:id/share", [authJWT.verifyToken, authJWT.isAdmin, authJWT.addClientID, clientDBConnection.connect], async (req, res, next) => {
-    try{
+    try {
         const { id } = req.params
-        if(id > 0) {
+        if (id > 0) {
             await helpers.removeAllOldSharingUrl(id)
             res.status(200).send("Share url deleted.");
         } else {
             res.status(402).send("Invalid inputs");
         }
-    } catch( err ) {
+    } catch (err) {
         console.log(err)
         res.status(500).send(null)
     }
 })
 
 route.get("/customers/:id/reports", [authJWT.verifyToken, authJWT.isAdmin, authJWT.addClientID, clientDBConnection.connect], async (req, res, next) => {
-    try{
+    try {
         let organisationID = req.params.id;
-        if(organisationID > 0){
-            const organisation  = await helpers.findOrganisationbyID(organisationID);
-            if(organisation != null && organisation.organisation_id > 0){
-                if(typeof req.connection_db != "undefined" && req.connection_db != null ) {
+        if (organisationID > 0) {
+            const organisation = await helpers.findOrganisationbyID(organisationID);
+            if (organisation != null && organisation.organisation_id > 0) {
+                if (typeof req.connection_db != "undefined" && req.connection_db != null) {
                     /*const getCompaniesList = await helpers.getCompaniesWithChildren(req.connection_db);*/
                     const getCompaniesReport = await helpers.getCompaniesListSumWithReports(req.connection_db, organisationID);
                     res.status(200).json(getCompaniesReport);
@@ -967,15 +978,15 @@ route.get("/customers/:id/reports", [authJWT.verifyToken, authJWT.isAdmin, authJ
             }
         } else {
             res.status(400).send("Invalid inputs");
-        }       
-    } catch( err ) {
+        }
+    } catch (err) {
         console.log(err);
         res.status(400).send("Invalid inputs");
-    } 
+    }
 });
 
 route.get("/customers/:id/run_update_log", [authJWT.verifyToken, authJWT.isAdmin, authJWT.addClientID, clientDBConnection.connect], async (req, res, next) => {
-    try{
+    try {
         const organisationID = Number(req.params.id);
         let updateLog = null;
         if (organisationID > 0) {
@@ -985,11 +996,11 @@ route.get("/customers/:id/run_update_log", [authJWT.verifyToken, authJWT.isAdmin
             } else {
                 const getAllCompaniesList = await helpers.getCompaniesWithRepresentativeIDs(req.connection_db, organisationID);
 
-                companies = getAllCompaniesList 
-                        .map(company => company.company_id);
+                companies = getAllCompaniesList
+                    .map(company => company.company_id);
             }
-            updateLog = await LogUpdateCompany.findAll({ 
-                where: {company_id: companies}, 
+            updateLog = await LogUpdateCompany.findAll({
+                where: { company_id: companies },
                 attributes: {
                     include: [
                         [
@@ -1009,10 +1020,10 @@ route.get("/customers/:id/run_update_log", [authJWT.verifyToken, authJWT.isAdmin
             });
         }
         res.status(200).json(updateLog);
-    } catch( err ) {
+    } catch (err) {
         console.log(err);
         res.status(400).send("Invalid inputs");
-    } 
+    }
 })
 
 route.delete("/customers/:id/run_update_log", [authJWT.verifyToken, authJWT.isAdmin, authJWT.addClientID, clientDBConnection.connect], async (req, res, next) => {
@@ -1026,11 +1037,11 @@ route.delete("/customers/:id/run_update_log", [authJWT.verifyToken, authJWT.isAd
             const getAllCompaniesList = await helpers.getCompaniesWithRepresentativeIDs(req.connection_db, organisationID);
 
             companies = getAllCompaniesList
-                    .map(company => company.company_id);
+                .map(company => company.company_id);
         }
         await LogUpdateCompany.destroy({
-            where: {company_id: companies}, 
-        }) 
+            where: { company_id: companies },
+        })
         reclassifyLog = 'Deleted successfully';
     }
     res.status(200).send(reclassifyLog);
@@ -1040,10 +1051,10 @@ route.get("/customers/:id/family", [authJWT.verifyToken, authJWT.isAdmin], async
     try {
         const organisationID = Number(req.params.id);
         let { companies } = req.query;
-    
+
         if (organisationID > 0) {
             const where = { organisation_id: organisationID };
-    
+
             if (companies) {
                 try {
                     companies = JSON.parse(companies);
@@ -1055,7 +1066,7 @@ route.get("/customers/:id/family", [authJWT.verifyToken, authJWT.isAdmin], async
                     return res.status(400).send("Invalid company data format");
                 }
             }
-    
+
             const query = `
                 SELECT l.*, CONCAT(l.retrieved_assets, ' / ', l.total_assets) AS message, org.name, r.representative_name 
                 FROM db_new_application.log_family_assets_messages AS l
@@ -1065,14 +1076,14 @@ route.get("/customers/:id/family", [authJWT.verifyToken, authJWT.isAdmin], async
                 ${where.company_id ? "AND l.company_id IN (:company_id)" : ""}
                 ORDER BY l.id ASC
             `;
-    
+
             const logData = await connection.resources.query(query, {
                 type: connection.Sequelize.QueryTypes.SELECT,
                 replacements: where,
                 raw: true,
                 logging: console.log,
             });
-    
+
             res.status(200).json(logData);
         } else {
             res.status(400).send("Invalid organisation ID");
@@ -1087,8 +1098,8 @@ route.get("/customers/:id/reclassify-log", [authJWT.verifyToken, authJWT.isAdmin
     const organisationID = Number(req.params.id);
     let reclassifyLog = null;
     if (organisationID > 0) {
-        reclassifyLog = await ReclassifyLog.findOne({ 
-            where: {organisation_id: organisationID},
+        reclassifyLog = await ReclassifyLog.findOne({
+            where: { organisation_id: organisationID },
             order: [
                 ['id', 'DESC']
             ]
@@ -1098,15 +1109,15 @@ route.get("/customers/:id/reclassify-log", [authJWT.verifyToken, authJWT.isAdmin
 })
 
 route.delete("/customers/:id/reclassify-log", [authJWT.verifyToken, authJWT.isAdmin], async (req, res, next) => {
-    const organisationID = Number(req.params.id); 
+    const organisationID = Number(req.params.id);
     let reclassifyLog = ''
     if (organisationID > 0) {
-        await ReclassifyLog.destroy({ 
-            where: {organisation_id: organisationID}, 
+        await ReclassifyLog.destroy({
+            where: { organisation_id: organisationID },
         });
 
         await LogMessages.destroy({
-            where: {organisation_id: organisationID}, 
+            where: { organisation_id: organisationID },
         })
 
         reclassifyLog = 'Deleted successfully';
@@ -1115,11 +1126,11 @@ route.delete("/customers/:id/reclassify-log", [authJWT.verifyToken, authJWT.isAd
 })
 
 route.delete("/customers/:id/family-log", [authJWT.verifyToken, authJWT.isAdmin], async (req, res, next) => {
-    const organisationID = Number(req.params.id); 
+    const organisationID = Number(req.params.id);
     let familyLog = ''
-    if (organisationID > 0) {  
+    if (organisationID > 0) {
         await LogFamilyAssetsMessages.destroy({
-            where: {organisation_id: organisationID}, 
+            where: { organisation_id: organisationID },
         })
         familyLog = 'Deleted successfully';
     }
@@ -1130,10 +1141,10 @@ route.get("/customers/:id/reclassify", [authJWT.verifyToken, authJWT.isAdmin], a
     try {
         const organisationID = Number(req.params.id);
         let { companies } = req.query;
-    
+
         if (organisationID > 0) {
             const where = { organisation_id: organisationID };
-    
+
             if (companies) {
                 try {
                     companies = JSON.parse(companies);
@@ -1145,7 +1156,7 @@ route.get("/customers/:id/reclassify", [authJWT.verifyToken, authJWT.isAdmin], a
                     return res.status(400).send("Invalid company data format");
                 }
             }
-    
+
             const query = `
                 SELECT l.*, org.name, r.representative_name 
                 FROM db_new_application.log_messages AS l
@@ -1155,14 +1166,14 @@ route.get("/customers/:id/reclassify", [authJWT.verifyToken, authJWT.isAdmin], a
                 ${where.company_id ? "AND l.company_id IN (:company_id)" : ""}
                 ORDER BY l.id ASC
             `;
-    
+
             const getClassifyData = await connection.resources.query(query, {
                 type: connection.Sequelize.QueryTypes.SELECT,
                 replacements: where,
                 raw: true,
                 logging: console.log,
             });
-    
+
             const logData = getClassifyData.map((row, index, array) => {
                 const item = { ...row };
                 if (index > 0) {
@@ -1170,7 +1181,7 @@ route.get("/customers/:id/reclassify", [authJWT.verifyToken, authJWT.isAdmin], a
                 }
                 return item;
             });
-    
+
             console.log(logData);
             res.status(200).json(logData);
         } else {
@@ -1180,7 +1191,7 @@ route.get("/customers/:id/reclassify", [authJWT.verifyToken, authJWT.isAdmin], a
         console.log("Error:", err);
         res.status(500).send("Server error");
     }
-    
+
 });
 
 
@@ -1199,24 +1210,24 @@ route.get("/customers/:id/users", [authJWT.verifyToken, authJWT.isAdmin, authJWT
 
         // Input validation
         if (isNaN(organisationID) || organisationID <= 0) {
-            return res.status(400).json({ 
-                success: false, 
-                message: 'Invalid organisation ID' 
+            return res.status(400).json({
+                success: false,
+                message: 'Invalid organisation ID'
             });
         }
 
         // Check if organisation exists
         const organisation = await helpers.findOrganisationbyID(organisationID);
         if (!organisation) {
-            return res.status(404).json({ 
-                success: false, 
-                message: 'Organisation not found' 
+            return res.status(404).json({
+                success: false,
+                message: 'Organisation not found'
             });
         }
 
         // Get all users for the organisation
         const users = await helpers.getAllUsers(organisationID);
-        
+
         return res.status(200).json(users);
 
     } catch (error) {
@@ -1230,18 +1241,18 @@ route.get("/customers/:id/users", [authJWT.verifyToken, authJWT.isAdmin, authJWT
  */
 
 
-route.post("/customers/:id/users", [authJWT.verifyToken, authJWT.isAdmin, userExist.checkDuplicateUsername, authJWT.addClientID, clientDBConnection.connect], async function (req, res, next){
-    try{
+route.post("/customers/:id/users", [authJWT.verifyToken, authJWT.isAdmin, userExist.checkDuplicateUsername, authJWT.addClientID, clientDBConnection.connect], async function (req, res, next) {
+    try {
         let organisationID = req.params.id;
-        if(organisationID > 0){
-            const organisation  = await helpers.findOrganisationbyID(organisationID);
-            if(organisation != null && organisation.organisation_id > 0){
+        if (organisationID > 0) {
+            const organisation = await helpers.findOrganisationbyID(organisationID);
+            if (organisation != null && organisation.organisation_id > 0) {
                 console.log(req.body);
                 Users.create({
                     first_name: req.body.first_name,
                     last_name: req.body.last_name,
                     email_address: req.body.email_address,
-                    username: req.body.email_address,						
+                    username: req.body.email_address,
                     password: bcrypt.hashSync(req.body.password ? req.body.password : req.body.last_name, 8),
                     job_title: req.body.job_title,
                     linkedin_url: req.body.person_linkedin_url,
@@ -1250,197 +1261,197 @@ route.post("/customers/:id/users", [authJWT.verifyToken, authJWT.isAdmin, userEx
                     role_id: req.body.type == 0 ? 1 : 2,
                     organisation_id: organisationID
                 })
-                .then(function( user ){
-                    if(user != null) {   
-                        console.log(req.connection_db); 
-                        if(typeof req.connection_db != "undefined" && req.connection_db != null ) {
-                            /** */
-                            (async () => {
-                                const dbUser = await req.connection_db.define('Users', ClientUsers.mainStructure, ClientUsers.options);
-                                
-                                const clientUser = {
-                                    user_id: user.user_id,
-                                    first_name: req.body.first_name,
-                                    last_name: req.body.last_name,
-                                    email_address: req.body.email_address,
-                                    username: req.body.email_address,		
-                                    job_title: req.body.job_title,
-                                    linkedin_url: req.body.person_linkedin_url,
-                                    telephone1: req.body.telephone1,
-                                    telephone: req.body.telephone,
-                                    role_id: req.body.type == 0 ? 1 : 2,
-                                    logo: req.body.logo
-                                }
+                    .then(function (user) {
+                        if (user != null) {
+                            console.log(req.connection_db);
+                            if (typeof req.connection_db != "undefined" && req.connection_db != null) {
+                                /** */
+                                (async () => {
+                                    const dbUser = await req.connection_db.define('Users', ClientUsers.mainStructure, ClientUsers.options);
 
-                                const addClientUser = await dbUser.create(clientUser);
+                                    const clientUser = {
+                                        user_id: user.user_id,
+                                        first_name: req.body.first_name,
+                                        last_name: req.body.last_name,
+                                        email_address: req.body.email_address,
+                                        username: req.body.email_address,
+                                        job_title: req.body.job_title,
+                                        linkedin_url: req.body.person_linkedin_url,
+                                        telephone1: req.body.telephone1,
+                                        telephone: req.body.telephone,
+                                        role_id: req.body.type == 0 ? 1 : 2,
+                                        logo: req.body.logo
+                                    }
 
-                                if(addClientUser != null) {
+                                    const addClientUser = await dbUser.create(clientUser);
 
-                                    /**
-                                     * Invite user to client workspace
-                                    */
-                
-                                    /* const slack = await new SlackHelper()
-                                    //find public channels
-                                    slack.adminConversationSearch({
-										team_ids: organisation.team
-									}, function(response) {
-										if(response.length > 0) {
-											const params = {
-												channel_ids: response[0].id,
-												team_id: organisation.team,
-												email: req.body.email_address,
-												resend: true,
-												custom_message: 'You are invited to Join workspace '
-											}
-											console.log(params)
-											slack.addInvite(params, function(response){
-                                                console.log('user invited', response)                                                
-                                                if(response.ok == true || response.data.error === 'already_in_team') {
-                                                    slack.updateMembersToUserGroup(0, organisation.team, process.env.USERGROUP_NAME)
+                                    if (addClientUser != null) {
+
+                                        /**
+                                         * Invite user to client workspace
+                                        */
+
+                                        /* const slack = await new SlackHelper()
+                                        //find public channels
+                                        slack.adminConversationSearch({
+                                            team_ids: organisation.team
+                                        }, function(response) {
+                                            if(response.length > 0) {
+                                                const params = {
+                                                    channel_ids: response[0].id,
+                                                    team_id: organisation.team,
+                                                    email: req.body.email_address,
+                                                    resend: true,
+                                                    custom_message: 'You are invited to Join workspace '
                                                 }
-											})
-										}
-									}) */
+                                                console.log(params)
+                                                slack.addInvite(params, function(response){
+                                                    console.log('user invited', response)                                                
+                                                    if(response.ok == true || response.data.error === 'already_in_team') {
+                                                        slack.updateMembersToUserGroup(0, organisation.team, process.env.USERGROUP_NAME)
+                                                    }
+                                                })
+                                            }
+                                        }) */
 
 
 
 
-                                    const Firm = await req.connection_db.define('Firms', Firms.mainStructure, Firms.options);
+                                        const Firm = await req.connection_db.define('Firms', Firms.mainStructure, Firms.options);
 
-                                    let firmID = 0;
+                                        let firmID = 0;
 
-                                    let findFirm = await Firm.findOne({
-                                                    where: {firm_name: organisation.name}
-                                                });
-                                    if(findFirm != null && findFirm.firm_id > 0) {
-                                        firmID = findFirm.firm_id;
-                                    } else {
-                                        findFirm = await Firm.create({firm_name: organisation.name});
-                                        if(findFirm != null && findFirm.firm_id > 0) {
+                                        let findFirm = await Firm.findOne({
+                                            where: { firm_name: organisation.name }
+                                        });
+                                        if (findFirm != null && findFirm.firm_id > 0) {
                                             firmID = findFirm.firm_id;
+                                        } else {
+                                            findFirm = await Firm.create({ firm_name: organisation.name });
+                                            if (findFirm != null && findFirm.firm_id > 0) {
+                                                firmID = findFirm.firm_id;
+                                            }
                                         }
-                                    } 
-                                    if(firmID > 0) {
-                                        const Professional = await req.connection_db.define('Professionals', ProfessionalUsers.mainStructure, ProfessionalUsers.options);  
-                                        const addUserToProfessional = {
-                                            first_name: req.body.first_name,
-                                            last_name: req.body.last_name,
-                                            email_address: req.body.email_address,
-                                            job_title: req.body.job_title,
-                                            linkedin_url: req.body.person_linkedin_url,
-                                            telephone1: req.body.telephone1,
-                                            telephone: req.body.telephone,
-                                            type: 0,
-                                            profile_logo: req.body.logo,
-                                            firm_id: firmID
-                                        }
-                                        const professionalUser = await Professional.create(addUserToProfessional);
-                                        if(professionalUser != null) {
-                                            console.log("User"+professionalUser.professional_id);
-                                            console.log("User created successfully");
+                                        if (firmID > 0) {
+                                            const Professional = await req.connection_db.define('Professionals', ProfessionalUsers.mainStructure, ProfessionalUsers.options);
+                                            const addUserToProfessional = {
+                                                first_name: req.body.first_name,
+                                                last_name: req.body.last_name,
+                                                email_address: req.body.email_address,
+                                                job_title: req.body.job_title,
+                                                linkedin_url: req.body.person_linkedin_url,
+                                                telephone1: req.body.telephone1,
+                                                telephone: req.body.telephone,
+                                                type: 0,
+                                                profile_logo: req.body.logo,
+                                                firm_id: firmID
+                                            }
+                                            const professionalUser = await Professional.create(addUserToProfessional);
+                                            if (professionalUser != null) {
+                                                console.log("User" + professionalUser.professional_id);
+                                                console.log("User created successfully");
+                                            }
                                         }
                                     }
-                                }
-                            })();
+                                })();
+                            }
+                            console.log("User" + user.user_id);
+                            console.log("User created successfully");
+                            const newUser = user.toJSON();
+                            newUser.id = newUser.user_id;
+                            res.status(200).json(newUser);
+                        } else {
+                            res.status(402).send("Bad inputs");
                         }
-                        console.log("User"+user.user_id);
-                        console.log("User created successfully");
-                        const newUser = user.toJSON();
-                        newUser.id = newUser.user_id;
-                        res.status(200).json(newUser);
-                    }  else {
+                    })
+                    .catch(function (err) {
+                        console.log(err);
                         res.status(402).send("Bad inputs");
-                    }                  
-                })
-                .catch(function(err){
-                    console.log(err);
-                    res.status(402).send("Bad inputs");
-                })
+                    })
             } else {
                 res.status(402).send("Bad inputs");
             }
         } else {
             res.status(402).send("Bad inputs");
         }
-    } catch( err ) {
+    } catch (err) {
         console.log(err);
         res.status(402).send("Invalid inputs");
     }
 });
-	
+
 /**
  * UPdate Users list
  */
 
-route.put("/customers/:id/users/:user_id", [authJWT.verifyToken, authJWT.isAdmin, authJWT.addClientID, clientDBConnection.connect], async (req, res)=>{
+route.put("/customers/:id/users/:user_id", [authJWT.verifyToken, authJWT.isAdmin, authJWT.addClientID, clientDBConnection.connect], async (req, res) => {
     (async () => {
-        const t = await connection.business.transaction();	
-        try{
+        const t = await connection.business.transaction();
+        try {
             let organisationID = req.params.id;
-            if(organisationID > 0){ 
-                const organisation  = await helpers.findOrganisationbyID(organisationID);
-                if(organisation != null && organisation.organisation_id > 0){
+            if (organisationID > 0) {
+                const organisation = await helpers.findOrganisationbyID(organisationID);
+                if (organisation != null && organisation.organisation_id > 0) {
                     Users.findOne({
-                        where: {user_id: req.params.user_id, organisation_id: organisationID}
+                        where: { user_id: req.params.user_id, organisation_id: organisationID }
                     })
-                    .then( async u => {
-                        if( u != null && u.user_id > 0){						
-                            
-                            let user = {};
-                            if(req.body.password != undefined && req.body.password != null && req.body.password != ""){
-                                user.password = bcrypt.hashSync(req.body.password, 8);
+                        .then(async u => {
+                            if (u != null && u.user_id > 0) {
+
+                                let user = {};
+                                if (req.body.password != undefined && req.body.password != null && req.body.password != "") {
+                                    user.password = bcrypt.hashSync(req.body.password, 8);
+                                } else {
+                                    user.first_name = req.body.first_name;
+                                    user.last_name = req.body.last_name;
+                                    user.email_address = req.body.email_address;
+                                    user.username = req.body.email_address;
+                                    user.job_title = req.body.job_title,
+                                        user.linkedin_url = req.body.linkedin_url;
+                                    user.type = req.body.type;
+                                    user.role_id = req.body.type == 0 ? 1 : 2;
+                                }
+                                console.log(user);
+                                const update = await Users.update(user, { where: { user_id: req.params.user_id } });
+                                if (update) {
+
+                                    const dbUser = await req.connection_db.define('Users', ClientUsers.mainStructure, ClientUsers.options);
+
+                                    const getUser = await dbUser.findOne({
+                                        where: { username: u.username }
+                                    })
+                                    console.log('getUser', getUser)
+                                    if (getUser !== null) {
+                                        const updateCurrentUser = {}
+                                        updateCurrentUser.first_name = req.body.first_name;
+                                        updateCurrentUser.last_name = req.body.last_name;
+                                        updateCurrentUser.email_address = req.body.email_address;
+                                        updateCurrentUser.job_title = req.body.job_title;
+                                        updateCurrentUser.username = req.body.email_address;
+                                        updateCurrentUser.linkedin_url = req.body.linkedin_url;
+                                        updateCurrentUser.role_id = req.body.type == 0 ? 1 : 2,
+
+                                            await dbUser.update(updateCurrentUser, { where: { user_id: getUser.user_id } });
+                                    }
+                                }
+
+                                res.status(200).send("Updated successfully");
                             } else {
-                                user.first_name = req.body.first_name;
-                                user.last_name = req.body.last_name;
-                                user.email_address = req.body.email_address;
-                                user.username = req.body.email_address;
-                                user.job_title = req.body.job_title,
-                                user.linkedin_url = req.body.linkedin_url;
-                                user.type = req.body.type;
-                                user.role_id = req.body.type == 0 ? 1 : 2;
+                                res.status(400).send("Invalid inputs");
                             }
-                            console.log(user);							
-                            const update = await Users.update(user,{where: {user_id: req.params.user_id}});
-                            if(update) {
-
-                                const dbUser = await req.connection_db.define('Users', ClientUsers.mainStructure, ClientUsers.options);
-
-                                const getUser = await dbUser.findOne({
-                                    where: {username: u.username}
-                                })
-                                console.log('getUser', getUser)
-                                if(getUser !== null) {
-                                    const updateCurrentUser = {}
-                                    updateCurrentUser.first_name = req.body.first_name;
-                                    updateCurrentUser.last_name = req.body.last_name;
-                                    updateCurrentUser.email_address = req.body.email_address;
-                                    updateCurrentUser.job_title = req.body.job_title;
-                                    updateCurrentUser.username = req.body.email_address;
-                                    updateCurrentUser.linkedin_url = req.body.linkedin_url;
-                                    updateCurrentUser.role_id = req.body.type == 0 ? 1 : 2,
-                                   
-                                    await dbUser.update(updateCurrentUser,{where: {user_id: getUser.user_id}});
-                                }        
-                            }
-                            
-                            res.status(200).send("Updated successfully");
-                        } else {
-                            res.status(400).send("Invalid inputs");
-                        }
-                    })
+                        })
                 } else {
                     res.status(400).send("Invalid inputs");
                 }
             } else {
                 res.status(400).send("Invalid inputs");
-            }       
-        } catch( err ) {
+            }
+        } catch (err) {
             console.log(err);
             if (t) await t.rollback();
             res.status(400).send("Invalid inputs");
         }
-    })();    
+    })();
 });
 
 let downloadImageFromUrl = async (org, res, url, filename, contentType, callback) => {
@@ -1494,52 +1505,52 @@ let downloadImageFromUrl = async (org, res, url, filename, contentType, callback
             });
         });                                                                         
     }).end(); */
-    try{
+    try {
 
         request.head(url, (err, response, body) => {
-            const path = url.split('/').pop(), pathDirectory = '/var/www/html/betapp/'  
+            const path = url.split('/').pop(), pathDirectory = '/var/www/html/betapp/'
             request(url)
-            .pipe(fs.createWriteStream(`${pathDirectory}${path}`))
-            .on('close', () => {
-                const imageData = fs.readFileSync(`${pathDirectory}${path}`, {flag:'r'});
-                console.log('imageData', imageData)
-                if(imageData){
-                    const bucketConfig = config.bucketConfig;  
-                
-                    filename = filename.replace(/\s+/g, '-');
-                   
-                    let s3 = new AWS.S3({
-                        credentials: {
-                            accessKeyId: bucketConfig.accessKeyId,
-                            secretAccessKey: bucketConfig.secretAccessKey,
-                        },
-                        region: bucketConfig.region
-                    })
-                   
-                    const params = {
-                        Key: `${bucketConfig.dirName}/${filename}`,
-                        Bucket: bucketConfig.bucketName,
-                        Body: imageData,
-                        ACL: 'public-read',
-                        ContentType: contentType,
-                        ContentDisposition: 'inline'
-                    }
-                    console.log("params", params)
-                    s3.putObject(params, async function(err, data) {
-                        console.log(err, data);
-                        if(err == null) {
-                            filename = `https://s3-${bucketConfig.region}.amazonaws.com/${bucketConfig.bucketName}/${bucketConfig.dirName}/${filename}`;
-                            await org.update({
-                                logo: filename
-                            })
-                            spawn('rm', [`${pathDirectory}${path}`]);
-                            res.status(200).json({name: org.name, logo: org.logo});    
-                        } else {
-                            res.status(200).json({name: org.name, logo: ''});    
+                .pipe(fs.createWriteStream(`${pathDirectory}${path}`))
+                .on('close', () => {
+                    const imageData = fs.readFileSync(`${pathDirectory}${path}`, { flag: 'r' });
+                    console.log('imageData', imageData)
+                    if (imageData) {
+                        const bucketConfig = config.bucketConfig;
+
+                        filename = filename.replace(/\s+/g, '-');
+
+                        let s3 = new AWS.S3({
+                            credentials: {
+                                accessKeyId: bucketConfig.accessKeyId,
+                                secretAccessKey: bucketConfig.secretAccessKey,
+                            },
+                            region: bucketConfig.region
+                        })
+
+                        const params = {
+                            Key: `${bucketConfig.dirName}/${filename}`,
+                            Bucket: bucketConfig.bucketName,
+                            Body: imageData,
+                            ACL: 'public-read',
+                            ContentType: contentType,
+                            ContentDisposition: 'inline'
                         }
-                    });
-                }
-            })
+                        console.log("params", params)
+                        s3.putObject(params, async function (err, data) {
+                            console.log(err, data);
+                            if (err == null) {
+                                filename = `https://s3-${bucketConfig.region}.amazonaws.com/${bucketConfig.bucketName}/${bucketConfig.dirName}/${filename}`;
+                                await org.update({
+                                    logo: filename
+                                })
+                                spawn('rm', [`${pathDirectory}${path}`]);
+                                res.status(200).json({ name: org.name, logo: org.logo });
+                            } else {
+                                res.status(200).json({ name: org.name, logo: '' });
+                            }
+                        });
+                    }
+                })
         })
     } catch (e) {
         console.log('Error', e)
@@ -1547,135 +1558,135 @@ let downloadImageFromUrl = async (org, res, url, filename, contentType, callback
 };
 
 route.put("/customers/:id/logo", [authJWT.verifyToken, authJWT.isAdmin], async (req, res) => {
-        try{
-            let organisationID = req.params.id;
-            if(organisationID > 0){
-                let org = await helpers.findOrganisationbyID( organisationID );
-                if(org != null && org.organisation_id > 0) {
-                    console.log(organisationID);
-                    console.log(req.files);
-                    let logoURL = req.body.url_customer_logo;
-                    if(logoURL != "" && logoURL != 'null' && logoURL != "undefined") {
-                        /**Download file from URL */
-                        console.log("DOWNLOAD URL");
-                        let contentType = "", base64IndexOf = -1;
-                        base64IndexOf = logoURL.toString().indexOf(';base64,');
-                        if(base64IndexOf !== -1){
-                            //Image content
-                            console.log("Image content");
-                            const bucketConfig = config.bucketConfig;  
-                            let s3 = new AWS.S3({
-                                credentials: {
-                                    accessKeyId: bucketConfig.accessKeyId,
-                                    secretAccessKey: bucketConfig.secretAccessKey,
-                                },
-                                region: bucketConfig.region
-                            })
-                            let name = `logo_${organisationID}`;
-                            if(logoURL.indexOf('image/jpeg') >= 0){
-                                name += ".jpeg";
-                                contentType = "image/jpeg";
-                            } else if(logoURL.indexOf('image/svg+xml') >= 0) {
-                                name += ".svg";
-                                contentType = "image/svg+xml";
-                            } else if(logoURL.indexOf('image/bmp') >= 0){
-                                name += ".bmp";
-                                contentType = "image/bmp";
-                            } else {
-                                name += ".png";
-                                contentType = "image/png";
-                            }
-                            logoURL = logoURL.substr(base64IndexOf + 8, logoURL.length -1);
-                            logoURL  +=  logoURL.replace('+', ' ');
-                            logoURL = Buffer.from(logoURL, 'base64');
-                            const params = {
-                                Key: `${bucketConfig.documentDir}/${name}`,
-                                Bucket: bucketConfig.bucketName,
-                                Body: logoURL,
-                                ACL: 'public-read',
-                                ContentType: contentType,
-                                ContentDisposition: 'inline'
-                            }
+    try {
+        let organisationID = req.params.id;
+        if (organisationID > 0) {
+            let org = await helpers.findOrganisationbyID(organisationID);
+            if (org != null && org.organisation_id > 0) {
+                console.log(organisationID);
+                console.log(req.files);
+                let logoURL = req.body.url_customer_logo;
+                if (logoURL != "" && logoURL != 'null' && logoURL != "undefined") {
+                    /**Download file from URL */
+                    console.log("DOWNLOAD URL");
+                    let contentType = "", base64IndexOf = -1;
+                    base64IndexOf = logoURL.toString().indexOf(';base64,');
+                    if (base64IndexOf !== -1) {
+                        //Image content
+                        console.log("Image content");
+                        const bucketConfig = config.bucketConfig;
+                        let s3 = new AWS.S3({
+                            credentials: {
+                                accessKeyId: bucketConfig.accessKeyId,
+                                secretAccessKey: bucketConfig.secretAccessKey,
+                            },
+                            region: bucketConfig.region
+                        })
+                        let name = `logo_${organisationID}`;
+                        if (logoURL.indexOf('image/jpeg') >= 0) {
+                            name += ".jpeg";
+                            contentType = "image/jpeg";
+                        } else if (logoURL.indexOf('image/svg+xml') >= 0) {
+                            name += ".svg";
+                            contentType = "image/svg+xml";
+                        } else if (logoURL.indexOf('image/bmp') >= 0) {
+                            name += ".bmp";
+                            contentType = "image/bmp";
+                        } else {
+                            name += ".png";
+                            contentType = "image/png";
+                        }
+                        logoURL = logoURL.substr(base64IndexOf + 8, logoURL.length - 1);
+                        logoURL += logoURL.replace('+', ' ');
+                        logoURL = Buffer.from(logoURL, 'base64');
+                        const params = {
+                            Key: `${bucketConfig.documentDir}/${name}`,
+                            Bucket: bucketConfig.bucketName,
+                            Body: logoURL,
+                            ACL: 'public-read',
+                            ContentType: contentType,
+                            ContentDisposition: 'inline'
+                        }
 
-                            console.log(params)
-                             s3.upload(params, async function(err, data) {
-                                if(err == null) {
-                                    org.logo = `${bucketConfig.s3Url}${data.key}`;
-                                    await org.update({
-                                        logo: org.logo
-                                    });
-                                    res.status(200).json({name: org.name, logo: org.logo});
-                                } else {
-                                    res.status(500).send("ERROR: "+err);	
-                                }
-                            }) 
-                        } else {
-                            //Image file
-                            console.log("Image file");
-                            const extension = logoURL.toString().split('.').pop().toLowerCase();
-                            
-                            if(extension.indexOf('jpg') >= 0){
-                                contentType = "image/jpeg";
-                            } else if(extension.indexOf('svg') >= 0) {
-                                contentType = "image/svg+xml";
-                            } else if(extension.indexOf('bmp') >= 0){
-                                contentType = "image/bmp";
+                        console.log(params)
+                        s3.upload(params, async function (err, data) {
+                            if (err == null) {
+                                org.logo = `${bucketConfig.s3Url}${data.key}`;
+                                await org.update({
+                                    logo: org.logo
+                                });
+                                res.status(200).json({ name: org.name, logo: org.logo });
                             } else {
-                                contentType = "image/png";
+                                res.status(500).send("ERROR: " + err);
                             }
-                            console.log("contentType", contentType);
-                            await downloadImageFromUrl(org, res, logoURL, org.name+'.'+extension, contentType);
-                        }
-                        
-                    } else if(req.files != null && req.files.file != null && req.files.file != undefined) {
-                        let mimeType = req.files.file.mimetype;
-                        console.log(mimeType);
-                        if(mimeType.toLowerCase().indexOf('.exe') < 0){
-                            let fileObject = req.files.file;
-                            const bucketConfig = config.bucketConfig;  
-                            let s3 = new AWS.S3({
-                                credentials: {
-                                    accessKeyId: bucketConfig.accessKeyId,
-                                    secretAccessKey: bucketConfig.secretAccessKey,
-                                },
-                                region: bucketConfig.region
-                            })
-                            let name = fileObject.name;
-                                name = name.replace(/\s+/g, '-');
-                            const params = {
-                                Key: `${bucketConfig.documentDir}/${name}`,
-                                Bucket: bucketConfig.bucketName,
-                                Body: fileObject.data,
-                                ACL: 'public-read'
-                            }
-                            
-                            s3.upload(params, async function(err, data) {
-                                if(err == null) {
-                                    org.logo = `${bucketConfig.s3Url}${data.key}`;
-                                    await org.update({
-                                        logo: org.logo
-                                    });
-                                    res.status(200).json({name: org.name, logo: org.logo});
-                                } else {
-                                    res.status(500).send("ERROR: "+err);	
-                                }
-                            })
-                        } else {
-                            res.status(400).send("Invalid file format.");	
-                        }
+                        })
                     } else {
-                        res.status(400).send("Please select file first.");	
+                        //Image file
+                        console.log("Image file");
+                        const extension = logoURL.toString().split('.').pop().toLowerCase();
+
+                        if (extension.indexOf('jpg') >= 0) {
+                            contentType = "image/jpeg";
+                        } else if (extension.indexOf('svg') >= 0) {
+                            contentType = "image/svg+xml";
+                        } else if (extension.indexOf('bmp') >= 0) {
+                            contentType = "image/bmp";
+                        } else {
+                            contentType = "image/png";
+                        }
+                        console.log("contentType", contentType);
+                        await downloadImageFromUrl(org, res, logoURL, org.name + '.' + extension, contentType);
+                    }
+
+                } else if (req.files != null && req.files.file != null && req.files.file != undefined) {
+                    let mimeType = req.files.file.mimetype;
+                    console.log(mimeType);
+                    if (mimeType.toLowerCase().indexOf('.exe') < 0) {
+                        let fileObject = req.files.file;
+                        const bucketConfig = config.bucketConfig;
+                        let s3 = new AWS.S3({
+                            credentials: {
+                                accessKeyId: bucketConfig.accessKeyId,
+                                secretAccessKey: bucketConfig.secretAccessKey,
+                            },
+                            region: bucketConfig.region
+                        })
+                        let name = fileObject.name;
+                        name = name.replace(/\s+/g, '-');
+                        const params = {
+                            Key: `${bucketConfig.documentDir}/${name}`,
+                            Bucket: bucketConfig.bucketName,
+                            Body: fileObject.data,
+                            ACL: 'public-read'
+                        }
+
+                        s3.upload(params, async function (err, data) {
+                            if (err == null) {
+                                org.logo = `${bucketConfig.s3Url}${data.key}`;
+                                await org.update({
+                                    logo: org.logo
+                                });
+                                res.status(200).json({ name: org.name, logo: org.logo });
+                            } else {
+                                res.status(500).send("ERROR: " + err);
+                            }
+                        })
+                    } else {
+                        res.status(400).send("Invalid file format.");
                     }
                 } else {
-                    res.status(400).send("Invalid customer");	
+                    res.status(400).send("Please select file first.");
                 }
             } else {
-                res.status(400).send("Invalid customer");	
+                res.status(400).send("Invalid customer");
             }
-        } catch(e) {
-            console.log(e);
-            res.status(500).send("Error while uploading file.");	
+        } else {
+            res.status(400).send("Invalid customer");
         }
+    } catch (e) {
+        console.log(e);
+        res.status(500).send("Error while uploading file.");
+    }
 });
 
 /**
@@ -1683,21 +1694,21 @@ route.put("/customers/:id/logo", [authJWT.verifyToken, authJWT.isAdmin], async (
  */
 
 route.get("/customers/:id/libraries", [authJWT.verifyToken, authJWT.isAdmin], (req, res, next) => {
-    
+
     (async () => {
-        try{
+        try {
             let organisationID = req.params.id;
-            if(organisationID > 0){
-                let org = await helpers.findOrganisationbyID( organisationID );
-                if(org != null && org.organisation_id > 0) {
+            if (organisationID > 0) {
+                let org = await helpers.findOrganisationbyID(organisationID);
+                if (org != null && org.organisation_id > 0) {
                     /**
                      * Get list of all from resources database.
                      */
                     let companyName = org.name;
                     let companyData = await helpers.checkRepresentativeCompany(companyName);
                     let list = [];
-                    if(companyData != null && companyData.representative_id > 0) {
-/*                      list = await helpers.findCompanyCustomersByID(companyData.representative_id);*/
+                    if (companyData != null && companyData.representative_id > 0) {
+                        /*                      list = await helpers.findCompanyCustomersByID(companyData.representative_id);*/
                         list = await helpers.findCompanyCustomersByName(companyName);
                     }
                     res.status(200).json(list);
@@ -1707,22 +1718,22 @@ route.get("/customers/:id/libraries", [authJWT.verifyToken, authJWT.isAdmin], (r
             } else {
                 res.status(402).send("Not found ");
             }
-        } catch(e) {
+        } catch (e) {
             console.log(e);
             res.status(402).send("Not found ");
         }
     })();
 });
 
-route.get("/customers/:organisation_id/create_tree", [authJWT.verifyToken, authJWT.isAdmin], async(req, res, next) => {
-    try{
+route.get("/customers/:organisation_id/create_tree", [authJWT.verifyToken, authJWT.isAdmin], async (req, res, next) => {
+    try {
         let organisationID = req.params.organisation_id;
-        if(organisationID > 0){
-            let org = await helpers.findOrganisationbyID( organisationID );
-            if(org != null && org.organisation_id > 0) {
+        if (organisationID > 0) {
+            let org = await helpers.findOrganisationbyID(organisationID);
+            if (org != null && org.organisation_id > 0) {
                 /**
                  * Get list of all from resources database.
-                 */ 
+                 */
 
                 runPhpScript(`/var/www/html/trash/tree_script.php`, [
                     org.name
@@ -1733,12 +1744,12 @@ route.get("/customers/:organisation_id/create_tree", [authJWT.verifyToken, authJ
         } else {
             res.status(402).send("Bad Inputs");
         }
-        
-    } catch(e) {
+
+    } catch (e) {
         console.log("ERROR:");
         console.log(e);
         res.status(402).send("Not found ");
-    } 
+    }
 });
 
 /**
@@ -1797,29 +1808,29 @@ route.get("/customers/:organisation_id/create_tree", [authJWT.verifyToken, authJ
  * Create Account in Business Database and create database for the customer
  */
 
-route.post("/customers", [authJWT.verifyToken, authJWT.isAdmin], async (req, res, next) => {   
-    try{
+route.post("/customers", [authJWT.verifyToken, authJWT.isAdmin], async (req, res, next) => {
+    try {
         let companyName = req.body.company_name;
-        if(companyName != undefined && companyName.length > 0) {
+        if (companyName != undefined && companyName.length > 0) {
             /**
              * Check customer already exist!
              */
             let org = await Organisations.findOne({
-                where: {name: companyName}
+                where: { name: companyName }
             })
 
-            if(org == null) {
+            if (org == null) {
                 /**
                  * Create account
                  */
-                org =  await Organisations.create({
+                org = await Organisations.create({
                     name: req.body.company_name,
-                    country_id:1,
+                    country_id: 1,
                     organisation_type: req.body.organisation_type,
                     subscribtion: 3
                 })
             }
-            if(org != null && org.organisation_id > 0){
+            if (org != null && org.organisation_id > 0) {
                 let organisationID = org.organisation_id;
 
                 /**
@@ -1853,24 +1864,24 @@ route.post("/customers", [authJWT.verifyToken, authJWT.isAdmin], async (req, res
                 //     }
                 // })
 
-                      
+
                 runPhpScript(`${process.env.SCRIPT_PATH}script_create_customer_db.php`, [
                     organisationID
                 ]);
-                
+
                 /**
                  * Run script for creating database
                  */
                 const query = "UPDATE db_business.organisation SET uuid=UUID_TO_BIN(UUID()) WHERE organisation_id = :organisation_id"
 
-                connection.resources.query(query,{
+                connection.resources.query(query, {
                     type: connection.Sequelize.QueryTypes.UPDATE,
                     replacements: { organisation_id: organisationID },
                     raw: true,
                     logging: console.log,
-                }); 
+                });
 
-                res.status(200).json(org);                                       
+                res.status(200).json(org);
             } else {
                 res.status(500).send("Internal server error");
             }
@@ -1878,33 +1889,33 @@ route.post("/customers", [authJWT.verifyToken, authJWT.isAdmin], async (req, res
     } catch (e) {
         console.log(e);
         res.status(402).send("Not able to create new customer ");
-    }    
+    }
 });
 
-route.put("/customers" , [authJWT.verifyToken, authJWT.isAdmin], async (req, res, next) => {
-    try{
+route.put("/customers", [authJWT.verifyToken, authJWT.isAdmin], async (req, res, next) => {
+    try {
         const companyName = req.body.company_name, clientID = req.body.organisation_id;
-        if(companyName != undefined && companyName.length > 0 && clientID > 0) {
+        if (companyName != undefined && companyName.length > 0 && clientID > 0) {
             /**
              * Check customer exist!
              */
             const org = await Organisations.findOne({
-                where: {organisation_id: clientID}
+                where: { organisation_id: clientID }
             })
-            if(org != null) {
+            if (org != null) {
                 await org.update({
                     name: req.body.company_name,
                     organisation_type: req.body.organisation_type,
-                    subscribtion: typeof req.body.subscribtion  !== 'undefined' ? req.body.subscribtion : 3
+                    subscribtion: typeof req.body.subscribtion !== 'undefined' ? req.body.subscribtion : 3
                 });
-                res.status(200).json({name: org.name, logo: org.logo, organisation_type: org.organisation_type, subscribtion: org.subscribtion, organisation_id: org.organisation_id});   
+                res.status(200).json({ name: org.name, logo: org.logo, organisation_type: org.organisation_type, subscribtion: org.subscribtion, organisation_id: org.organisation_id });
             } else {
                 res.status(403).send("Client not found");
             }
         } else {
             res.status(400).send("Name cannot be blank");
         }
-    }catch(e){
+    } catch (e) {
         res.status(402).send("Not able to update client account ");
     }
 })
@@ -1912,18 +1923,18 @@ route.put("/customers" , [authJWT.verifyToken, authJWT.isAdmin], async (req, res
 
 
 route.get("/customers/:id/patents", [authJWT.verifyToken, authJWT.isAdmin], async (req, res, next) => {
-    try{
+    try {
         let organisationID = req.params.id;
         let { direction, representativeID } = req.query
         let patentList = [];
-        if(organisationID > 0){
-            let org = await helpers.findOrganisationbyID( organisationID );
-            if(org != null && org.organisation_id > 0) {
-                if(typeof representativeID !== 'undefined' && representativeID != '') {
+        if (organisationID > 0) {
+            let org = await helpers.findOrganisationbyID(organisationID);
+            if (org != null && org.organisation_id > 0) {
+                if (typeof representativeID !== 'undefined' && representativeID != '') {
                     representativeID = JSON.parse(representativeID)
                 }
                 let queryAllPatentList = '';
-                if(Array.isArray(representativeID) && representativeID.length > 0) {
+                if (Array.isArray(representativeID) && representativeID.length > 0) {
                     queryAllPatentList = 'SELECT CASE WHEN grant_doc_num = "" OR grant_doc_num IS NULL THEN appno_doc_num ELSE grant_doc_num END AS number, appno_doc_num as application, CASE WHEN grant_doc_num = "" OR grant_doc_num IS NULL THEN 1 ELSE 0 END AS asset_type FROM assets WHERE (organisation_id = 0 OR organisation_id IS NULL) AND company_id IN (:representativeID) AND date_format(grant_date, "%Y") >= :year GROUP BY number, application';
                 } else {
                     queryAllPatentList = 'SELECT CASE WHEN grant_doc_num = "" OR grant_doc_num IS NULL THEN appno_doc_num ELSE grant_doc_num END AS number, appno_doc_num as application, CASE WHEN grant_doc_num = "" OR grant_doc_num IS NULL THEN 1 ELSE 0 END AS asset_type FROM assets WHERE organisation_id = :organisationID AND date_format(grant_date, "%Y") >= :year GROUP BY number, application ';
@@ -1931,36 +1942,36 @@ route.get("/customers/:id/patents", [authJWT.verifyToken, authJWT.isAdmin], asyn
 
                 queryAllPatentList += ` ORDER BY asset_type ASC, ABS(number) ${typeof direction === 'undefined' ? "ASC" : direction}`
 
-                if(queryAllPatentList !== '')  {
-                    patentList = await connection.applicationNew.query(queryAllPatentList,{
+                if (queryAllPatentList !== '') {
+                    patentList = await connection.applicationNew.query(queryAllPatentList, {
                         type: connection.Sequelize.QueryTypes.SELECT,
                         replacements: { organisationID, representativeID, year: connection.DEFAULT_YEAR },
                         raw: true,
                         logging: console.log,
-                        }
+                    }
                     );
-                }           
+                }
             }
         }
         res.status(200).json(patentList);
-    } catch(e) {
+    } catch (e) {
         console.log(e);
         res.status(402).send("No patents");
     }
 });
 
-route.get("/customers/:organisation_id/flag_automatic", [authJWT.verifyToken, authJWT.isAdmin], async(req, res, next) => {
-    try{
+route.get("/customers/:organisation_id/flag_automatic", [authJWT.verifyToken, authJWT.isAdmin], async (req, res, next) => {
+    try {
         let organisationID = req.params.organisation_id, companyID = req.query.representative_id;
-        if(organisationID > 0){
-            let org = await helpers.findOrganisationbyID( organisationID );
-            if(org != null && org.organisation_id > 0) {
-                if(companyID != '') {
+        if (organisationID > 0) {
+            let org = await helpers.findOrganisationbyID(organisationID);
+            if (org != null && org.organisation_id > 0) {
+                if (companyID != '') {
                     companyID = JSON.parse(companyID)
                 }
 
-                if(companyID.length > 0) {
-                    if(companyID.length > 1) { 
+                if (companyID.length > 0) {
+                    if (companyID.length > 1) {
                         runPhpScript(`${process.env.SCRIPT_PATH}run_script_for_update_flag.php`, [
                             organisationID,
                             JSON.stringify(companyID)
@@ -1977,8 +1988,8 @@ route.get("/customers/:organisation_id/flag_automatic", [authJWT.verifyToken, au
                         ""
                     ]);
                 }
-                
-                
+
+
                 res.status(200).send("Fixing flag in process");
             } else {
                 res.status(402).send("Customer not exist.");
@@ -1986,19 +1997,19 @@ route.get("/customers/:organisation_id/flag_automatic", [authJWT.verifyToken, au
         } else {
             res.status(402).send("Invalid parameters.");
         }
-    }catch(e) {
+    } catch (e) {
         console.log(e);
         res.status(402).send("Error while updating flag");
     }
 });
 
-route.get("/customers/:organisation_id/transaction_missing_conveyance", [authJWT.verifyToken, authJWT.isAdmin], async(req, res, next) => {
-    try{
+route.get("/customers/:organisation_id/transaction_missing_conveyance", [authJWT.verifyToken, authJWT.isAdmin], async (req, res, next) => {
+    try {
         let organisationID = req.params.organisation_id, companyID = req.query.representative_id;
-        if(organisationID > 0){
-            let org = await helpers.findOrganisationbyID( organisationID );
-            if(org != null && org.organisation_id > 0) {
-                
+        if (organisationID > 0) {
+            let org = await helpers.findOrganisationbyID(organisationID);
+            if (org != null && org.organisation_id > 0) {
+
                 runPhpScript(`${process.env.SCRIPT_PATH}update_missing_type.php`, [
                     organisationID,
                     companyID
@@ -2010,32 +2021,32 @@ route.get("/customers/:organisation_id/transaction_missing_conveyance", [authJWT
         } else {
             res.status(402).send("Invalid parameters.");
         }
-    }catch(e) {
+    } catch (e) {
         console.log(e);
         res.status(402).send("Error while updating flag");
     }
 });
 
-route.get("/customers/:organisation_id/:representative_id/missing_inventor", [authJWT.verifyToken, authJWT.isAdmin], async(req, res, next) => {
-    try{
+route.get("/customers/:organisation_id/:representative_id/missing_inventor", [authJWT.verifyToken, authJWT.isAdmin], async (req, res, next) => {
+    try {
         let organisationID = req.params.organisation_id;
-        if(organisationID > 0){
-            let org = await helpers.findOrganisationbyID( organisationID );
-            if(org != null && org.organisation_id > 0) {
+        if (organisationID > 0) {
+            let org = await helpers.findOrganisationbyID(organisationID);
+            if (org != null && org.organisation_id > 0) {
                 const findProcess = await MissingInventorProcess.findOne({
-                    where: {organisation_id: org.organisation_id, representative_id: req.params.representative_id, status: 0}
+                    where: { organisation_id: org.organisation_id, representative_id: req.params.representative_id, status: 0 }
                 })
 
-                if( findProcess == null ) {
+                if (findProcess == null) {
                     MissingInventorProcess
-                    .create({organisation_id: org.organisation_id, representative_id: req.params.representative_id, status: 0})
-                    .then( data => {
-                        runPhpScript(`/var/www/html/trash/find_missing_from_api_inventor_xml.php`, [
-                            organisationID,
-                            req.params.representative_id
-                        ]);
-                        res.status(200).send("Finding the number of assignment with missing inventor.");
-                    })
+                        .create({ organisation_id: org.organisation_id, representative_id: req.params.representative_id, status: 0 })
+                        .then(data => {
+                            runPhpScript(`/var/www/html/trash/find_missing_from_api_inventor_xml.php`, [
+                                organisationID,
+                                req.params.representative_id
+                            ]);
+                            res.status(200).send("Finding the number of assignment with missing inventor.");
+                        })
                 } else {
                     res.status(200).send("Already in process.");
                 }
@@ -2045,28 +2056,28 @@ route.get("/customers/:organisation_id/:representative_id/missing_inventor", [au
         } else {
             res.status(402).send("Invalid parameters.");
         }
-    }catch(e) {
+    } catch (e) {
         console.log(e);
         res.status(402).send("Error while updating flag");
     }
 })
 
-route.get("/customers/:organisation_id/:representative_id/missing_inventor/stop", [authJWT.verifyToken, authJWT.isAdmin], async(req, res, next) => {
-    try{
+route.get("/customers/:organisation_id/:representative_id/missing_inventor/stop", [authJWT.verifyToken, authJWT.isAdmin], async (req, res, next) => {
+    try {
         let organisationID = req.params.organisation_id;
-        if(organisationID > 0){
-            let org = await helpers.findOrganisationbyID( organisationID );
-            if(org != null && org.organisation_id > 0) {
-                const where = {organisation_id: org.organisation_id};
+        if (organisationID > 0) {
+            let org = await helpers.findOrganisationbyID(organisationID);
+            if (org != null && org.organisation_id > 0) {
+                const where = { organisation_id: org.organisation_id };
                 const representativeID = req.params.representative_id;
-                if(representativeID > 0) {
+                if (representativeID > 0) {
                     where['representative_id'] = representativeID;
                 }
-                const data = await MissingInventorProcess.findOne({where: where});
+                const data = await MissingInventorProcess.findOne({ where: where });
 
-                if(data != null && data.process_id > 0) {
-                   const updateData =  await MissingInventorProcess.update({status: 1}, {where: where});
-                    if(updateData) {
+                if (data != null && data.process_id > 0) {
+                    const updateData = await MissingInventorProcess.update({ status: 1 }, { where: where });
+                    if (updateData) {
                         res.status(200).send("Process stopped");
                     } else {
                         res.status(200).send("Error while stopping process.");
@@ -2080,68 +2091,68 @@ route.get("/customers/:organisation_id/:representative_id/missing_inventor/stop"
         } else {
             res.status(200).send("AccountID missing.");
         }
-    }catch(e) {
+    } catch (e) {
         console.log(e);
         res.status(402).send("Error while stopping process");
     }
 })
 
-route.get("/customers/:organisation_id/:representative_id/find_inventor", [authJWT.verifyToken, authJWT.isAdmin], async(req, res, next) => {
-    try{
+route.get("/customers/:organisation_id/:representative_id/find_inventor", [authJWT.verifyToken, authJWT.isAdmin], async (req, res, next) => {
+    try {
         let organisationID = req.params.organisation_id;
-        if(organisationID > 0){
-            let org = await helpers.findOrganisationbyID( organisationID );
-            if(org != null && org.organisation_id > 0) {
+        if (organisationID > 0) {
+            let org = await helpers.findOrganisationbyID(organisationID);
+            if (org != null && org.organisation_id > 0) {
                 MissingInventorProcess
-                .create({organisation_id: org.organisation_id, representative_id: req.params.representative_id})
-                .then( data => {
-                    runPhpScript(`/var/www/html/trash/missing_inventor_from_api_2000_2004.php`, [
-                        organisationID,
-                        req.params.representative_id
-                    ]);
-                    res.status(200).send("Finding the number of assignment with missing inventor from 2000-2004.");
-                })
+                    .create({ organisation_id: org.organisation_id, representative_id: req.params.representative_id })
+                    .then(data => {
+                        runPhpScript(`/var/www/html/trash/missing_inventor_from_api_2000_2004.php`, [
+                            organisationID,
+                            req.params.representative_id
+                        ]);
+                        res.status(200).send("Finding the number of assignment with missing inventor from 2000-2004.");
+                    })
             } else {
                 res.status(402).send("Customer not exist.");
             }
         } else {
             res.status(402).send("Invalid parameters.");
         }
-    } catch(e) {
+    } catch (e) {
         console.log(e);
         res.status(402).send("Error while updating flag");
     }
 })
 
 
-route.get("/customers/:organisation_id/publish", [authJWT.verifyToken, authJWT.isAdmin], async(req, res, next) => {
-    try{
+route.get("/customers/:organisation_id/publish", [authJWT.verifyToken, authJWT.isAdmin], async (req, res, next) => {
+    try {
         let organisationID = req.params.organisation_id;
-        let {company_id} = req.query
+        let { company_id } = req.query
 
-        if(company_id != '' && company_id != undefined && company_id != null && company_id != '[]') {
+        if (company_id != '' && company_id != undefined && company_id != null && company_id != '[]') {
             company_id = JSON.parse(company_id)
         } else {
             company_id = []
         }
-        if(organisationID > 0){
-            let org = await helpers.findOrganisationbyID( organisationID );
-            if(org != null && org.organisation_id > 0) {
+        if (organisationID > 0) {
+            let org = await helpers.findOrganisationbyID(organisationID);
+            if (org != null && org.organisation_id > 0) {
                 /**
                  * Get list of all from resources database.
                  */
                 const findUsers = await Users.count({
-                    where:{organisation_id: org.organisation_id},
+                    where: { organisation_id: org.organisation_id },
                     col: 'user_id'
                 });
-                if(findUsers > 0) {
-                    if(company_id.length == 0) {
+                if (findUsers > 0) {
+                    if (company_id.length == 0) {
                         runPhpScript(`${process.env.SCRIPT_PATH}create_data_for_company_db_application.php`, [
                             organisationID,
                             "",
                         ]
                         );
-                        res.status(200).send("UPDATED!");   
+                        res.status(200).send("UPDATED!");
                     } else {
                         /* const queryRepresentativeName = `SELECT representative_name, company_id FROM db_uspto.list1 WHERE company_id IN (:company_id) AND organisation_id = :organisationID GROUP BY representative_name`;
                         const companyNames =  await connection.applicationNew.query(queryRepresentativeName,{
@@ -2150,9 +2161,9 @@ route.get("/customers/:organisation_id/publish", [authJWT.verifyToken, authJWT.i
                             raw: true,
                             logging: console.log,
                             }
-                        ); */ 
-                        if(Array.isArray(company_id) && company_id.length > 0) {
-                            company_id.map( async company => { 
+                        ); */
+                        if (Array.isArray(company_id) && company_id.length > 0) {
+                            company_id.map(async company => {
                                 runPhpScript(`${process.env.SCRIPT_PATH}create_data_for_company_db_application.php`, [
                                     organisationID,
                                     company,
@@ -2160,61 +2171,61 @@ route.get("/customers/:organisation_id/publish", [authJWT.verifyToken, authJWT.i
                                 ]
                                 );
                             })
-                            res.status(200).send("UPDATED!");   
+                            res.status(200).send("UPDATED!");
                         } else {
-                            res.status(200).send("Company not found!");  
-                        } 
+                            res.status(200).send("Company not found!");
+                        }
                     }
                 } else {
                     res.status(200).send("Please create a admin user first for this customer.");
-                } 
+                }
             } else {
                 res.status(402).send("Bad Inputs");
             }
         } else {
             res.status(402).send("Bad Inputs");
         }
-        
-    } catch(e) {
+
+    } catch (e) {
         console.log("ERROR:");
         console.log(e);
         res.status(402).send("Not found ");
-    } 
+    }
 });
 
-route.get("/customers/:organisation_id/address/publish", [authJWT.verifyToken, authJWT.isAdmin], async(req, res, next) => {
-    try{
+route.get("/customers/:organisation_id/address/publish", [authJWT.verifyToken, authJWT.isAdmin], async (req, res, next) => {
+    try {
         let organisationID = req.params.organisation_id;
-        if(organisationID > 0){
-            let org = await helpers.findOrganisationbyID( organisationID );
-            if(org != null && org.organisation_id > 0) {
+        if (organisationID > 0) {
+            let org = await helpers.findOrganisationbyID(organisationID);
+            if (org != null && org.organisation_id > 0) {
                 await runPhpScript(`${process.env.SCRIPT_PATH}update_client_companies_address.php`, [
                     organisationID,
                     ""
                 ], true
-                ); 
-                res.status(200).send("UPDATED!");   
+                );
+                res.status(200).send("UPDATED!");
             } else {
                 res.status(402).send("Bad Inputs");
             }
         } else {
             res.status(402).send("Bad Inputs");
         }
-        
-    } catch(e) {
+
+    } catch (e) {
         console.log("ERROR:");
         console.log(e);
         res.status(402).send("Not found ");
-    } 
+    }
 });
 
-route.put("/customers/:id/flag_update_manually", [authJWT.verifyToken, authJWT.isAdmin, authJWT.addClientID, clientDBConnection.connect], async(req, res, next) => {
-    try{
+route.put("/customers/:id/flag_update_manually", [authJWT.verifyToken, authJWT.isAdmin, authJWT.addClientID, clientDBConnection.connect], async (req, res, next) => {
+    try {
 
         let inventors = req.body.inventors, organisationID = req.params.id, flag = req.body.flag;
-    
-        if(inventors != undefined && inventors.length > 0) {
-            if(typeof req.connection_db != "undefined" && req.connection_db != null ) {
+
+        if (inventors != undefined && inventors.length > 0) {
+            if (typeof req.connection_db != "undefined" && req.connection_db != null) {
                 let update = await helpers.updateAllCustomerInventor(organisationID, inventors, flag, req.connection_db);
                 res.status(200).json(update);
             } else {
@@ -2224,26 +2235,26 @@ route.put("/customers/:id/flag_update_manually", [authJWT.verifyToken, authJWT.i
             res.status(400).send("No list found! ");
         }
     } catch (e) {
-        
+
     }
 });
 
-route.delete("/customers/:organisation_id", [authJWT.verifyToken, authJWT.isAdmin], async(req, res, next) => {
-    try{
+route.delete("/customers/:organisation_id", [authJWT.verifyToken, authJWT.isAdmin], async (req, res, next) => {
+    try {
         let organisationID = req.params.organisation_id;
-        if(organisationID > 0){
-            let org = await helpers.findOrganisationbyID( organisationID );
-            if(org != null && org.organisation_id > 0) {
-                if(org.org_usr != "" && org.org_pass != "" && org.org_host != "" && org.org_db != "") {
+        if (organisationID > 0) {
+            let org = await helpers.findOrganisationbyID(organisationID);
+            if (org != null && org.organisation_id > 0) {
+                if (org.org_usr != "" && org.org_pass != "" && org.org_host != "" && org.org_db != "") {
                     res.status(403).send("Cannot delete customer account.");
                 } else {
                     let t = await connection.resources.transaction();
 
                     const deleteCompany = await Organisations.destroy({
-                        where:{representative_id: organisationID}, transaction: t
+                        where: { representative_id: organisationID }, transaction: t
                     });
 
-                    if(deleteCompany != null) {
+                    if (deleteCompany != null) {
                         res.status(200).send("Customer deleted successfully.");
                     } else {
                         res.status(500).send("Error while deleting customer.");
@@ -2255,27 +2266,27 @@ route.delete("/customers/:organisation_id", [authJWT.verifyToken, authJWT.isAdmi
         } else {
             res.status(402).send("Bad Inputs");
         }
-    } catch(e) {
+    } catch (e) {
         console.log("ERROR:");
         console.log(e);
         res.status(402).send("Not found ");
-    } 
+    }
 });
 
 
-route.get("/patents/:asset",[authJWT.verifyToken, authJWT.isAdmin], async (req, res) =>{       
-    try{
+route.get("/patents/:asset", [authJWT.verifyToken, authJWT.isAdmin], async (req, res) => {
+    try {
 
         let asset = req.params.asset;
         let where = {
-            [connection.Op.or]:[{grant_doc_num: asset},{appno_doc_num: asset}]
+            [connection.Op.or]: [{ grant_doc_num: asset }, { appno_doc_num: asset }]
         }
-        if(typeof flag !== 'undefined' && flag >= 0) {
-            if(flag == 1) {
+        if (typeof flag !== 'undefined' && flag >= 0) {
+            if (flag == 1) {
                 where = {
                     grant_doc_num: asset
                 }
-            } else if(flag == 0) {
+            } else if (flag == 0) {
                 where = {
                     appno_doc_num: asset
                 }
@@ -2283,129 +2294,129 @@ route.get("/patents/:asset",[authJWT.verifyToken, authJWT.isAdmin], async (req, 
         }
         Documentids.findAll({
             where,
-            attributes:['rf_id',['grant_doc_num','number'], ['appno_doc_num','application']],
+            attributes: ['rf_id', ['grant_doc_num', 'number'], ['appno_doc_num', 'application']],
         })
-        .then(p => {
-            console.log("CHECKING PATENT");
-            console.log('%j',p);     
-            if(p != null && p.length > 0){
-                console.log(p); 
-                helpers.generateJSON(req, res);
-            } else {
+            .then(p => {
+                console.log("CHECKING PATENT");
+                console.log('%j', p);
+                if (p != null && p.length > 0) {
+                    console.log(p);
+                    helpers.generateJSON(req, res);
+                } else {
+                    res.status(400).send("Invalid number");
+                }
+            }).catch(err => {
+                console.log(err);
                 res.status(400).send("Invalid number");
-            }       
-        }).catch(err => {
-            console.log(err);
-            res.status(400).send("Invalid number");
-        })
+            })
     } catch (e) {
-        
-    } 
+
+    }
 });
 
-route.get("/patents/:patentNumber/comments",[authJWT.verifyToken, authJWT.isAdmin], async (req, res) =>{        
+route.get("/patents/:patentNumber/comments", [authJWT.verifyToken, authJWT.isAdmin], async (req, res) => {
     res.status(200).json({});
 });
 
-route.get("/patents/:patentNumber/outsource",[authJWT.verifyToken, authJWT.isAdmin], async (req, res) =>{ 
-    try{
-
-        let patentNumber = req.params.patentNumber;       
-        Documentids.findOne({
-            where:{[connection.Op.or]:[{grant_doc_num: patentNumber},{appno_doc_num: patentNumber}]},
-            attributes:['rf_id',['grant_doc_num','number'], ['appno_doc_num','application']],
-        })
-        .then(p => {
-            if(p != null) {
-                let type = "patNum";
-                console.log('%j',p); 
-                let data = p.toJSON();
-                if(patentNumber == data.application){
-                    patentNumber = data.application;
-                    type = "applNum";
-                }      
-                res.status(200).json({url:`https://assignment.uspto.gov/patent/index.html#/patent/search/resultAbstract?id=${patentNumber}&type=${type}`});
-            } else {
-                res.status(200).send("");
-            }        
-        }).catch(err => {
-            console.log(err);
-            res.status(400).send("Invalid number");
-        })
-    } catch (e) {
-        
-    }
-});
-
-route.get("/patents/:patentNumber/assignments",[authJWT.verifyToken, authJWT.isAdmin], async (req, res) =>{ 
-    try{
-
-        let patentNumber = req.params.patentNumber; 
-        Documentids.findOne({
-            where:{[connection.Op.or]:[{grant_doc_num: patentNumber},{appno_doc_num: patentNumber}]},
-            attributes:['rf_id',['grant_doc_num','number'], ['appno_doc_num','application']],
-        })
-        .then(p => {
-            if(p != null) {
-                let type = "patNum";
-                console.log('%j',p); 
-                let data = p.toJSON();
-                if(patentNumber == data.application){
-                    patentNumber = data.application;
-                    type = "applNum";
-                }      
-    
-                let queryAssignments = "SELECT a.rf_id, a.convey_text, ac.convey_ty, '' as file, r.representative_type FROM assignment as a INNER JOIN assignor as `or` ON `or`.rf_id = a.rf_id INNER JOIN assignment_conveyance as ac ON ac.rf_id = a.rf_id INNER JOIN documentid as d ON d.rf_id = a.rf_id LEFT JOIN representative_assignment_conveyance as r ON r.rf_id = a.rf_id WHERE ";
-    
-                if(type == "patNum") {
-                    queryAssignments += " d.grant_doc_num = :number";
-                } else if(type == "applNum") {
-                    queryAssignments += " d.appno_doc_num = :number";
-                }
-    
-                queryAssignments +=" ORDER BY a.exec_dt ASC";
-                (async () => {
-                    let getAssignmentList = await connection.resources.query(queryAssignments,{
-                        type: connection.Sequelize.QueryTypes.SELECT,
-                        replacements: { number: patentNumber },
-                        raw: true,
-                        logging: console.log,
-                        }
-                    );	
-        
-                    if(getAssignmentList.length > 0) {
-                        const path = '/var/wwww/html/PatenTrack/resources/shared/data/';
-                        getAssignmentList.map( (a, index) => {
-                            let fileName = `assignment-pat-${a.reel_no}-${a.frame_no}.pdf`;
-                            if (fs.existsSync(path+fileName)) {
-                                //file exists
-                                getAssignmentList[index].file = `https://patentrack.com/resources/shared/data/${fileName}`;
-                            }
-                        });
-                    }
-                    res.status(200).json(getAssignmentList);
-                }) ();
-                
-            } else {
-                res.status(200).send("");
-            }        
-        }).catch(err => {
-            console.log(err);
-            res.status(400).send("Invalid number.");
-        })
-    } catch (e) {
-        
-    }
-});
-
-
-route.get("/customers/retrieve_cited_patents/:customerID",[authJWT.verifyToken, authJWT.isAdmin], async (req, res) =>{ 
+route.get("/patents/:patentNumber/outsource", [authJWT.verifyToken, authJWT.isAdmin], async (req, res) => {
     try {
-        const {customerID} = req.params
-        const {companies, type} = req.query
+
+        let patentNumber = req.params.patentNumber;
+        Documentids.findOne({
+            where: { [connection.Op.or]: [{ grant_doc_num: patentNumber }, { appno_doc_num: patentNumber }] },
+            attributes: ['rf_id', ['grant_doc_num', 'number'], ['appno_doc_num', 'application']],
+        })
+            .then(p => {
+                if (p != null) {
+                    let type = "patNum";
+                    console.log('%j', p);
+                    let data = p.toJSON();
+                    if (patentNumber == data.application) {
+                        patentNumber = data.application;
+                        type = "applNum";
+                    }
+                    res.status(200).json({ url: `https://assignment.uspto.gov/patent/index.html#/patent/search/resultAbstract?id=${patentNumber}&type=${type}` });
+                } else {
+                    res.status(200).send("");
+                }
+            }).catch(err => {
+                console.log(err);
+                res.status(400).send("Invalid number");
+            })
+    } catch (e) {
+
+    }
+});
+
+route.get("/patents/:patentNumber/assignments", [authJWT.verifyToken, authJWT.isAdmin], async (req, res) => {
+    try {
+
+        let patentNumber = req.params.patentNumber;
+        Documentids.findOne({
+            where: { [connection.Op.or]: [{ grant_doc_num: patentNumber }, { appno_doc_num: patentNumber }] },
+            attributes: ['rf_id', ['grant_doc_num', 'number'], ['appno_doc_num', 'application']],
+        })
+            .then(p => {
+                if (p != null) {
+                    let type = "patNum";
+                    console.log('%j', p);
+                    let data = p.toJSON();
+                    if (patentNumber == data.application) {
+                        patentNumber = data.application;
+                        type = "applNum";
+                    }
+
+                    let queryAssignments = "SELECT a.rf_id, a.convey_text, ac.convey_ty, '' as file, r.representative_type FROM assignment as a INNER JOIN assignor as `or` ON `or`.rf_id = a.rf_id INNER JOIN assignment_conveyance as ac ON ac.rf_id = a.rf_id INNER JOIN documentid as d ON d.rf_id = a.rf_id LEFT JOIN representative_assignment_conveyance as r ON r.rf_id = a.rf_id WHERE ";
+
+                    if (type == "patNum") {
+                        queryAssignments += " d.grant_doc_num = :number";
+                    } else if (type == "applNum") {
+                        queryAssignments += " d.appno_doc_num = :number";
+                    }
+
+                    queryAssignments += " ORDER BY a.exec_dt ASC";
+                    (async () => {
+                        let getAssignmentList = await connection.resources.query(queryAssignments, {
+                            type: connection.Sequelize.QueryTypes.SELECT,
+                            replacements: { number: patentNumber },
+                            raw: true,
+                            logging: console.log,
+                        }
+                        );
+
+                        if (getAssignmentList.length > 0) {
+                            const path = '/var/wwww/html/PatenTrack/resources/shared/data/';
+                            getAssignmentList.map((a, index) => {
+                                let fileName = `assignment-pat-${a.reel_no}-${a.frame_no}.pdf`;
+                                if (fs.existsSync(path + fileName)) {
+                                    //file exists
+                                    getAssignmentList[index].file = `https://patentrack.com/resources/shared/data/${fileName}`;
+                                }
+                            });
+                        }
+                        res.status(200).json(getAssignmentList);
+                    })();
+
+                } else {
+                    res.status(200).send("");
+                }
+            }).catch(err => {
+                console.log(err);
+                res.status(400).send("Invalid number.");
+            })
+    } catch (e) {
+
+    }
+});
+
+
+route.get("/customers/retrieve_cited_patents/:customerID", [authJWT.verifyToken, authJWT.isAdmin], async (req, res) => {
+    try {
+        const { customerID } = req.params
+        const { companies, type } = req.query
         console.log('companies', `${process.env.SCRIPT_PATH}retrieve_cited_patents_assignees.js`, customerID, `${companies}`, `${type}`);
         const script = spawn('node', [`${process.env.SCRIPT_PATH}retrieve_cited_patents_assignees.js`, customerID, `${companies}`, `${type}`]);
-        script.stdout.on('data', function(data) {
+        script.stdout.on('data', function (data) {
             console.log(data)
         })
         res.status(200).send("Run retireved assignee script.");
@@ -2413,14 +2424,14 @@ route.get("/customers/retrieve_cited_patents/:customerID",[authJWT.verifyToken, 
         console.log('Err', err)
         res.status(500).send("Invalid input.");
     }
-    
+
 })
 
-route.get("/customers/retrieve_cited_patents_domain/:customerID/:apiName",[authJWT.verifyToken, authJWT.isAdmin], async (req, res) =>{ 
-    try{
+route.get("/customers/retrieve_cited_patents_domain/:customerID/:apiName", [authJWT.verifyToken, authJWT.isAdmin], async (req, res) => {
+    try {
 
-        const {customerID, apiName} = req.params
-        const {assignees, type} = req.query
+        const { customerID, apiName } = req.params
+        const { assignees, type } = req.query
         //console.log('retrieve_cited_patents_domain')
         /* exec(`node /var/www/html/script/name_to_domain_api.js ${customerID} ${apiName} ${assignees} 0 > name_to_domain_api.log  2>&1`, function(err, stdout, stderr){
             console.log(`assigneeLogos downloadFileSpawn.stdout: ${stdout}`)
@@ -2428,10 +2439,10 @@ route.get("/customers/retrieve_cited_patents_domain/:customerID/:apiName",[authJ
             console.log(`Error assigneeLogos downloadFileSpawn.err: ${err}`)
         }); */
         //logger.info('Sending request to RapidAPI script')
-        
+
         /* const assigneeLogos = spawn('node', ['/var/www/html/script/name_to_domain_api.js', customerID, apiName, assignees, 0]); */
         spawn('node', ['/var/www/html/script/name_to_domain_api.js', customerID, apiName, assignees, 0]);
-    
+
         /* assigneeLogos.stdout.on('data', (data) => {
             logger.info(data)
             console.log(`assigneeLogos downloadFileSpawn.stdout: ${data}`)
@@ -2446,8 +2457,8 @@ route.get("/customers/retrieve_cited_patents_domain/:customerID/:apiName",[authJ
             logger.info(code)
             resolve(`download assigneeLogos downloadFileSpawn.close ${code}`)    
         })  */
-    
-    
+
+
         res.status(200).send("run logo script");
     } catch (e) {
         console.log("Error in downloading image", e)
@@ -2455,23 +2466,23 @@ route.get("/customers/retrieve_cited_patents_domain/:customerID/:apiName",[authJ
     }
 })
 
-route.post("/customers/retrieve_cited_patents_logo",[authJWT.verifyToken, authJWT.isAdmin], async (req, res) =>{ 
+route.post("/customers/retrieve_cited_patents_logo", [authJWT.verifyToken, authJWT.isAdmin], async (req, res) => {
     try {
 
-        const {client_id, api_name, assignees, all, company_id, type, source_data} = req.body
+        const { client_id, api_name, assignees, all, company_id, type, source_data } = req.body
         console.log('retrieve_cited_patents_logo')
         /* exec(`node /var/www/html/script/name_to_domain_api.js ${client_id} ${api_name} ${assignees} 1 > name_to_domain_api.log  2>&1`, function(err, stdout, stderr){
             console.log(`assigneeLogos downloadFileSpawn.stdout: ${stdout}`)
             console.log(`Error assigneeLogos downloadFileSpawn.stderr: ${stderr}`)
             console.log(`Error assigneeLogos downloadFileSpawn.err: ${err}`)
-        }); */ 
-    
+        }); */
+
         /* logger.info('Sending request to RapidAPI script')
         console.log('/var/www/html/script/name_to_domain_api.js', client_id, api_name, assignees, 1, company_id, all, type) */
         /* const assigneeLogos = spawn('node', ['/var/www/html/script/name_to_domain_api.js', client_id, api_name, assignees, 1, company_id, all, type, source_data]); */
         console.log(`${process.env.SCRIPT_PATH}name_to_domain_api.js`, client_id, api_name, assignees, 1, company_id, all, type, source_data);
         spawn('node', [`${process.env.SCRIPT_PATH}name_to_domain_api.js`, client_id, api_name, assignees, 1, company_id, all, type, source_data]);
-    
+
         /*assigneeLogos.stdout.on('data', (data) => {
             logger.info(data)
             console.log(`assigneeLogos downloadFileSpawn.stdout: ${data}`)
@@ -2486,8 +2497,8 @@ route.post("/customers/retrieve_cited_patents_logo",[authJWT.verifyToken, authJW
             logger.info(code)
             resolve(`download assigneeLogos downloadFileSpawn.close ${code}`)    
         })  */
-    
-    
+
+
         res.status(200).send("run logo script");
     } catch (err) {
         console.log("Error in downloading image", err)
@@ -2496,11 +2507,11 @@ route.post("/customers/retrieve_cited_patents_logo",[authJWT.verifyToken, authJW
 })
 
 
-route.get("/customers/team/create/:customerID", [authJWT.verifyToken, authJWT.isAdmin], async (req, res) =>{ 
-    try{
-        const {customerID} = req.params
+route.get("/customers/team/create/:customerID", [authJWT.verifyToken, authJWT.isAdmin], async (req, res) => {
+    try {
+        const { customerID } = req.params
 
-        const {token, refresh_token} = req.query
+        const { token, refresh_token } = req.query
 
         const web = new WebClient(token);
 
@@ -2512,7 +2523,7 @@ route.get("/customers/team/create/:customerID", [authJWT.verifyToken, authJWT.is
             team_discoverability: 'open'
         }
 
-        const result = await web.admin.teams.create( params )
+        const result = await web.admin.teams.create(params)
 
     } catch (err) {
         console.log("Create Error", err)

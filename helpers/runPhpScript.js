@@ -11,23 +11,23 @@ const execAsync = util.promisify(exec);
  */
 function runPhpScript(scriptPath, args = [], waitForResult = false) {
     const allEnv = {
-        DB_HOST: process.env.HOST, 
-        DB_USER: process.env.USER, 
-        DB_PASSWORD: process.env.PASSWORD, 
-        DB_USPTO_DB: process.env.DATABASE_RAW, 
-        DB_APPLICATION_DB: process.env.DATABASE_APPLICATION_NEW, 
-        DB_RT_PWD: process.env.DB_RT_PWD, 
-        DB_BUSINESS: process.env.DB_BUSINESS, 
-        DB_APPLICATION_BIBLIO: process.env.DATABASE_GRANT_BIBLIO, 
-        DB_GRANT_BIBLIO: process.env.DATABASE_APPLICATION_BIBLIO, 
-        AWS_ACCESS_KEY_ID: process.env.AWS_ACCESS_KEY_ID, 
-        AWS_SECRET_KEY: process.env.AWS_SECRET_KEY, 
+        DB_HOST: process.env.HOST,
+        DB_USER: process.env.USER,
+        DB_PASSWORD: process.env.PASSWORD,
+        DB_USPTO_DB: process.env.DATABASE_RAW,
+        DB_APPLICATION_DB: process.env.DATABASE_APPLICATION_NEW,
+        DB_RT_PWD: process.env.DB_RT_PWD,
+        DB_BUSINESS: process.env.DB_BUSINESS,
+        DB_APPLICATION_BIBLIO: process.env.DATABASE_GRANT_BIBLIO,
+        DB_GRANT_BIBLIO: process.env.DATABASE_APPLICATION_BIBLIO,
+        AWS_ACCESS_KEY_ID: process.env.AWS_ACCESS_KEY_ID,
+        AWS_SECRET_KEY: process.env.AWS_SECRET_KEY,
         AWS_DEFAULT_REGION: process.env.AWS_DEFAULT_REGION
     };
 
     const envVars = Object.entries(allEnv)
-    .map(([k, v]) => `${k}=${v}`)
-    .join(' ');
+        .map(([k, v]) => `${k}=${v}`)
+        .join(' ');
 
     const quotedArgs = args.map(arg => `"${arg}"`).join(' ');
     const command = `screen -md bash -c '${envVars} php -f ${scriptPath} ${quotedArgs}'`;
