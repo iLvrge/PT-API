@@ -6,9 +6,9 @@ const base64Url = require('base64url');
 
 const nodemailer = require("nodemailer");
 
-const   jwt = require('jsonwebtoken'),
-        bcrypt = require('bcrypt'),
-        moment = require("moment");
+const jwt = require('jsonwebtoken'),
+    bcrypt = require('bcrypt'),
+    moment = require("moment");
 
 const requestIPADRESS = require('request-ip');
 
@@ -22,72 +22,72 @@ const User = require("../../model/business/Users");
 const Organisation = require("../../model/business/Organisations");
 const ShareLinkDetails = require("../../model/application/ShareLinkDetails");
 
-route.get("/authenticate/:code/:type", async(req, res, next) => {
+route.get("/authenticate/:code/:type", async (req, res, next) => {
 
-    try{
+    try {
         //let query = `SELECT organisation_id FROM db_business.organisation WHERE uuid = UUID_TO_BIN(:binToUUID) AND status = 0`
 
-        const replacements = { binToUUID : req.params.code  } 
+        const replacements = { binToUUID: req.params.code }
         let query = `SELECT org.organisation_id, share.share_id, share.show_other_companies FROM db_business.organisation AS org INNER JOIN db_new_application.share AS share ON share.organisation_id = org.organisation_id
         WHERE org.status = 0 AND share.code = :binToUUID AND share.type = :type GROUP BY org.organisation_id`
-        replacements.type = req.params.type 
+        replacements.type = req.params.type
         //const clientIp = requestIPADRESS.getClientIp(req);  
-        const findOrg = await config.resources.query(query,{
-                type: config.Sequelize.QueryTypes.SELECT,
-                replacements: replacements,
-                raw: true,
-                plain: true,
-                logging: console.log,
-            }
+        const findOrg = await config.resources.query(query, {
+            type: config.Sequelize.QueryTypes.SELECT,
+            replacements: replacements,
+            raw: true,
+            plain: true,
+            logging: console.log,
+        }
         );
-    
-        let response = { auth: false, accessToken: null, message: "Bad inputs"}
-    
-        if( findOrg != null ) {
+
+        let response = { auth: false, accessToken: null, message: "Bad inputs" }
+
+        if (findOrg != null) {
             await ShareLinkDetails.create({
                 share_id: findOrg.share_id,
-                ip_address: req.headers['x-forwarded-for'] || req.socket.remoteAddress 
+                ip_address: req.headers['x-forwarded-for'] || req.socket.remoteAddress
             })
             const findAdminUser = await User.findOne({
-                                        where: {
-                                            type: ['0','1'],
-                                            status: 0,
-                                            organisation_id: findOrg.organisation_id
-                                        }
-                                    })
-            
-            if( findAdminUser && findAdminUser != null ) {
+                where: {
+                    type: ['0', '1'],
+                    status: 0,
+                    organisation_id: findOrg.organisation_id
+                }
+            })
+
+            if (findAdminUser && findAdminUser != null) {
 
                 const currentDate = Date.now();
-    
-                const expiredDate = moment(new Date(currentDate)).add(1,'days').valueOf();
-    
+
+                const expiredDate = moment(new Date(currentDate)).add(1, 'days').valueOf();
+
                 token = jwt.sign({ id: findAdminUser.user_id, orgId: findAdminUser.organisation_id, iat: currentDate, expired: expiredDate, show_other_companies: findOrg.show_other_companies, share_code: req.params.code }, config.config.secret, {
                     expiresIn: 86400 // expires in 24 hours,
                 });
-        
-                response = { auth: true, accessToken: token, message: "Login successfully!"}
-            }                        
+
+                response = { auth: true, accessToken: token, message: "Login successfully!" }
+            }
         }
         res.status(200).send(response);
-    } catch( err ) {
+    } catch (err) {
         console.log('err', err)
         res.status(402).send('Bad inputs');
-    }    
+    }
 })
 
 route.post("/verify", (req, res, next) => {
     User.findOne({
-        include:[
+        include: [
             {
-              model: Organisation,
-              as: "organisation",
-              attributes: ['subscribtion'],
+                model: Organisation,
+                as: "organisation",
+                attributes: ['subscribtion'],
             }
         ],
         where: {
             username: req.body.username,
-            status:0
+            status: 0
         }
     }).then(user => {
         if (!user) {
@@ -99,105 +99,105 @@ route.post("/verify", (req, res, next) => {
         const code = crypto.randomBytes(3).toString('hex');
         /*key = crypt.getRandomKey()*/
         user.update({
-           authentication_code: code,
-           auth_token_expire: Date.now() + 3600000
+            authentication_code: code,
+            auth_token_expire: Date.now() + 3600000
         })
-       .then( u => {
-           console.log(u);
-           console.log("INMAIL");
-           const transporter = nodemailer.createTransport({
-            host: 'smtp.gmail.com',
-            port: 465,
-            secure: true,
-                auth:{
-                   user: process.env.EMAIL,
-                   pass: process.env.EMAIL_APP,
-                }
-            });
-            const confirmationLink = `https://patentrack.com?login=${code}&email=${req.body.username}`
-            const mailOptions = {
-                from: '"PatenTrack" <no-reply@patentrack.com>',
-                to: `${user.email_address}`,
-                subject: `PatenTrack Login Verification`,
-                /* text: `You are receiving this because you have requested to reset of the password for your account.\n\n Please click on the following link, or paste this into your browser to complete the process within one hour of receiving it. \n\n https://patentrack.com/?t=reset&e=${user.email_address}&auth=${token} \n\n If you did not request this, please ignore this email and your password will remain unchanged. \n Thanks \n Team PatenTrack` */
-                html: `We received a request for access to your PatenTrack account.  Please click the link below to enter:<br/>
+            .then(u => {
+                console.log(u);
+                console.log("INMAIL");
+                const transporter = nodemailer.createTransport({
+                    host: 'smtp.gmail.com',
+                    port: 465,
+                    secure: true,
+                    auth: {
+                        user: process.env.EMAIL,
+                        pass: process.env.EMAIL_APP,
+                    }
+                });
+                const confirmationLink = `https://patentrack.com?login=${code}&email=${req.body.username}`
+                const mailOptions = {
+                    from: '"PatenTrack" <no-reply@patentrack.com>',
+                    to: `${user.email_address}`,
+                    subject: `PatenTrack Login Verification`,
+                    /* text: `You are receiving this because you have requested to reset of the password for your account.\n\n Please click on the following link, or paste this into your browser to complete the process within one hour of receiving it. \n\n https://patentrack.com/?t=reset&e=${user.email_address}&auth=${token} \n\n If you did not request this, please ignore this email and your password will remain unchanged. \n Thanks \n Team PatenTrack` */
+                    html: `We received a request for access to your PatenTrack account. Please click the link below to enter. <b>Important</b>: This link can be used only once.<br/>
                 <br/>
                 <a href="${confirmationLink}" style="font-size: 18px; font-weight: bold; color: #1a73e8;">
-                Enter to PatenTrack
+                Enter PatenTrack
                 </a>
                 <br/><br/>
                 Welcome in,<br/>
-                PatenTrack<br/><br/>
+                PatenTrack Team<br/><br/>
                 If you didn’t request this email, there’s nothing to worry about — you can safely ignore it.`
-            }
-            
-            transporter.sendMail(mailOptions, (err, response) => {
-               if(err) {
-                   console.log("Error while sending email "+ err);
-                   res.status(500).json({message:'Not able to send email to your address.'});
-               } else {
-                   res.status(200).json({message:'We just emailed you a verification code to enter below, please check your inbox/spam folders.'});
-               }
-           });					
-        }); 
+                }
+
+                transporter.sendMail(mailOptions, (err, response) => {
+                    if (err) {
+                        console.log("Error while sending email " + err);
+                        res.status(500).json({ message: 'Not able to send email to your address.' });
+                    } else {
+                        res.status(200).json({ message: 'We just emailed you a verification code to enter below, please check your inbox/spam folders.' });
+                    }
+                });
+            });
     }).catch(err => {
         console.log(err);
         res.status(400).send('Bad request');
     });
 })
 
-route.get("/verify/:code/:email", async(req, res, next) => {
-    const {code, email} = req.params
-    if(code != undefined && code != '' && code != null) {
+route.get("/verify/:code/:email", async (req, res, next) => {
+    const { code, email } = req.params
+    if (code != undefined && code != '' && code != null) {
         User.findOne({
-            include:[
+            include: [
                 {
-                  model: Organisation,
-                  as: "organisation",
-                  attributes: ['subscribtion'],
+                    model: Organisation,
+                    as: "organisation",
+                    attributes: ['subscribtion'],
                 }
             ],
-            where: {authentication_code: code,email_address: email, auth_token_expire: {[config.Op.gte]: Date.now()}}
+            where: { authentication_code: code, email_address: email, auth_token_expire: { [config.Op.gte]: Date.now() } }
         })
-        .then( async user => {
-            if(user == null) {
-                res.status(402).send("Invalid code.");
-            } else {
-                const removeCode = await user.update({
-                    authentication_code: '',
-                    auth_token_expire: Date.now() + 3600000
-                })
-                const currentDate = Date.now();
-    
-                const expiredDate = moment(new Date(currentDate)).add(1,'days').valueOf();
-                let token = jwt.sign({ id: user.user_id, orgId:user.organisation_id, subscription: user.organisation.subscribtion, iat: currentDate, expired: expiredDate }, config.config.secret, {
-                    expiresIn: 86400 // expires in 24 hours,
-                });
-        
-                res.status(200).send({ auth: true, accessToken: token ,message: "Login successfully!"});
-            }
-        }).catch(err => {
-            console.log("Error: "+err);
-            res.status(400).send('Invalid code.');
-        });
+            .then(async user => {
+                if (user == null) {
+                    res.status(402).send("Invalid code.");
+                } else {
+                    const removeCode = await user.update({
+                        authentication_code: '',
+                        auth_token_expire: Date.now() + 3600000
+                    })
+                    const currentDate = Date.now();
+
+                    const expiredDate = moment(new Date(currentDate)).add(1, 'days').valueOf();
+                    let token = jwt.sign({ id: user.user_id, orgId: user.organisation_id, subscription: user.organisation.subscribtion, iat: currentDate, expired: expiredDate }, config.config.secret, {
+                        expiresIn: 86400 // expires in 24 hours,
+                    });
+
+                    res.status(200).send({ auth: true, accessToken: token, message: "Login successfully!" });
+                }
+            }).catch(err => {
+                console.log("Error: " + err);
+                res.status(400).send('Invalid code.');
+            });
     } else {
         res.status(400).send('Invalid code.');
-    }    
+    }
 });
 
 route.post("/signin", (req, res, next) => {
 
     User.findOne({
-        include:[
+        include: [
             {
-              model: Organisation,
-              as: "organisation",
-              attributes: ['subscribtion', 'organisation_type'],
+                model: Organisation,
+                as: "organisation",
+                attributes: ['subscribtion', 'organisation_type'],
             }
         ],
         where: {
             username: req.body.username,
-            status:0
+            status: 0
         }
     }).then(user => {
         if (!user) {
@@ -212,16 +212,16 @@ route.post("/signin", (req, res, next) => {
 
         const currentDate = Date.now();
 
-        const expiredDate = moment(new Date(currentDate)).add(1,'days').valueOf();
+        const expiredDate = moment(new Date(currentDate)).add(1, 'days').valueOf();
 
         console.log(user.organisation)
-        
-        let token = jwt.sign({ id: user.user_id, orgId:user.organisation_id, org_type: user.organisation.organisation_type , subscription: user.organisation.subscribtion, iat: currentDate, expired: expiredDate, show_other_companies: 1, share_code: '' }, config.config.secret, {
+
+        let token = jwt.sign({ id: user.user_id, orgId: user.organisation_id, org_type: user.organisation.organisation_type, subscription: user.organisation.subscribtion, iat: currentDate, expired: expiredDate, show_other_companies: 1, share_code: '' }, config.config.secret, {
             expiresIn: 86400 // expires in 24 hours,
         });
 
-        res.status(200).send({ auth: true, accessToken: token ,message: "Login successfully!"});
-        
+        res.status(200).send({ auth: true, accessToken: token, message: "Login successfully!" });
+
     }).catch(err => {
         console.log(err);
         res.status(400).send('Bad request');
@@ -233,50 +233,50 @@ route.post("/forgot_password", (req, res) => {
     User.findOne({
         where: {
             username: req.body.username,
-            status:0
+            status: 0
         }
-     }).then(user => {
-        if(user != null && user.user_id > 0) {
+    }).then(user => {
+        if (user != null && user.user_id > 0) {
             const token = crypto.randomBytes(20).toString('hex');
-             /*key = crypt.getRandomKey()*/
-            console.log("TOKEN"+ token);
+            /*key = crypt.getRandomKey()*/
+            console.log("TOKEN" + token);
             user.update({
                 authentication_code: token,
                 auth_token_expire: Date.now() + 3600000
             })
-            .then( u => {
-                console.log(u);
-                console.log("INMAIL");
-                const transporter = nodemailer.createTransport({
-                    host: 'smtp.gmail.com',
-                    port: 465,
-                    secure: true,
-                        auth:{
-                           user: process.env.EMAIL,
-                           pass: process.env.EMAIL_APP,
+                .then(u => {
+                    console.log(u);
+                    console.log("INMAIL");
+                    const transporter = nodemailer.createTransport({
+                        host: 'smtp.gmail.com',
+                        port: 465,
+                        secure: true,
+                        auth: {
+                            user: process.env.EMAIL,
+                            pass: process.env.EMAIL_APP,
                         }
-                });
-                const mailOptions = {
-                     from: 'no-reply@patentrack.com',
-                     to: `${user.email_address}`,
-                     subject: 'Link to reset password for PatenTrack.com',
-                     text: `You are receiving this because you have requested to reset of the password for your account.\n\n Please click on the following link, or paste this into your browser to complete the process within one hour of receiving it. \n\n https://patentrack.com/?t=reset&e=${user.email_address}&auth=${token} \n\n If you did not request this, please ignore this email and your password will remain unchanged. \n Thanks \n Team PatenTrack`
-                }
-                 console.log('Sending mail');
-                 transporter.sendMail(mailOptions, (err, response) => {
-                    if(err) {
-                        console.log("Error while sending email "+ err);
-                        res.status(500).json({message:'Not able to send email to your addess.'});
-                    } else {
-                        res.status(200).json({message:'We have sent you an email, please check your inbox.'});
+                    });
+                    const mailOptions = {
+                        from: 'no-reply@patentrack.com',
+                        to: `${user.email_address}`,
+                        subject: 'Link to reset password for PatenTrack.com',
+                        text: `You are receiving this because you have requested to reset of the password for your account.\n\n Please click on the following link, or paste this into your browser to complete the process within one hour of receiving it. \n\n https://patentrack.com/?t=reset&e=${user.email_address}&auth=${token} \n\n If you did not request this, please ignore this email and your password will remain unchanged. \n Thanks \n Team PatenTrack`
                     }
-                });					
-            });				
+                    console.log('Sending mail');
+                    transporter.sendMail(mailOptions, (err, response) => {
+                        if (err) {
+                            console.log("Error while sending email " + err);
+                            res.status(500).json({ message: 'Not able to send email to your addess.' });
+                        } else {
+                            res.status(200).json({ message: 'We have sent you an email, please check your inbox.' });
+                        }
+                    });
+                });
         } else {
             res.status(402).send('Invalid email request');
-        }            
+        }
     }).catch(err => {
-        console.log("Error: "+err);
+        console.log("Error: " + err);
         res.status(400).send('Bad request');
     });
 });
@@ -289,78 +289,78 @@ const sendSuccessPasswordEmail = (user) => {
 
 route.post("/update_password_via_email", (req, res) => {
     User.findOne({
-        where: {authentication_code: req.body.code, auth_token_expire: {[config.Op.gte]: Date.now()}}
+        where: { authentication_code: req.body.code, auth_token_expire: { [config.Op.gte]: Date.now() } }
     })
-    .then( user => {
-        if(user == null) {
-            res.status(402).send("Password reset link is invalid.");
-        } else {
-            if(req.body.password == req.body.confirm_password) {
-                user.update({
-                    authentication_code: '',
-                    auth_token_expire: null,
-                    password: bcrypt.hashSync(req.body.password, 8), 
-                })
-                .then( u => {
-                    console.log("Password Updated");
-                    sendSuccessPasswordEmail(user);
-                    res.status(200).json({message: 'Password updated.'});
-
-                }).catch(err => {
-                    console.log("Error: "+err);
-                    res.status(500).json({message: 'Internal server error'});
-                });
+        .then(user => {
+            if (user == null) {
+                res.status(402).send("Password reset link is invalid.");
             } else {
-                res.status(400).json({message: 'Password and confirm password not matched.'});
-            }				
-        }
-    }).catch(err => {
-        console.log("Error: "+err);
-        res.status(400).send({message: 'Password reset link is invalid.'});
-    });
+                if (req.body.password == req.body.confirm_password) {
+                    user.update({
+                        authentication_code: '',
+                        auth_token_expire: null,
+                        password: bcrypt.hashSync(req.body.password, 8),
+                    })
+                        .then(u => {
+                            console.log("Password Updated");
+                            sendSuccessPasswordEmail(user);
+                            res.status(200).json({ message: 'Password updated.' });
+
+                        }).catch(err => {
+                            console.log("Error: " + err);
+                            res.status(500).json({ message: 'Internal server error' });
+                        });
+                } else {
+                    res.status(400).json({ message: 'Password and confirm password not matched.' });
+                }
+            }
+        }).catch(err => {
+            console.log("Error: " + err);
+            res.status(400).send({ message: 'Password reset link is invalid.' });
+        });
 });
 
 
-route.get("/refresh-token", async(req, res) => {
+route.get("/refresh-token", async (req, res) => {
     let token = req.headers['x-auth-token'];
 
     console.log("Verifying token...", token);
 
-    if (!token){
-      return res.status(403).send('Refresh token failed');
+    if (!token) {
+        return res.status(403).send('Refresh token failed');
     }
 
     const base64Payload = token.split('.')[1]; // Get the payload part of the JWT
     const payload = base64Url.decode(base64Payload); // Decode the base64 payload
     const decodedPayload = JSON.parse(payload); // Parse the JSON payload
-    
-    const user = await  User.findOne({
+
+    const user = await User.findOne({
         where: {
             user_id: decodedPayload.id,
-            status:0
+            status: 0
         },
-        include:[
+        include: [
             {
-              model: Organisation,
-              as: "organisation",
-              attributes: ['subscribtion', 'organisation_type'],
+                model: Organisation,
+                as: "organisation",
+                attributes: ['subscribtion', 'organisation_type'],
             }
         ],
     });
 
-    if(!user) {
+    if (!user) {
         return res.status(403).send('Refresh token failed');
     }
 
     const currentDate = Date.now();
 
-    const expiredDate = moment(new Date(currentDate)).add(1,'days').valueOf(); 
-    
-    token = jwt.sign({ id: user.user_id, orgId: user.organisation_id, org_type: user.organisation.organisation_type , subscription: user.organisation.subscribtion, iat: currentDate, expired: expiredDate, show_other_companies: 1, share_code: '' }, config.config.secret, {
+    const expiredDate = moment(new Date(currentDate)).add(1, 'days').valueOf();
+
+    token = jwt.sign({ id: user.user_id, orgId: user.organisation_id, org_type: user.organisation.organisation_type, subscription: user.organisation.subscribtion, iat: currentDate, expired: expiredDate, show_other_companies: 1, share_code: '' }, config.config.secret, {
         expiresIn: 86400 // expires in 24 hours,
     });
 
-    res.status(200).send({ auth: true, accessToken: token ,message: "Token refresh successfully!"});
+    res.status(200).send({ auth: true, accessToken: token, message: "Token refresh successfully!" });
 
 });
 
