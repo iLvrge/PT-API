@@ -1,27 +1,27 @@
 //Express server
-const consoleLog=console.log.bind(console);
+const consoleLog = console.log.bind(console);
 
-console.log = function(){
-    let lines=[''];
+console.log = function () {
+    let lines = [''];
     try {
         throw new Error('console.log called from file');
     } catch (e) {
-        lines= e.stack.split('\n');
+        lines = e.stack.split('\n');
     }
-    consoleLog("console.log"+lines[2]);
+    consoleLog("console.log" + lines[2]);
     consoleLog(...arguments);
 }
 
-    // if(arguments instanceof String){
-    //     if(arguments.length>0){
-    //         if(arguments[0].indexOf('Error')>-1){
-    //          debugger
-    //         }
-    //     }
-    // }
+// if(arguments instanceof String){
+//     if(arguments.length>0){
+//         if(arguments[0].indexOf('Error')>-1){
+//          debugger
+//         }
+//     }
+// }
 // }
 
-require("./helpers/instrument"); 
+require("./helpers/instrument");
 
 const express = require("express");
 
@@ -29,7 +29,7 @@ const cors = require("cors");
 
 const bodyParser = require("body-parser");
 
-const Sentry = require('@sentry/node'); 
+const Sentry = require('@sentry/node');
 
 const upload = require("express-fileupload");
 
@@ -42,17 +42,17 @@ const { cleanupConnections } = require('./helpers/dbConnectionCache');
 // load the agent 
 
 const app = express();
- 
+
 app.use(cors());
 
 app.use(Sentry.Handlers.requestHandler());
 app.use(Sentry.Handlers.errorHandler());
 
-app.use(express.json({limit: '100mb', type:'application/json'}));
-app.use(express.urlencoded({limit: '100mb', extended:false, parameterLimit:100000, type:'application/x-www-form-urlencoded'}));
+app.use(express.json({ limit: '100mb', type: 'application/json' }));
+app.use(express.urlencoded({ limit: '100mb', extended: false, parameterLimit: 100000, type: 'application/x-www-form-urlencoded' }));
 
-app.use(bodyParser.json({limit: '100mb', type:'application/json'}));
-app.use(bodyParser.urlencoded({limit: '100mb', extended:false, parameterLimit:100000, type:'application/x-www-form-urlencoded'}));
+app.use(bodyParser.json({ limit: '100mb', type: 'application/json' }));
+app.use(bodyParser.urlencoded({ limit: '100mb', extended: false, parameterLimit: 100000, type: 'application/x-www-form-urlencoded' }));
 
 app.use(upload());
 app.set('trust proxy', true)
@@ -123,11 +123,11 @@ const assets = require("./routes/application/assets");
 const updates = require("./routes/application/updates");
 const errors = require("./routes/application/errors");
 const validity = require("./routes/application/validity");
-const events = require("./routes/application/events");
+const events = require("./routes/application/events.routes");
 const timelines = require("./routes/application/timelines");
 const search = require("./routes/application/search");
 const entity = require("./routes/application/entity");
-const externalapi = require("./routes/application/externalapi");
+const externalapi = require("./routes/application/externalapi.routes");
 const dashboards = require("./routes/application/dashboards");
 /**
  * Route for Client database
@@ -193,7 +193,7 @@ app.use("/", assets);
 
 app.use("/", updates);
 
-app.use("/", errors); 
+app.use("/", errors);
 
 app.use("/", activities);
 
@@ -266,23 +266,23 @@ app.use("/admin/", keywords);
 
 
 
-app.use((req,res,next)=>{
+app.use((req, res, next) => {
     const error = new Error("Invalid route");
     //send a status code error
-    error.status= 404;
+    error.status = 404;
     //forward the request with the error
     logErrorToFile('--------Invalid route----------');
-    logErrorToFile('Invalid route'); 
+    logErrorToFile('Invalid route');
     next(error);
 })
 
 //------------- error message
-app.use((error, req, res, next)=>{
+app.use((error, req, res, next) => {
     logErrorToFile('--------Global Error----------');
-    logErrorToFile(error.message); 
+    logErrorToFile(error.message);
     if (!error.status) {
         Sentry.captureException(error);
-    } 
+    }
     res.status(error.status || 500);
     res.json({
         "error": {
@@ -294,15 +294,15 @@ app.use((error, req, res, next)=>{
 process.on('uncaughtException', (err) => {
     console.log('Uncaught Exception:', err);
     logErrorToFile('--------uncaughtException----------');
-    logErrorToFile(err); 
+    logErrorToFile(err);
     // process.exit(1); 
 });
 
 process.on('unhandledRejection', (reason, promise) => {
     console.log('Unhandled Rejection at:', promise, 'reason:', reason);
     logErrorToFile('--------unhandledRejection----------');
-    logErrorToFile(reason);  
-    Sentry.captureException(reason); 
+    logErrorToFile(reason);
+    Sentry.captureException(reason);
 });
 
 // Start periodic cleanup of stale Sequelize connections
@@ -311,19 +311,19 @@ setInterval(() => {
 }, 2 * 60 * 1000); // runs every 2 mins
 
 //listen function for Node / express
-const server = app.listen({port, host:'0.0.0.0'}, (err)=>{
-    if(err){
-        console.log(err); 
+const server = app.listen({ port, host: '0.0.0.0' }, (err) => {
+    if (err) {
+        console.log(err);
     }
     console.log(`The server is running on port: ${port}`);
 })
 
-try{
-    socket.connect(server); 
+try {
+    socket.connect(server);
 } catch (err) {
     console.log('--------Error in socket connect----------');
     console.log(err);
     logErrorToFile('--------Error in socket connect----------');
-    logErrorToFile(err);   
-} 
+    logErrorToFile(err);
+}
 
