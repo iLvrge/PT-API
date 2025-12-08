@@ -1,21 +1,10 @@
 const Sentry = require("@sentry/node");
-/* const { nodeProfilingIntegration } = require("@sentry/profiling-node");
+const packageJson = require("../package.json");
 
-// Ensure to call this before requiring any other modules!
 Sentry.init({
-  dsn: "https://9dbb99721e484a939592c18830855a52@o487723.ingest.us.sentry.io/5547034",
-  integrations: [
-    // Add our Profiling integration
-    nodeProfilingIntegration(),
-  ],  
-
-  // Add Tracing by setting tracesSampleRate
-  // We recommend adjusting this value in production
+  dsn: process.env.SENTRY_DSN,
+  release: `${packageJson.name}@${packageJson.version}`,
+  environment: process.env.NODE_ENV || "development",
   tracesSampleRate: 1.0,
-
-  // Set sampling rate for profiling
-  // This is relative to tracesSampleRate
-  profilesSampleRate: 1.0,
-  debug: true, 
-}); */
-// Sentry.captureException(new Error("Test error for Sentry"));
+  debug: process.env.NODE_ENV !== "production",
+});
