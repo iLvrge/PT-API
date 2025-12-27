@@ -2469,42 +2469,30 @@ route.get("/customers/retrieve_cited_patents_domain/:customerID/:apiName", [auth
 route.post("/customers/retrieve_cited_patents_logo", [authJWT.verifyToken, authJWT.isAdmin], async (req, res) => {
     try {
 
-        const { client_id, api_name, assignees, all, company_id, type, source_data } = req.body
-        console.log('retrieve_cited_patents_logo')
-        /* exec(`node /var/www/html/script/name_to_domain_api.js ${client_id} ${api_name} ${assignees} 1 > name_to_domain_api.log  2>&1`, function(err, stdout, stderr){
-            console.log(`assigneeLogos downloadFileSpawn.stdout: ${stdout}`)
-            console.log(`Error assigneeLogos downloadFileSpawn.stderr: ${stderr}`)
-            console.log(`Error assigneeLogos downloadFileSpawn.err: ${err}`)
-        }); */
+        const { client_id, api_name, assignees, all, company_id, type, source_data } = req.body;
+        const assigneeLogos = spawn('node', [`${process.env.SCRIPT_PATH}name_to_domain_api.js`, client_id, api_name, assignees, 1, company_id, all, type, source_data]);
 
-        /* logger.info('Sending request to RapidAPI script')
-        console.log('/var/www/html/script/name_to_domain_api.js', client_id, api_name, assignees, 1, company_id, all, type) */
-        /* const assigneeLogos = spawn('node', ['/var/www/html/script/name_to_domain_api.js', client_id, api_name, assignees, 1, company_id, all, type, source_data]); */
-        console.log(`${process.env.SCRIPT_PATH}name_to_domain_api.js`, client_id, api_name, assignees, 1, company_id, all, type, source_data);
-        spawn('node', [`${process.env.SCRIPT_PATH}name_to_domain_api.js`, client_id, api_name, assignees, 1, company_id, all, type, source_data]);
-
-        /*assigneeLogos.stdout.on('data', (data) => {
-            logger.info(data)
-            console.log(`assigneeLogos downloadFileSpawn.stdout: ${data}`)
+        assigneeLogos.stdout.on('data', (data) => {
+            console.log(`assigneeLogos stdout: ${data}`);
         });
+
         assigneeLogos.stderr.on('data', (data) => {
-            logger.info(data)
-            console.log(`Error assigneeLogos downloadFileSpawn.stderr: ${data}`)
-            //reject(data)
+            console.log(`assigneeLogos stderr: ${data}`);
         });
-    
+
         assigneeLogos.on('close', (code) => {
-            logger.info(code)
-            resolve(`download assigneeLogos downloadFileSpawn.close ${code}`)    
-        })  */
+            console.log(`assigneeLogos child process exited with code ${code}`);
+        });
 
-
+        assigneeLogos.on('error', (err) => {
+            console.log(`assigneeLogos Failed to start child process: ${err}`);
+        });
         res.status(200).send("run logo script");
     } catch (err) {
         console.log("Error in downloading image", err)
         res.status(500).send(err);
     }
-})
+});
 
 
 route.get("/customers/team/create/:customerID", [authJWT.verifyToken, authJWT.isAdmin], async (req, res) => {
