@@ -2473,23 +2473,23 @@ route.post("/customers/retrieve_cited_patents_logo", [authJWT.verifyToken, authJ
         const assigneeLogos = spawn('node', [`${process.env.SCRIPT_PATH}name_to_domain_api.js`, client_id, api_name, assignees, 1, company_id, all, type, source_data]);
 
         assigneeLogos.stdout.on('data', (data) => {
-            console.log(`assigneeLogos stdout: ${data}`);
+            logger.info(`assigneeLogos stdout: ${data}`)
         });
 
         assigneeLogos.stderr.on('data', (data) => {
-            console.log(`assigneeLogos stderr: ${data}`);
+            logger.info(`assigneeLogos stderr: ${data}`);
         });
 
         assigneeLogos.on('close', (code) => {
-            console.log(`assigneeLogos child process exited with code ${code}`);
+            logger.info(`assigneeLogos child process exited with code ${code}`);
         });
 
         assigneeLogos.on('error', (err) => {
-            console.log(`assigneeLogos Failed to start child process: ${err}`);
+            logger.info(`assigneeLogos Failed to start child process: ${err}`);
         });
         res.status(200).send("run logo script");
     } catch (err) {
-        console.log("Error in downloading image", err)
+        logger.info("Error in downloading image", err)
         res.status(500).send(err);
     }
 });
