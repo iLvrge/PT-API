@@ -1,10 +1,18 @@
-const { Curl } = require('node-libcurl');
+const axios = require('axios');
 const querystring = require('querystring');
 const { Buffer } = require('buffer');
 const fs = require('fs/promises');
 const util = require('util');
+const https = require('https');
 
 const TOKEN_FILE_PATH = '/var/www/html/trash/tmp/'
+
+// Create axios instance with SSL verification disabled (matching your curl config)
+const axiosInstance = axios.create({
+    httpsAgent: new https.Agent({
+        rejectUnauthorized: false
+    })
+});
 
 const readToken = async(tokenName) => {   
     let token; 
@@ -43,67 +51,91 @@ const readToken = async(tokenName) => {
 
 const createToken = async(tokenName) => {
     const bufferKeySecret = Buffer.from(`${process.env.EPO_KEY}:${process.env.EPO_SECRET}`).toString('base64')
-    const tokenURL = 'https://ops.epo.org/3.2/auth/accesstoken',
-        tokenHeader = [`Authorization: Basic ${bufferKeySecret}`, 'Content-Type: application/x-www-form-urlencoded']    
+    const tokenURL = 'https://ops.epo.org/3.2/auth/accesstoken'
     
-    return curlRequest(true, tokenHeader, 'POST', tokenURL, { grant_type: 'client_credentials' })
-    
-}
-
-const curlRequest = (grant, header, type, url, postFields) => {
-    const tokenName = 'HedCET'
-    const curl = new Curl();
-    const close = curl.close.bind(curl)
-    curl.setOpt(Curl.option.URL, url)    
-    curl.setOpt(Curl.option.SSL_VERIFYHOST, false)
-    curl.setOpt(Curl.option.SSL_VERIFYPEER, false)
-    curl.setOpt(Curl.option.VERBOSE, true)
-    curl.setOpt(Curl.option.HTTPHEADER, header)
-
-    if(type == 'POST') {
-        curl.setOpt(Curl.option.POST, true)
-        curl.setOpt(Curl.option.POSTFIELDS, querystring.stringify(postFields))
+    const headers = {
+        'Authorization': `Basic ${bufferKeySecret}`,
+        'Content-Type': 'application/x-www-form-urlencoded'
     }
-    curl.on('error', (error, errorCode) => {
-        console.error('Error: ', error)
-        console.error('Code: ', errorCode)
-        close();
-    })
-    curl.perform();
-    return new Promise(function (resolve, reject) {
-        curl.on('end', async (statusCode, data, headers) => {   
-            if(grant === true) {
-                await fs.writeFile(`${TOKEN_FILE_PATH}${tokenName}_node.dat`, JSON.stringify(data))               
-            }
-            close();
-            resolve(data);
-        });
-    })
+    
+    return axiosRequest(true, headers, 'POST', tokenURL, { grant_type: 'client_credentials' })
 }
 
-const runUrl = async(token,A,B,C,D) => {
+const axiosRequest = async (grant, headers, method, url, postFields) => {
+    const tokenName = 'HedCET'
+    
+    try {
+        const config = {
+            method: method,
+            url: url,
+            headers: headers
+        };
+
+        if (method === 'POST' && postFields) {
+            config.data = querystring.stringify(postFields);
+        }
+
+        const response = await axiosInstance(config);
+        
+        if (grant === true) {
+            await fs.writeFile(`${TOKEN_FILE_PATH}${tokenName}_node.dat`, JSON.stringify(response.data))
+        }
+        
+        return response.data;
+        
+    } catch (error) {
+        console.error('Error:', error.message);
+        if (error.response) {
+            console.error('Status:', error.response.status);
+            console.error('Data:', error.response.data);
+        }
+        throw error;
+    }
+}
+
+const runUrl = async(token, A, B, C, D) => {
     if(typeof token === 'string') {
         token = JSON.parse(token)
     }
-    const requestHeader = ['Accept: application/xml', `Authorization: Bearer ${token.access_token}`, 'Connection: Keep-Alive', 'Host: ops.epo.org', 'X-Target-URI: https://ops.epo.org']
-    console.log('requestHeader', requestHeader)
+    
+    const headers = {
+        'Accept': 'application/xml',
+        'Authorization': `Bearer ${token.access_token}`,
+        'Connection': 'Keep-Alive',
+        'Host': 'ops.epo.org',
+        'X-Target-URI': 'https://ops.epo.org'
+    }
+    
+    console.log('requestHeader', headers)
     const request_url = util.format("https://ops.epo.org/3.2/rest-services/%s/%s/%s/%s", A, B, C, D);
     console.log('runUrl', request_url)
-    return curlRequest(false, requestHeader, 'GET', request_url, {})
+    
+    return axiosRequest(false, headers, 'GET', request_url, {})
 }
 
-const singleUrl = async(token,A, contentType) => {
+const singleUrl = async(token, A, contentType) => {
     if(typeof token === 'string') {
         token = JSON.parse(token)
     }
-    const requestHeader = [`Authorization: Bearer ${token.access_token}`, 'Connection: Keep-Alive', 'Host: ops.epo.org', 'X-Target-URI: https://ops.epo.org']
-    if(typeof contentType === 'undefined') {
-        requestHeader.push("application/xml")
+    
+    const headers = {
+        'Authorization': `Bearer ${token.access_token}`,
+        'Connection': 'Keep-Alive',
+        'Host': 'ops.epo.org',
+        'X-Target-URI': 'https://ops.epo.org'
     }
-    console.log('requestHeader', requestHeader)
+    
+    if(typeof contentType !== 'undefined') {
+        headers['Accept'] = contentType;
+    } else {
+        headers['Accept'] = 'application/xml';
+    }
+    
+    console.log('requestHeader', headers)
     const request_url = util.format("https://ops.epo.org/3.2/rest-services/%s", A);
     console.log('runUrl', request_url)
-    return curlRequest(false, requestHeader, 'GET', request_url, {})
+    
+    return axiosRequest(false, headers, 'GET', request_url, {})
 }
 
 const EPOHelper = {}

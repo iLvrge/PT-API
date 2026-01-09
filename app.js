@@ -42,11 +42,16 @@ const { cleanupConnections } = require('./helpers/dbConnectionCache');
 // load the agent 
 
 const app = express();
+
+// Temporary route to test Sentry integration
+app.get("/debug-sentry", function mainHandler(req, res) {
+  throw new Error("Sentry v10 Test Error!");
+});
  
 app.use(cors());
 
-app.use(Sentry.Handlers.requestHandler());
-app.use(Sentry.Handlers.errorHandler());
+// app.use(Sentry.Handlers.requestHandler());
+// app.use(Sentry.Handlers.errorHandler());
 
 app.use(express.json({limit: '100mb', type:'application/json'}));
 app.use(express.urlencoded({limit: '100mb', extended:false, parameterLimit:100000, type:'application/x-www-form-urlencoded'}));
@@ -266,6 +271,7 @@ app.use("/admin/", keywords);
 
 
 
+
 app.use((req,res,next)=>{
     const error = new Error("Invalid route");
     //send a status code error
@@ -275,6 +281,8 @@ app.use((req,res,next)=>{
     logErrorToFile('Invalid route'); 
     next(error);
 })
+
+Sentry.setupExpressErrorHandler(app);
 
 //------------- error message
 app.use((error, req, res, next)=>{
