@@ -1724,49 +1724,31 @@ let getCompaniesListWithReports = async (DBConnection, organisationID) => {
 let getCompaniesListSumWithReports = async (DBConnection, organisationID) => {
     const Representative = DBConnection.define('ClientRepesentative', ClientRepesentative.mainStructure, ClientRepesentative.options);
 
-    const getList =  await Representative.findAll({
-        where: {type: 0}
+    const getList = await Representative.findAll({
+        where: { type: 0 }
     });
 
-    if(getList.length > 0) { 
+    if (getList.length > 0) {
 
         const query = `SELECT organisation_id, companies, activities, SUM(entities) AS no_of_entities , SUM(parties) AS no_of_parties, employees, SUM(transactions) AS no_of_transactions, SUM(assets) AS assets, SUM(arrows) AS product, 0 AS documents FROM db_uspto.summary WHERE organisation_id = :organisationID AND company_id = 0`;
 
-        let reports = await connection.resources.query(query, {
-            type: connection.Sequelize.QueryTypes.SELECT,
-            replacements: { organisationID: organisationID },
-            raw: true, 
-            logging: console.log,
-            plain: true
-        }) 
-        /* 
-        const representativeNames = []
-
-        const promiseList = getList.map( representative => {
-            representativeNames.push(representative.representative_name)
-        })
-        await Promise.all(promiseList)
-
-        const queryRepresentativeReports = `SELECT representative_name, SUM(no_of_assets) AS assets, SUM(no_of_transactions) AS no_of_transactions, SUM(no_of_parties) AS no_of_parties, SUM(no_of_arrows) AS product FROM representative_reports WHERE representative_name IN (:representativeNames)`
-
-        let reports = await connection.resources.query(queryRepresentativeReports,{
+        const [reports, queryShareURL] = await Promise.all([
+            connection.resources.query(query, {
                 type: connection.Sequelize.QueryTypes.SELECT,
-                replacements: { representativeNames},
+                replacements: { organisationID: organisationID },
                 raw: true,
                 logging: console.log,
                 plain: true
+            }),
+            Share.findOne({
+                where: { organisation_id: organisationID }
+            })
+        ]);
+
+        if (reports != null) {
+            if (queryShareURL !== null) {
+                reports.share_url = 1
             }
-        );  */
-
-        const queryShareURL = await Share.findOne({
-            where: {organisation_id: organisationID}
-        })
-
-        if( queryShareURL !== null ) {
-            reports.share_url = 1
-        }
-
-        if(reports != null) {            
             return reports
         } else {
             return {}
