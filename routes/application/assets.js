@@ -59,6 +59,8 @@ const oauth2Client = new google.auth.OAuth2(
     process.env.REDIRECT_URL
 );
 
+const { uploadFile } = require("../../helpers/uploadHelper");
+
 const findLayout = (layout) => {
     let layoutID = 15
     switch (layout) {
@@ -1256,13 +1258,13 @@ route.get("/assets/download/:itemID", [authJWT.verifyToken], async (req, res) =>
                                         const bucketConfig = connection.bucketConfig;
                                         const filename = path.replace(/\s+/g, '-');
 
-                                        let s3 = new AWS.S3({
+                                        /* let s3 = new AWS.S3({
                                             credentials: {
                                                 accessKeyId: bucketConfig.accessKeyId,
                                                 secretAccessKey: bucketConfig.secretAccessKey,
                                             },
                                             region: bucketConfig.region
-                                        })
+                                        }) */
                                         const serverDIR = 'assignments/var/www/html/beta/resources/shared/data/'
                                         console.log(pdfFile)
                                         console.log(`${serverDIR}${filename}`)
@@ -1275,19 +1277,19 @@ route.get("/assets/download/:itemID", [authJWT.verifyToken], async (req, res) =>
                                             ContentType: 'application/pdf',
                                             ContentDisposition: 'inline'
                                         }
-                                        s3.putObject(params, async function (err, data) {
-                                            console.log(err, data);
-                                            if (err == null) {
-                                                link = `https://s3-${bucketConfig.region}.amazonaws.com/${bucketConfig.bucketName}/${serverDIR}${filename}`;
+                                        uploadFile(pdfFile, bucketConfig, serverDIR, filename, 'application/pdf')
+                                            .then(async (data) => {
+                                                link = data.Location;
                                                 //spawn('rm', [`${pathDirectory}${path}`]);
 
-                                                ResourceAssignments.update({ status: 1 }, { where: { reel_no: assignmentData.reel_no, frame_no: assignmentData.frame_no } })
+                                                await ResourceAssignments.update({ status: 1 }, { where: { reel_no: assignmentData.reel_no, frame_no: assignmentData.frame_no } })
 
                                                 resolve(`${pathDirectory}${path}`)
-                                            } else {
+                                            })
+                                            .catch(err => {
+                                                console.log(err);
                                                 reject('DOWNLOADED/UPLOADED')
-                                            }
-                                        });
+                                            });
                                     } else {
                                         reject('DOWNLOADED/UPLOADED')
                                     }

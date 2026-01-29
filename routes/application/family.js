@@ -940,6 +940,7 @@ const getContentFromXML = async (fileContent, contentType, type) => {
         } else if(contentType === 'figures') {
             content = []
             const bucketConfig = connection.bucketConfig;  
+            let figuresList = []
             if( xmlData.hasOwnProperty('patent-application-publication') ){
                 const usBibliographic = xmlData['patent-application-publication']
                 const figure = typeof usBibliographic['subdoc-drawings'] !== 'undefined' ? usBibliographic['subdoc-drawings'].figure : []
@@ -947,12 +948,12 @@ const getContentFromXML = async (fileContent, contentType, type) => {
                     if(figure.length > 0) {
                         figure.forEach( item => {
                             const target = item['image']['@_file'].toString().replace('.TIF', '.png')
-                            content.push(`https://s3-${bucketConfig.region}.amazonaws.com/${bucketConfig.bucketName}/${bucketConfig.figuresDir}/${target}`)
+                            figuresList.push(target)
                         })
                     }
                 } else {
                     const target = figure['img']['@_file'].toString().replace('.TIF', '.png')
-                    content.push(`https://s3-${bucketConfig.region}.amazonaws.com/${bucketConfig.bucketName}/${bucketConfig.figuresDir}/${target}`)
+                    figuresList.push(target)
                 }
             } else if( xmlData.hasOwnProperty('us-patent-application') ) { 
                 const usBibliographic = xmlData['us-patent-application']
@@ -961,13 +962,31 @@ const getContentFromXML = async (fileContent, contentType, type) => {
                     if(figure.length > 0) {
                         figure.forEach( item => {
                             const target = item['img']['@_file'].toString().replace('.TIF', '.png')
-                            content.push(`https://s3-${bucketConfig.region}.amazonaws.com/${bucketConfig.bucketName}/${bucketConfig.figuresDir}/${target}`)
+                            figuresList.push(target)
                         })
                     }
                 } else {
                     const target = figure['img']['@_file'].toString().replace('.TIF', '.png')
-                    content.push(`https://s3-${bucketConfig.region}.amazonaws.com/${bucketConfig.bucketName}/${bucketConfig.figuresDir}/${target}`)
+                    figuresList.push(target)
                 }
+            }
+            if(figuresList.length > 0) {
+                const query = `SELECT file_name, batch_name FROM db_uspto.figure_batches WHERE file_name IN (:figuresList)`
+                const getBatchData = await connection.resources.query(query,{
+                    type: connection.Sequelize.QueryTypes.SELECT,
+                    raw: true,
+                    //logging: console.log,
+                    replacements: {figuresList}
+                })
+
+                figuresList.forEach( file => {
+                    const findBatch = getBatchData.find( x => x.file_name === file)
+                    if(typeof findBatch !== 'undefined') {
+                        content.push(`${process.env.STATIC_FILES_URL}/${bucketConfig.figuresDir}/${findBatch.batch_name}/${file}`)
+                    } else {
+                        content.push(`${process.env.STATIC_FILES_URL}/${bucketConfig.figuresDir}/${file}`)
+                    }
+                })
             }
         }
     } else if(type === 2) {
@@ -1073,7 +1092,8 @@ const getContentFromXML = async (fileContent, contentType, type) => {
             }         
         } else if(contentType === 'figures') {
             content = []
-            const bucketConfig = connection.bucketConfig;  
+            const bucketConfig = connection.bucketConfig; 
+            let figuresList = [] 
             if( xmlData.hasOwnProperty('PATDOC') ){
                 const usBibliographic = xmlData['PATDOC']            
                 const figure = typeof usBibliographic['SDODR'] !== 'undefined' ? usBibliographic['SDODR']['EMI'] : []            
@@ -1081,12 +1101,12 @@ const getContentFromXML = async (fileContent, contentType, type) => {
                     if(figure.length > 0) {
                         figure.forEach( item => {
                             const target = item['@_FILE'].toString().replace('.TIF', '.png')
-                            content.push(`https://s3-${bucketConfig.region}.amazonaws.com/${bucketConfig.bucketName}/${bucketConfig.figuresDir}/${target}`)
+                            figuresList.push(target)
                         })
                     }
                 } else {
                     const target = figure['@_FILE'].toString().replace('.TIF', '.png')
-                    content.push(`https://s3-${bucketConfig.region}.amazonaws.com/${bucketConfig.bucketName}/${bucketConfig.figuresDir}/${target}`)
+                    figuresList.push(target)
                 }
             } else if( xmlData.hasOwnProperty('us-patent-grant') ) { 
                 const usBibliographic = xmlData['us-patent-grant']
@@ -1095,13 +1115,31 @@ const getContentFromXML = async (fileContent, contentType, type) => {
                     if(figure.length > 0) {
                         figure.forEach( item => {
                             const target = item['img']['@_file'].toString().replace('.TIF', '.png')
-                            content.push(`https://s3-${bucketConfig.region}.amazonaws.com/${bucketConfig.bucketName}/${bucketConfig.figuresDir}/${target}`)
+                            figuresList.push(target)
                         })
                     }
                 } else {
                     const target = figure['img']['@_file'].toString().replace('.TIF', '.png')
-                    content.push(`https://s3-${bucketConfig.region}.amazonaws.com/${bucketConfig.bucketName}/${bucketConfig.figuresDir}/${target}`)
+                    figuresList.push(target)
                 }
+            }
+            if(figuresList.length > 0) {
+                const query = `SELECT file_name, batch_name FROM db_uspto.figure_batches WHERE file_name IN (:figuresList)`
+                const getBatchData = await connection.resources.query(query,{
+                    type: connection.Sequelize.QueryTypes.SELECT,
+                    raw: true,
+                    logging: console.log,
+                    replacements: {figuresList}
+                })
+
+                figuresList.forEach( file => {
+                    const findBatch = getBatchData.find( x => x.file_name === file)
+                    if(typeof findBatch !== 'undefined') {
+                        content.push(`${process.env.STATIC_FILES_URL}/${bucketConfig.figuresDir}/${findBatch.batch_name}/${file}`)
+                    } else {
+                        content.push(`${process.env.STATIC_FILES_URL}/${bucketConfig.figuresDir}/${file}`)
+                    }
+                })
             }
         }
     }

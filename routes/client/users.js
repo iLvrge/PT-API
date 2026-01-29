@@ -27,6 +27,8 @@ const SlackHelper = require('../../helpers/slack')
 const AWS = require('aws-sdk');
 const clientDBConnection = require("../../helpers/clientDBConnection");
 
+const { uploadFile } = require("../../helpers/uploadHelper");
+
 
 var emailRegex = /^[-!#$%&'*+\/0-9=?A-Z^_a-z{|}~](\.?[-!#$%&'*+\/0-9=?A-Z^_a-z`{|}~])*@[a-zA-Z0-9](-*\.?[a-zA-Z0-9])*\.[a-zA-Z](-?[a-zA-Z0-9])+$/;
 
@@ -182,13 +184,13 @@ route.post("/", [authJWT.verifyToken, clientDBConnection.connect], async (req, r
                                         const name = fileObject.name.replace(/\s+/g, '-');
                                         const bucketConfig = connection.bucketConfig;
                                         upload_file = `https://s3-${bucketConfig.region}.amazonaws.com/${bucketConfig.bucketName}/${bucketConfig.dirName}/${name}`
-                                        let s3 = new AWS.S3({
+                                        /* let s3 = new AWS.S3({
                                             credentials: {
                                                 accessKeyId: bucketConfig.accessKeyId,
                                                 secretAccessKey: bucketConfig.secretAccessKey,
                                             },
                                             region: bucketConfig.region
-                                        })
+                                        }) */
                                         const extension = name.toString().split('.').pop().toLowerCase();
                                         let contentType = "";
                                         if (extension.indexOf('jpg') >= 0) {
@@ -208,14 +210,16 @@ route.post("/", [authJWT.verifyToken, clientDBConnection.connect], async (req, r
                                             ContentType: contentType,
                                             ContentDisposition: 'inline'
                                         }
-                                        s3.putObject(params, async function (err, data) {
-                                            console.log(err, data)
-                                            if (err == null) {
+                                        uploadFile(fileObject.data, bucketConfig, bucketConfig.dirName, name, contentType)
+                                            .then(async (data) => {
+                                                upload_file = data.Location;
                                                 await User.update({ logo: upload_file }, { where: { user_id: addClientUser.user_id } })
                                                 await LoginUsers.update({ logo: upload_file }, { where: { user_id: addUser.user_id } })
                                                 addClientUser.logo = upload_file;
-                                            }
-                                        });
+                                            })
+                                            .catch(err => {
+                                                console.log(err);
+                                            });
                                     }
                                 }
                                 addClientUser.logo = upload_file;
@@ -363,13 +367,13 @@ route.put("/:user_id", [authJWT.verifyToken, clientDBConnection.connect], async 
                                 const name = fileObject.name.replace(/\s+/g, '-');
                                 const bucketConfig = connection.bucketConfig;
                                 upload_file = `https://s3-${bucketConfig.region}.amazonaws.com/${bucketConfig.bucketName}/${bucketConfig.dirName}/${name}`
-                                let s3 = new AWS.S3({
+                                /* let s3 = new AWS.S3({
                                     credentials: {
                                         accessKeyId: bucketConfig.accessKeyId,
                                         secretAccessKey: bucketConfig.secretAccessKey,
                                     },
                                     region: bucketConfig.region
-                                })
+                                }) */
                                 const extension = name.toString().split('.').pop().toLowerCase();
                                 let contentType = "";
                                 if (extension.indexOf('jpg') >= 0) {
@@ -389,13 +393,15 @@ route.put("/:user_id", [authJWT.verifyToken, clientDBConnection.connect], async 
                                     ContentType: contentType,
                                     ContentDisposition: 'inline'
                                 }
-                                s3.putObject(params, async function (err, data) {
-                                    console.log(err, data)
-                                    if (err == null) {
+                                uploadFile(fileObject.data, bucketConfig, bucketConfig.dirName, name, contentType)
+                                    .then(async (data) => {
+                                        upload_file = data.Location;
                                         await User.update({ logo: upload_file }, { where: { user_id: findUser.user_id } })
                                         await LoginUsers.update({ logo: upload_file }, { where: { user_id: findUser.user_id } })
-                                    }
-                                });
+                                    })
+                                    .catch(err => {
+                                        console.log(err);
+                                    });
                             }
                         }
 

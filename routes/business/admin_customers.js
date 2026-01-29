@@ -47,6 +47,8 @@ const Organisations = require("../../model/business/Organisations"),
     AdminAccountProcess = require("../../model/resources/AdminAccountProcess"),
 
     MissingInventorProcess = require("../../model/resources/MissingInventorProcess"),
+    
+    { uploadFile } = require("../../helpers/uploadHelper");
 
     Representatives = require("../../model/resources/Representatives"),
 
@@ -1518,37 +1520,20 @@ let downloadImageFromUrl = async (org, res, url, filename, contentType, callback
                         const bucketConfig = config.bucketConfig;
 
                         filename = filename.replace(/\s+/g, '-');
-
-                        let s3 = new AWS.S3({
-                            credentials: {
-                                accessKeyId: bucketConfig.accessKeyId,
-                                secretAccessKey: bucketConfig.secretAccessKey,
-                            },
-                            region: bucketConfig.region
-                        })
-
-                        const params = {
-                            Key: `${bucketConfig.dirName}/${filename}`,
-                            Bucket: bucketConfig.bucketName,
-                            Body: imageData,
-                            ACL: 'public-read',
-                            ContentType: contentType,
-                            ContentDisposition: 'inline'
-                        }
-                        console.log("params", params)
-                        s3.putObject(params, async function (err, data) {
-                            console.log(err, data);
-                            if (err == null) {
-                                filename = `https://s3-${bucketConfig.region}.amazonaws.com/${bucketConfig.bucketName}/${bucketConfig.dirName}/${filename}`;
+                        
+                        uploadFile(imageData, bucketConfig, bucketConfig.dirName, filename, contentType)
+                            .then(async (data) => {
+                                filename = data.Location;
                                 await org.update({
                                     logo: filename
-                                })
+                                });
                                 spawn('rm', [`${pathDirectory}${path}`]);
                                 res.status(200).json({ name: org.name, logo: org.logo });
-                            } else {
+                            })
+                            .catch(err => {
+                                console.log(err);
                                 res.status(200).json({ name: org.name, logo: '' });
-                            }
-                        });
+                            });
                     }
                 })
         })
@@ -1575,13 +1560,13 @@ route.put("/customers/:id/logo", [authJWT.verifyToken, authJWT.isAdmin], async (
                         //Image content
                         console.log("Image content");
                         const bucketConfig = config.bucketConfig;
-                        let s3 = new AWS.S3({
+                       /*  let s3 = new AWS.S3({
                             credentials: {
                                 accessKeyId: bucketConfig.accessKeyId,
                                 secretAccessKey: bucketConfig.secretAccessKey,
                             },
                             region: bucketConfig.region
-                        })
+                        }) */
                         let name = `logo_${organisationID}`;
                         if (logoURL.indexOf('image/jpeg') >= 0) {
                             name += ".jpeg";
@@ -1599,27 +1584,19 @@ route.put("/customers/:id/logo", [authJWT.verifyToken, authJWT.isAdmin], async (
                         logoURL = logoURL.substr(base64IndexOf + 8, logoURL.length - 1);
                         logoURL += logoURL.replace('+', ' ');
                         logoURL = Buffer.from(logoURL, 'base64');
-                        const params = {
-                            Key: `${bucketConfig.documentDir}/${name}`,
-                            Bucket: bucketConfig.bucketName,
-                            Body: logoURL,
-                            ACL: 'public-read',
-                            ContentType: contentType,
-                            ContentDisposition: 'inline'
-                        }
-
-                        console.log(params)
-                        s3.upload(params, async function (err, data) {
-                            if (err == null) {
-                                org.logo = `${bucketConfig.s3Url}${data.key}`;
+                        
+                        uploadFile(logoURL, bucketConfig, bucketConfig.documentDir, name, contentType)
+                            .then(async (data) => {
+                                org.logo = data.Location;
                                 await org.update({
                                     logo: org.logo
                                 });
                                 res.status(200).json({ name: org.name, logo: org.logo });
-                            } else {
+                            })
+                            .catch(err => {
+                                console.log(err);
                                 res.status(500).send("ERROR: " + err);
-                            }
-                        })
+                            });
                     } else {
                         //Image file
                         console.log("Image file");
@@ -1644,33 +1621,22 @@ route.put("/customers/:id/logo", [authJWT.verifyToken, authJWT.isAdmin], async (
                     if (mimeType.toLowerCase().indexOf('.exe') < 0) {
                         let fileObject = req.files.file;
                         const bucketConfig = config.bucketConfig;
-                        let s3 = new AWS.S3({
-                            credentials: {
-                                accessKeyId: bucketConfig.accessKeyId,
-                                secretAccessKey: bucketConfig.secretAccessKey,
-                            },
-                            region: bucketConfig.region
-                        })
+                        
                         let name = fileObject.name;
                         name = name.replace(/\s+/g, '-');
-                        const params = {
-                            Key: `${bucketConfig.documentDir}/${name}`,
-                            Bucket: bucketConfig.bucketName,
-                            Body: fileObject.data,
-                            ACL: 'public-read'
-                        }
-
-                        s3.upload(params, async function (err, data) {
-                            if (err == null) {
-                                org.logo = `${bucketConfig.s3Url}${data.key}`;
+                        
+                        uploadFile(fileObject.data, bucketConfig, bucketConfig.documentDir, name)
+                            .then(async (data) => {
+                                org.logo = data.Location;
                                 await org.update({
                                     logo: org.logo
                                 });
                                 res.status(200).json({ name: org.name, logo: org.logo });
-                            } else {
+                            })
+                            .catch(err => {
+                                console.log(err);
                                 res.status(500).send("ERROR: " + err);
-                            }
-                        })
+                            });
                     } else {
                         res.status(400).send("Invalid file format.");
                     }

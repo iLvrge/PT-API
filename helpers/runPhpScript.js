@@ -38,9 +38,9 @@ function runPhpScript(scriptPath, args = [], waitForResult = false) {
         return execAsync(command);
     } else {
         exec(command, (err, stdout, stderr) => {
-            if (err) console.error("Non-blocking script error:", err);
-            if (stderr) console.error("Non-blocking script stderr:", stderr);
-            if (stdout) console.log("Non-blocking script stdout:", stdout);
+            if (err) logger.error("Non-blocking script error:", err);
+            if (stderr) logger.error("Non-blocking script stderr:", stderr);
+            if (stdout) logger.info("Non-blocking script stdout:", stdout);
         });
     }
 }

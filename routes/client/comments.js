@@ -1,6 +1,8 @@
 const express = require("express");
 
 const route = express.Router();
+const SlackHelper = require('../../helpers/slack')
+const { uploadFile } = require("../../helpers/uploadHelper");
 
 //require the Model
 const Activities = require("../../model/client/Activities");
@@ -318,13 +320,13 @@ route.post("/comments/:subjectType", [authJWT.verifyToken, clientDBConnection.co
                         let fileObject = req.files.file;
                         const name = fileObject.name.replace(/\s+/g, '-');
                         const bucketConfig = config.bucketConfig;  
-                        let s3 = new AWS.S3({
+                        /* let s3 = new AWS.S3({
                             credentials: {
                                 accessKeyId: bucketConfig.accessKeyId,
                                 secretAccessKey: bucketConfig.secretAccessKey,
                             },
                             region: bucketConfig.region
-                        })
+                        }) */
                         const extension = name.toString().split('.').pop().toLowerCase();
                         let contentType = "";
                         if(extension.indexOf('jpg') >= 0){
@@ -345,9 +347,9 @@ route.post("/comments/:subjectType", [authJWT.verifyToken, clientDBConnection.co
                             ContentType: contentType,
                             ContentDisposition: 'inline'
                         }
-                        s3.putObject(params, async function(err, data) {
-                            if(err == null) {
-                                postData.upload_file = `https://s3-${bucketConfig.region}.amazonaws.com/${bucketConfig.bucketName}/${bucketConfig.documentDir}/${name}`
+                        uploadFile(fileObject.data, bucketConfig, bucketConfig.documentDir, name, contentType)
+                            .then(async (data) => {
+                                postData.upload_file = data.Location;
                                 const newActivity = await Activity.create(postData);
                                 if(newActivity != null && newActivity.activity_id > 0){
                                     activityID = newActivity.activity_id;
@@ -362,8 +364,11 @@ route.post("/comments/:subjectType", [authJWT.verifyToken, clientDBConnection.co
                                 } else {
                                     res.status(500).send("Internal server error.");
                                 }
-                            }
-                        });
+                            })
+                            .catch(err => {
+                                console.log(err);
+                                res.status(500).send("Error uploading file.");
+                            });
                         
                     } else {
                         const newActivity = await Activity.create(postData);

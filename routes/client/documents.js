@@ -42,6 +42,8 @@ const AWS  = require('aws-sdk');
 const connection = require("../../config/db.config");
 
 const clientDBConnection = require("../../helpers/clientDBConnection");
+const { v4: uuidv4 } = require('uuid');
+const { uploadFile } = require("../../helpers/uploadHelper");
 
 const helper = require("../../helpers/helper");
 
@@ -1538,13 +1540,13 @@ route.post("/", [authJWT.verifyToken, clientDBConnection.connect], async(req, re
                             let fileObject = req.files.file;
                             const name = fileObject.name.replace(/\s+/g, '-');
                             const bucketConfig = config.bucketConfig;  
-                            let s3 = new AWS.S3({
+                            /* let s3 = new AWS.S3({
                                 credentials: {
                                     accessKeyId: bucketConfig.accessKeyId,
                                     secretAccessKey: bucketConfig.secretAccessKey,
                                 },
                                 region: bucketConfig.region
-                            })
+                            }) */
 
                             const params = {
                                 Key: `${bucketConfig.documentDir}/${name}`,
@@ -1554,35 +1556,34 @@ route.post("/", [authJWT.verifyToken, clientDBConnection.connect], async(req, re
                                 ContentType: contentType,
                                 ContentDisposition: 'inline'
                             }
-                            s3.putObject(params, async function(err, data) {
-                                if(err == null) {
-                                    Document.create({	
+                            uploadFile(fileObject.data, bucketConfig, bucketConfig.documentDir, name, contentType)
+                                .then(async (data) => {
+                                    let upload_file = data.Location;
+                                    const addRecord = await Document.create({	
                                         user_id: req.userId,
                                         title: req.body.name,
                                         description: req.body.description,
-                                        file: `https://s3-${bucketConfig.region}.amazonaws.com/${bucketConfig.bucketName}/${bucketConfig.documentDir}/${name}`
-                                    }).then(addRecord => {
-                                        if(addRecord != null && addRecord.document_id > 0){
-                                            console.log("Record Item added"+addRecord.document_id);
-                                            res.status(200).json(addRecord);
-                                        } else {
-                                            console.log("Unable to create new document")
-                                            res.status(500).json("Error while adding new document");
-                                        }
-                                    }).catch( err => {
-                                        console.log(err);
-                                        res.status(500).send("Internal server error");
-                                    });
-                                } else {    
-                                    return res.status(500).send("ERROR: "+err);	
-                                }
-                            });
+                                        file: upload_file
+                                    })
+                                    
+                                    if(addRecord != null && addRecord.document_id > 0){
+                                        console.log("Record Item added"+addRecord.document_id);
+                                        res.status(200).json(addRecord);
+                                    } else {
+                                        console.log("Unable to create new document")
+                                        res.status(500).json("Error while adding new document");
+                                    }
+                                })
+                                .catch(err => {
+                                    console.log(err);
+                                    res.status(500).send("Internal server error");
+                                });
                         } else {
                             res.status(402).send("We are not supporting this file format.");
                         }
                     } else {
                         res.status(402).send("Please select a file.");
-                    }                    
+                    }
                 }            
             } else {
                 res.status(402).send("You are not authorized user to perform this action");
@@ -1623,13 +1624,13 @@ route.put("/:document_id", [authJWT.verifyToken, clientDBConnection.connect], as
                             let fileObject = req.files.file;
                             const name = fileObject.name.replace(/\s+/g, '-');
                             const bucketConfig = config.bucketConfig;  
-                            let s3 = new AWS.S3({
+                            /* let s3 = new AWS.S3({
                                 credentials: {
                                     accessKeyId: bucketConfig.accessKeyId,
                                     secretAccessKey: bucketConfig.secretAccessKey,
                                 },
                                 region: bucketConfig.region
-                            })
+                            }) */
                             const extension = name.toString().split('.').pop().toLowerCase();
                             let contentType = "";
                             if(extension.indexOf('jpg') >= 0){
@@ -1641,26 +1642,18 @@ route.put("/:document_id", [authJWT.verifyToken, clientDBConnection.connect], as
                             } else {
                                 contentType = "image/png";
                             }
-                            const params = {
-                                Key: `${bucketConfig.documentDir}/${name}`,
-                                Bucket: bucketConfig.bucketName,
-                                Body: fileObject.data,
-                                ACL: 'public-read',
-                                ContentType: contentType,
-                                ContentDisposition: 'inline'
-                            }
-                            s3.putObject(params, async function(err, data) {
-                                if(err == null) {
-                                   
-                                    doc.file =  `https://s3-${bucketConfig.region}.amazonaws.com/${bucketConfig.bucketName}/${bucketConfig.documentDir}/${name}`
+                            uploadFile(fileObject.data, bucketConfig, bucketConfig.documentDir, name, contentType)
+                                .then(async (data) => {
+                                    doc.file = data.Location;
                                     (async () =>{
                                         await Document.update(doc,{where: {document_id: doc.document_id}});
                                         res.status(200).json(doc);
                                     })();
-                                } else {
-                                    return res.status(500).send("ERROR: "+err);	
-                                }
-                            })
+                                })
+                                .catch(err => {
+                                    console.log(err);
+                                    return res.status(500).send("ERROR: "+err);
+                                });
                         } else {
                             res.status(402).send("We are not supporting this file format.");
                         }

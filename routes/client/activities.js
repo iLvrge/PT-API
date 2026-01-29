@@ -14,6 +14,9 @@ const ShareLink = require("../../model/business/ShareLinks");
 
 const Errors = require("../../model/application/Errors");
 
+const SlackHelper = require('../../helpers/slack')
+const { uploadFile } = require("../../helpers/uploadHelper");
+
 const authJWT = require("../../helpers/verifyJwtToken");
 const clientDBConnection = require("../../helpers/clientDBConnection");
 
@@ -391,13 +394,13 @@ route.post("/activities/:type", [authJWT.verifyToken, clientDBConnection.connect
                     let fileObject = req.files.file;
                     const name = fileObject.name.replace(/\s+/g, '-');
                     const bucketConfig = config.bucketConfig;  
-                    let s3 = new AWS.S3({
+                    /* let s3 = new AWS.S3({
                             credentials: {
                                 accessKeyId: bucketConfig.accessKeyId,
                                 secretAccessKey: bucketConfig.secretAccessKey,
                             },
                             region: bucketConfig.region
-                        })
+                        }) */
 
                         const extension = name.toString().split('.').pop().toLowerCase();
                         let contentType = "";
@@ -410,17 +413,9 @@ route.post("/activities/:type", [authJWT.verifyToken, clientDBConnection.connect
                         } else {
                             contentType = "image/png";
                         }
-                        const params = {
-                            Key: `${bucketConfig.documentDir}/${name}`,
-                            Bucket: bucketConfig.bucketName,
-                            Body: fileObject.data,
-                            ACL: 'public-read',
-                            ContentType: contentType,
-                            ContentDisposition: 'inline'
-                        }
-                        s3.putObject(params, async function(err, data) {
-                            if(err == null) {
-                                postData.upload_file = `https://s3-${bucketConfig.region}.amazonaws.com/${bucketConfig.bucketName}/${bucketConfig.documentDir}/${name}`;
+                        uploadFile(fileObject.data, bucketConfig, bucketConfig.documentDir, name, contentType)
+                            .then(async (data) => {
+                                postData.upload_file = data.Location;
                                 console.log(postData);
                                 if(activityID == 0){
                                     const newActivity = await Activity.create(postData);
@@ -449,8 +444,11 @@ route.post("/activities/:type", [authJWT.verifyToken, clientDBConnection.connect
                                 } else {
                                     res.status(500).send("Internal server error.");
                                 }
-                            }
-                        }); 
+                            })
+                            .catch(err => {
+                                console.log(err);
+                                res.status(500).send("Error uploading file.");
+                            }); 
                 } else {
 
                     if(activityID == 0){
