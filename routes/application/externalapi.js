@@ -277,8 +277,8 @@ function updateEventLogos(citationEvents, list, assigneeKey, type) {
         const match = list.find(assignee => item.assignee?.toLowerCase() === assignee[assigneeKey]?.toLowerCase());
         if (match) {
             citationEvents[index].logo = (type === 'company')
-                ? match.original_logo || match.logo_optimize
-                : 'https://s3.us-west-1.amazonaws.com/static.patentrack.com/images/psychology.svg';
+                ? process.env.STATIC_FILES_URL + (match.original_logo || match.logo_optimize)
+                : process.env.STATIC_FILES_URL + 'images/psychology.svg';
         }
     });
 }
