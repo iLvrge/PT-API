@@ -523,9 +523,12 @@ route.post("/citation", [authJWT.verifyToken], async (req, res) => {
                 })
             }
             if( list.length > 0 ) {
-                const replacements =  {list} 
+                const replacements =  {
+                    list,
+                    baseUrl: (process.env.STATIC_FILES_URL || '').replace(/\/$/, '')
+                } 
 
-                let queryCitedLogo = "SELECT id, patent_number, number, assignee, logo, COUNT(number) AS combined, start, end, GROUP_CONCAT(assignee) AS all_assignee  FROM ( SELECT cpwa.citing_id AS id, cp.patent_number, cpwa.citing_patent_number AS number, IF(o.organisation_name <> '', o.organisation_name, ao.assignee_organization) AS assignee, cp.assignee_id, o.logo_optimize AS logo, cpwa.app_date AS start, cpwa.app_date AS end FROM cited_patents AS cp INNER JOIN assignee_organizations AS ao ON ao.assignee_id = cp.assignee_id LEFT JOIN citing_patents_with_assignee AS cpwa ON cpwa.assignee_id = ao.assignee_id AND cpwa.patent_number = cp.patent_number LEFT JOIN organisations AS o ON o.organisation_id = ao.organisation_id WHERE cpwa.citing_id IS NOT NULL AND cp.patent_number IN (:list) ";
+                let queryCitedLogo = "SELECT id, patent_number, number, assignee, logo, COUNT(number) AS combined, start, end, GROUP_CONCAT(assignee) AS all_assignee  FROM ( SELECT cpwa.citing_id AS id, cp.patent_number, cpwa.citing_patent_number AS number, IF(o.organisation_name <> '', o.organisation_name, ao.assignee_organization) AS assignee, cp.assignee_id, IF(o.logo_optimize IS NULL OR o.logo_optimize = '', '', CONCAT(:baseUrl, IF(o.logo_optimize LIKE '/%', o.logo_optimize, CONCAT('/', o.logo_optimize)))) AS logo, cpwa.app_date AS start, cpwa.app_date AS end FROM cited_patents AS cp INNER JOIN assignee_organizations AS ao ON ao.assignee_id = cp.assignee_id LEFT JOIN citing_patents_with_assignee AS cpwa ON cpwa.assignee_id = ao.assignee_id AND cpwa.patent_number = cp.patent_number LEFT JOIN organisations AS o ON o.organisation_id = ao.organisation_id WHERE cpwa.citing_id IS NOT NULL AND cp.patent_number IN (:list) ";
 
                 if(start != '' && end != '') {
                     replacements.start = start
