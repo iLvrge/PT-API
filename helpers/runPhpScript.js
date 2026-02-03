@@ -1,6 +1,7 @@
 const { exec } = require('child_process');
 const util = require('util');
 const execAsync = util.promisify(exec);
+const logger = require('./logger');
 
 /**
  * Run a PHP script with optional args and environment vars.
