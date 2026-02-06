@@ -27,8 +27,6 @@ const express = require("express");
 
 const cors = require("cors");
 
-const bodyParser = require("body-parser");
-
 const Sentry = require('@sentry/node'); 
 
 const upload = require("express-fileupload");
@@ -56,10 +54,14 @@ app.use(cors());
 app.use(express.json({limit: '100mb', type:'application/json'}));
 app.use(express.urlencoded({limit: '100mb', extended:false, parameterLimit:100000, type:'application/x-www-form-urlencoded'}));
 
-app.use(bodyParser.json({limit: '100mb', type:'application/json'}));
-app.use(bodyParser.urlencoded({limit: '100mb', extended:false, parameterLimit:100000, type:'application/x-www-form-urlencoded'}));
-
-app.use(upload());
+const fileUploadMaxMb = Number(process.env.FILE_UPLOAD_MAX_MB || 20);
+app.use(upload({
+    useTempFiles: true,
+    tempFileDir: process.env.FILE_UPLOAD_TMP_DIR || '/tmp',
+    limits: { fileSize: fileUploadMaxMb * 1024 * 1024 },
+    abortOnLimit: true,
+    createParentPath: true
+}));
 app.set('trust proxy', true)
 /* app.use(cors({
     origin: '*',
@@ -115,7 +117,9 @@ app.use(function(req, res, next) {
 }) */
 
 /**nginx client_max_body_size 100M; #100mb */
-app.use(requestLogger);
+if (process.env.REQUEST_LOG_ENABLED !== 'false') {
+    app.use(requestLogger);
+}
 const port = process.env.PORT || 4200;
 /**
  * Route for Applications database
@@ -288,9 +292,9 @@ Sentry.setupExpressErrorHandler(app);
 app.use((error, req, res, next)=>{
     logErrorToFile('--------Global Error----------');
     logErrorToFile(error.message); 
-    if (!error.status) {
+    if (!res.headersSent && (!error.status || error.status >= 500)) {
         Sentry.captureException(error);
-    } 
+    }
     res.status(error.status || 500);
     res.json({
         "error": {
@@ -299,19 +303,38 @@ app.use((error, req, res, next)=>{
     })
 });
 
-process.on('uncaughtException', (err) => {
-    console.log('Uncaught Exception:', err);
-    logErrorToFile('--------uncaughtException----------');
-    logErrorToFile(err); 
-    // process.exit(1); 
-});
+let isShuttingDown = false;
+const flushAndExit = (err, source) => {
+    if (isShuttingDown) return;
+    isShuttingDown = true;
+    if (err) {
+        console.log(`${source}:`, err);
+        logErrorToFile(`--------${source}----------`);
+        logErrorToFile(err);
+        try {
+            Sentry.captureException(err);
+        } catch (_) {}
+    }
+    Sentry.flush(2000)
+        .then(() => process.exit(1))
+        .catch(() => process.exit(1));
+    setTimeout(() => process.exit(1), 3000).unref();
+};
 
-process.on('unhandledRejection', (reason, promise) => {
-    console.log('Unhandled Rejection at:', promise, 'reason:', reason);
-    logErrorToFile('--------unhandledRejection----------');
-    logErrorToFile(reason);  
-    Sentry.captureException(reason); 
-});
+const flushAndShutdown = (signal) => {
+    if (isShuttingDown) return;
+    isShuttingDown = true;
+    console.log(`Received ${signal}, shutting down.`);
+    Sentry.flush(2000)
+        .then(() => process.exit(0))
+        .catch(() => process.exit(0));
+    setTimeout(() => process.exit(0), 3000).unref();
+};
+
+process.on('uncaughtException', (err) => flushAndExit(err, 'uncaughtException'));
+process.on('unhandledRejection', (reason) => flushAndExit(reason, 'unhandledRejection'));
+process.on('SIGTERM', () => flushAndShutdown('SIGTERM'));
+process.on('SIGINT', () => flushAndShutdown('SIGINT'));
 
 // Start periodic cleanup of stale Sequelize connections
 setInterval(() => {
@@ -334,4 +357,3 @@ try{
     logErrorToFile('--------Error in socket connect----------');
     logErrorToFile(err);   
 } 
-
