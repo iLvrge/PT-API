@@ -1,15 +1,27 @@
 //Express server
 const consoleLog=console.log.bind(console);
-
-console.log = function(){
-    let lines=[''];
-    try {
-        throw new Error('console.log called from file');
-    } catch (e) {
-        lines= e.stack.split('\n');
-    }
-    consoleLog("console.log"+lines[2]);
-    consoleLog(...arguments);
+const silenceLogs = process.env.LOG_SILENT === 'true';
+if (silenceLogs) {
+    const noop = () => {};
+    console.log = noop;
+    console.info = noop;
+    console.warn = noop;
+    console.error = noop;
+    console.debug = noop;
+    console.trace = noop;
+    console.dir = noop;
+    console.table = noop;
+} else if (process.env.LOG_CALLER === 'true') {
+    console.log = function(){
+        let lines=[''];
+        try {
+            throw new Error('console.log called from file');
+        } catch (e) {
+            lines= e.stack.split('\n');
+        }
+        consoleLog("console.log"+lines[2]);
+        consoleLog(...arguments);
+    };
 }
 
     // if(arguments instanceof String){
@@ -40,6 +52,7 @@ const { cleanupConnections } = require('./helpers/dbConnectionCache');
 // load the agent 
 
 const app = express();
+let server = null;
 
 // Temporary route to test Sentry integration
 app.get("/debug-sentry", function mainHandler(req, res) {
@@ -117,7 +130,7 @@ app.use(function(req, res, next) {
 }) */
 
 /**nginx client_max_body_size 100M; #100mb */
-if (process.env.REQUEST_LOG_ENABLED !== 'false') {
+if (process.env.REQUEST_LOG_ENABLED === 'true') {
     app.use(requestLogger);
 }
 const port = process.env.PORT || 4200;
@@ -303,6 +316,15 @@ app.use((error, req, res, next)=>{
     })
 });
 
+const closeServer = () => new Promise((resolve) => {
+    if (!server || !server.listening) return resolve();
+    const timeout = setTimeout(resolve, 2000);
+    server.close(() => {
+        clearTimeout(timeout);
+        resolve();
+    });
+});
+
 let isShuttingDown = false;
 const flushAndExit = (err, source) => {
     if (isShuttingDown) return;
@@ -315,7 +337,7 @@ const flushAndExit = (err, source) => {
             Sentry.captureException(err);
         } catch (_) {}
     }
-    Sentry.flush(2000)
+    Promise.all([closeServer(), Sentry.flush(2000)])
         .then(() => process.exit(1))
         .catch(() => process.exit(1));
     setTimeout(() => process.exit(1), 3000).unref();
@@ -325,7 +347,7 @@ const flushAndShutdown = (signal) => {
     if (isShuttingDown) return;
     isShuttingDown = true;
     console.log(`Received ${signal}, shutting down.`);
-    Sentry.flush(2000)
+    Promise.all([closeServer(), Sentry.flush(2000)])
         .then(() => process.exit(0))
         .catch(() => process.exit(0));
     setTimeout(() => process.exit(0), 3000).unref();
@@ -342,7 +364,7 @@ setInterval(() => {
 }, 2 * 60 * 1000); // runs every 2 mins
 
 //listen function for Node / express
-const server = app.listen({port, host:'0.0.0.0'}, (err)=>{
+server = app.listen({port, host:'0.0.0.0'}, (err)=>{
     if(err){
         console.log(err); 
     }

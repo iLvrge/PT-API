@@ -2,6 +2,13 @@ const RequestLog = require('../model/application/RequestLog'); // Adjust the pat
 
 const DEFAULT_MAX_BYTES = 16 * 1024; // 16KB
 const MAX_LOG_BYTES = Number(process.env.REQUEST_LOG_MAX_BYTES || DEFAULT_MAX_BYTES);
+const BODY_LOG_ENABLED = process.env.REQUEST_LOG_BODY_ENABLED !== 'false';
+
+const getContentLength = (value) => {
+    if (value === undefined || value === null) return 0;
+    const n = Number(value);
+    return Number.isFinite(n) ? n : 0;
+};
 
 const safeStringify = (value) => {
     const seen = new WeakSet();
@@ -35,6 +42,9 @@ const sanitizeForLog = (value) => {
 
 // Middleware to log request and response
 async function requestLogger(req, res, next) {
+    if (process.env.REQUEST_LOG_ENABLED !== 'true') {
+        return next();
+    }
     const start = Date.now();
 
     // Capture the original `send` method to log the response
@@ -43,16 +53,27 @@ async function requestLogger(req, res, next) {
     res.send = function (body) {
         const duration = Date.now() - start;
 
+        const reqContentLength = getContentLength(req.headers['content-length']);
+        const resContentLength = getContentLength(res.getHeader('content-length'));
+        const isMultipart = typeof req.headers['content-type'] === 'string' &&
+            req.headers['content-type'].includes('multipart/form-data');
+
+        const shouldLogReqBody = BODY_LOG_ENABLED && !isMultipart &&
+            (reqContentLength === 0 || reqContentLength <= MAX_LOG_BYTES);
+        const shouldLogResBody = BODY_LOG_ENABLED &&
+            (resContentLength === 0 || resContentLength <= MAX_LOG_BYTES);
+
         // Log the request and response data to the database without blocking the response
         setImmediate(() => {
             try {
                 RequestLog.create({
                     method: req.method,
                     url: req.originalUrl,
-                    body: sanitizeForLog(req.body),
+                    body: shouldLogReqBody ? sanitizeForLog(req.body) : '[skipped: body too large]',
                     headers: sanitizeForLog(req.headers),
                     status: res.statusCode,
-                    responseBody: sanitizeForLog(body),
+                    /* responseBody: shouldLogResBody ? sanitizeForLog(body) : '[skipped: body too large]', */
+                    responseBody: '',
                     duration: `${duration}ms`,
                     timestamp: new Date(),
                 }).catch((error) => {
