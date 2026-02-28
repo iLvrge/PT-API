@@ -54,9 +54,31 @@ const { cleanupConnections } = require('./helpers/dbConnectionCache');
 const app = express();
 let server = null;
 
-// Temporary route to test Sentry integration
 app.get("/debug-sentry", function mainHandler(req, res) {
   throw new Error("Sentry v10 Test Error!");
+});
+
+// Global Sentry Interceptor for manually handled 500 errors
+app.use((req, res, next) => {
+    const _send = res.send;
+    res.send = function (body) {
+        if (res.statusCode >= 400 && !res._sentryCaptured) {
+            res._sentryCaptured = true; // prevent double capture if error is passed to next()
+            let errorToCapture;
+            if (body instanceof Error) {
+                errorToCapture = body;
+            } else if (typeof body === 'string') {
+                errorToCapture = new Error(body);
+            } else if (body && typeof body === 'object') {
+                errorToCapture = new Error(JSON.stringify(body));
+            } else {
+                errorToCapture = new Error(`Manual 500 Error in ${req.method} ${req.url}`);
+            }
+            Sentry.captureException(errorToCapture);
+        }
+        return _send.apply(this, arguments);
+    };
+    next();
 });
  
 app.use(cors());
