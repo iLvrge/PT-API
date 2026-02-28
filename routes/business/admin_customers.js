@@ -13,7 +13,8 @@ const express = require("express"),
     Stream = require('stream').Transform,
 
     request = require('request'),
-
+    os = require('os'),
+    path = require('path'),
     crypto = require("crypto");
 
 const { createLogger, format, transports } = require("winston");
@@ -1510,12 +1511,13 @@ let downloadImageFromUrl = async (org, res, url, filename, contentType, callback
     try {
 
         request.head(url, (err, response, body) => {
-            const path = url.split('/').pop(), pathDirectory = '/var/www/html/betapp/'
+            const fileNameOriginal = url.split('/').pop();
+            const tempPath = path.join(os.tmpdir(), fileNameOriginal);
             request(url)
-                .pipe(fs.createWriteStream(`${pathDirectory}${path}`))
+                .pipe(fs.createWriteStream(tempPath))
                 .on('close', () => {
-                    const imageData = fs.readFileSync(`${pathDirectory}${path}`, { flag: 'r' });
-                    console.log('imageData', imageData)
+                    const imageData = fs.readFileSync(tempPath, { flag: 'r' });
+                    console.log('imageData length', imageData.length)
                     if (imageData) {
                         const bucketConfig = config.bucketConfig;
 
@@ -1527,7 +1529,7 @@ let downloadImageFromUrl = async (org, res, url, filename, contentType, callback
                                 await org.update({
                                     logo: filename
                                 });
-                                spawn('rm', [`${pathDirectory}${path}`]);
+                                fs.unlinkSync(tempPath);
                                 res.status(200).json({ name: org.name, logo: org.logo });
                             })
                             .catch(err => {
@@ -1581,8 +1583,7 @@ route.put("/customers/:id/logo", [authJWT.verifyToken, authJWT.isAdmin], async (
                             name += ".png";
                             contentType = "image/png";
                         }
-                        logoURL = logoURL.substr(base64IndexOf + 8, logoURL.length - 1);
-                        logoURL += logoURL.replace('+', ' ');
+                        logoURL = logoURL.substr(base64IndexOf + 8);
                         logoURL = Buffer.from(logoURL, 'base64');
                         
                         uploadFile(logoURL, bucketConfig, bucketConfig.documentDir, name, contentType)
@@ -1620,12 +1621,20 @@ route.put("/customers/:id/logo", [authJWT.verifyToken, authJWT.isAdmin], async (
                     console.log(mimeType);
                     if (mimeType.toLowerCase().indexOf('.exe') < 0) {
                         let fileObject = req.files.file;
+                        let fileData = fileObject.data;
+                        
+                        // Robust handling: if data is empty (due to useTempFiles: true), read from tempFilePath
+                        if ((!fileData || fileData.length === 0) && fileObject.tempFilePath) {
+                            console.log("Reading from temp file:", fileObject.tempFilePath);
+                            fileData = fs.readFileSync(fileObject.tempFilePath);
+                        }
+
                         const bucketConfig = config.bucketConfig;
                         
                         let name = fileObject.name;
                         name = name.replace(/\s+/g, '-');
                         
-                        uploadFile(fileObject.data, bucketConfig, bucketConfig.documentDir, name)
+                        uploadFile(fileData, bucketConfig, bucketConfig.documentDir, name, mimeType)
                             .then(async (data) => {
                                 org.logo = data.Location;
                                 await org.update({

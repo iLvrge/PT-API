@@ -1,13 +1,23 @@
 const fs = require('fs');
+const path = require('path');
 const AWS = require('aws-sdk');
 
 const uploadFile = (fileData, bucketConfig, directory, filename, contentType = 'application/octet-stream') => {
     return new Promise((resolve, reject) => {
         if (process.env.SAVE_TO_LOCAL === 'true') {
-            const filePath = `${process.env.STATIC_FILE_DISC_PATH}${directory}/${filename.replace(/\//g, '')}`;
+            const fileBasename = filename.replace(/\s+/g, '-').replace(/\//g, '');
+            const targetDir = path.join(process.env.STATIC_FILE_DISC_PATH, directory);
+            const filePath = path.join(targetDir, fileBasename);
             
-            // Ensure directory exists (optional, based on requirement, but good practice)
-            // For now assuming directory structure exists as per previous context
+            // Ensure directory exists
+            try {
+                if (!fs.existsSync(targetDir)) {
+                    fs.mkdirSync(targetDir, { recursive: true });
+                }
+            } catch (dirErr) {
+                console.error("Directory creation error:", dirErr);
+                return reject(dirErr);
+            }
             
             fs.writeFile(filePath, fileData, (err) => {
                 if (err) {

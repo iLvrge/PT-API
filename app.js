@@ -69,7 +69,7 @@ app.use(express.urlencoded({limit: '100mb', extended:false, parameterLimit:10000
 
 const fileUploadMaxMb = Number(process.env.FILE_UPLOAD_MAX_MB || 20);
 app.use(upload({
-    useTempFiles: true,
+    useTempFiles: false,
     tempFileDir: process.env.FILE_UPLOAD_TMP_DIR || '/tmp',
     limits: { fileSize: fileUploadMaxMb * 1024 * 1024 },
     abortOnLimit: true,
