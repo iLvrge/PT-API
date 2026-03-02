@@ -168,79 +168,7 @@ let searchCompany = async(query, t) => {
         const promises = stringWithNewLineSplit.map(async searchText => {
             const originalSearch = searchText.toString();
             const splitSearch = originalSearch.split(' ');
-            /**
-             * const search = originalSearch.replace(regex, '').toLowerCase().trim();
-             */
             let search = originalSearch.replace(regex, '').toLowerCase();
-            /*if(search.slice(-4) == 'corp' || search.slice(-4) == 'gmbh') {
-                search = search.substr(0, search.length - 4);
-            } else if(search.slice(-3) == 'ltd' || search.slice(-3) == 'inc'  || search.slice(-3) == ' sl') {
-                search = search.substr(0, search.length - 3);
-            } else if(search.slice(-2) == 'co') {
-                search = search.substr(0, search.length - 2);
-            }*/
-            //search = search.replace(/\b(?:inc|llc|corp|llp|gmbh|lp|agent|sas|na|bank|co|states|ltd|kk|a\/s)\b/g,'').replace(/^\s+/,"");
-            /* if(regexFindAmp.exec(originalSearch) === null){
-                if(splitSearch.length > 1){				
-                    if(splitSearch.length == 2) {
-                        if(splitSearch[1] == '') {
-                            searchTerm = `${search} *`;
-                        } else {
-                            const ftsQuery = new FtsQuery(true);			
-                            searchTerm = ftsQuery.transform(search);
-                            //searchTerm = `${searchTerm}*`;
-                            searchTerm = searchTerm.replace(" AND ", " ");
-                            searchTerm = searchTerm.replace(" OR ", " ");
-                            searchTerm = searchTerm.replace(" NEAR ", " ");
-                            searchTerm = searchTerm.split(' ');
-                            searchTerm = searchTerm.join('* ')
-                            searchTerm = searchTerm+'*';
-                        }
-                    } else {
-                        const ftsQuery = new FtsQuery(true);			
-                        searchTerm = ftsQuery.transform(search);                        
-                        searchTerm = searchTerm.replace(" AND ", " ");
-                        searchTerm = searchTerm.replace(" OR ", " ");
-                        searchTerm = searchTerm.replace(" NEAR ", " ");
-                        searchTerm = searchTerm.split(' ');
-                        searchTerm = searchTerm.join('* ')
-                        searchTerm = searchTerm+'*';
-                    }				
-                } else {
-                    searchTerm = `"${search}"*`;
-                }
-            } else {
-                searchTerm = `"${search}"`;
-            } */
-            
-            console.log("SEARCH:",search);
-            /* queryCompany = "SELECT a.assignor_and_assignee_id as id, a.assignor_and_assignee_id, a.name, a.instances as counter, c.representative_name as normalize_name, (select rr.representative_name FROM representative as rr WHERE rr.representative_name = a.name GROUP BY rr.representative_name) as representative_company, (SELECT concat(ass.reel_no,'-', ass.frame_no) FROM assignee as ee INNER JOIN assignment as ass ON ass.rf_id = ee.rf_id  WHERE ee.assignor_and_assignee_id = a.assignor_and_assignee_id  LIMIT 1) as assigneeRFID, (SELECT concat(asss.reel_no,'-', asss.frame_no) FROM assignor as assi INNER JOIN assignment as asss ON asss.rf_id = assi.rf_id WHERE assi.assignor_and_assignee_id = a.assignor_and_assignee_id LIMIT 1) as assignorRFID  FROM assignor_and_assignee as a LEFT JOIN representative as c ON c.representative_id = a.representative_id WHERE MATCH(a.name) AGAINST (:search IN BOOLEAN MODE) GROUP BY a.name ORDER BY counter DESC"; */
-
-
-           /*  if(t == 0) {
-                const queryInventor = `  SELECT given_name FROM db_patent_grant_bibliographic.inventor WHERE MATCH(name) AGAINST (:search IN BOOLEAN MODE) GROUP BY given_name`
-
-                let searchInventor = await connection.resources.query(queryInventor,{
-                    type: connection.Sequelize.QueryTypes.SELECT,
-                    raw: true,
-                    replacements: { search: search },
-                    logging: console.log,
-                }); 
-
-                if(searchInventor.length > 0) {
-                    const allInventor = []
-                    const regEx = new RegExp(search.trim(), "ig");
-                    const promiseInventor = searchInventor.map( inventor => {
-                        const inventorName = inventor.given_name.replace(regEx, '')
-                        if(inventorName.trim() !== '') {
-                            allInventor.push(`-${inventorName.trim()}`)
-                        }                        
-                    })
-
-                    const inventorJoin = [...new Set(allInventor)].join(' ')
-                    search += ' '+inventorJoin
-                }
-            } */
 
             queryCompany = `SELECT a.assignor_and_assignee_id as id, a.assignor_and_assignee_id, a.name COLLATE utf8mb4_general_ci  AS name, a.instances COLLATE utf8mb4_general_ci as counter , c.representative_name as normalize_name, (select rr.representative_name FROM representative as rr WHERE rr.representative_name = a.name GROUP BY rr.representative_name) as representative_company, (SELECT concat(ass.reel_no,'-', ass.frame_no) FROM assignee as ee INNER JOIN assignment as ass ON ass.rf_id = ee.rf_id  WHERE ee.assignor_and_assignee_id = a.assignor_and_assignee_id  LIMIT 1) as assigneeRFID, (SELECT concat(asss.reel_no,'-', asss.frame_no) FROM assignor as assi INNER JOIN assignment as asss ON asss.rf_id = assi.rf_id WHERE assi.assignor_and_assignee_id = a.assignor_and_assignee_id LIMIT 1) as assignorRFID, 0 AS assigneeBibRFID, 0 AS assignorBibRFID, '1' AS flag  FROM assignor_and_assignee as a 
             LEFT JOIN representative as c ON c.representative_id = a.representative_id 
@@ -259,43 +187,15 @@ let searchCompany = async(query, t) => {
             } else {
                 queryCompany += ` WHERE MATCH(a.name) AGAINST (:search IN BOOLEAN MODE) `
             }
-            
-            /* queryCompany += ` AND  a.assignor_and_assignee_id NOT IN ( SELECT a.assignor_and_assignee_id FROM db_uspto.assignor AS aor INNER JOIN db_uspto.assignor_and_assignee AS aaa ON aaa.assignor_and_assignee_id = a.assignor_and_assignee_id  INNER JOIN db_uspto.inventors AS inv ON aaa.assignor_and_assignee_id = inv.assignor_and_assignee_id `
-            if(search.length == 1) {
-                queryCompany += ` WHERE trim(aaa.name) = :search `
-            } else {
-                queryCompany += ` WHERE MATCH(aaa.name) AGAINST (:search IN BOOLEAN MODE) `
-            }
-            
-            queryCompany += ` GROUP BY a.assignor_and_assignee_id ) ` */
-            
-
-            /* if( t == 0 ) {
-                queryCompany += `  AND a.assignor_and_assignee_id NOT IN (SELECT assignor_and_assignee_id FROM db_uspto.inventors)`;
-            } */
 
             queryCompany += ` GROUP BY a.name  `;
 
-            /* let querySearchResult = await connection.resources.query(queryCompany,{
-                type: connection.Sequelize.QueryTypes.SELECT,
-                raw: true,
-                replacements: { search: search, year: connection.DEFAULT_YEAR },
-                logging: console.log,
-            });  */  
             /**
              * Query from Applicant 
              */
 
             queryApplicant = `SELECT a.assignor_and_assignee_id as id, a.assignor_and_assignee_id, a.name, a.instances as counter, c.representative_name as normalize_name, (select rr.representative_name FROM db_uspto.representative as rr WHERE rr.representative_name = a.name GROUP BY rr.representative_name) as representative_company, (SELECT appno_doc_num FROM db_patent_application_bibliographic.applicant WHERE assignor_and_assignee_id > 0 AND assignor_and_assignee_id = a.assignor_and_assignee_id  LIMIT 1) as assigneeRFID, (SELECT appno_doc_num FROM db_patent_grant_bibliographic.applicant WHERE assignor_and_assignee_id > 0 AND assignor_and_assignee_id = a.assignor_and_assignee_id  LIMIT 1) as assignorRFID, (SELECT appno_doc_num FROM db_patent_application_bibliographic.assignee WHERE assignor_and_assignee_id > 0 AND assignor_and_assignee_id = a.assignor_and_assignee_id LIMIT 1) as assigneeBibRFID, (SELECT appno_doc_num FROM db_patent_grant_bibliographic.assignee WHERE assignor_and_assignee_id > 0 AND assignor_and_assignee_id = a.assignor_and_assignee_id LIMIT 1) as assignorBibRFID, '2' AS flag  FROM db_patent_application_bibliographic.assignor_and_assignee as a 
             LEFT JOIN db_uspto.representative as c ON c.representative_id = a.representative_id ` ; 
-
-            /* queryApplicant = `SELECT a.applicant_and_inventor_id as id, a.applicant_and_inventor_id AS assignor_and_assignee_id, a.name, a.instances as counter, c.representative_name COLLATE utf8mb4_general_ci as normalize_name, (select rr.representative_name FROM db_uspto.representative as rr WHERE rr.representative_name  COLLATE utf8mb4_general_ci = a.name  COLLATE utf8mb4_general_ci GROUP BY rr.representative_name) as representative_company, (
-                SELECT appno_doc_num 
-                FROM db_patent_examiner_data.application_applicant
-                WHERE applicant_inventor_id > 0 
-                AND applicant_inventor_id = a.applicant_and_inventor_id LIMIT 1
-            ) as assigneeRFID, "" as assignorRFID, "" as assigneeBibRFID, "" as assignorBibRFID, '2' AS flag  FROM db_patent_examiner_data.applicant_and_inventor as a 
-            LEFT JOIN db_uspto.representative as c ON c.representative_id  COLLATE utf8mb4_general_ci = a.representative_id  COLLATE utf8mb4_general_ci ` ; */
                  
             if(search.length == 1) {
                 queryApplicant += `WHERE trim(a.name) = :search `
@@ -316,12 +216,7 @@ let searchCompany = async(query, t) => {
                 type: connection.Sequelize.QueryTypes.SELECT,
                 raw: true,
                 replacements: { search: search, year: connection.DEFAULT_YEAR },
-                logging: console.log,
             }); 
-
-
-
-
 
             let ptabParties = [], filterParties = [];
 
@@ -372,7 +267,6 @@ let searchCompany = async(query, t) => {
                     type: connection.Sequelize.QueryTypes.SELECT,
                     raw: true,
                     replacements: { ptabParties },
-                    logging: console.log,
                 });
                 normalizePtabParty.forEach( row => {
                     parties.push(row.name)
@@ -422,7 +316,6 @@ let searchCompany = async(query, t) => {
                     type: connection.Sequelize.QueryTypes.SELECT,
                     raw: true,
                     replacements: { search: `${search}%`, flag: 0 },
-                    logging: console.log,
                   }
                 );
                 if(querySearchResult.length == 0){
@@ -432,63 +325,20 @@ let searchCompany = async(query, t) => {
                         type: connection.Sequelize.QueryTypes.SELECT,
                         raw: true,
                         replacements: { search: `%${search}%`, flag: 0 },
-                        logging: console.log,
                       }
                     );
                 }
             } */
             if(querySearchResult.length > 0) {
                 queryResult = [...queryResult, ...querySearchResult, ...applicantQueryResult, ...filterParties];
-                /*console.log(queryResult);*/
             }
             return [...querySearchResult, ...applicantQueryResult, ...filterParties];
         });
         await Promise.all(promises);
-        /*console.log(finalResultOfAllPromises);*/
     }
-
-    /*if(getCompanyData.length > 0) {
-        let assignorIDs = [];
-        getCompanyData.map(a => assignorIDs.push(a.assignor_and_assignee_id));
-
-        let queryAssignor = "SELECT a.assignor_and_assignee_id as id, a.assignor_and_assignee_id, a.name, a.instances as counter, c.representative_name as normalize_name, (select rr.representative_name FROM representative as rr WHERE rr.representative_name = a.name GROUP BY rr.representative_name) as representative_company  FROM assignor_and_assignee as a LEFT JOIN representative as c ON c.representative_id = a.representative_id WHERE a.assignor_and_assignee_id IN (SELECT a.assignor_and_assignee_id from assignor as a INNER JOIN documentid as d ON d.rf_id = a.rf_id INNER JOIN assignor_and_assignee as aaa ON a.assignor_and_assignee_id = aaa.assignor_and_assignee_id WHERE a.assignor_and_assignee_id IN (:assignorIDs))";
-
-        let assignorData = await connection.resources.query(queryAssignor,{
-            type: connection.Sequelize.QueryTypes.SELECT,
-            raw: true,
-            replacements: { assignorIDs: assignorIDs },
-            logging: console.log,
-          }
-        );
-
-        let queryAssignee = "SELECT a.assignor_and_assignee_id as id, a.assignor_and_assignee_id, a.name, a.instances as counter, c.representative_name as normalize_name, (select rr.representative_name FROM representative as rr WHERE rr.representative_name = a.name GROUP BY rr.representative_name) as representative_company  FROM assignor_and_assignee as a LEFT JOIN representative as c ON c.representative_id = a.representative_id WHERE a.assignor_and_assignee_id IN (SELECT a.assignor_and_assignee_id from assignee as a INNER JOIN documentid as d ON d.rf_id = a.rf_id INNER JOIN assignor_and_assignee as aaa ON a.assignor_and_assignee_id = aaa.assignor_and_assignee_id WHERE a.assignor_and_assignee_id IN (:assignorIDs))";
-
-        let assigneeData = await connection.resources.query(queryAssignee,{
-            type: connection.Sequelize.QueryTypes.SELECT,
-            raw: true,
-            replacements: { assignorIDs: assignorIDs },
-            logging: console.log,
-          }
-        );
-        let finalResult = [...assignorData, ...assigneeData], uniqueRFIDs = [];
-        if(finalResult.length > 0) {
-            console.log(finalResult.length);
-            finalResult.map(c => {
-                if(!uniqueRFIDs.includes(c.assignor_and_assignee_id)){
-                    uniqueRFIDs.push(c.assignor_and_assignee_id);
-                    queryResult.push(c);
-                }
-            })
-        }   
-    }*/
-    
-
-
-    console.log('TTTTT', t)
 
     if(t == 0) {
         if(queryResult.length > 0) {
-            console.log(queryResult.length);
             let allNames = [];
             queryResult.map(company => {
                 let companyData = {...company};
@@ -503,7 +353,6 @@ let searchCompany = async(query, t) => {
                 type: connection.Sequelize.QueryTypes.SELECT,
                 raw: true,
                 replacements: { name: allNames },
-                logging: console.log,
                 }
             );
             let parentAdded = [], children = [];
@@ -546,9 +395,7 @@ let searchCompany = async(query, t) => {
                 });  
                 await Promise.all(promise)              
             }
-            console.log(searchResult.length)
             searchResult = await searchResult.filter(company => company.name == company.normalize_name || company.normalize_name == null)
-            console.log(searchResult.length)
             return searchResult;
         } else {
             return searchResult;
@@ -570,7 +417,6 @@ let searchLenders = async( search ) => {
         type: connection.Sequelize.QueryTypes.SELECT,
         raw: true,
         replacements: { search: search, year: connection.DEFAULT_YEAR, conveyanceType: ['security', 'restatedsecurity'], missingType: 'missing', searchSecurityText: '"SECURITY INTEREST"' },
-        logging: console.log,
     });
 
     return querySearchResult;
@@ -586,7 +432,6 @@ let searchCompanyByAddress = async( address ) => {
             type: connection.Sequelize.QueryTypes.SELECT,
             raw: true,
             replacements: { address: address, flag: 0, year: connection.DEFAULT_YEAR},
-            logging: console.log,
           }
         );
     }
@@ -604,7 +449,6 @@ let searchCompanyByCountry = async( name ) => {
             type: connection.Sequelize.QueryTypes.SELECT,
             raw: true,
             replacements: { name, flag: 0, year: connection.DEFAULT_YEAR},
-            logging: console.log,
           }
         );
     }
@@ -622,7 +466,6 @@ let getAddressDataFromLastTransaction = async( ID, address1, address2 ) => {
             type: connection.Sequelize.QueryTypes.SELECT,
             raw: true,
             replacements: { ID },
-            logging: console.log,
             plain: true
           }
         );
@@ -634,7 +477,6 @@ let getAddressDataFromLastTransaction = async( ID, address1, address2 ) => {
                 type: connection.Sequelize.QueryTypes.SELECT,
                 raw: true,
                 replacements: { name: representative.name },
-                logging: console.log,
                 plain: true
               }
             );
@@ -652,7 +494,6 @@ let getAddressDataFromLastTransaction = async( ID, address1, address2 ) => {
                     type: connection.Sequelize.QueryTypes.SELECT,
                     raw: true,
                     replacements: replacements,
-                    logging: console.log,
                     plain: true
                 });
             }
@@ -670,7 +511,6 @@ let getAddressWithTransactionsListByCompanyID = async( ID, type ) => {
             type: connection.Sequelize.QueryTypes.SELECT,
             raw: true,
             replacements: { ID },
-            logging: console.log,
             plain: true
           }
         );
@@ -685,7 +525,6 @@ let getAddressWithTransactionsListByCompanyID = async( ID, type ) => {
                 type: connection.Sequelize.QueryTypes.SELECT,
                 raw: true,
                 replacements: { name: representative.name },
-                logging: console.log,
                 plain: true
               }
             );
@@ -734,7 +573,6 @@ let getAddressWithTransactionsListByCompanyID = async( ID, type ) => {
             type: connection.Sequelize.QueryTypes.SELECT,
             raw: true,
             replacements: replacements,
-            logging: console.log,
             plain: true
           }
         );
@@ -743,7 +581,6 @@ let getAddressWithTransactionsListByCompanyID = async( ID, type ) => {
             type: connection.Sequelize.QueryTypes.SELECT,
             raw: true,
             replacements: replacements,
-            logging: console.log,
           }
         );
     }
@@ -759,7 +596,6 @@ let getAddressListByApplicantID = async( ID ) => {
             type: connection.Sequelize.QueryTypes.SELECT,
             raw: true,
             replacements: { ID },
-            logging: console.log,
             plain: true
         });
         const replacements = { ID: ID};
@@ -769,7 +605,6 @@ let getAddressListByApplicantID = async( ID ) => {
                 type: connection.Sequelize.QueryTypes.SELECT,
                 raw: true,
                 replacements: { name: representative.name },
-                logging: console.log,
                 plain: true
               }
             );
@@ -818,7 +653,6 @@ let getAddressListByApplicantID = async( ID ) => {
             type: connection.Sequelize.QueryTypes.SELECT,
             raw: true,
             replacements: replacements,
-            logging: console.log,
             }
         );
     }
@@ -834,7 +668,6 @@ let getAddressListByCompanyID = async( ID, type ) => {
             type: connection.Sequelize.QueryTypes.SELECT,
             raw: true,
             replacements: { ID },
-            logging: console.log,
             plain: true
           }
         );
@@ -849,7 +682,6 @@ let getAddressListByCompanyID = async( ID, type ) => {
                 type: connection.Sequelize.QueryTypes.SELECT,
                 raw: true,
                 replacements: { name: representative.name },
-                logging: console.log,
                 plain: true
               }
             );
@@ -903,7 +735,6 @@ let getAddressListByCompanyID = async( ID, type ) => {
             type: connection.Sequelize.QueryTypes.SELECT,
             raw: true,
             replacements: replacements,
-            logging: console.log,
           }
         );
     }
@@ -929,7 +760,6 @@ let getAddressListByLawfirmID = async( ID ) => {
             type: connection.Sequelize.QueryTypes.SELECT,
             raw: true,
             replacements: { ID },
-            logging: console.log,
             plain: true
           }
         );
@@ -946,7 +776,6 @@ let getAddressListByLawfirmID = async( ID ) => {
                     type: connection.Sequelize.QueryTypes.SELECT,
                     raw: true,
                     replacements: { name: representative.name },
-                    logging: console.log, 
                 });
                 if(allNames.length > 0) {
                     const promise = allNames.map(item => {
@@ -1003,7 +832,6 @@ let getAddressListByLawfirmID = async( ID ) => {
                 type: connection.Sequelize.QueryTypes.SELECT,
                 raw: true,
                 replacements: replacements,
-                logging: console.log,
             }
         );
     }
@@ -1029,7 +857,6 @@ let searchLawfirmIDByAddress = async( addresses ) => {
                 type: connection.Sequelize.QueryTypes.SELECT,
                 raw: true,
                 replacements: { address: listAddress.join(' '), flag: 0, year: connection.DEFAULT_YEAR},
-                logging: console.log,
                 }
             );      
         }
@@ -1062,7 +889,6 @@ let searchCompanyIDByAddress = async( addresses, type ) => {
                 type: connection.Sequelize.QueryTypes.SELECT,
                 raw: true,
                 replacements: { address: listAddress.join(' '), flag: 0, year: connection.DEFAULT_YEAR, conveyanceType: ['security', 'restatedsecurity']},
-                logging: console.log,
                 }
             );   
             
@@ -1098,7 +924,6 @@ let searchCompanyIDByAddress = async( addresses, type ) => {
                     type: connection.Sequelize.QueryTypes.SELECT,
                     raw: true,
                     replacements: replacements,     
-                    logging: console.log,
                     }
                 );  
 
@@ -1134,7 +959,6 @@ let allTransactionEntities = async( conveyanceType) => {
         type: connection.Sequelize.QueryTypes.SELECT,
         raw: true,
         replacements: { conveyanceType:  cType},
-        logging: console.log,
         }
     );
 
@@ -1149,7 +973,6 @@ let allTransactionEntities = async( conveyanceType) => {
             type: connection.Sequelize.QueryTypes.SELECT,
             raw: true,
             replacements: { conveyanceType:  cType},
-            logging: console.log,
             }
         );
     } 
@@ -1197,7 +1020,6 @@ let findEntityAssets = async (assignorAssigneeID) => {
         replacements: { conveyanceType: ["assignment","partialassignment","namechg","merger","employee", "courtappointment", "courtorder"], assignorAssigneeID: assignorAssigneeID },
         raw: true,
         plain: true,
-        logging: console.log,
         }
     );
 
@@ -1253,7 +1075,6 @@ let allAssignments = async (customerID, req) => {
                     type: connection.Sequelize.QueryTypes.SELECT,
                     replacements: { year: connection.DEFAULT_YEAR,  organisationID: 0 /* org.organisation_id */, representativeID  },
                     raw: true,
-                    logging: console.log,
                     }
                 );
 
@@ -1263,7 +1084,6 @@ let allAssignments = async (customerID, req) => {
                     type: connection.Sequelize.QueryTypes.SELECT,
                     replacements: { organisationID: org.organisation_id, representativeID: representativeID },
                     raw: true,
-                    logging: console.log,
                     }
                 ); */
                 
@@ -1273,7 +1093,6 @@ let allAssignments = async (customerID, req) => {
                     type: connection.Sequelize.QueryTypes.SELECT,
                     replacements: { organisationID: org.organisation_id, representativeID: representativeID },
                     raw: true,
-                    logging: console.log,
                     }
                 ); */
                 //if(listIDs != null && listIDs.length > 0) {
@@ -1287,7 +1106,6 @@ let allAssignments = async (customerID, req) => {
                         type: connection.Sequelize.QueryTypes.SELECT,
                         replacements: { IDs: rawRfIDs },
                         raw: true,
-                        logging: console.log,
                         }
                     );
         
@@ -1297,7 +1115,6 @@ let allAssignments = async (customerID, req) => {
                         type: connection.Sequelize.QueryTypes.SELECT,
                         replacements: { IDs: rawRfIDs },
                         raw: true,
-                        logging: console.log,
                         }
                     );
         
@@ -1314,7 +1131,6 @@ let allAssignments = async (customerID, req) => {
                             type: connection.Sequelize.QueryTypes.SELECT,
                             replacements: { rfIDs: rawRfIDs },
                             raw: true,
-                            logging: console.log,
                             }
                         );
                     } */
@@ -1369,7 +1185,6 @@ let allAssignments = async (customerID, req) => {
             type: connection.Sequelize.QueryTypes.SELECT,
             raw: true,
             replacements: replacements,
-            logging: console.log,
           }
         );
 
@@ -1379,7 +1194,6 @@ let allAssignments = async (customerID, req) => {
                 type: connection.Sequelize.QueryTypes.SELECT,
                 raw: true,
                 replacements: { search: `${search}%` },
-                logging: console.log,
               }
             );
             if(assignmentsList.length == 0){
@@ -1389,7 +1203,6 @@ let allAssignments = async (customerID, req) => {
                 type: connection.Sequelize.QueryTypes.SELECT,
                 raw: true,
                 replacements: { search: `%${search}%` },
-                logging: console.log,
               }
             );
 
@@ -1399,7 +1212,6 @@ let allAssignments = async (customerID, req) => {
                 type: connection.Sequelize.QueryTypes.SELECT,
                 replacements: { organisationID: org.organisation_id, representativeID: representativeID },
                 raw: true,
-                logging: console.log,
                 }
             ); */
         /*}*/        
@@ -1434,7 +1246,6 @@ let allAssignmentsByRepresentativeIDs = async (customerID, representativeIDs, re
                     type: connection.Sequelize.QueryTypes.SELECT,
                     replacements: {  year: connection.DEFAULT_YEAR, organisationID: 0 /* org.organisation_id */, representativeID: representativeIDs },
                     raw: true,
-                    logging: console.log,
                     }
                 );
     
@@ -1444,7 +1255,6 @@ let allAssignmentsByRepresentativeIDs = async (customerID, representativeIDs, re
                     type: connection.Sequelize.QueryTypes.SELECT,
                     replacements: { year: connection.DEFAULT_YEAR, organisationID: 0/* org.organisation_id */, representativeID: representativeIDs },
                     raw: true,
-                    logging: console.log,
                     }
                 );
 
@@ -1454,7 +1264,6 @@ let allAssignmentsByRepresentativeIDs = async (customerID, representativeIDs, re
                     type: connection.Sequelize.QueryTypes.SELECT,
                     replacements: { year: connection.DEFAULT_YEAR, organisationID:  0 /* org.organisation_id */, representativeID: representativeIDs },
                     raw: true,
-                    logging: console.log,
                     }
                 );
             }
@@ -1471,7 +1280,6 @@ let getCompanyListByEmployee = async(companyName) => {
         type: connection.Sequelize.QueryTypes.SELECT,
         replacements: { name: companyName, convey_type: 'assignment' },
         raw: true,
-        logging: console.log,
       }
     );
 
@@ -1490,7 +1298,6 @@ let getCompanyListByOwnership = async(companyName) => {
         type: connection.Sequelize.QueryTypes.SELECT,
         replacements: { name: companyName, convey_type: 'assignment' },
         raw: true,
-        logging: console.log,
       }
     );
 
@@ -1500,7 +1307,6 @@ let getCompanyListByOwnership = async(companyName) => {
         type: connection.Sequelize.QueryTypes.SELECT,
         replacements: { name: companyName, convey_type: 'assignment' },
         raw: true,
-        logging: console.log,
         }
     );
 
@@ -1510,7 +1316,6 @@ let getCompanyListByOwnership = async(companyName) => {
         type: connection.Sequelize.QueryTypes.SELECT,
         replacements: { name: companyName, convey_type: 'merger' },
         raw: true,
-        logging: console.log,
         }
     );
 
@@ -1520,7 +1325,6 @@ let getCompanyListByOwnership = async(companyName) => {
         type: connection.Sequelize.QueryTypes.SELECT,
         replacements: { name: companyName, convey_type: 'merger' },
         raw: true,
-        logging: console.log,
         }
     );
     
@@ -1541,7 +1345,6 @@ let getCompanyListBySecurity = async(companyName) => {
         type: connection.Sequelize.QueryTypes.SELECT,
         replacements: { name: companyName, convey_type: 'security' },
         raw: true,
-        logging: console.log,
       }
     );
 
@@ -1551,7 +1354,6 @@ let getCompanyListBySecurity = async(companyName) => {
         type: connection.Sequelize.QueryTypes.SELECT,
         replacements: { name: companyName, convey_type: 'release' },
         raw: true,
-        logging: console.log,
       }
     );
 
@@ -1570,7 +1372,6 @@ let getCompanyListByOther = async(companyName) => {
         type: connection.Sequelize.QueryTypes.SELECT,
         replacements: { name: companyName, convey_type: 'namechg' },
         raw: true,
-        logging: console.log,
         }
     );
 
@@ -1580,7 +1381,6 @@ let getCompanyListByOther = async(companyName) => {
         type: connection.Sequelize.QueryTypes.SELECT,
         replacements: { name: companyName, convey_type: 'govern' },
         raw: true,
-        logging: console.log,
         }
     );		
 
@@ -1651,7 +1451,6 @@ let getCompaniesListWithReports = async (DBConnection, organisationID) => {
     const getList = await DBConnection.query(queryRepresentatives, {
         type: DBConnection.Sequelize.QueryTypes.SELECT,
         raw: true,
-        logging: console.log,
     });
 
     if (getList.length === 0) {
@@ -1670,7 +1469,6 @@ let getCompaniesListWithReports = async (DBConnection, organisationID) => {
         type: connection.Sequelize.QueryTypes.SELECT,
         replacements: { organisationID: 0 /* organisationID */, allCompanies },
         raw: true, 
-        logging: console.log, 
     }) 
     if (reports.length === 0) {
         return getList;
@@ -1737,7 +1535,6 @@ let getCompaniesListSumWithReports = async (DBConnection, organisationID) => {
                 type: connection.Sequelize.QueryTypes.SELECT,
                 replacements: { organisationID: organisationID },
                 raw: true,
-                logging: console.log,
                 plain: true
             }),
             Share.findOne({
@@ -1897,7 +1694,6 @@ let getCompaniesWithChildren = async (DBConnection, organisationID) => {
     companies = await DBConnection.query(parentCompanyQuery,{
         type: connection.Sequelize.QueryTypes.SELECT,
         raw: true,
-        logging: console.log,
         }
     ); 
     
@@ -1912,7 +1708,6 @@ let getCompaniesWithChildren = async (DBConnection, organisationID) => {
                 type: connection.Sequelize.QueryTypes.SELECT,
                 replacements: { parentCompany: getAllIDs, child: 1 },
                 raw: true,
-                logging: console.log,
             }
         ); 
 
@@ -1952,7 +1747,6 @@ let getCompaniesWithChildren = async (DBConnection, organisationID) => {
             type: connection.Sequelize.QueryTypes.SELECT,
             replacements: { representativeID: getAllIDs, organisationID: organisationID },
             raw: true,
-            logging: console.log,
         }); 
 
         if(allCustomers.length > 0) {
@@ -2002,7 +1796,6 @@ let updateAllCustomerInventor = async(organisationID, inventors, flag, DBConnect
                 type: connection.Sequelize.QueryTypes.UPDATE,
                 replacements: where,
                 raw: true,
-                logging: console.log,
             }
         );
 
@@ -2017,7 +1810,6 @@ let updateAllCustomerInventor = async(organisationID, inventors, flag, DBConnect
                 type: connection.Sequelize.QueryTypes.UPDATE,
                 replacements: where,
                 raw: true,
-                logging: console.log,
             }
         ); */
     }
@@ -2057,7 +1849,6 @@ let updateAllCustomerInventor = async(organisationID, inventors, flag, DBConnect
                 type: connection.Sequelize.QueryTypes.SELECT,
                 replacements: { representative_list: representativeList },
                 raw: true,
-                logging: console.log,
                 }
             );
 
@@ -2071,7 +1862,6 @@ let updateAllCustomerInventor = async(organisationID, inventors, flag, DBConnect
                         type: connection.Sequelize.QueryTypes.SELECT,
                         replacements: { rfIDs: companyRFIDs, inventors: inventors },
                         raw: true,
-                        logging: console.log,
                         }
                     );
                     if(listIDs != null && listIDs.length > 0) {
@@ -2083,7 +1873,6 @@ let updateAllCustomerInventor = async(organisationID, inventors, flag, DBConnect
                         type: connection.Sequelize.QueryTypes.SELECT,
                         replacements: { rfIDs: companyRFIDs, inventors: inventors },
                         raw: true,
-                        logging: console.log,
                         }
                     );
         
@@ -2092,7 +1881,6 @@ let updateAllCustomerInventor = async(organisationID, inventors, flag, DBConnect
                         type: connection.Sequelize.QueryTypes.SELECT,
                         replacements: { rfIDs: companyRFIDs, inventors: inventors },
                         raw: true,
-                        logging: console.log,
                         }
                     );
         
@@ -2161,7 +1949,6 @@ let updateAllCustomerInventor = async(organisationID, inventors, flag, DBConnect
                 type: connection.Sequelize.QueryTypes.SELECT,
                 replacements: { representative_list: representativeList },
                 raw: true,
-                logging: console.log,
                 }
             );
 
@@ -2197,7 +1984,6 @@ let findCompanyEntitiesByAccountID = async(orgID, type, DBConnection, suggestion
                 type: connection.Sequelize.QueryTypes.SELECT,
                 replacements: { representativeIDs: IDs, organisationID: 0 /* orgID */ },
                 raw: true,
-                logging: console.log,
                 }
             );
 
@@ -2604,7 +2390,6 @@ const inventorGroupLevenshtein = async(names) => {
                                 replacements: { representativeName: names[findIndex].normalize_name },
                                 raw: true,
                                 plain: true,
-                                logging: console.log,
                             }   
                         );  
                         if(findRepresentativeData == null) {
@@ -2614,7 +2399,6 @@ const inventorGroupLevenshtein = async(names) => {
                                     replacements: { representativeName: names[findIndex].normalize_name },
                                     raw: true,
                                     plain: true,
-                                    logging: console.log,
                                 }   
                             );  
                         }
@@ -2965,7 +2749,6 @@ let findCompanyEntitiesByAccountIDByRepresentativeIDs = async(orgID, representat
             type: connection.Sequelize.QueryTypes.SELECT,
             replacements: { representativeIDs: representativeIDs, organisationID: 0 /* orgID */ },
             raw: true,
-            logging: console.log,
             }
         );
 
@@ -3020,7 +2803,6 @@ let findAssignorAndAssigneeListFromRFIDs = async(rfIDs, type) => {
                     type: connection.Sequelize.QueryTypes.SELECT,
                     replacements: { IDs: rfIDs, year: connection.DEFAULT_YEAR },
                     raw: true,
-                    logging: console.log,
                     }   
                 );
 
@@ -3037,7 +2819,6 @@ let findAssignorAndAssigneeListFromRFIDs = async(rfIDs, type) => {
                         type: connection.Sequelize.QueryTypes.SELECT,
                         replacements: { allAssets },
                         raw: true,
-                        logging: console.log,
                         }
                     );
                 }
@@ -3058,7 +2839,6 @@ let findAssignorAndAssigneeListFromRFIDs = async(rfIDs, type) => {
             type: connection.Sequelize.QueryTypes.SELECT,
             replacements: { IDs: rfIDs , year: connection.DEFAULT_YEAR },
             raw: true,
-            logging: console.log,
             }
         );
         /* if(parseInt(type) == 2) {
@@ -3074,7 +2854,6 @@ let findAssignorAndAssigneeListFromRFIDs = async(rfIDs, type) => {
                 type: connection.Sequelize.QueryTypes.SELECT,
                 replacements: { IDs: rfIDs },
                 raw: true,
-                logging: console.log,
                 }
             );   
         } */
@@ -3085,7 +2864,6 @@ let findAssignorAndAssigneeListFromRFIDs = async(rfIDs, type) => {
             type: connection.Sequelize.QueryTypes.SELECT,
             replacements: { rfIDs: rfIDs },
             raw: true,
-            logging: console.log,
             }
         );
 
@@ -3100,7 +2878,6 @@ let findAssignorAndAssigneeListFromRFIDs = async(rfIDs, type) => {
             type: connection.Sequelize.QueryTypes.SELECT,
             replacements: { IDs: rfIDs },
             raw: true,
-            logging: console.log,
             }
         ); */
 
@@ -3115,7 +2892,6 @@ let findAssignorAndAssigneeListFromRFIDs = async(rfIDs, type) => {
             type: connection.Sequelize.QueryTypes.SELECT,
             replacements: { rfIDs, year: connection.DEFAULT_YEAR },
             raw: true,
-            logging: console.log,
             }
         );
     }             
@@ -3225,7 +3001,6 @@ let findCompanyCustomersByName = async(companyName, type) => {
             type: connection.Sequelize.QueryTypes.SELECT,
             replacements: { name: representativeName },
             raw: true,
-            logging: console.log,
             }
         );
 
@@ -3247,7 +3022,6 @@ let findCompanyCustomersByName = async(companyName, type) => {
                 type: connection.Sequelize.QueryTypes.SELECT,
                 replacements: { IDs: assgnorAssigneeIDS },
                 raw: true,
-                logging: console.log,
                 }
             );
 
@@ -3257,7 +3031,6 @@ let findCompanyCustomersByName = async(companyName, type) => {
                 type: connection.Sequelize.QueryTypes.SELECT,
                 replacements: { IDs: assgnorAssigneeIDS },
                 raw: true,
-                logging: console.log,
                 }
             );
 
@@ -3284,7 +3057,6 @@ let findCompanyCustomersByID = async(ID) => {
             type: connection.Sequelize.QueryTypes.SELECT,
             replacements: { ID: ID },
             raw: true,
-            logging: console.log,
             }
         );	
 
@@ -3294,7 +3066,6 @@ let findCompanyCustomersByID = async(ID) => {
             type: connection.Sequelize.QueryTypes.SELECT,
             replacements: { ID: ID },
             raw: true,
-            logging: console.log,
             }
         );               
         
@@ -3338,7 +3109,6 @@ let findProfessionalFromUserID = async(userID, connectionDB) => {
     return  await connectionDB.query(queryFindProfessional,{
 		type: connection.Sequelize.QueryTypes.SELECT,
 		raw: true,
-        logging: console.log,
         plain: true,
 		replacements: { userID: userID },
 	});
@@ -3350,7 +3120,6 @@ let findFakeDocument = async (connectionDB) => {
     let findDocument = await connectionDB.query(documentQuery,{
 		type: connection.Sequelize.QueryTypes.SELECT,
 		raw: true,
-        logging: console.log,
         plain: true,
 		replacements: { status: 4 },
     });
@@ -3361,7 +3130,6 @@ let findFakeDocument = async (connectionDB) => {
         const insertDocument = await connectionDB.query(queryInsertDocument,{
             type: connection.Sequelize.QueryTypes.INSERT,
             raw: true,
-            logging: console.log,
             plain: true,
             replacements: { status: 4, title: ' ' },
         });
@@ -3369,7 +3137,6 @@ let findFakeDocument = async (connectionDB) => {
         findDocument = await connectionDB.query(documentQuery,{
             type: connection.Sequelize.QueryTypes.SELECT,
             raw: true,
-            logging: console.log,
             plain: true,
             replacements: { status: 4 },
         });
@@ -3451,7 +3218,6 @@ const assignorData = async(rfID) => {
     let assignor = await connection.resources.query(assignorQuery,{
 		type: connection.Sequelize.QueryTypes.SELECT,
 		raw: true,
-		logging: console.log,
 		replacements: { rfID: rfID },
 	});
     return assignor;
@@ -3471,7 +3237,6 @@ const assigneeData = async(rfID) => {
     let assignee = await connection.resources.query(assigneeQuery,{
 		type: connection.Sequelize.QueryTypes.SELECT,
 		raw: true,
-		logging: console.log,
 		replacements: { rfID: rfID },
 	});
     return assignee;
@@ -3482,7 +3247,6 @@ const assignmentData = async(rfID) => {
     let assignment = await connection.resources.query(assignmentQuery,{
 		type: connection.Sequelize.QueryTypes.SELECT,
 		raw: true,
-		logging: console.log,
 		plain:true,
 		replacements: { rfID: rfID },
 	});
@@ -3494,7 +3258,6 @@ const documentData = async(rfID) => {
     let properties = await connection.resources.query(documentQuery,{
         type: connection.Sequelize.QueryTypes.SELECT,
         raw: true,
-        logging: console.log, 
         replacements: { rfID: rfID }
     });	
     return properties;
@@ -3515,7 +3278,6 @@ let getAssignmentDataByrfID = async (rfID, t = 0) => {
     let releasedData = await connection.resources.query(queryCheckRelesed,{
 		type: connection.Sequelize.QueryTypes.SELECT,
 		raw: true,
-		logging: console.log,
 		plain:true,
 		replacements: { rfID: rfID },
 	});
@@ -3654,7 +3416,6 @@ let shareURL = async (params) => {
                 const getList = await connection.applicationNew.query(query,{
                     type: connection.Sequelize.QueryTypes.SELECT,
                     raw: true,
-                    logging: console.log,
                     replacements: {organisation_id: params.organisation_id, rfIDs: transactions},
                     }
                 );
@@ -3693,7 +3454,6 @@ let getShareList = async (code, type) => {
         const shareData = await connection.applicationNew.query(query,{
                 type: connection.Sequelize.QueryTypes.SELECT,
                 raw: true,
-                logging: console.log,
                 replacements: {code, type},
                 plain: true
             }
@@ -3721,7 +3481,6 @@ let getShareList = async (code, type) => {
         const shareList = await connection.applicationNew.query(query,{
             type: connection.Sequelize.QueryTypes.SELECT,
             raw: true,
-            logging: console.log,
             replacements: {code, type},
             }
         );
@@ -3774,7 +3533,6 @@ let getShareList = async (code, type) => {
                 const grantData = await connection.applicationNew.query(queryAssets,{
                     type: connection.Sequelize.QueryTypes.SELECT,
                     raw: true,
-                    logging: console.log,
                     replacements: {grant, app, organisation_id},
                     }
                 );
@@ -3815,7 +3573,6 @@ let getShareListAssets = async (code) => {
     const shareList = await connection.applicationNew.query(query,{
         type: connection.Sequelize.QueryTypes.SELECT,
         raw: true,
-        logging: console.log,
         replacements: {code},
         }
     );
@@ -3846,7 +3603,6 @@ let getCompaniesMinAndMaxDateTransaction = async(searchData) => {
     let getMinAssignmentData = await connection.application.query(customMinQuery,{
         type: connection.Sequelize.QueryTypes.SELECT,
         raw: true,
-        logging: console.log,
         replacements: searchData,
         plain:true
         }
@@ -3863,7 +3619,6 @@ let getCompaniesMinAndMaxDateTransaction = async(searchData) => {
     let getMinAssigneeData = await connection.application.query(customMinQuery,{
         type: connection.Sequelize.QueryTypes.SELECT,
         raw: true,
-        logging: console.log,
         replacements: searchData,
         plain:true
         }
@@ -3895,7 +3650,6 @@ let getCompaniesMinAndMaxDateTransaction = async(searchData) => {
     let getMaxAssignmentData = await connection.application.query(customMaxQuery,{
         type: connection.Sequelize.QueryTypes.SELECT,
         raw: true,
-        logging: console.log,
         replacements: searchData,
         plain:true
         }
@@ -3913,7 +3667,6 @@ let getCompaniesMinAndMaxDateTransaction = async(searchData) => {
     let getMaxAssigneeData = await connection.application.query(customMaxQuery,{
         type: connection.Sequelize.QueryTypes.SELECT,
         raw: true,
-        logging: console.log,
         replacements: searchData,
         plain:true
         }
@@ -4291,7 +4044,6 @@ const findRfIDsBySearchString = async(req) => {
     let getList = await connection.application.query(customQuery3rdParty,{
             type: connection.Sequelize.QueryTypes.SELECT,
             raw: true,
-            logging: console.log,
             replacements: { searchItem: search_string, orgId: 0 /* req.orgId */, limit: limit },
         }
     );
@@ -4305,7 +4057,6 @@ const findRfIDsBySearchString = async(req) => {
     getList = await connection.application.query(customQueryLawyer,{
             type: connection.Sequelize.QueryTypes.SELECT,
             raw: true,
-            logging: console.log,
             replacements: { searchItem: search_string, orgId: 0 /* req.orgId */, limit: limit },
         }
     );
@@ -4325,7 +4076,6 @@ const findRfIDsBySearchString = async(req) => {
     getList = await connection.application.query(customQueryDocument,{
             type: connection.Sequelize.QueryTypes.SELECT,
             raw: true,
-            logging: console.log,
             replacements: { searchItem: search_string, orgId: 0 /* req.orgId */, limit: limit},
         }
     );
@@ -4614,7 +4364,6 @@ const findFilterAssets = async(req, fType) => {
             const appList =  await connection.applicationNew.query(query,{
                 type: connection.Sequelize.QueryTypes.SELECT,
                 raw: true,
-                logging: console.log,
                 replacements: where,
             })
 
@@ -4714,7 +4463,6 @@ const findFillingAssets = async (req, type) => {
         const allRepresentatives =  await connection.applicationNew.query(representativeQuery, {
             type: connection.Sequelize.QueryTypes.SELECT,
             raw: true,
-            logging: console.log,
             replacements: {representativeNames: allRepresentativeNames},
         }); 
         
@@ -4759,7 +4507,6 @@ const findFillingAssets = async (req, type) => {
                 type: connection.Sequelize.QueryTypes.SELECT,
                 raw: true,
                 plain: true,
-                logging: console.log,
                 replacements: {rfID: lawfirm},
             }) 
 
@@ -4817,7 +4564,6 @@ const findFillingAssets = async (req, type) => {
         const assigneeAssets =  await connection.applicationNew.query(findAllAssigneeAssets, {
             type: connection.Sequelize.QueryTypes.SELECT,
             raw: true,
-            logging: console.log,
             replacements: replacements,
         });  
         
@@ -4841,7 +4587,6 @@ const getFamilyList = async(replacements) => {
     const grantAssets =  await connection.applicationNew.query(query, {
         type: connection.Sequelize.QueryTypes.SELECT,
         raw: true,
-        logging: console.log,
         replacements: replacements,
     });  
     const allAssets = []
@@ -4870,7 +4615,6 @@ const findLawFirmName = async (props) => {
     const assetsWithLawFirm =  await connection.applicationNew.query(queryFillingLawFirm, {
         type: connection.Sequelize.QueryTypes.SELECT,
         raw: true,
-        logging: console.log,
         replacements: props,
     }); 
 
@@ -4918,7 +4662,6 @@ const getOwnedAssets = async( req, t = 0 ) => {
         const list =  await connection.applicationNew.query(query,{
             type: connection.Sequelize.QueryTypes.SELECT,
             raw: true,
-            logging: console.log,
             replacements
         }) 
         if(list !== null && list.length > 0) {
@@ -4961,7 +4704,6 @@ const getAllAssets = async( req ) => {
         const list =  await connection.applicationNew.query(query,{
             type: connection.Sequelize.QueryTypes.SELECT,
             raw: true,
-            logging: console.log,
             replacements
         }) 
         if(list !== null && list.length > 0) {
