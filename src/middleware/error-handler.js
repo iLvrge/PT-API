@@ -12,14 +12,7 @@
 
 const ApiError = require('../utils/api-error');
 const logger = require('../utils/logger');
-
-let Sentry = null;
-try {
-  // Optional — absent in tests and if the SDK is not installed.
-  Sentry = require('@sentry/node');
-} catch (_err) {
-  Sentry = null;
-}
+const sentry = require('../config/sentry');
 
 const notFound = (req, res, next) => {
   next(ApiError.notFound(`Route not found: ${req.method} ${req.originalUrl}`));
@@ -54,15 +47,14 @@ const errorHandler = (err, req, res, next) => {
 
   if (!apiError.isOperational || apiError.statusCode >= 500) {
     logger.error('unhandled error', {
+      requestId: req.id,
       method: req.method,
       url: req.originalUrl,
       status: apiError.statusCode,
       error: err.message,
       stack: err.stack,
     });
-    if (Sentry && typeof Sentry.captureException === 'function') {
-      Sentry.captureException(err);
-    }
+    sentry.captureException(err); // F14: only 5xx / non-operational reach Sentry
   }
 
   res.status(apiError.statusCode).json({

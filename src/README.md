@@ -7,15 +7,27 @@ migration is incremental and nothing breaks during the transition.
 
 ## What exists today
 
-A complete, tested **foundation** plus two fully implemented modules that prove
-the pattern end to end:
+A complete, tested **foundation** plus fully implemented modules that prove the
+pattern end to end:
 
 - **auth** — `POST /signin`, `GET /refresh-token`
 - **users** — `GET/POST /admin/customers/:id/users`, `DELETE /admin/customers/:id/users/:userId`
+- **keywords** — `GET/POST /admin/keywords`, `PUT/DELETE /admin/keywords/:keywordId`
 - **health** — `GET /health`, `GET /health/ready`
 
-50 tests pass; lint is clean. The remaining ~380 endpoints are ported by
-repeating the module pattern below — no new architecture required.
+Cross-cutting infrastructure:
+
+- **Swagger / OpenAPI** — interactive docs at `GET /docs`, raw spec at `GET /docs.json`
+- **Sentry** — `config/sentry.js`, initialised in `server.js`; reports only 5xx /
+  non-operational errors (audit F14), no-op without `SENTRY_DSN`
+- **Request logging** — `middleware/request-logger.js`; one structured line per
+  request with a correlation id (`X-Request-Id`, also `req.id`)
+- **Tenant connections** — `db/tenant-connections.js`; per-organisation pooled
+  connections with TTL eviction, replacing the legacy cache without its F4 bug
+
+74 tests pass; lint is clean; coverage gate enforced in CI. The remaining
+endpoints are ported by repeating the module pattern below — no new
+architecture required.
 
 ## Architecture
 

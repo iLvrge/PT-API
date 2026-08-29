@@ -6,13 +6,17 @@
  */
 
 const express = require('express');
+const swaggerUi = require('swagger-ui-express');
 const { env } = require('./config/env');
 const security = require('./middleware/security');
+const requestLogger = require('./middleware/request-logger');
 const { notFound, errorHandler } = require('./middleware/error-handler');
+const openapi = require('./docs/openapi');
 
 const healthRoutes = require('./modules/health/health.routes');
 const authRoutes = require('./modules/auth/auth.routes');
 const userRoutes = require('./modules/users/users.routes');
+const keywordRoutes = require('./modules/keywords/keywords.routes');
 
 const createApp = () => {
   const app = express();
@@ -22,14 +26,20 @@ const createApp = () => {
 
   app.use(security.helmet);
   app.use(security.cors);
+  app.use(requestLogger);
   app.use(express.json({ limit: env.jsonBodyLimit }));
   app.use(express.urlencoded({ extended: false, limit: env.jsonBodyLimit }));
   app.use(security.globalLimiter);
+
+  // API documentation
+  app.get('/docs.json', (req, res) => res.json(openapi));
+  app.use('/docs', swaggerUi.serve, swaggerUi.setup(openapi, { explorer: true }));
 
   // Routes
   app.use('/', healthRoutes);
   app.use('/', authRoutes);
   app.use('/admin', userRoutes);
+  app.use('/admin', keywordRoutes);
 
   // 404 then centralised error handling — always last.
   app.use(notFound);

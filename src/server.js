@@ -10,9 +10,13 @@
 
 require('dotenv').config();
 
+const sentry = require('./config/sentry');
+sentry.init(); // must run before the app is built
+
 const createApp = require('./app');
 const { env } = require('./config/env');
 const { closeAll } = require('./db');
+const { closeAll: closeTenants } = require('./db/tenant-connections');
 const logger = require('./utils/logger');
 
 const app = createApp();
@@ -29,7 +33,7 @@ const shutdown = async (signal) => {
   if (server) {
     await new Promise((resolve) => server.close(resolve));
   }
-  await closeAll();
+  await Promise.all([closeAll(), closeTenants(), sentry.flush(2000)]);
   process.exit(0);
 };
 
@@ -39,6 +43,7 @@ process.on('SIGINT', () => shutdown('SIGINT'));
 // Log and report, but keep serving. Do not exit on a single async error.
 process.on('unhandledRejection', (reason) => {
   logger.error('unhandledRejection', { reason: reason && reason.message ? reason.message : reason });
+  sentry.captureException(reason instanceof Error ? reason : new Error(String(reason)));
 });
 process.on('uncaughtException', (err) => {
   // An uncaught exception leaves the process in an unknown state — here we do
