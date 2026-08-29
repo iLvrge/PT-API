@@ -1,3 +1,5 @@
+const Sentry = require("@sentry/node");
+
 const express = require("express"),
 
     bcrypt = require('bcrypt'),
@@ -559,33 +561,50 @@ route.delete("/users/:orgId/:user_id", [authJWT.verifyToken, authJWT.isAdmin], a
                     attributes: ['user_id'],
                 });
 
-                if (userDetail) {
-                    // Use a transaction to ensure both deletes succeed or both fail
-                    const t = await connection.business.transaction();
-                    try {
-                        const deleteClientUser = await userDetail.destroy({ transaction: t });
-                        const deleteUser = await user.destroy({ transaction: t });
+                /**
+                 * The two rows live on different MySQL servers, so a single
+                 * transaction cannot span them - Sequelize routes a query onto
+                 * options.transaction.connection, so passing the business
+                 * transaction to the client model ran the DELETE against
+                 * db_business.user (both models use tableName 'user').
+                 *
+                 * Each database gets its own transaction. The business row goes
+                 * first because that is the row that grants access; if the client
+                 * row is missing or its delete fails, the user is still locked out
+                 * and we report the leftover instead of refusing the whole request.
+                 */
+                const businessTx = await connection.business.transaction();
+                try {
+                    await user.destroy({ transaction: businessTx });
+                    await businessTx.commit();
+                } catch (error) {
+                    await businessTx.rollback();
+                    console.log("Business user delete failed:", error);
+                    return res.status(500).send("Error while deleting user.");
+                }
 
-                        if (deleteUser && deleteClientUser) {
-                            await t.commit();
-                            res.status(200).send("User deleted successfully.");
-                        } else {
-                            await t.rollback();
-                            res.status(500).send("Error while deleting user.");
-                        }
-                    } catch (error) {
-                        await t.rollback();
-                        console.log("Transaction error:", error);
-                        res.status(500).send("Error while deleting user.");
-                    }
-                } else {
-                    res.status(404).send("User not found in client database.");
+                if (!userDetail) {
+                    // Created before the client-side row existed, or the client-side
+                    // create failed silently. Nothing left to remove on that side.
+                    console.log(`No client record for user ${req.params.user_id} in org ${req.params.orgId}; business row removed.`);
+                    return res.status(200).send("User deleted successfully.");
+                }
+
+                const clientTx = await connectuserDB.transaction();
+                try {
+                    await userDetail.destroy({ transaction: clientTx });
+                    await clientTx.commit();
+                    res.status(200).send("User deleted successfully.");
+                } catch (error) {
+                    await clientTx.rollback();
+                    console.log("Client user delete failed:", error);
+                    res.status(200).send("User deleted successfully, but the client record could not be removed.");
                 }
             } else {
                 res.status(500).send("Unable to connect with client.");
             }
         } else {
-            res.status(500).send("Error while deleting user.");
+            res.status(404).send("User not found.");
         }
     } catch (err) {
         console.log(err);
@@ -1251,39 +1270,66 @@ route.post("/customers/:id/users", [authJWT.verifyToken, authJWT.isAdmin, userEx
             const organisation = await helpers.findOrganisationbyID(organisationID);
             if (organisation != null && organisation.organisation_id > 0) {
                 console.log(req.body);
-                Users.create({
+
+                /**
+                 * The admin table only submits the fields the operator actually typed,
+                 * so optional columns arrive as undefined rather than "". first_name,
+                 * email_address and password are genuinely required; last_name is
+                 * NOT NULL in the schema but may legitimately be blank, so default it.
+                 */
+                const missing = ['first_name', 'email_address', 'password']
+                    .filter(field => !req.body[field] || String(req.body[field]).trim() === '');
+
+                if (missing.length > 0) {
+                    return res.status(400).json({
+                        message: `Missing required field${missing.length > 1 ? 's' : ''}: ${missing.join(', ')}.`,
+                        fields: missing
+                    });
+                }
+
+                /**
+                 * Normalise once and reuse for both inserts. db_business.user and the
+                 * organisation's own user table both declare last_name NOT NULL, so
+                 * defaulting it in only one place lets the business row save and then
+                 * leaves the organisation row to fail on its own.
+                 */
+                const details = {
                     first_name: req.body.first_name,
-                    last_name: req.body.last_name,
+                    last_name: req.body.last_name || '',
                     email_address: req.body.email_address,
                     username: req.body.email_address,
-                    password: bcrypt.hashSync(req.body.password ? req.body.password : req.body.last_name, 8),
                     job_title: req.body.job_title,
                     linkedin_url: req.body.person_linkedin_url,
-                    type: req.body.type,
+                    telephone1: req.body.telephone1,
+                    telephone: req.body.telephone,
                     logo: req.body.logo,
-                    role_id: req.body.type == 0 ? 1 : 2,
+                    role_id: req.body.type == 0 ? 1 : 2
+                };
+
+                Users.create({
+                    ...details,
+                    password: bcrypt.hashSync(req.body.password, 8),
+                    type: req.body.type,
                     organisation_id: organisationID
                 })
                     .then(function (user) {
                         if (user != null) {
-                            console.log(req.connection_db);
-                            if (typeof req.connection_db != "undefined" && req.connection_db != null) {
-                                /** */
+                            if (typeof req.connection_db == "undefined" || req.connection_db == null) {
+                                /**
+                                 * No connection to the organisation's own database, so the
+                                 * row only exists in db_business. Say so loudly - this used
+                                 * to pass silently and is why some users cannot be deleted
+                                 * (the delete looks for the organisation-side row first).
+                                 */
+                                console.error(`[user ${user.user_id}] created in db_business only - no connection to organisation ${organisationID}'s database. Organisation-side record NOT created.`);
+                                Sentry.captureMessage(`User ${user.user_id} created without an organisation-side record (org ${organisationID})`, 'warning');
+                            } else {
                                 (async () => {
                                     const dbUser = await req.connection_db.define('Users', ClientUsers.mainStructure, ClientUsers.options);
 
                                     const clientUser = {
                                         user_id: user.user_id,
-                                        first_name: req.body.first_name,
-                                        last_name: req.body.last_name,
-                                        email_address: req.body.email_address,
-                                        username: req.body.email_address,
-                                        job_title: req.body.job_title,
-                                        linkedin_url: req.body.person_linkedin_url,
-                                        telephone1: req.body.telephone1,
-                                        telephone: req.body.telephone,
-                                        role_id: req.body.type == 0 ? 1 : 2,
-                                        logo: req.body.logo
+                                        ...details
                                     }
 
                                     const addClientUser = await dbUser.create(clientUser);
@@ -1338,15 +1384,15 @@ route.post("/customers/:id/users", [authJWT.verifyToken, authJWT.isAdmin, userEx
                                         if (firmID > 0) {
                                             const Professional = await req.connection_db.define('Professionals', ProfessionalUsers.mainStructure, ProfessionalUsers.options);
                                             const addUserToProfessional = {
-                                                first_name: req.body.first_name,
-                                                last_name: req.body.last_name,
-                                                email_address: req.body.email_address,
-                                                job_title: req.body.job_title,
-                                                linkedin_url: req.body.person_linkedin_url,
-                                                telephone1: req.body.telephone1,
-                                                telephone: req.body.telephone,
+                                                first_name: details.first_name,
+                                                last_name: details.last_name,
+                                                email_address: details.email_address,
+                                                job_title: details.job_title,
+                                                linkedin_url: details.linkedin_url,
+                                                telephone1: details.telephone1,
+                                                telephone: details.telephone,
                                                 type: 0,
-                                                profile_logo: req.body.logo,
+                                                profile_logo: details.logo,
                                                 firm_id: firmID
                                             }
                                             const professionalUser = await Professional.create(addUserToProfessional);
@@ -1356,7 +1402,17 @@ route.post("/customers/:id/users", [authJWT.verifyToken, authJWT.isAdmin, userEx
                                             }
                                         }
                                     }
-                                })();
+                                })().catch(err => {
+                                    /**
+                                     * The response has already been sent by the time this
+                                     * runs. Without this catch the rejection is unhandled,
+                                     * and app.js turns an unhandled rejection into
+                                     * process.exit(1) - one bad organisation-side insert
+                                     * would restart the API for every tenant.
+                                     */
+                                    console.error(`[user ${user.user_id}] organisation-side record failed for org ${organisationID}:`, err);
+                                    Sentry.captureException(err);
+                                });
                             }
                             console.log("User" + user.user_id);
                             console.log("User created successfully");
@@ -1369,17 +1425,27 @@ route.post("/customers/:id/users", [authJWT.verifyToken, authJWT.isAdmin, userEx
                     })
                     .catch(function (err) {
                         console.log(err);
-                        res.status(402).send("Bad inputs");
+                        /**
+                         * Surface the field that actually failed. A bare "Bad inputs"
+                         * makes every one of these indistinguishable from the caller's side.
+                         */
+                        if (err.name === 'SequelizeValidationError' || err.name === 'SequelizeUniqueConstraintError') {
+                            return res.status(400).json({
+                                message: err.errors.map(e => e.message).join(' '),
+                                fields: err.errors.map(e => e.path)
+                            });
+                        }
+                        res.status(500).send("Unable to create user.");
                     })
             } else {
-                res.status(402).send("Bad inputs");
+                res.status(404).send("Customer not found.");
             }
         } else {
-            res.status(402).send("Bad inputs");
+            res.status(400).send("Invalid customer id.");
         }
     } catch (err) {
         console.log(err);
-        res.status(402).send("Invalid inputs");
+        res.status(500).send("Unable to create user.");
     }
 });
 
