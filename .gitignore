@@ -13,3 +13,5 @@ app_log.log
 # *.out
 # .DS_Store 
 # package-lock.json
+# v2 test/build artifacts
+coverage

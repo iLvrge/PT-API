@@ -1,0 +1,20 @@
+'use strict';
+
+module.exports = {
+  testEnvironment: 'node',
+  setupFiles: ['<rootDir>/tests/helpers/env.js'],
+  testMatch: ['<rootDir>/tests/**/*.test.js'],
+  collectCoverageFrom: [
+    'src/**/*.js',
+    '!src/server.js', // process bootstrap, exercised by integration indirectly
+  ],
+  // These thresholds reflect the DB-free suite. Repository READ methods (raw
+  // SQL) are intentionally not unit-tested — they belong to a DB-backed
+  // integration tier that runs against a seeded test database in CI. Services,
+  // controllers, middleware, validation and error handling are covered here.
+  coverageThreshold: {
+    global: { branches: 65, functions: 65, lines: 80, statements: 80 },
+  },
+  clearMocks: true,
+  verbose: false,
+};
