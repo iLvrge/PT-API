@@ -2,46 +2,60 @@ const Sequelize = require('sequelize');
 const moment = require('moment');
 const Op = Sequelize.Op;
 
-const application = new Sequelize(process.env.DATABASE_APPLICATION, process.env.USER, process.env.PASSWORD, {
+// MySQL is reached through a tunnel that does not sit on 3306, so the port has
+// to be passed explicitly. DB_USER is preferred over USER: USER is also the
+// POSIX login-name variable, and an inherited shell value would otherwise
+// authenticate as the wrong account.
+const DB_PORT = Number.parseInt(process.env.DB_PORT, 10) || 3306;
+const DB_USER = process.env.DB_USER || process.env.USER;
+
+const application = new Sequelize(process.env.DATABASE_APPLICATION, DB_USER, process.env.PASSWORD, {
     host: process.env.HOST,
+    port: DB_PORT,
     dialect: 'mysql',
     // Removed operatorsAliases
 });
 
-const applicationNew = new Sequelize(process.env.DATABASE_APPLICATION_NEW, process.env.USER, process.env.PASSWORD, {
+const applicationNew = new Sequelize(process.env.DATABASE_APPLICATION_NEW, DB_USER, process.env.PASSWORD, {
     host: process.env.HOST,
+    port: DB_PORT,
     dialect: 'mysql',
     // Removed operatorsAliases
 });
 
 applicationNew.dialect.supports.schemas = true;
 
-const resources = new Sequelize(process.env.DATABASE_RAW, process.env.USER, process.env.PASSWORD, {
+const resources = new Sequelize(process.env.DATABASE_RAW, DB_USER, process.env.PASSWORD, {
     host: process.env.HOST,
+    port: DB_PORT,
     dialect: 'mysql',
     // Removed operatorsAliases
 });
 
-const business = new Sequelize(process.env.DATABASE_BUSINESS, process.env.USER, process.env.PASSWORD, {
+const business = new Sequelize(process.env.DATABASE_BUSINESS, DB_USER, process.env.PASSWORD, {
     host: process.env.HOST,
+    port: DB_PORT,
     dialect: 'mysql',
     // Removed operatorsAliases
 });
 
-const maintainence = new Sequelize(process.env.DATABASE_MAINTAINENCE, process.env.USER, process.env.PASSWORD, {
+const maintainence = new Sequelize(process.env.DATABASE_MAINTAINENCE, DB_USER, process.env.PASSWORD, {
     host: process.env.HOST,
+    port: DB_PORT,
     dialect: 'mysql',
     // Removed operatorsAliases
 });
 
-const biblioGrant = new Sequelize(process.env.DATABASE_GRANT_BIBLIO, process.env.USER, process.env.PASSWORD, {
+const biblioGrant = new Sequelize(process.env.DATABASE_GRANT_BIBLIO, DB_USER, process.env.PASSWORD, {
     host: process.env.HOST,
+    port: DB_PORT,
     dialect: 'mysql',
     // Removed operatorsAliases
 });
 
-const biblioApplication = new Sequelize(process.env.DATABASE_APPLICATION_BIBLIO, process.env.USER, process.env.PASSWORD, {
+const biblioApplication = new Sequelize(process.env.DATABASE_APPLICATION_BIBLIO, DB_USER, process.env.PASSWORD, {
     host: process.env.HOST,
+    port: DB_PORT,
     dialect: 'mysql',
     // Removed operatorsAliases
 });

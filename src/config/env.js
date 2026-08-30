@@ -12,7 +12,8 @@
 
 const REQUIRED = [
   'HOST',
-  'USER',
+  // DB_USER, falling back to USER — see dbUser() below.
+  'DB_USER',
   'PASSWORD',
   'DATABASE_APPLICATION',
   'DATABASE_APPLICATION_NEW',
@@ -31,8 +32,24 @@ const toBool = (value, fallback = false) => {
   return String(value).toLowerCase() === 'true';
 };
 
+/**
+ * The database username.
+ *
+ * It used to be read from `USER`, which is also the POSIX login-name variable
+ * every shell sets. Anywhere the process inherits an ambient environment —
+ * Docker `-e`, systemd, pm2, a bare `node src/server.js` — that ambient value
+ * wins and the app silently authenticates as the wrong account. Prefer
+ * DB_USER; fall back to USER so existing .env files keep working.
+ */
+const dbUser = () => process.env.DB_USER || process.env.USER;
+
+const isSet = (key) => {
+  const value = key === 'DB_USER' ? dbUser() : process.env[key];
+  return !!value && value.trim() !== '';
+};
+
 const validate = () => {
-  const missing = REQUIRED.filter((key) => !process.env[key] || process.env[key].trim() === '');
+  const missing = REQUIRED.filter((key) => !isSet(key));
   if (missing.length > 0) {
     throw new Error(
       `Missing required environment variable(s): ${missing.join(', ')}. ` +
@@ -61,7 +78,7 @@ const env = {
     host: process.env.HOST,
     // The tunnel/proxy in front of MySQL does not always sit on 3306.
     port: toInt(process.env.DB_PORT, 3306),
-    user: process.env.USER,
+    user: dbUser(),
     password: process.env.PASSWORD,
     names: {
       application: process.env.DATABASE_APPLICATION,
@@ -123,4 +140,4 @@ const env = {
   },
 };
 
-module.exports = { env, validate, REQUIRED };
+module.exports = { env, validate, REQUIRED, dbUser };

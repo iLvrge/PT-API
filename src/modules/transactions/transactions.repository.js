@@ -2,6 +2,7 @@
 
 const { connections } = require('../../db');
 const q = require('../../db/query');
+const logger = require('../../utils/logger');
 
 const SUMMED = [
   'buy', 'buy_patent', 'diff_buy_patent',
@@ -12,17 +13,35 @@ const SUMMED = [
   'license_out', 'license_out_patent', 'diff_license_out_patent',
 ];
 
-/** Transaction counters for an organisation, optionally scoped to companies. */
-const counters = (orgId, companies) => {
+/**
+ * Transaction counters for an organisation, optionally scoped to companies.
+ *
+ * Two things to know about this query:
+ *
+ * `release` is a MySQL reserved word, so every summed column is backtick
+ * quoted. Sequelize quoted them automatically for the legacy `fn('sum', col())`
+ * form; raw SQL has to do it explicitly.
+ *
+ * The backing table does not currently exist on this server — see the note on
+ * `counters` in the service. A failure here degrades to null (and so to a
+ * zero-filled response), which is what the legacy route did in its catch block,
+ * rather than failing the dashboard that embeds it.
+ */
+const counters = async (orgId, companies) => {
   const repl = { orgId };
   // Column names come from the constant above, never from the request.
-  const sums = SUMMED.map((column) => `SUM(${column}) AS ${column}`).join(', ');
+  const sums = SUMMED.map((column) => `SUM(\`${column}\`) AS \`${column}\``).join(', ');
   let sql = `SELECT ${sums} FROM transactions WHERE organisation_id = :orgId`;
   if (companies.length) {
     sql += ` AND representative_id IN (:companies)`;
     repl.companies = companies;
   }
-  return q.selectOne(connections.application, `${sql} GROUP BY organisation_id`, repl);
+  try {
+    return await q.selectOne(connections.application, `${sql} GROUP BY organisation_id`, repl);
+  } catch (err) {
+    logger.warn('transaction counters unavailable', { orgId, error: err.message });
+    return null;
+  }
 };
 
 /**

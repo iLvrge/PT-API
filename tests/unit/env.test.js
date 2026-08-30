@@ -60,3 +60,43 @@ describe('database port', () => {
     expect(load().db.port).toBe(3306);
   });
 });
+
+describe('database user', () => {
+  const originalDbUser = process.env.DB_USER;
+  const originalUser = process.env.USER;
+
+  afterEach(() => {
+    if (originalDbUser === undefined) delete process.env.DB_USER;
+    else process.env.DB_USER = originalDbUser;
+    if (originalUser === undefined) delete process.env.USER;
+    else process.env.USER = originalUser;
+    jest.resetModules();
+  });
+
+  const load = () => {
+    jest.resetModules();
+    return require('../../src/config/env').env;
+  };
+
+  it('prefers DB_USER over the ambient POSIX USER', () => {
+    // This is the real failure mode: a shell, Docker -e, systemd or pm2 sets
+    // USER to the login account, and the app authenticates as that instead.
+    process.env.DB_USER = 'db_user_all';
+    process.env.USER = 'mac';
+    expect(load().db.user).toBe('db_user_all');
+  });
+
+  it('still reads USER when DB_USER is not set', () => {
+    delete process.env.DB_USER;
+    process.env.USER = 'legacy_user';
+    expect(load().db.user).toBe('legacy_user');
+  });
+
+  it('treats a missing database user as a boot failure', () => {
+    delete process.env.DB_USER;
+    delete process.env.USER;
+    jest.resetModules();
+    const { validate } = require('../../src/config/env');
+    expect(() => validate()).toThrow(/DB_USER/);
+  });
+});

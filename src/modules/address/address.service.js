@@ -20,7 +20,11 @@ const listGrouped = async (tenant, representativeIds) => {
       byRep.set(row.representative_id, { representative_id: row.representative_id, address: [] });
     }
     const { representative_id, ...address } = row;
-    byRep.get(representative_id).address.push(address);
+    // The LEFT JOIN yields one all-null row for a company with no address; the
+    // company still belongs in the response, but with an empty address list.
+    if (address.address_id !== null && address.address_id !== undefined) {
+      byRep.get(representative_id).address.push(address);
+    }
   }
   return [...byRep.values()];
 };

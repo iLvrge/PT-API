@@ -45,6 +45,12 @@ describe('GET /dashboards', () => {
   it('400s on a malformed companies list', async () => {
     await auth(request(app).get('/dashboards?companies=notjson')).expect(400);
   });
+
+  it('400s without a company rather than aggregating the whole partition', async () => {
+    await auth(request(app).get('/dashboards?companies=%5B%5D')).expect(400);
+    await auth(request(app).get('/dashboards')).expect(400);
+    expect(repo.tiles).not.toHaveBeenCalled();
+  });
 });
 
 describe('POST /dashboards', () => {

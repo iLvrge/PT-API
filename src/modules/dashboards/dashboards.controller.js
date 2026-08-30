@@ -28,7 +28,11 @@ const parseList = (raw, label) => {
 const isBankOrg = (req) => Number(req.auth.orgType) === 2;
 
 const tiles = asyncHandler(async (req, res) => {
-  res.status(200).json(await service.tiles(parseList(req.query.companies, 'companies')));
+  const companies = parseList(req.query.companies, 'companies');
+  // Without a company filter this aggregates every row in the shared partition
+  // — about 8 million — and never returns inside a request timeout.
+  if (!companies.length) throw ApiError.badRequest('companies is required and must not be empty');
+  res.status(200).json(await service.tiles(companies));
 });
 
 const collateral = asyncHandler(async (req, res) => {

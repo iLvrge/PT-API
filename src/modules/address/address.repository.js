@@ -7,20 +7,25 @@ const COLS =
   'address_id, representative_id, street_address, suite, city, state, country, zip_code, telephone, telephone_2, telephone_3';
 
 /**
- * Address data in the tenant DB. The legacy list grouped addresses under their
- * representative and formatted the dates; we return the same fields with dates
- * pre-formatted as YYYY-MM-DD, and the service assembles the grouped shape.
+ * Address data in the tenant DB.
+ *
+ * The list is driven from `representative`, not `address`: the `parent_id = 0`
+ * filter selects top-level companies and lives on that table. A LEFT JOIN keeps
+ * companies that have no address yet, matching the legacy Sequelize `include`.
  */
 const listByRepresentatives = (tenant, representativeIds) => {
   const hasFilter = Array.isArray(representativeIds) && representativeIds.length > 0;
   return q.selectAll(
     tenant,
-    `SELECT ${COLS},
-            date_format(created_at, '%Y-%m-%d') AS created_at,
-            date_format(updated_at, '%Y-%m-%d') AS updated_at
-       FROM address
-      WHERE parent_id = 0 ${hasFilter ? 'AND representative_id IN (:representativeIds)' : ''}
-      ORDER BY representative_id, address_id`,
+    `SELECT r.representative_id,
+            a.address_id, a.street_address, a.suite, a.city, a.state, a.country,
+            a.zip_code, a.telephone, a.telephone_2, a.telephone_3,
+            date_format(a.created_at, '%Y-%m-%d') AS created_at,
+            date_format(a.updated_at, '%Y-%m-%d') AS updated_at
+       FROM representative AS r
+       LEFT JOIN address AS a ON a.representative_id = r.representative_id
+      WHERE r.parent_id = 0 ${hasFilter ? 'AND r.representative_id IN (:representativeIds)' : ''}
+      ORDER BY r.representative_id, a.address_id`,
     hasFilter ? { representativeIds } : {}
   );
 };

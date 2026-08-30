@@ -35,6 +35,15 @@ describe('address routes', () => {
     expect(rep9.address[0]).not.toHaveProperty('representative_id');
   });
 
+  it('keeps a company that has no address, with an empty list', async () => {
+    // The LEFT JOIN emits one all-null address row for such a company.
+    repo.listByRepresentatives.mockResolvedValue([
+      { representative_id: 11, address_id: null, city: null, street_address: null },
+    ]);
+    const res = await request(app).get('/address').set('Authorization', `Bearer ${token}`).expect(200);
+    expect(res.body).toEqual([{ representative_id: 11, address: [] }]);
+  });
+
   it('GET /address/companies returns a flat list for the given ids', async () => {
     repo.listFlatByRepresentatives.mockResolvedValue([{ address_id: 1, city: 'NYC' }]);
     await request(app)

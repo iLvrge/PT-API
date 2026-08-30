@@ -30,6 +30,9 @@ const getOrgConnection = async (orgID) => {
             organisation.org_pass,
             {
                 host: organisation.org_host,
+                // org_host stores a hostname only; tenants share the main
+                // server's port, which is not always 3306.
+                port: Number.parseInt(process.env.DB_PORT, 10) || 3306,
                 dialect: 'mysql',
                 operatorsAliases: Op,
                 pool: {

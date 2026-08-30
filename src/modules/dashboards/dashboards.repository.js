@@ -14,10 +14,18 @@ const sql = require('./dashboards.sql');
 
 const app = () => connections.applicationNew;
 
-/** GET / — dashboard tiles, one row per metric type. */
+/**
+ * GET / — dashboard tiles, one row per metric type.
+ *
+ * dashboard_items has no `title`, `sub_heading` or `number` column; the legacy
+ * route selected all three and so failed with "Unknown column 'title'" on every
+ * call. `total` is the row's count, and the two labels are projected as NULL to
+ * keep the response shape the client expects.
+ */
 const tiles = (companies) => {
   const repl = { organisationId: 0 };
-  let statement = `SELECT type, title, sub_heading, SUM(number) AS number, patent, application, rf_id
+  let statement = `SELECT type, NULL AS title, NULL AS sub_heading, SUM(total) AS number,
+             patent, application, rf_id
       FROM dashboard_items WHERE organisation_id = :organisationId`;
   if (companies.length) {
     statement += ` AND representative_id IN (:companies)`;
