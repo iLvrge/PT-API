@@ -244,6 +244,22 @@ const DEFINITIONS = {
     options: { tableName: 'company_lawfirm', freezeTableName: true, underscored: true, timestamps: false },
   },
 
+  document: {
+    attributes: {
+      document_id: { type: DataTypes.INTEGER, primaryKey: true, autoIncrement: true },
+      title: { type: DataTypes.STRING, allowNull: true },
+      file: { type: DataTypes.STRING, allowNull: true },
+      type: { type: DataTypes.INTEGER, allowNull: true },
+      description: { type: DataTypes.STRING, allowNull: true },
+      user_id: { type: DataTypes.INTEGER, allowNull: true },
+      status: { type: DataTypes.INTEGER, allowNull: true },
+    },
+    options: {
+      tableName: 'document', freezeTableName: true, underscored: true,
+      timestamps: true, createdAt: 'created_at', updatedAt: 'updated_at',
+    },
+  },
+
   lawfirm: {
     attributes: {
       lawfirm_id: { type: DataTypes.INTEGER, primaryKey: true, autoIncrement: true },

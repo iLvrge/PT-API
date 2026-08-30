@@ -34,6 +34,7 @@ const clientUserRoutes = require('./modules/client-users/client-users.routes');
 const customerRoutes = require('./modules/customers/customers.routes');
 const tabRoutes = require('./modules/tabs/tabs.routes');
 const companyRoutes = require('./modules/company/company.routes');
+const documentRoutes = require('./modules/documents/documents.routes');
 
 const createApp = () => {
   const app = express();
@@ -70,6 +71,7 @@ const createApp = () => {
   app.use('/customers', customerRoutes);
   app.use('/tabs', tabRoutes);
   app.use('/companies', companyRoutes);
+  app.use('/documents', documentRoutes);
   app.use('/admin', adminAuthRoutes);
   app.use('/admin', userRoutes);
   app.use('/admin', keywordRoutes);
