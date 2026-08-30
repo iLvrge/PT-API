@@ -170,6 +170,21 @@ const env = {
     teamName: process.env.MICROSOFT_TEAM_NAME || 'PatenTrack',
   },
 
+  // European Patent Office Open Patent Services.
+  epo: {
+    key: process.env.EPO_KEY,
+    secret: process.env.EPO_SECRET,
+    baseUrl: process.env.EPO_BASE_URL || 'https://ops.epo.org/3.2',
+    // Where fetched family XML is cached between requests.
+    cacheDir: process.env.EPO_CACHE_DIR || process.env.EXTRA_DISK_PATH,
+  },
+
+  // Where the USPTO bulk XML is unpacked.
+  documents: {
+    mainFolder: process.env.MAIN_FOLDER_PATH,
+    extraDisk: process.env.EXTRA_DISK_PATH,
+  },
+
   // Slack integration.
   slack: {
     clientId: process.env.SLACK_CLIENT_ID,

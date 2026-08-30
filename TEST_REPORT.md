@@ -1,6 +1,6 @@
 # Test and manual-verification report
 
-Branch `rewrite/v2` · 30 Aug 2026 · 635 tests, 55 suites, all passing
+Branch `rewrite/v2` · 30 Aug 2026 · 677 tests, 57 suites, all passing
 
 This is the list to work through by hand before deploying. Section 1 explains the
 intermittent test failures and what turned out to be causing them. **Section 3
@@ -120,8 +120,8 @@ command, which then runs as the API process user.
 
 | File | Line | Value from the request | Reachable by |
 |---|---|---|---|
-| `routes/application/family.js` | 1756 | `link` query parameter | **anyone — the route has no authentication** |
-| `routes/application/family.js` | 441 | `asset` | any signed-in user |
+| `routes/application/family.js` | 1756 | `link` query parameter | **anyone — the route has no authentication** — *fixed in v2: route dropped* |
+| `routes/application/family.js` | 441 | `asset` | any signed-in user — *fixed in v2: execFile* |
 | `routes/business/admin_customers.js` | 666 | `type`, `suggestions`, `fixed_identicals` | admins |
 | `routes/business/admin_customers.js` | 778 | `representativeID` and the same three | admins |
 | `routes/business/admin_company_search.js` | 4322 | `assignee_id` | admins |
@@ -141,9 +141,15 @@ degrades an image preview rather than breaking a workflow.
 
 In the rewrite these become `execFile` with an argument array, which passes the
 arguments to the process directly and never involves a shell — the pattern
-already used in `src/utils/php-jobs.js`. That is being applied as each of these
-files is ported; `family.js`, `admin_customers.js` and `admin_company_search.js`
-are next.
+already used in `src/utils/php-jobs.js`.
+
+**`family.js` is done:** its background job now goes through `runPhpScript`, and
+`GET /family/single/file/` is not ported at all. It was a thumbnail helper, so
+nothing depends on it; if it is wanted back it needs to be an `execFile` call
+behind a token with the URL checked against the EPO host.
+
+`admin_customers.js` and `admin_company_search.js` still carry the other three
+and are next.
 
 ---
 

@@ -22,6 +22,7 @@ const portfolio = require('./paths/portfolio');
 const external = require('./paths/external');
 const assets = require('./paths/assets');
 const integrations = require('./paths/integrations');
+const family = require('./paths/family');
 
 const errorSchema = {
   type: 'object',
@@ -183,6 +184,7 @@ const tags = [
   { name: 'Tree', description: 'The portfolio tree.' },
   { name: 'Customers', description: 'The portfolio explorer.' },
   { name: 'Assets', description: 'Portfolio assets and their CPC classification breakdown.' },
+  { name: 'Family', description: 'Worldwide patent families and document content.' },
   { name: 'Assets (pending)', description: 'Declared but answering 501 until the Slack and spreadsheet tiers are ported.' },
   { name: 'Dashboards', description: 'Portfolio metrics and their share links.' },
   { name: 'Documents', description: 'Google Drive integration and the tenant document store.' },
@@ -256,6 +258,7 @@ const openapi = {
     ...external,
     ...assets,
     ...integrations,
+    ...family,
   },
 };
 

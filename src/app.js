@@ -52,6 +52,7 @@ const externalRoutes = require('./modules/external/external.routes');
 const assetRoutes = require('./modules/assets/assets.routes');
 const microsoftRoutes = require('./modules/microsoft/microsoft.routes');
 const slackRoutes = require('./modules/slack/slack.routes');
+const familyRoutes = require('./modules/family/family.routes');
 
 const createApp = () => {
   const app = express();
@@ -116,6 +117,7 @@ const createApp = () => {
   app.use('/', assetRoutes);
   app.use('/microsoft', microsoftRoutes);
   app.use('/slacks', slackRoutes);
+  app.use('/', familyRoutes);
   app.use('/admin', adminAuthRoutes);
   app.use('/admin', userRoutes);
   app.use('/admin', keywordRoutes);
