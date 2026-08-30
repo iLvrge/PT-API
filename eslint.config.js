@@ -20,6 +20,7 @@ const globals = {
   clearInterval: 'readonly',
   setImmediate: 'readonly',
   fetch: 'readonly',
+  AbortController: 'readonly',
   URL: 'readonly',
   URLSearchParams: 'readonly',
 };

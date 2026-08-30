@@ -99,6 +99,18 @@ const env = {
   },
 
   jsonBodyLimit: process.env.JSON_BODY_LIMIT || '1mb',
+
+  // Public share links. The legacy code hardcoded patentrack.com in each route.
+  share: {
+    domain: process.env.SHARE_DOMAIN || 'patentrack.com',
+    codeLength: toInt(process.env.SHARE_CODE_LENGTH, 6),
+  },
+
+  // Outbound third-party APIs.
+  external: {
+    ptabUrl: process.env.PTAB_API_URL || 'https://developer.uspto.gov/ptab-api/proceedings',
+    timeoutMs: toInt(process.env.EXTERNAL_TIMEOUT_MS, 15000),
+  },
 };
 
 module.exports = { env, validate, REQUIRED };
