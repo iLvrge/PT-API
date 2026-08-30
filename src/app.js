@@ -47,6 +47,7 @@ const adminTreeRoutes = require('./modules/admin-tree/admin-tree.routes');
 const illustrationRoutes = require('./modules/illustration/illustration.routes');
 const shareRoutes = require('./modules/share/share.routes');
 const timelineRoutes = require('./modules/timelines/timelines.routes');
+const eventIconRoutes = require('./modules/event-icons/event-icons.routes');
 
 const createApp = () => {
   const app = express();
@@ -105,6 +106,7 @@ const createApp = () => {
   app.use('/', illustrationRoutes);
   app.use('/', shareRoutes);
   app.use('/timeline', timelineRoutes);
+  app.use('/events_icons', eventIconRoutes);
   app.use('/admin', adminAuthRoutes);
   app.use('/admin', userRoutes);
   app.use('/admin', keywordRoutes);
