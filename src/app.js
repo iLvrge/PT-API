@@ -32,6 +32,7 @@ const selectionRoutes = require('./modules/selections/selections.routes');
 const chartRoutes = require('./modules/charts/charts.routes');
 const clientUserRoutes = require('./modules/client-users/client-users.routes');
 const customerRoutes = require('./modules/customers/customers.routes');
+const tabRoutes = require('./modules/tabs/tabs.routes');
 
 const createApp = () => {
   const app = express();
@@ -66,6 +67,7 @@ const createApp = () => {
   app.use('/charts', chartRoutes);
   app.use('/users', clientUserRoutes);
   app.use('/customers', customerRoutes);
+  app.use('/tabs', tabRoutes);
   app.use('/admin', adminAuthRoutes);
   app.use('/admin', userRoutes);
   app.use('/admin', keywordRoutes);
