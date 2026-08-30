@@ -137,6 +137,8 @@ const env = {
     // The PHP illustration pipeline, still owned by the legacy stack.
     backgroundJobUrl: process.env.BACKGROUND_JOB_URL,
     jsonGenerateScript: process.env.JSON_GENERATE,
+    patentsViewApiKey: process.env.PATENTS_VIEW_API_KEYS,
+    staticFilesUrl: (process.env.STATIC_FILES_URL || '').replace(/\/$/, ''),
   },
 };
 

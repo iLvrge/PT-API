@@ -19,6 +19,7 @@ const customers = require('./paths/customers');
 const dashboards = require('./paths/dashboards');
 const documents = require('./paths/documents');
 const portfolio = require('./paths/portfolio');
+const external = require('./paths/external');
 
 const errorSchema = {
   type: 'object',
@@ -186,6 +187,7 @@ const tags = [
   { name: 'Illustrations', description: 'Assignment diagrams.' },
   { name: 'Share', description: 'Public share links. Reachable with only a code.' },
   { name: 'Search', description: 'Entity and transaction search.' },
+  { name: 'External APIs', description: 'USPTO PTAB proceedings and PatentsView citations.' },
   { name: 'Counters', description: 'Validity, transaction and update counters.' },
   { name: 'Addresses', description: 'Company addresses.' },
   { name: 'Telephone', description: 'Company telephone numbers.' },
@@ -245,6 +247,7 @@ const openapi = {
     ...dashboards,
     ...documents,
     ...portfolio,
+    ...external,
   },
 };
 
