@@ -84,6 +84,39 @@ const DEFINITIONS = {
     },
   },
 
+  collection: {
+    attributes: {
+      collection_id: { type: DataTypes.INTEGER, primaryKey: true, autoIncrement: true },
+      user_id: { type: DataTypes.INTEGER, allowNull: true },
+      name: { type: DataTypes.STRING, allowNull: false },
+    },
+    options: {
+      tableName: 'collection',
+      freezeTableName: true,
+      underscored: true,
+      timestamps: true,
+      createdAt: 'created_at',
+      updatedAt: 'updated_at',
+    },
+  },
+
+  collection_company: {
+    attributes: {
+      collection_company_id: { type: DataTypes.INTEGER, primaryKey: true, autoIncrement: true },
+      collection_id: { type: DataTypes.INTEGER, allowNull: false },
+      name: { type: DataTypes.STRING, allowNull: true },
+      instances: { type: DataTypes.INTEGER, allowNull: true },
+    },
+    options: {
+      tableName: 'collection_company',
+      freezeTableName: true,
+      underscored: true,
+      timestamps: true,
+      createdAt: 'created_at',
+      updatedAt: 'updated_at',
+    },
+  },
+
   lawfirm: {
     attributes: {
       lawfirm_id: { type: DataTypes.INTEGER, primaryKey: true, autoIncrement: true },
