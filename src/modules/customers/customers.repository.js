@@ -179,6 +179,128 @@ const assetTypeAssets = (filters, replacements, limit, offset) => {
   return q.selectAll(connections.application, sql, { ...replacements, limit, offset });
 };
 
+// ---- lawfirm / lenders (db_new_application dashboard_items + db_uspto) ----
+
+// Law firms grouped from dashboard_items (type 40). bankMode adds the mode filter.
+const lawfirmGroups = ({ companies, organisationId, bankMode }) => {
+  let sql = `SELECT rf_id AS id, lawfirm, COUNT(rf_id) AS distance, GROUP_CONCAT(rf_id) AS grp
+    FROM db_new_application.dashboard_items
+    WHERE organisation_id = :organisationId AND type = 40 ${bankMode ? 'AND mode IN (:mode)' : ''}`;
+  if (companies.length) sql += ` AND representative_id IN (:companies)`;
+  sql += ` GROUP BY lawfirm`;
+  const repl = { organisationId };
+  if (bankMode) repl.mode = 1;
+  if (companies.length) repl.companies = companies;
+  return q.selectAll(connections.applicationNew, sql, repl);
+};
+
+// The law firm recorded on one rf_id (correspondent -> law_firm -> representative_law_firm).
+const lawfirmForRfId = (rfId) =>
+  q.selectOne(
+    connections.applicationNew,
+    `SELECT c.cname, lf.name, rlf.representative_id, rlf.representative_name
+       FROM db_uspto.correspondent AS c
+       LEFT JOIN db_uspto.law_firm AS lf ON c.cname = lf.name
+       LEFT JOIN db_uspto.representative_law_firm AS rlf ON rlf.representative_id = lf.representative_id
+      WHERE c.rf_id = :rfId LIMIT 1`,
+    { rfId }
+  );
+
+// Correspondents on the companies' transactions matching a firm (by rep id or name).
+const lawfirmCorrespondents = ({ companies, organisationId, representativeId, cname }) => {
+  let sql = `SELECT c.rf_id AS id, c.cname AS lawfirm, GROUP_CONCAT(rf_id) AS grp
+    FROM db_uspto.correspondent AS c
+    LEFT JOIN db_uspto.law_firm AS lf ON c.cname = lf.name
+    LEFT JOIN db_uspto.representative_law_firm AS rlf ON rlf.representative_id = lf.representative_id
+    WHERE c.rf_id IN (
+      SELECT rf_id FROM db_new_application.activity_parties_transactions
+       WHERE (organisation_id = :organisationId OR organisation_id IS NULL)
+         AND company_id IN (:companies))`;
+  const repl = { companies, organisationId };
+  if (representativeId) {
+    sql += ` AND rlf.representative_id = :representativeId`;
+    repl.representativeId = representativeId;
+  } else {
+    sql += ` AND c.cname = :cname`;
+    repl.cname = cname;
+  }
+  sql += ` GROUP BY c.cname`;
+  return q.selectAll(connections.applicationNew, sql, repl);
+};
+
+// Lenders: dashboard_items (type 41) joined to assignor/representative names.
+const lenders = ({ companies, organisationId, bankMode }) => {
+  let sql = `SELECT IF(r.representative_name <> '', r.representative_name, aaa.name) AS name,
+                    assignor_id AS id, COUNT(rf_id) AS counter
+    FROM db_new_application.dashboard_items AS di
+    INNER JOIN db_uspto.assignor_and_assignee AS aaa ON aaa.assignor_and_assignee_id = di.assignor_id
+    LEFT JOIN db_uspto.representative AS r ON r.representative_id = aaa.representative_id
+    WHERE organisation_id = :organisationId AND type = 41 ${bankMode ? 'AND mode IN (:mode)' : ''}`;
+  if (companies.length) sql += ` AND di.representative_id IN (:companies)`;
+  sql += ` GROUP BY name`;
+  const repl = { organisationId };
+  if (bankMode) repl.mode = 1;
+  if (companies.length) repl.companies = companies;
+  return q.selectAll(connections.applicationNew, sql, repl);
+};
+
+// ---- portfolios (db_application tree_parties family, all latin1-local) ----
+
+const portfolioParties = ({ representativeIds, organisationId, tabId, limit, offset }) =>
+  q.selectAll(
+    connections.application,
+    `SELECT assignor_and_assignee_id AS id, name
+       FROM tree_parties
+      WHERE representative_id IN (:representativeIds) AND organisation_id = :organisationId AND tab_id = :tabId
+      ORDER BY name ASC LIMIT :limit OFFSET :offset`,
+    { representativeIds, organisationId, tabId, limit, offset }
+  );
+
+const portfolioCollections = ({ partyIds, representativeIds, organisationId, tabId }) => {
+  if (!partyIds.length) return Promise.resolve([]);
+  return q.selectAll(
+    connections.application,
+    `SELECT assignor_and_assignee_id, rf_id, exec_dt
+       FROM tree_parties_collection
+      WHERE assignor_and_assignee_id IN (:partyIds)
+        AND tab_id = :tabId AND representative_id IN (:representativeIds) AND organisation_id = :organisationId
+      GROUP BY assignor_and_assignee_id, rf_id`,
+    { partyIds, representativeIds, organisationId, tabId }
+  );
+};
+
+const assetsForRfIds = (rfIds) => {
+  if (!rfIds.length) return Promise.resolve([]);
+  return q.selectAll(
+    connections.application,
+    `SELECT rf_id, appno_doc_num AS application, grant_doc_num AS patent
+       FROM documentid WHERE rf_id IN (:rfIds)`,
+    { rfIds }
+  );
+};
+
+const portfolioRepresentativeTabs = (representativeIds, organisationId) =>
+  q.selectAll(
+    connections.application,
+    `SELECT representative_id, representative_name, tab_id
+       FROM tree_parties
+      WHERE representative_id IN (:representativeIds) AND organisation_id = :organisationId
+      GROUP BY organisation_id, representative_id, tab_id
+      ORDER BY tab_id ASC, representative_name ASC`,
+    { representativeIds, organisationId }
+  );
+
+// Per-tab customer counts restricted to a tab set (portfolios variant).
+const tabCustomerCounts = (representativeIds, organisationId, tabs) =>
+  q.selectAll(
+    connections.application,
+    `SELECT tab_id, COUNT(DISTINCT name) AS customer_count
+       FROM tree_parties
+      WHERE representative_id IN (:representativeIds) AND organisation_id = :organisationId AND tab_id IN (:tabs)
+      GROUP BY tab_id`,
+    { representativeIds, organisationId, tabs }
+  );
+
 module.exports = {
   companyRepresentativeIds,
   assetTypeTabs,
@@ -189,4 +311,13 @@ module.exports = {
   assignmentAssets,
   assetTypeAssetsCount,
   assetTypeAssets,
+  lawfirmGroups,
+  lawfirmForRfId,
+  lawfirmCorrespondents,
+  lenders,
+  portfolioParties,
+  portfolioCollections,
+  assetsForRfIds,
+  portfolioRepresentativeTabs,
+  tabCustomerCounts,
 };

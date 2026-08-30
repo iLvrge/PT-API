@@ -18,4 +18,8 @@ router.get('/asset_types/assignments/:rfID', guard, validate(schema.rfIdSchema),
 router.get('/asset_types/assets', guard, validate(schema.assetsSchema), controller.assetTypeAssets);
 router.get('/asset_types/:tab_id/companies', guard, validate(schema.tabCompaniesSchema), controller.assetTypeTabCompanies);
 
+router.get('/lawfirm', guard, validate(schema.lawfirmSchema), controller.lawfirms);
+router.get('/lenders', guard, validate(schema.lendersSchema), controller.lenders);
+router.get('/portfolios', guard, validate(schema.portfoliosSchema), controller.portfolios);
+
 module.exports = router;

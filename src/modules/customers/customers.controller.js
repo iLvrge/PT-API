@@ -58,6 +58,36 @@ const assetTypeAssets = asyncHandler(async (req, res) => {
   );
 });
 
+const lawfirms = asyncHandler(async (req, res) => {
+  res.status(200).json(
+    await service.lawfirms({
+      companies: parseArray(req.query.companies, 'companies'),
+      rfId: Number(req.query.rfID) || 0,
+      orgType: req.auth.orgType,
+    })
+  );
+});
+
+const lenders = asyncHandler(async (req, res) => {
+  res.status(200).json(
+    await service.lenders({
+      companies: parseArray(req.query.companies, 'companies'),
+      orgType: req.auth.orgType,
+    })
+  );
+});
+
+const portfolios = asyncHandler(async (req, res) => {
+  res.status(200).json(
+    await service.portfolios(req.tenant, {
+      tabId: req.query.tab_id !== undefined ? Number(req.query.tab_id) : undefined,
+      portfolio: parseArray(req.query.portfolio, 'portfolio'),
+      limit: req.query.limit,
+      offset: req.query.offset,
+    })
+  );
+});
+
 module.exports = {
   assetTypeTabs,
   assetTypeTabCompanies,
@@ -65,4 +95,7 @@ module.exports = {
   assetTypeAssignments,
   assignmentAssets,
   assetTypeAssets,
+  lawfirms,
+  lenders,
+  portfolios,
 };

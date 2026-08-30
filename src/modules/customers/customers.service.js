@@ -1,6 +1,7 @@
 'use strict';
 
 const repository = require('./customers.repository');
+const { distance } = require('fastest-levenshtein');
 const ApiError = require('../../utils/api-error');
 const { findLayout, checkTabs, TABS, ASSIGNMENT_TABS, RECORD_LIMIT, OFFSET } = require('./customers.constants');
 
@@ -82,6 +83,105 @@ const assetTypeAssets = async (tenant, { companies, tabs, customers, assignments
   return { list, total_records: total };
 };
 
+/**
+ * GET /customers/lawfirm — law firms grouped from dashboard_items; with rfID,
+ * correspondents matching that reel/frame's firm, ranked by Levenshtein
+ * distance to the firm's representative name (legacy behaviour). Fixes the
+ * legacy bug where multiple companies were bound as one comma-joined string.
+ */
+const lawfirms = async ({ companies, rfId, orgType }) => {
+  const bankMode = orgType === 2;
+
+  if (rfId > 0) {
+    const firm = await repository.lawfirmForRfId(rfId);
+    if (firm) {
+      const list = await repository.lawfirmCorrespondents({
+        companies,
+        organisationId: 0,
+        representativeId: firm.representative_id > 0 ? firm.representative_id : undefined,
+        cname: firm.cname,
+      });
+      if (firm.representative_id > 0 && firm.representative_name) {
+        const seen = new Set();
+        for (const item of list) {
+          const name = String(item.lawfirm || '').replace(/,/g, ' ').replace(/\./g, ' ');
+          const key = name.replace(/\s/g, '').trim();
+          if (!seen.has(key)) {
+            seen.add(key);
+            item.distance = distance(firm.representative_name, name.trim());
+          }
+        }
+      }
+      return list;
+    }
+  }
+
+  return repository.lawfirmGroups({ companies, organisationId: 0, bankMode });
+};
+
+const lenders = ({ companies, orgType }) =>
+  repository.lenders({ companies, organisationId: 0, bankMode: orgType === 2 });
+
+/**
+ * GET /customers/portfolios — two modes, matching legacy:
+ *  - with portfolio + tab_id: parties for that tab with nested collections
+ *    (distinct rf_id + exec_dt) each carrying its documentid assets
+ *  - otherwise: representative/tab grouping for the tenant's portfolios
+ * Both return per-tab customer counts alongside.
+ */
+const portfolios = async (tenant, { tabId, portfolio, limit, offset }) => {
+  const hasTabMode = portfolio.length > 0 && Number.isInteger(tabId) && tabId >= 0;
+
+  if (hasTabMode) {
+    const lim = limit > 0 ? parseInt(limit, 10) : 1000;
+    const off = offset > 0 ? parseInt(offset, 10) : 0;
+
+    const parties = await repository.portfolioParties({
+      representativeIds: portfolio,
+      organisationId: 0,
+      tabId,
+      limit: lim,
+      offset: off,
+    });
+
+    const collections = await repository.portfolioCollections({
+      partyIds: parties.map((p) => p.id),
+      representativeIds: portfolio,
+      organisationId: 0,
+      tabId,
+    });
+
+    const assets = await repository.assetsForRfIds([...new Set(collections.map((c) => c.rf_id))]);
+    const assetsByRf = new Map();
+    for (const a of assets) {
+      if (!assetsByRf.has(a.rf_id)) assetsByRf.set(a.rf_id, []);
+      assetsByRf.get(a.rf_id).push({ application: a.application, patent: a.patent });
+    }
+    const collByParty = new Map();
+    for (const c of collections) {
+      if (!collByParty.has(c.assignor_and_assignee_id)) collByParty.set(c.assignor_and_assignee_id, []);
+      collByParty.get(c.assignor_and_assignee_id).push({
+        rf_id: c.rf_id,
+        exec_dt: c.exec_dt,
+        assets: assetsByRf.get(c.rf_id) || [],
+      });
+    }
+
+    const result = parties.map((p) => ({ ...p, collections: collByParty.get(p.id) || [] }));
+    const tabs = await repository.tabCustomerCounts(portfolio, 0, TABS);
+    return { portfolios: result, tabs };
+  }
+
+  const ids = portfolio.length ? portfolio : await repository.companyRepresentativeIds(tenant);
+  if (!ids.length) return { portfolios: [], tabs: [] };
+
+  const [result, tabs] = await Promise.all([
+    repository.portfolioRepresentativeTabs(ids, 0),
+    repository.tabCustomerCounts(ids, 0, TABS),
+  ]);
+  return { portfolios: result, tabs };
+};
+
 module.exports = {
   assetTypeTabs,
   assetTypeCompanies,
@@ -89,4 +189,7 @@ module.exports = {
   assetTypeAssignments,
   assignmentAssets,
   assetTypeAssets,
+  lawfirms,
+  lenders,
+  portfolios,
 };

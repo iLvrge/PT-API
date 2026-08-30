@@ -118,3 +118,54 @@ describe('customers.service.assetTypeAssets', () => {
     expect(lim).toBe(10);
   });
 });
+
+describe('customers.service.lawfirms', () => {
+  it('falls back to dashboard groups without rfID, honoring bank mode', async () => {
+    repo.lawfirmGroups.mockResolvedValue([{ id: 1, lawfirm: 'F' }]);
+    await service.lawfirms({ companies: [9, 10], rfId: 0, orgType: 2 });
+    const args = repo.lawfirmGroups.mock.calls[0][0];
+    expect(args.companies).toEqual([9, 10]); // real array, not '9,10'
+    expect(args.bankMode).toBe(true);
+  });
+
+  it('with rfID ranks correspondents by distance to the representative name', async () => {
+    repo.lawfirmForRfId.mockResolvedValue({ representative_id: 4, representative_name: 'Smith LLP', cname: 'X' });
+    repo.lawfirmCorrespondents.mockResolvedValue([{ id: 1, lawfirm: 'Smith, LLP.' }, { id: 2, lawfirm: 'Jones LLC' }]);
+    const list = await service.lawfirms({ companies: [9], rfId: 77, orgType: 1 });
+    expect(list[0].distance).toBeDefined();
+    expect(list[0].distance).toBeLessThan(list[1].distance);
+  });
+
+  it('matches by cname when the firm has no representative', async () => {
+    repo.lawfirmForRfId.mockResolvedValue({ representative_id: 0, cname: 'ACME LAW' });
+    repo.lawfirmCorrespondents.mockResolvedValue([]);
+    await service.lawfirms({ companies: [9], rfId: 5, orgType: 1 });
+    const args = repo.lawfirmCorrespondents.mock.calls[0][0];
+    expect(args.representativeId).toBeUndefined();
+    expect(args.cname).toBe('ACME LAW');
+  });
+});
+
+describe('customers.service.portfolios', () => {
+  it('tab mode nests collections and their assets under each party', async () => {
+    repo.portfolioParties.mockResolvedValue([{ id: 1, name: 'A' }]);
+    repo.portfolioCollections.mockResolvedValue([
+      { assignor_and_assignee_id: 1, rf_id: 100, exec_dt: '2020-01-01' },
+    ]);
+    repo.assetsForRfIds.mockResolvedValue([{ rf_id: 100, application: '123', patent: '456' }]);
+    repo.tabCustomerCounts.mockResolvedValue([{ tab_id: 3, customer_count: 2 }]);
+
+    const res = await service.portfolios({ id: 't' }, { tabId: 3, portfolio: [9], limit: 0, offset: 0 });
+    expect(res.portfolios[0].collections[0].assets[0].patent).toBe('456');
+    expect(res.tabs[0].tab_id).toBe(3);
+  });
+
+  it('grouping mode resolves tenant companies when no portfolio given', async () => {
+    repo.companyRepresentativeIds.mockResolvedValue([9]);
+    repo.portfolioRepresentativeTabs.mockResolvedValue([{ representative_id: 9, tab_id: 1 }]);
+    repo.tabCustomerCounts.mockResolvedValue([]);
+    const res = await service.portfolios({ id: 't' }, { tabId: undefined, portfolio: [], limit: 0, offset: 0 });
+    expect(repo.portfolioRepresentativeTabs).toHaveBeenCalledWith([9], 0);
+    expect(res.portfolios).toHaveLength(1);
+  });
+});

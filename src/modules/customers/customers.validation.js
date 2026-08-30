@@ -45,6 +45,21 @@ const assetsSchema = z.object({
   }),
 });
 
+const lawfirmSchema = z.object({
+  query: z.object({ companies: jsonArray, rfID: z.coerce.number().int().optional() }),
+});
+
+const lendersSchema = z.object({ query: z.object({ companies: jsonArray }) });
+
+const portfoliosSchema = z.object({
+  query: z.object({
+    tab_id: z.coerce.number().int().optional(),
+    portfolio: jsonArray,
+    limit: z.coerce.number().int().optional(),
+    offset: z.coerce.number().int().optional(),
+  }),
+});
+
 module.exports = {
   assetTypesSchema,
   tabCompaniesSchema,
@@ -52,4 +67,7 @@ module.exports = {
   assignmentsSchema,
   rfIdSchema,
   assetsSchema,
+  lawfirmSchema,
+  lendersSchema,
+  portfoliosSchema,
 };
