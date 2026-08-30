@@ -3,9 +3,9 @@
 jest.mock('../../src/modules/users/users.repository');
 
 const request = require('supertest');
-const createApp = require('../../src/app');
+const { startTestServer } = require('../helpers/server');
 
-const app = createApp();
+const app = startTestServer();
 
 describe('docs and request logging', () => {
   it('serves the raw OpenAPI spec at /docs.json', async () => {

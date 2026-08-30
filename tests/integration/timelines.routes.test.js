@@ -11,10 +11,10 @@ const usersRepo = require('../../src/modules/users/users.repository');
 const tenantConns = require('../../src/db/tenant-connections');
 const repo = require('../../src/modules/timelines/timelines.repository');
 const assignmentData = require('../../src/shared/assignment-data');
-const createApp = require('../../src/app');
+const { startTestServer } = require('../helpers/server');
 const { env } = require('../../src/config/env');
 
-const app = createApp();
+const app = startTestServer();
 const token = jwt.sign({ id: 5, orgId: 118 }, env.auth.secret);
 const auth = (req) => req.set('Authorization', `Bearer ${token}`);
 

@@ -53,7 +53,8 @@ const externalRoutes = require('./modules/external/external.routes');
 const createApp = () => {
   const app = express();
 
-  app.set('trust proxy', true);
+  // A hop count, not `true` — see env.security.trustProxyHops.
+  app.set('trust proxy', env.security.trustProxyHops);
   app.disable('x-powered-by');
 
   app.use(security.helmet);

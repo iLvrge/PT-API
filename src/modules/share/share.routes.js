@@ -2,21 +2,12 @@
 
 const express = require('express');
 const { z } = require('zod');
-const rateLimit = require('express-rate-limit');
 const { verifyToken } = require('../../middleware/auth');
+const { publicLimiter } = require('../../middleware/security');
 const validate = require('../../middleware/validate');
 const controller = require('./share.controller');
 
 const router = express.Router();
-
-// Public share endpoints are reachable without a token, so they get their own,
-// tighter limiter — a share code is short and would otherwise be brute-forceable.
-const publicLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000,
-  max: 60,
-  standardHeaders: true,
-  legacyHeaders: false,
-});
 
 const code = z.string().min(1).max(64);
 const asset = z.string().min(1).max(50);

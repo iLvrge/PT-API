@@ -7,10 +7,10 @@ const request = require('supertest');
 const jwt = require('jsonwebtoken');
 const usersRepo = require('../../src/modules/users/users.repository');
 const service = require('../../src/modules/event-icons/event-icons.service');
-const createApp = require('../../src/app');
+const { startTestServer } = require('../helpers/server');
 const { env } = require('../../src/config/env');
 
-const app = createApp();
+const app = startTestServer();
 const token = jwt.sign({ id: 5, orgId: 118 }, env.auth.secret);
 const auth = (req) => req.set('Authorization', `Bearer ${token}`);
 

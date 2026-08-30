@@ -7,10 +7,10 @@ const request = require('supertest');
 const jwt = require('jsonwebtoken');
 const bcrypt = require('bcrypt');
 const usersRepository = require('../../src/modules/users/users.repository');
-const createApp = require('../../src/app');
+const { startTestServer } = require('../helpers/server');
 const { env } = require('../../src/config/env');
 
-const app = createApp();
+const app = startTestServer();
 
 // A valid admin token: verifyToken -> findActiveById, requireAdmin -> isAdmin.
 const adminToken = jwt.sign({ id: 9, orgId: 118 }, env.auth.secret);

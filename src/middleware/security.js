@@ -43,9 +43,26 @@ const authLimiter = rateLimit({
   message: { error: { message: 'Too many attempts, please try again later.' } },
 });
 
+/**
+ * Limiter for the endpoints reachable without a token — the share views, where
+ * a six-character code is the only credential and would otherwise be
+ * brute-forceable. Lives here rather than in the share module so every limiter
+ * shares one policy, including the test skip: without it, the share suite's
+ * own requests counted towards the limit and later tests saw 429s depending on
+ * how many requests ran before them.
+ */
+const publicLimiter = rateLimit({
+  windowMs: env.security.rateLimit.windowMs,
+  max: env.security.rateLimit.publicMax,
+  standardHeaders: true,
+  legacyHeaders: false,
+  skip: () => env.isTest,
+});
+
 module.exports = {
   helmet: helmet(),
   cors: corsMiddleware,
   globalLimiter,
   authLimiter,
+  publicLimiter,
 };

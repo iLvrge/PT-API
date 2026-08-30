@@ -10,10 +10,10 @@ const jwt = require('jsonwebtoken');
 const usersRepo = require('../../src/modules/users/users.repository');
 const repo = require('../../src/modules/external/external.repository');
 const clients = require('../../src/modules/external/external.clients');
-const createApp = require('../../src/app');
+const { startTestServer } = require('../helpers/server');
 const { env } = require('../../src/config/env');
 
-const app = createApp();
+const app = startTestServer();
 const token = jwt.sign({ id: 5, orgId: 118 }, env.auth.secret);
 const auth = (req) => req.set('Authorization', `Bearer ${token}`);
 

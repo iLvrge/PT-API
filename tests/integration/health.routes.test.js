@@ -18,9 +18,9 @@ jest.mock('../../src/db', () => {
 
 const request = require('supertest');
 const { ping } = require('../../src/db');
-const createApp = require('../../src/app');
+const { startTestServer } = require('../helpers/server');
 
-const app = createApp();
+const app = startTestServer();
 
 describe('health routes', () => {
   beforeEach(() => jest.clearAllMocks());

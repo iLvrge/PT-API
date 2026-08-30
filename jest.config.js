@@ -15,6 +15,10 @@ module.exports = {
   coverageThreshold: {
     global: { branches: 65, functions: 65, lines: 80, statements: 80 },
   },
+  // The default 5s is tight when the suite shares a busy machine with an IDE
+  // and a dev server: a mocked request that normally answers in 1ms can miss
+  // it under CPU contention, which showed up as random single-test failures.
+  testTimeout: 20000,
   clearMocks: true,
   verbose: false,
 };

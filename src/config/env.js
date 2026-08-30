@@ -114,7 +114,18 @@ const env = {
       windowMs: toInt(process.env.RATE_LIMIT_WINDOW_MS, 15 * 60 * 1000),
       max: toInt(process.env.RATE_LIMIT_MAX, 300),
       authMax: toInt(process.env.RATE_LIMIT_AUTH_MAX, 10),
+      publicMax: toInt(process.env.RATE_LIMIT_PUBLIC_MAX, 60),
     },
+    /**
+     * How many reverse proxies sit in front of this app.
+     *
+     * `trust proxy: true` trusts the whole X-Forwarded-For chain, which lets a
+     * caller prepend any address and defeat IP-based rate limiting entirely
+     * (express-rate-limit raises ERR_ERL_PERMISSIVE_TRUST_PROXY for exactly
+     * this). A hop count trusts only the addresses the proxies actually
+     * appended. Set 0 when the app is exposed directly.
+     */
+    trustProxyHops: toInt(process.env.TRUST_PROXY_HOPS, 1),
   },
 
   jsonBodyLimit: process.env.JSON_BODY_LIMIT || '1mb',

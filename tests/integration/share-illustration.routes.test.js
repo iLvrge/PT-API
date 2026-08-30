@@ -17,10 +17,10 @@ const illustrationRepo = require('../../src/modules/illustration/illustration.re
 const assignmentData = require('../../src/shared/assignment-data');
 const shareCodes = require('../../src/shared/share-codes');
 const backgroundJob = require('../../src/utils/background-job');
-const createApp = require('../../src/app');
+const { startTestServer } = require('../helpers/server');
 const { env } = require('../../src/config/env');
 
-const app = createApp();
+const app = startTestServer();
 const token = jwt.sign({ id: 5, orgId: 118 }, env.auth.secret);
 const auth = (req) => req.set('Authorization', `Bearer ${token}`);
 

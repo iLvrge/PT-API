@@ -6,9 +6,9 @@ jest.mock('../../src/modules/users/users.repository');
 const request = require('supertest');
 const bcrypt = require('bcrypt');
 const authRepository = require('../../src/modules/auth/auth.repository');
-const createApp = require('../../src/app');
+const { startTestServer } = require('../helpers/server');
 
-const app = createApp();
+const app = startTestServer();
 
 describe('auth routes (full HTTP stack, DB mocked)', () => {
   beforeEach(() => jest.clearAllMocks());

@@ -7,10 +7,10 @@ const request = require('supertest');
 const jwt = require('jsonwebtoken');
 const keywordsRepo = require('../../src/modules/keywords/keywords.repository');
 const usersRepo = require('../../src/modules/users/users.repository');
-const createApp = require('../../src/app');
+const { startTestServer } = require('../helpers/server');
 const { env } = require('../../src/config/env');
 
-const app = createApp();
+const app = startTestServer();
 const token = jwt.sign({ id: 9, orgId: 118 }, env.auth.secret);
 
 beforeEach(() => {
