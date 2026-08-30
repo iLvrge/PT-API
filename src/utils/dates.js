@@ -22,4 +22,25 @@ const minusDays = (value, days) => {
   return date;
 };
 
-module.exports = { ymd, minusDays };
+/** A new Date `days` later. */
+const plusDays = (value, days) => minusDays(value, -days);
+
+/**
+ * Shift by whole months. Mirrors moment().add/subtract(n, 'months'), including
+ * its clamping: 31 Jan minus one month is 28/29 Feb, not 3 March.
+ */
+const shiftMonths = (value, months) => {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return date;
+  const day = date.getDate();
+  date.setDate(1);
+  date.setMonth(date.getMonth() + months);
+  const lastDay = new Date(date.getFullYear(), date.getMonth() + 1, 0).getDate();
+  date.setDate(Math.min(day, lastDay));
+  return date;
+};
+
+const plusMonths = (value, months) => shiftMonths(value, months);
+const minusMonths = (value, months) => shiftMonths(value, -months);
+
+module.exports = { ymd, minusDays, plusDays, shiftMonths, plusMonths, minusMonths };
