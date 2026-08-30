@@ -42,6 +42,20 @@ const signin = async ({ username, password }) => {
   return { auth: true, accessToken: sign(user), message: 'Login successful' };
 };
 
+const adminSignin = async ({ username, password }) => {
+  const user = await authRepository.findAdminByUsername(username);
+  const invalid = ApiError.unauthorized('Invalid Username and/or Password!');
+
+  if (!user) {
+    await bcrypt.compare(password, '$2b$12$invalidinvalidinvalidinvalidinvalidinvalidinva');
+    throw invalid;
+  }
+  const ok = await bcrypt.compare(password, user.password);
+  if (!ok) throw invalid;
+
+  return { auth: true, accessToken: sign(user), message: 'Login successful' };
+};
+
 const refresh = async (token) => {
   if (!token) throw ApiError.unauthorized('Missing token');
 
@@ -68,4 +82,4 @@ const refresh = async (token) => {
   };
 };
 
-module.exports = { signin, refresh, sign };
+module.exports = { signin, adminSignin, refresh, sign };

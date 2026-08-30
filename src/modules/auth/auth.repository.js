@@ -16,4 +16,15 @@ const findByUsername = (username) =>
     { username }
   );
 
-module.exports = { findByUsername };
+/** Look up an active ADMIN user (type 9) by username. Raw read. */
+const findAdminByUsername = (username) =>
+  q.selectOne(
+    connections.business,
+    `SELECT user_id, organisation_id, password, type, status
+       FROM user
+      WHERE username = :username AND type = 9 AND status = 0
+      LIMIT 1`,
+    { username }
+  );
+
+module.exports = { findByUsername, findAdminByUsername };

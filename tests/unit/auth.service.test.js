@@ -76,3 +76,17 @@ describe('auth.service', () => {
     });
   });
 });
+
+describe('auth.service.adminSignin', () => {
+  const bcryptLib = require('bcrypt');
+  it('issues a token for a valid admin', async () => {
+    const hash = await bcryptLib.hash('pw', 4);
+    authRepository.findAdminByUsername.mockResolvedValue({ user_id: 9, organisation_id: 1, password: hash, type: 9 });
+    const res = await service.adminSignin({ username: 'admin', password: 'pw' });
+    expect(res.auth).toBe(true);
+  });
+  it('rejects a non-admin/unknown user with 401', async () => {
+    authRepository.findAdminByUsername.mockResolvedValue(null);
+    await expect(service.adminSignin({ username: 'x', password: 'y' })).rejects.toMatchObject({ statusCode: 401 });
+  });
+});

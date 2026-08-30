@@ -15,9 +15,11 @@ const openapi = require('./docs/openapi');
 
 const healthRoutes = require('./modules/health/health.routes');
 const authRoutes = require('./modules/auth/auth.routes');
+const adminAuthRoutes = require('./modules/auth/auth.admin.routes');
 const userRoutes = require('./modules/users/users.routes');
 const keywordRoutes = require('./modules/keywords/keywords.routes');
 const listModules = require('./modules/lists');
+const profileRoutes = require('./modules/profile/profile.routes');
 
 const createApp = () => {
   const app = express();
@@ -39,6 +41,8 @@ const createApp = () => {
   // Routes
   app.use('/', healthRoutes);
   app.use('/', authRoutes);
+  app.use('/', profileRoutes);
+  app.use('/admin', adminAuthRoutes);
   app.use('/admin', userRoutes);
   app.use('/admin', keywordRoutes);
   listModules.routers.forEach((r) => app.use('/admin', r));
