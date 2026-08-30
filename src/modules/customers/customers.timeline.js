@@ -163,6 +163,102 @@ const wrapWithLogos = (sql) => `
 
 const run = ({ sql, repl }) => q.selectAll(connections.applicationNew, sql, repl);
 
+// ---- /timeline/filling_assets chain ----
+
+const tenantRepresentativeNames = async (tenant, companyIds) => {
+  const rows = await q.selectAll(
+    tenant,
+    `SELECT representative_name FROM representative WHERE company_id IN (:companyIds)`,
+    { companyIds }
+  );
+  return rows.map((r) => r.representative_name).filter(Boolean);
+};
+
+const representativeIdsByNames = async (names) => {
+  if (!names.length) return [];
+  const rows = await q.selectAll(
+    connections.applicationNew,
+    `SELECT representative_id FROM db_uspto.representative
+      WHERE representative_name IN (:names) GROUP BY representative_id`,
+    { names }
+  );
+  return rows.map((r) => r.representative_id);
+};
+
+// Filed applications for the companies (biblio assignee join), newest first.
+const fillingAssets = async ({ companyNames, representativeIds, start, end }) => {
+  let inner = `SELECT a.appno_doc_num, ap.appno_date
+    FROM db_patent_application_bibliographic.assignee AS a
+    INNER JOIN db_patent_application_bibliographic.assignor_and_assignee AS aaa
+            ON aaa.assignor_and_assignee_id = a.assignor_and_assignee_id
+    INNER JOIN db_patent_grant_bibliographic.application_publication AS ap
+            ON ap.appno_doc_num = a.appno_doc_num
+    WHERE (aaa.name IN (:companyNames)`;
+  if (representativeIds.length) inner += ` OR aaa.representative_id IN (:representativeIds)`;
+  inner += `)`;
+
+  let sql = `SELECT * FROM (${inner}) AS tempTable`;
+  const repl = { companyNames, representativeIds };
+  if (start && end) {
+    sql += ` WHERE appno_date BETWEEN :start AND :end`;
+    Object.assign(repl, { start, end });
+  }
+  sql += ` GROUP BY appno_doc_num`;
+  if (start && end) sql += ` ORDER BY appno_date DESC`;
+  sql += ` LIMIT 500`;
+
+  const rows = await q.selectAll(connections.applicationNew, sql, repl);
+  return rows.map((r) => `${r.appno_doc_num}`);
+};
+
+// Law-firm names on the dashboard (type 40) for the companies.
+const lawfirmNames = async ({ companies, assignments, bankMode, organisationId }) => {
+  let sql = `SELECT lawfirm FROM dashboard_items
+    WHERE organisation_id = :organisationId AND representative_id IN (:companies) AND type = :type
+    ${bankMode ? 'AND mode IN (:mode)' : ''}`;
+  const repl = { organisationId, companies, type: 40 };
+  if (bankMode) repl.mode = 1;
+  if (assignments.length) {
+    sql += ` AND rf_id IN (:assignments)`;
+    repl.assignments = assignments;
+  }
+  sql += ` GROUP BY lawfirm`;
+  const rows = await q.selectAll(connections.applicationNew, sql, repl);
+  return rows.map((r) => `${r.lawfirm}`);
+};
+
+// Filing timeline rows for those firms over the filed applications.
+const fillingLawfirmTimeline = ({ applications, lawfirmName, start, end }) => {
+  let sql = `SELECT temp.*, IF(exec_dt IS NULL, another_exec_dt, exec_dt) AS exec_dt FROM (
+    SELECT l.id, l.id AS name_id, l.id AS law_firm_id, l.name AS lawfirm, 0 AS repID, l.appno_doc_num,
+      (SELECT appno_date FROM db_patent_grant_bibliographic.application_publication AS ap
+        WHERE ap.appno_doc_num = l.appno_doc_num LIMIT 1) AS exec_dt,
+      (SELECT appno_date FROM db_patent_application_bibliographic.application_grant AS ap
+        WHERE ap.appno_doc_num = l.appno_doc_num LIMIT 1) AS another_exec_dt,
+      '' AS release_rf_id, '' AS release_exec_dt, '' AS partial_transaction, '' AS all_release_ids,
+      0 AS releaseAssets, '' AS customerName, 0 AS tab_id, '' AS 'group', '' AS company,
+      0 AS asset, 1 AS type, '' AS patent, '' AS title
+    FROM db_patent_application_bibliographic.lawfirm AS l
+    WHERE l.appno_doc_num IN (:applications)
+      AND (TRIM(BOTH '.' FROM l.name) IN (:lawfirmName) OR l.name IN (:lawfirmName))
+    GROUP BY l.appno_doc_num) AS temp`;
+  const repl = { applications, lawfirmName };
+  if (start && end) {
+    sql += ` WHERE exec_dt BETWEEN :start AND :end`;
+    Object.assign(repl, { start, end });
+  }
+  sql += ` ORDER BY exec_dt DESC LIMIT 0, 500`;
+  return q.selectAll(connections.applicationNew, sql, repl);
+};
+
+const titlesForApplications = (applications) =>
+  q.selectAll(
+    connections.applicationNew,
+    `SELECT MAX(appno_doc_num) AS application, MAX(grant_doc_num) AS patent, title
+       FROM db_uspto.documentid WHERE appno_doc_num IN (:applications) GROUP BY appno_doc_num`,
+    { applications }
+  );
+
 module.exports = {
   collateralizedAssets,
   lawfirmFilterFor,
@@ -175,4 +271,10 @@ module.exports = {
   LOGO_LAYOUTS,
   wrapWithLogos,
   run,
+  tenantRepresentativeNames,
+  representativeIdsByNames,
+  fillingAssets,
+  lawfirmNames,
+  fillingLawfirmTimeline,
+  titlesForApplications,
 };

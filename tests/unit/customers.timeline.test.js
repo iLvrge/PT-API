@@ -84,3 +84,50 @@ describe('customers.service.timeline branch selection', () => {
     expect(res.groups).toEqual([]);
   });
 });
+
+describe('timelineFillingAssets chain', () => {
+  beforeEach(() => {
+    timelineQ.tenantRepresentativeNames = jest.fn();
+    timelineQ.representativeIdsByNames = jest.fn();
+    timelineQ.fillingAssets = jest.fn();
+    timelineQ.lawfirmNames = jest.fn();
+    timelineQ.fillingLawfirmTimeline = jest.fn();
+    timelineQ.titlesForApplications = jest.fn();
+  });
+
+  it('short-circuits at each empty stage', async () => {
+    await expect(service.timelineFillingAssets({ id: 't' }, { companies: [], rfIds: [], orgType: 1 })).resolves.toEqual([]);
+
+    timelineQ.tenantRepresentativeNames.mockResolvedValue([]);
+    await expect(service.timelineFillingAssets({ id: 't' }, { companies: [9], rfIds: [], orgType: 1 })).resolves.toEqual([]);
+
+    timelineQ.tenantRepresentativeNames.mockResolvedValue(['Acme']);
+    timelineQ.representativeIdsByNames.mockResolvedValue([4]);
+    timelineQ.fillingAssets.mockResolvedValue([]);
+    await expect(service.timelineFillingAssets({ id: 't' }, { companies: [9], rfIds: [], orgType: 1 })).resolves.toEqual([]);
+    expect(timelineQ.lawfirmNames).not.toHaveBeenCalled();
+  });
+
+  it('merges titles onto matching filing rows', async () => {
+    timelineQ.tenantRepresentativeNames.mockResolvedValue(['Acme']);
+    timelineQ.representativeIdsByNames.mockResolvedValue([4]);
+    timelineQ.fillingAssets.mockResolvedValue(['12345678']);
+    timelineQ.lawfirmNames.mockResolvedValue(['Smith LLP']);
+    timelineQ.fillingLawfirmTimeline.mockResolvedValue([
+      { appno_doc_num: '12345678', title: '', patent: '' },
+      { appno_doc_num: '99999999', title: '', patent: '' },
+    ]);
+    timelineQ.titlesForApplications.mockResolvedValue([
+      { application: '12345678', patent: '7654321', title: 'Widget' },
+    ]);
+
+    const list = await service.timelineFillingAssets({ id: 't' }, { companies: [9], rfIds: [], orgType: 1 });
+    expect(list[0].title).toBe('Widget');
+    expect(list[0].patent).toBe('7654321');
+    expect(list[1].title).toBe('');
+  });
+
+  it('security endpoint is the faithful empty stub', async () => {
+    await expect(service.timelineSecurity()).resolves.toEqual({ list: [], groups: [] });
+  });
+});

@@ -192,7 +192,25 @@ const timeline = asyncHandler(async (req, res) => {
   );
 });
 
+const timelineFillingAssets = asyncHandler(async (req, res) => {
+  res.status(200).json(
+    await service.timelineFillingAssets(req.tenant, {
+      companies: parseArray(req.query.companies, 'companies'),
+      rfIds: parseArray(req.query.rf_ids, 'rf_ids'),
+      start: req.query.start,
+      end: req.query.end,
+      orgType: req.auth.orgType,
+    })
+  );
+});
+
+const timelineSecurity = asyncHandler(async (req, res) => {
+  res.status(200).json(await service.timelineSecurity());
+});
+
 module.exports = {
+  timelineFillingAssets,
+  timelineSecurity,
   timeline,
   events,
   layoutParties,

@@ -415,7 +415,52 @@ const timeline = async ({ layout, companies, tabs, customers, rfIds, exclude, st
   return { list, groups: [] };
 };
 
+/**
+ * GET /customers/timeline/filling_assets — filing timeline for the companies'
+ * law firms: tenant names -> uspto representative ids -> filed applications
+ * (biblio) -> dashboard law-firm names -> filing rows, then titles merged in.
+ * A missing rf_ids no longer crashes (legacy threw on undefined.length).
+ */
+const timelineFillingAssets = async (tenant, { companies, rfIds, start, end, orgType }) => {
+  if (!companies.length) return [];
+  const bankMode = orgType === 2;
+
+  const names = await timelineQ.tenantRepresentativeNames(tenant, companies);
+  if (!names.length) return [];
+  const representativeIds = await timelineQ.representativeIdsByNames(names);
+
+  const applications = await timelineQ.fillingAssets({ companyNames: names, representativeIds, start, end });
+  if (!applications.length) return [];
+
+  const lawfirmName = await timelineQ.lawfirmNames({
+    companies,
+    assignments: rfIds,
+    bankMode,
+    organisationId: 0,
+  });
+
+  const list = await timelineQ.fillingLawfirmTimeline({ applications, lawfirmName, start, end });
+  if (!list.length) return list;
+
+  const titles = await timelineQ.titlesForApplications(applications);
+  const byApp = new Map(titles.map((t) => [t.application, t]));
+  for (const item of list) {
+    const t = byApp.get(item.appno_doc_num);
+    if (t) {
+      item.title = t.title;
+      item.patent = t.patent;
+    }
+  }
+  return list;
+};
+
+// GET /customers/timeline/security — the legacy handler built its query but
+// commented out both executions, so it always returned empty. Kept faithful.
+const timelineSecurity = async () => ({ list: [], groups: [] });
+
 module.exports = {
+  timelineFillingAssets,
+  timelineSecurity,
   timeline,
   buildLifeSpan,
   events,
