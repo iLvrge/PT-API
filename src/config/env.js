@@ -130,6 +130,14 @@ const env = {
 
   jsonBodyLimit: process.env.JSON_BODY_LIMIT || '1mb',
 
+  // Where recorded assignment PDFs are served from.
+  assets: {
+    cdnUrl: process.env.ASSIGNMENT_CDN_URL
+      || 'https://s3-us-west-1.amazonaws.com/static.patentrack.com/assignments/var/www/html/beta/resources/shared/data/',
+    usptoAssignmentsUrl: process.env.USPTO_ASSIGNMENTS_URL
+      || 'https://legacy-assignments.uspto.gov/assignments/',
+  },
+
   uploads: {
     maxBytes: toInt(process.env.FILE_UPLOAD_MAX_MB, 20) * 1024 * 1024,
     tempDir: process.env.FILE_UPLOAD_TMP_DIR || '/tmp',
@@ -149,6 +157,7 @@ const env = {
     backgroundJobUrl: process.env.BACKGROUND_JOB_URL,
     jsonGenerateScript: process.env.JSON_GENERATE,
     patentsViewApiKey: process.env.PATENTS_VIEW_API_KEYS,
+    assignmentCenterUrl: process.env.ASSIGNMENT_CENTER_SEARCH_URL,
     staticFilesUrl: (process.env.STATIC_FILES_URL || '').replace(/\/$/, ''),
   },
 };

@@ -14,3 +14,8 @@ process.env.DATABASE_APPLICATION = 'db_application';
 process.env.DATABASE_APPLICATION_NEW = 'db_new_application';
 process.env.DATABASE_BUSINESS = 'db_business';
 process.env.DATABASE_RAW = 'db_uspto';
+
+// Outbound integration URLs the routes build links from.
+process.env.ASSIGNMENT_CENTER_SEARCH_URL =
+  process.env.ASSIGNMENT_CENTER_SEARCH_URL || 'https://assignment-center.example/';
+process.env.STATIC_FILES_URL = process.env.STATIC_FILES_URL || 'https://static.example';

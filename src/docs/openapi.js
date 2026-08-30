@@ -20,6 +20,7 @@ const dashboards = require('./paths/dashboards');
 const documents = require('./paths/documents');
 const portfolio = require('./paths/portfolio');
 const external = require('./paths/external');
+const assets = require('./paths/assets');
 
 const errorSchema = {
   type: 'object',
@@ -180,6 +181,8 @@ const tags = [
   { name: 'Tabs', description: 'Activity tabs: companies, counterparties, transactions, assets.' },
   { name: 'Tree', description: 'The portfolio tree.' },
   { name: 'Customers', description: 'The portfolio explorer.' },
+  { name: 'Assets', description: 'Portfolio assets and their CPC classification breakdown.' },
+  { name: 'Assets (pending)', description: 'Declared but answering 501 until the Slack and spreadsheet tiers are ported.' },
   { name: 'Dashboards', description: 'Portfolio metrics and their share links.' },
   { name: 'Documents', description: 'Google Drive integration and the tenant document store.' },
   { name: 'Documents (pending)', description: 'Declared but answering 501 until the reporting tier is ported.' },
@@ -248,6 +251,7 @@ const openapi = {
     ...documents,
     ...portfolio,
     ...external,
+    ...assets,
   },
 };
 

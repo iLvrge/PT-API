@@ -136,6 +136,8 @@ Sign off on each, or tell me to revert it.
 |---|---|---|
 | `GET /connection/:reelFrame` now needs a token | its `verifyToken` was commented out | breaks any anonymous illustration view |
 | `GET /ptab/document/:identifier` now needs a token | the API was an open proxy to the USPTO document store | breaks anonymous document links |
+| `GET /assets/:patentNumber/:type/outsource` now needs a token | its middleware array was left empty, so it had no authentication at all | breaks any anonymous Assignment Center link |
+| `GET /assets/download/:itemID` returns the PDF location | the legacy route downloaded the PDF onto the API server and split it with a shell command | client must follow the link itself |
 | `/timeline/standalone/*` now needs a token, scoped to the caller | ran under a middleware that did no authentication and hardcoded organisation 11, so anyone could read that org's timeline | breaks a public embed, if one exists |
 | `GET /dashboards` requires a company | unfiltered it aggregates ~8M rows and never returns | a client calling it with `[]` now gets 400 instead of hanging |
 | Share codes come from `crypto.randomBytes` | the old generator seeded cuid2 with `Math.random`, making a neighbour's link guessable | none; existing links keep working |
@@ -146,6 +148,11 @@ Sign off on each, or tell me to revert it.
 - `GET /dashboards/check` — fired a request for three hardcoded patent numbers and never sent a response, leaking a socket per call.
 - `GET /generate_thumbnail` — ignored its own `file` parameter, read a hardcoded PDF from a developer's laptop, wrote a JPEG into the working directory.
 - `GET /search/:search_string/:type` — ran three expensive queries and then returned an empty list unconditionally.
+
+### Endpoints deliberately not ported (assets)
+
+- `POST /assets/search` — duplicates `GET /search`, which already covers company, counterparty, transaction and asset search.
+- The second `POST /assets/assets_for_sale` declaration — the legacy file registers that path twice; the second handler is unreachable.
 
 ### Endpoints answering 501
 
