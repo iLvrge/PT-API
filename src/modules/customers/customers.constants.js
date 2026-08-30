@@ -36,4 +36,19 @@ const TABS = [0, 1, 2, 3, 4, 11, 5, 6, 7, 8, 9, 10];
 const RECORD_LIMIT = 1000;
 const OFFSET = 0;
 
-module.exports = { LAYOUTS, findLayout, TABS, RECORD_LIMIT, OFFSET };
+// Expand shorthand tab ids into their member tabs (ported from helpers.checkTabs).
+// 81 -> lending cluster (5,11,12,13,16); 17 -> acquisitions cluster (1,6).
+const checkTabs = (tabs) => {
+  const out = [...tabs];
+  const lending = [5, 11, 12, 13, 16];
+  if (out.includes(81) && !lending.some((t) => out.includes(t))) {
+    out.push(...lending);
+  } else if (out.includes(17)) {
+    out.push(1, 6);
+  }
+  return out;
+};
+
+const ASSIGNMENT_TABS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16];
+
+module.exports = { LAYOUTS, findLayout, checkTabs, TABS, ASSIGNMENT_TABS, RECORD_LIMIT, OFFSET };

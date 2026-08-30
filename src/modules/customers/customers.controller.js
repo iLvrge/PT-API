@@ -30,4 +30,39 @@ const assetTypeCompanies = asyncHandler(async (req, res) => {
   res.status(200).json(await service.assetTypeCompanies(req.tenant, companies, tabs, req.query.limit, req.query.offset));
 });
 
-module.exports = { assetTypeTabs, assetTypeTabCompanies, assetTypeCompanies };
+const assetTypeAssignments = asyncHandler(async (req, res) => {
+  res.status(200).json(
+    await service.assetTypeAssignments({
+      companies: parseArray(req.query.companies, 'companies'),
+      tabs: parseArray(req.query.tabs, 'tabs'),
+      customers: parseArray(req.query.customers, 'customers'),
+      layout: req.query.layout,
+    })
+  );
+});
+
+const assignmentAssets = asyncHandler(async (req, res) => {
+  res.status(200).json(await service.assignmentAssets(req.params.rfID, req.query.layout));
+});
+
+const assetTypeAssets = asyncHandler(async (req, res) => {
+  res.status(200).json(
+    await service.assetTypeAssets(req.tenant, {
+      companies: parseArray(req.query.companies, 'companies'),
+      tabs: parseArray(req.query.tabs, 'tabs'),
+      customers: parseArray(req.query.customers, 'customers'),
+      assignments: parseArray(req.query.assignments, 'assignments'),
+      limit: req.query.limit,
+      offset: req.query.offset,
+    })
+  );
+});
+
+module.exports = {
+  assetTypeTabs,
+  assetTypeTabCompanies,
+  assetTypeCompanies,
+  assetTypeAssignments,
+  assignmentAssets,
+  assetTypeAssets,
+};

@@ -13,6 +13,9 @@ const guard = [verifyToken, attachTenant];
 // Mounted at /customers. More specific paths before parameterised ones.
 router.get('/asset_types', guard, validate(schema.assetTypesSchema), controller.assetTypeTabs);
 router.get('/asset_types/companies', guard, validate(schema.companiesSchema), controller.assetTypeCompanies);
+router.get('/asset_types/assignments', guard, validate(schema.assignmentsSchema), controller.assetTypeAssignments);
+router.get('/asset_types/assignments/:rfID', guard, validate(schema.rfIdSchema), controller.assignmentAssets);
+router.get('/asset_types/assets', guard, validate(schema.assetsSchema), controller.assetTypeAssets);
 router.get('/asset_types/:tab_id/companies', guard, validate(schema.tabCompaniesSchema), controller.assetTypeTabCompanies);
 
 module.exports = router;

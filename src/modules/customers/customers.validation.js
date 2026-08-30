@@ -20,4 +20,36 @@ const companiesSchema = z.object({
   }),
 });
 
-module.exports = { assetTypesSchema, tabCompaniesSchema, companiesSchema };
+const assignmentsSchema = z.object({
+  query: z.object({
+    companies: jsonArray,
+    tabs: jsonArray,
+    customers: jsonArray,
+    layout: z.string().optional(),
+  }),
+});
+
+const rfIdSchema = z.object({
+  params: z.object({ rfID: z.coerce.number().int().positive() }),
+  query: z.object({ layout: z.string().optional() }),
+});
+
+const assetsSchema = z.object({
+  query: z.object({
+    companies: jsonArray,
+    tabs: jsonArray,
+    customers: jsonArray,
+    assignments: jsonArray,
+    limit: z.coerce.number().int().optional(),
+    offset: z.coerce.number().int().optional(),
+  }),
+});
+
+module.exports = {
+  assetTypesSchema,
+  tabCompaniesSchema,
+  companiesSchema,
+  assignmentsSchema,
+  rfIdSchema,
+  assetsSchema,
+};
