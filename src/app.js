@@ -27,6 +27,7 @@ const categoryProductRoutes = require('./modules/category-products/category-prod
 const collectionRoutes = require('./modules/collections/collections.routes');
 const professionalRoutes = require('./modules/professionals/professionals.routes');
 const commentRoutes = require('./modules/comments/comments.routes');
+const activityRoutes = require('./modules/activities/activities.routes');
 
 const createApp = () => {
   const app = express();
@@ -56,6 +57,7 @@ const createApp = () => {
   app.use('/', collectionRoutes);
   app.use('/professionals', professionalRoutes);
   app.use('/', commentRoutes);
+  app.use('/', activityRoutes);
   app.use('/admin', adminAuthRoutes);
   app.use('/admin', userRoutes);
   app.use('/admin', keywordRoutes);
