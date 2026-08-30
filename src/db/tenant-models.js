@@ -53,6 +53,37 @@ const DEFINITIONS = {
     },
   },
 
+  categories: {
+    attributes: {
+      category_id: { type: DataTypes.INTEGER, primaryKey: true, autoIncrement: true },
+      name: { type: DataTypes.STRING, allowNull: false },
+    },
+    options: {
+      tableName: 'categories',
+      freezeTableName: true,
+      underscored: true,
+      timestamps: true,
+      createdAt: 'created_at',
+      updatedAt: 'updated_at',
+    },
+  },
+
+  products: {
+    attributes: {
+      product_id: { type: DataTypes.INTEGER, primaryKey: true, autoIncrement: true },
+      category_id: { type: DataTypes.INTEGER, allowNull: false },
+      name: { type: DataTypes.STRING, allowNull: false },
+    },
+    options: {
+      tableName: 'products',
+      freezeTableName: true,
+      underscored: true,
+      timestamps: true,
+      createdAt: 'created_at',
+      updatedAt: 'updated_at',
+    },
+  },
+
   lawfirm: {
     attributes: {
       lawfirm_id: { type: DataTypes.INTEGER, primaryKey: true, autoIncrement: true },
