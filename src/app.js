@@ -17,6 +17,7 @@ const healthRoutes = require('./modules/health/health.routes');
 const authRoutes = require('./modules/auth/auth.routes');
 const userRoutes = require('./modules/users/users.routes');
 const keywordRoutes = require('./modules/keywords/keywords.routes');
+const listModules = require('./modules/lists');
 
 const createApp = () => {
   const app = express();
@@ -40,6 +41,7 @@ const createApp = () => {
   app.use('/', authRoutes);
   app.use('/admin', userRoutes);
   app.use('/admin', keywordRoutes);
+  listModules.routers.forEach((r) => app.use('/admin', r));
 
   // 404 then centralised error handling — always last.
   app.use(notFound);
