@@ -5,6 +5,7 @@ const timelineQ = require('./customers.timeline');
 const filters = require('./customers.filters');
 const analytics = require('./customers.analytics');
 const assetsQ = require('./customers.assets');
+const tailQ = require('./customers.tail');
 const { distance } = require('fastest-levenshtein');
 const ApiError = require('../../utils/api-error');
 const { findLayout, checkTabs, TABS, ASSIGNMENT_TABS, RECORD_LIMIT, OFFSET } = require('./customers.constants');
@@ -624,7 +625,57 @@ const layoutAssets = async (tenant, params, { orgId, orgType }) => {
   return assetsQ.countAndList(built.template, built.repl, { column, direction, limit, offset });
 };
 
+// GET /customers/:layout/transactions — window query for the listed layouts,
+// stored procedure for the rest (routine_transactions_full; the legacy
+// selector's stale-variable bug made routine_transactions unreachable).
+const layoutTransactions = async ({ layout, companies, tabs, customers, lawfirm, orgType }) => {
+  const layoutId = findLayout(layout);
+  const bankMode = orgType === 2;
+
+  let list;
+  if (tailQ.WINDOW_LAYOUTS.has(layoutId)) {
+    list = await tailQ.windowTransactions({ layoutId, companies, customers, lawfirm, bankMode });
+  } else {
+    const tabSet = tabs.length ? checkTabs(tabs) : [];
+    list = await tailQ.procTransactions({ layoutName: layout, layoutId, companies, tabs: tabSet, customers });
+  }
+  return { list, total_records: list.length };
+};
+
+// GET /customers/:type — companies that have activity on the named tab. The
+// legacy per-company count loop is one grouped query here; same counters.
+const customerType = async (tenant, type) => {
+  const tabId = tailQ.TYPE_TABS[type];
+  if (tabId === undefined) return [];
+  const companies = await tailQ.tenantCompanies(tenant);
+  if (!companies.length) return [];
+  const counters = await tailQ.typeCounters(tabId, companies.map((c) => c.representative_id));
+  const withActivity = new Set(counters.filter((c) => c.counter > 0).map((c) => c.representative_id));
+  return companies
+    .filter((c) => withActivity.has(c.representative_id))
+    .map((c) => ({ id: c.representative_id, name: c.original_name, children: [], level: 0 }));
+};
+
+// GET /customers/:parentCompany/parties/:tabId
+const parentParties = async (tenant, parentCompany, tabId) => {
+  const company = await tailQ.tenantCompanyByName(tenant, parentCompany);
+  if (!company) return [];
+  return tailQ.treeParties(company.representative_id, tabId);
+};
+
+// GET /customers/:parentCompany/:name/collections/:tabId — reel/frames per
+// tab config. Gated on organisation 0 existing, as legacy was.
+const parentCollections = async (parentCompany, customerName, tabId) => {
+  if (!customerName) return [];
+  if (!(await repository.organisationExists(0))) return [];
+  return tailQ.collectionFrames(Number(tabId), parentCompany, customerName);
+};
+
 module.exports = {
+  layoutTransactions,
+  customerType,
+  parentParties,
+  parentCollections,
   layoutAssets,
   assetAgents,
   assetFamily,

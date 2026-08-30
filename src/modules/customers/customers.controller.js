@@ -259,7 +259,38 @@ const layoutAssets = asyncHandler(async (req, res) => {
   );
 });
 
+const layoutTransactions = asyncHandler(async (req, res) => {
+  res.status(200).json(
+    await service.layoutTransactions({
+      layout: req.params.layout,
+      companies: parseArray(req.query.companies, 'companies'),
+      tabs: parseArray(req.query.tabs, 'tabs'),
+      customers: parseArray(req.query.customers, 'customers'),
+      lawfirm: Number(req.query.lawfirm) || 0,
+      orgType: req.auth.orgType,
+    })
+  );
+});
+
+const customerType = asyncHandler(async (req, res) => {
+  res.status(200).json(await service.customerType(req.tenant, req.params.type));
+});
+
+const parentParties = asyncHandler(async (req, res) => {
+  res.status(200).json(await service.parentParties(req.tenant, req.params.parentCompany, req.params.tabId));
+});
+
+const parentCollections = asyncHandler(async (req, res) => {
+  res.status(200).json(
+    await service.parentCollections(req.params.parentCompany, req.params.name, req.params.tabId)
+  );
+});
+
 module.exports = {
+  layoutTransactions,
+  customerType,
+  parentParties,
+  parentCollections,
   layoutAssets,
   assetAgents,
   assetFamily,

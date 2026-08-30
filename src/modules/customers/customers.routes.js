@@ -41,6 +41,10 @@ router.get('/portfolios', guard, validate(schema.portfoliosSchema), controller.p
 router.get('/:layout/assets', guard, controller.layoutAssets);
 router.get('/:layout/parties', guard, validate(schema.layoutPartiesSchema), controller.layoutParties);
 router.get('/:layout/activites', guard, validate(schema.layoutActivitiesSchema), controller.layoutActivities);
+router.get('/:layout/transactions', guard, controller.layoutTransactions);
+router.get('/:parentCompany/parties/:tabId', guard, controller.parentParties);
+router.get('/:parentCompany/:name/collections/:tabId', verifyToken, controller.parentCollections);
 router.get('/:rf_id/assets', verifyToken, validate(schema.rfIdAssetsSchema), controller.rfIdAssets);
+router.get('/:type', guard, controller.customerType);
 
 module.exports = router;
