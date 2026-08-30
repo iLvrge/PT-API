@@ -102,7 +102,21 @@ const eventsSchema = z.object({
   query: z.object({ tab_id: z.coerce.number().int().optional(), portfolio: jsonArray }),
 });
 
+const timelineSchema = z.object({
+  query: z.object({
+    layout: z.string().optional(),
+    companies: jsonArray,
+    tabs: jsonArray,
+    customers: jsonArray,
+    rf_ids: jsonArray,
+    exclude: z.string().optional(),
+    start: z.string().optional(),
+    end: z.string().optional(),
+  }),
+});
+
 module.exports = {
+  timelineSchema,
   eventsSchema,
   layoutPartiesSchema,
   layoutActivitiesSchema,

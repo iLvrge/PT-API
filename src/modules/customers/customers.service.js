@@ -1,6 +1,7 @@
 'use strict';
 
 const repository = require('./customers.repository');
+const timelineQ = require('./customers.timeline');
 const { distance } = require('fastest-levenshtein');
 const ApiError = require('../../utils/api-error');
 const { findLayout, checkTabs, TABS, ASSIGNMENT_TABS, RECORD_LIMIT, OFFSET } = require('./customers.constants');
@@ -374,7 +375,48 @@ const events = async (tenant, orgId, { tabId, portfolio }) => {
   return buildLifeSpan(rows);
 };
 
+/**
+ * GET /customers/timeline — the six-branch transaction timeline, selected by
+ * layout. Branch behaviour transcribed from legacy (with its ANDdd-typo and
+ * duplicate-condition bugs fixed); the logo join wraps the branch result for
+ * the layout names legacy singled out. groups is always [] (legacy commented
+ * its group query out but kept the response shape).
+ */
+const timeline = async ({ layout, companies, tabs, customers, rfIds, exclude, start, end, orgType }) => {
+  const layoutId = findLayout(layout);
+  const bankMode = orgType === 2;
+  const tabSet = tabs.length ? checkTabs(tabs) : [];
+  const base = { organisationId: 0, bankMode, start, end };
+
+  let built = null;
+  if (layoutId !== 15) {
+    if (layoutId === 34) {
+      const assets = await timelineQ.collateralizedAssets({ companies, organisationId: 0, layoutId, bankMode });
+      if (assets.length) built = timelineQ.branchCollateralized({ ...base, companies, assets });
+    } else if (layoutId === 40) {
+      const firm = rfIds.length ? await timelineQ.lawfirmFilterFor(rfIds[0]) : null;
+      built = timelineQ.branchLawfirm({ ...base, companies, layoutId, firm });
+    } else if (layoutId === 39) {
+      built = timelineQ.branchInventors({ ...base, companies, customers, layoutId });
+    } else if (layoutId === 41) {
+      built = timelineQ.branchLenders({ ...base, companies, layoutId });
+    } else {
+      built = timelineQ.branchGenericLayout({ ...base, companies, layoutId });
+    }
+  } else {
+    built = timelineQ.branchDefault({ ...base, companies, tabs: tabSet, customers, rfIds, exclude });
+  }
+
+  if (!built) return { list: [], groups: [] };
+  if (timelineQ.LOGO_LAYOUTS.has(layout)) {
+    built = { sql: timelineQ.wrapWithLogos(built.sql), repl: built.repl };
+  }
+  const list = await timelineQ.run(built);
+  return { list, groups: [] };
+};
+
 module.exports = {
+  timeline,
   buildLifeSpan,
   events,
   layoutParties,

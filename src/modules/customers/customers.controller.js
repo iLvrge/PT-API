@@ -176,7 +176,24 @@ const events = asyncHandler(async (req, res) => {
   );
 });
 
+const timeline = asyncHandler(async (req, res) => {
+  res.status(200).json(
+    await service.timeline({
+      layout: req.query.layout,
+      companies: parseArray(req.query.companies, 'companies'),
+      tabs: parseArray(req.query.tabs, 'tabs'),
+      customers: parseArray(req.query.customers, 'customers'),
+      rfIds: parseArray(req.query.rf_ids, 'rf_ids'),
+      exclude: req.query.exclude,
+      start: req.query.start,
+      end: req.query.end,
+      orgType: req.auth.orgType,
+    })
+  );
+});
+
 module.exports = {
+  timeline,
   events,
   layoutParties,
   layoutActivities,
