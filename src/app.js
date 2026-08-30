@@ -25,6 +25,7 @@ const lawfirmAddressRoutes = require('./modules/lawfirm-address/lawfirm-address.
 const addressRoutes = require('./modules/address/address.routes');
 const categoryProductRoutes = require('./modules/category-products/category-products.routes');
 const collectionRoutes = require('./modules/collections/collections.routes');
+const professionalRoutes = require('./modules/professionals/professionals.routes');
 
 const createApp = () => {
   const app = express();
@@ -52,6 +53,7 @@ const createApp = () => {
   app.use('/', addressRoutes);
   app.use('/category_products', categoryProductRoutes);
   app.use('/', collectionRoutes);
+  app.use('/professionals', professionalRoutes);
   app.use('/admin', adminAuthRoutes);
   app.use('/admin', userRoutes);
   app.use('/admin', keywordRoutes);
