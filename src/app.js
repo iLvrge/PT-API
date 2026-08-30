@@ -21,6 +21,7 @@ const keywordRoutes = require('./modules/keywords/keywords.routes');
 const listModules = require('./modules/lists');
 const profileRoutes = require('./modules/profile/profile.routes');
 const telephoneRoutes = require('./modules/telephone/telephone.routes');
+const lawfirmRoutes = require('./modules/lawfirm/lawfirm.routes');
 
 const createApp = () => {
   const app = express();
@@ -44,6 +45,7 @@ const createApp = () => {
   app.use('/', authRoutes);
   app.use('/', profileRoutes);
   app.use('/', telephoneRoutes);
+  app.use('/', lawfirmRoutes);
   app.use('/admin', adminAuthRoutes);
   app.use('/admin', userRoutes);
   app.use('/admin', keywordRoutes);
