@@ -99,7 +99,7 @@ const eventsForApplication = (applicationNumber) =>
             mc.event_description, mc.template, mc.template_string,
             mc.icon1, mc.icon2, mc.icon3
        FROM db_patent_maintainence_fee.event_maintainence_fees AS emf
-       LEFT JOIN db_patent_maintainence_fee.maintainence_code AS mc ON mc.event_code = emf.event_code
+       LEFT JOIN db_patent_maintainence_fee.event_maintainence_code AS mc ON mc.event_code = emf.event_code
       WHERE emf.appno_doc_num = :applicationNumber
       GROUP BY eventdate, emf.event_code`,
     { applicationNumber }
