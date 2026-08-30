@@ -115,6 +115,9 @@ const env = {
   external: {
     ptabUrl: process.env.PTAB_API_URL || 'https://developer.uspto.gov/ptab-api/proceedings',
     timeoutMs: toInt(process.env.EXTERNAL_TIMEOUT_MS, 15000),
+    // The PHP illustration pipeline, still owned by the legacy stack.
+    backgroundJobUrl: process.env.BACKGROUND_JOB_URL,
+    jsonGenerateScript: process.env.JSON_GENERATE,
   },
 };
 

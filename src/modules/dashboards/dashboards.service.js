@@ -6,11 +6,11 @@
  * is executed by dashboards.repository.js.
  */
 
-const crypto = require('crypto');
 const { env } = require('../../config/env');
 const ApiError = require('../../utils/api-error');
 const logger = require('../../utils/logger');
 const { findLayout, checkTabs } = require('../../shared/layouts');
+const shareCodes = require('../../shared/share-codes');
 const repository = require('./dashboards.repository');
 
 // The legacy connection.DEFAULT_YEAR: assets and transactions older than this
@@ -294,32 +294,12 @@ const temp = async ({ hasList, type, bank, companies, parties: partyIds, tabs, c
 
 /* ------------------------------------------------------------------ share */
 
-/**
- * A short, URL-safe, collision-checked share code. The legacy helper drew from
- * Math.random; this uses crypto and keeps the same 6-character shape.
- */
-const ALPHABET = 'abcdefghijklmnopqrstuvwxyz0123456789';
-const generateCode = () => {
-  const bytes = crypto.randomBytes(env.share.codeLength);
-  let code = '';
-  for (let i = 0; i < env.share.codeLength; i++) code += ALPHABET[bytes[i] % ALPHABET.length];
-  return code;
-};
-
-const allocateCode = async (retries = 50) => {
-  for (let i = 0; i < retries; i++) {
-    const code = generateCode();
-    if (!(await repository.shareCodeExists(code))) return code;
-  }
-  return undefined;
-};
-
 /** POST /share — a public link to this dashboard selection. */
 const share = async ({ tenant, orgId, userId, selectedCompanies, tabs, customers, shareButton }) => {
   if (!selectedCompanies.length) throw ApiError.badRequest('selectedCompanies is required');
 
   const otherCompanies = await repository.countUnselectedCompanies(tenant, selectedCompanies);
-  const code = await allocateCode();
+  const code = await shareCodes.allocate();
   if (!code) throw ApiError.internal('Unable to allocate a share code');
 
   await repository.createShare({

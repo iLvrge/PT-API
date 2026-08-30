@@ -1,13 +1,18 @@
 'use strict';
 
 jest.mock('../../src/modules/dashboards/dashboards.repository');
+jest.mock('../../src/shared/share-codes');
 
 const repo = require('../../src/modules/dashboards/dashboards.repository');
+const shareCodes = require('../../src/shared/share-codes');
 const service = require('../../src/modules/dashboards/dashboards.service');
 
 const tenant = { id: 't' };
 
-beforeEach(() => jest.clearAllMocks());
+beforeEach(() => {
+  jest.clearAllMocks();
+  shareCodes.allocate.mockResolvedValue('abc123');
+});
 
 describe('dashboards.service.parties', () => {
   it('resolves the asset set from the owned-assets metric by default', async () => {
@@ -274,7 +279,6 @@ describe('dashboards.service.temp', () => {
 describe('dashboards.service.share', () => {
   it('creates a share row and returns the kpi link', async () => {
     repo.countUnselectedCompanies.mockResolvedValue(0);
-    repo.shareCodeExists.mockResolvedValue(false);
     repo.createShare.mockResolvedValue({ share_id: 1 });
 
     const url = await service.share({
@@ -290,7 +294,6 @@ describe('dashboards.service.share', () => {
 
   it('uses the dashboard subdomain for share_button 2', async () => {
     repo.countUnselectedCompanies.mockResolvedValue(3);
-    repo.shareCodeExists.mockResolvedValue(false);
     repo.createShare.mockResolvedValue({ share_id: 1 });
 
     const url = await service.share({
@@ -304,18 +307,14 @@ describe('dashboards.service.share', () => {
     );
   });
 
-  it('retries until it finds a free code', async () => {
+  it('fails cleanly when no free code can be allocated', async () => {
     repo.countUnselectedCompanies.mockResolvedValue(0);
-    repo.shareCodeExists
-      .mockResolvedValueOnce(true)
-      .mockResolvedValueOnce(true)
-      .mockResolvedValue(false);
-    repo.createShare.mockResolvedValue({ share_id: 1 });
+    shareCodes.allocate.mockResolvedValue(undefined);
 
-    await service.share({
-      tenant, orgId: 118, userId: 5, selectedCompanies: [9], tabs: [], customers: [],
-    });
-    expect(repo.shareCodeExists).toHaveBeenCalledTimes(3);
+    await expect(
+      service.share({ tenant, orgId: 118, userId: 5, selectedCompanies: [9], tabs: [], customers: [] })
+    ).rejects.toMatchObject({ statusCode: 500 });
+    expect(repo.createShare).not.toHaveBeenCalled();
   });
 
   it('rejects an empty company selection', async () => {

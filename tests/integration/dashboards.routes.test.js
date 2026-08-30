@@ -3,12 +3,14 @@
 jest.mock('../../src/modules/users/users.repository');
 jest.mock('../../src/db/tenant-connections');
 jest.mock('../../src/modules/dashboards/dashboards.repository');
+jest.mock('../../src/shared/share-codes');
 
 const request = require('supertest');
 const jwt = require('jsonwebtoken');
 const usersRepo = require('../../src/modules/users/users.repository');
 const tenantConns = require('../../src/db/tenant-connections');
 const repo = require('../../src/modules/dashboards/dashboards.repository');
+const shareCodes = require('../../src/shared/share-codes');
 const createApp = require('../../src/app');
 const { env } = require('../../src/config/env');
 
@@ -23,6 +25,7 @@ beforeEach(() => {
   jest.clearAllMocks();
   usersRepo.findActiveById.mockResolvedValue({ user_id: 5, organisation_id: 118, type: 0 });
   tenantConns.getConnection.mockResolvedValue(tenant);
+  shareCodes.allocate.mockResolvedValue('abc123');
 });
 
 describe('dashboards auth', () => {
@@ -216,7 +219,6 @@ describe('POST /dashboards/parties', () => {
 describe('POST /dashboards/share', () => {
   it('returns the share link as plain text', async () => {
     repo.countUnselectedCompanies.mockResolvedValue(0);
-    repo.shareCodeExists.mockResolvedValue(false);
     repo.createShare.mockResolvedValue({ share_id: 1 });
 
     const res = await auth(request(app).post('/dashboards/share'))

@@ -325,9 +325,6 @@ const tempAggregate = async (input) => {
 
 /* --------------------------------------------------- POST /share (writes) */
 
-const shareCodeExists = (code) =>
-  q.exists(app(), `SELECT 1 FROM share WHERE code = :code`, { code });
-
 /** Companies the caller can see but did not select — drives show_other_companies. */
 const countUnselectedCompanies = (tenant, selectedCompanies) =>
   q.selectValue(
@@ -362,7 +359,6 @@ module.exports = {
   bankAssets,
   ownedAssetsForTemp,
   tempAggregate,
-  shareCodeExists,
   countUnselectedCompanies,
   createShare,
 };
