@@ -199,7 +199,115 @@ const searchCompanies = (search, t, year) => {
   );
 };
 
+// ---- company creation / deletion support ----
+const ActivityLog = require('../../db/models/activity-log.model');
+const RepresentativeTransactions = require('../../db/models/representative-transactions.model');
+
+const requestsByIds = (companyIds) =>
+  q.selectAll(connections.applicationNew, `SELECT * FROM client_add_company WHERE company_id IN (:companyIds)`, { companyIds });
+
+const assigneeIdsForRepresentatives = (representativeIds) =>
+  q.selectAll(
+    connections.resources,
+    `SELECT assignor_and_assignee_id FROM db_uspto.assignor_and_assignee
+      WHERE name IN (SELECT representative_name FROM db_uspto.representative
+                      WHERE representative_id IN (:representativeIds) GROUP BY representative_name)
+      GROUP BY assignor_and_assignee_id`,
+    { representativeIds }
+  );
+
+const subsidiaryCompanies = (ids) =>
+  q.selectAll(
+    connections.resources,
+    `SELECT aaa.assignor_and_assignee_id, aaa.name, r.representative_name, aaa.instances, r.representative_id,
+            (SELECT sum(a.instances) as counter FROM assignor_and_assignee as a
+              WHERE a.representative_id IN (SELECT representative_id FROM representative
+                                             WHERE representative_name = r.representative_name)
+              GROUP BY a.representative_id) as representative_instances
+       FROM assignor_and_assignee as aaa
+       LEFT JOIN representative as r ON r.representative_id = aaa.representative_id
+      WHERE aaa.assignor_and_assignee_id IN (:ids)`,
+    { ids }
+  );
+
+const findParentCompany = (tenant, representativeId) =>
+  q.selectOne(
+    tenant,
+    `SELECT representative_id, original_name, representative_name, type, status
+       FROM representative WHERE representative_id = :representativeId AND parent_id = 0 LIMIT 1`,
+    { representativeId }
+  );
+
+const representativesByParent = (tenant, parentId) =>
+  q.selectAll(tenant, `SELECT * FROM representative WHERE parent_id = :parentId`, { parentId });
+
+const representativesByNames = (tenant, originalNames, representativeNames) => {
+  if (representativeNames.length) {
+    return q.selectAll(
+      tenant,
+      `SELECT * FROM representative WHERE original_name IN (:originalNames) OR representative_name IN (:representativeNames)`,
+      { originalNames, representativeNames }
+    );
+  }
+  return q.selectAll(tenant, `SELECT * FROM representative WHERE original_name IN (:originalNames)`, { originalNames });
+};
+
+const representativesByIds = (tenant, ids) =>
+  q.selectAll(
+    tenant,
+    `SELECT representative_id, parent_id, original_name, type, company_id, child FROM representative
+      WHERE representative_id IN (:ids) GROUP BY representative_id, parent_id`,
+    { ids }
+  );
+
+const childRepresentativeIds = (tenant, parentIds) =>
+  q.selectAll(tenant, `SELECT representative_id FROM representative WHERE parent_id IN (:parentIds)`, { parentIds });
+
+const subcompaniesByIds = (tenant, ids) =>
+  q.selectAll(
+    tenant,
+    `SELECT representative_id, original_name, parent_id, company_id FROM representative
+      WHERE representative_id IN (:ids) AND parent_id > 0`,
+    { ids }
+  );
+
+const representativesByCompanyIds = (tenant, companyIds) =>
+  q.selectAll(
+    tenant,
+    `SELECT representative_id, original_name, company_id FROM representative
+      WHERE company_id IN (:companyIds) AND type = 0`,
+    { companyIds }
+  );
+
+const bulkCreateRepresentatives = (tenant, rows) =>
+  tenantModel(tenant, 'client_representative').bulkCreate(rows);
+
+const destroyRepresentatives = (tenant, where) =>
+  tenantModel(tenant, 'client_representative').destroy({ where });
+
+const updateRepresentativesWhere = (tenant, data, where) =>
+  tenantModel(tenant, 'client_representative').update(data, { where });
+
+const logActivities = (rows) => ActivityLog.bulkCreate(rows);
+
+const destroyRepresentativeTransactions = (where) => RepresentativeTransactions.destroy({ where });
+
 module.exports = {
+  requestsByIds,
+  assigneeIdsForRepresentatives,
+  subsidiaryCompanies,
+  findParentCompany,
+  representativesByParent,
+  representativesByNames,
+  representativesByIds,
+  childRepresentativeIds,
+  subcompaniesByIds,
+  representativesByCompanyIds,
+  bulkCreateRepresentatives,
+  destroyRepresentatives,
+  updateRepresentativesWhere,
+  logActivities,
+  destroyRepresentativeTransactions,
   findRequestByName,
   createRequest,
   listRequests,

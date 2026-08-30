@@ -2,6 +2,7 @@
 
 const ApiError = require('../../utils/api-error');
 const repository = require('./company.repository');
+const { runPhpScript, runPhpScriptBackground } = require('../../utils/php-jobs');
 
 const DEFAULT_YEAR = () => new Date().getFullYear() - 24;
 
@@ -300,7 +301,241 @@ const addGroup = async (tenant, groupName) => {
   return created.toJSON ? created.toJSON() : created;
 };
 
+const now = () => new Date().toISOString().slice(0, 19).replace('T', ' ');
+
+const triggerCompanyRebuild = async (orgId, companyId, extraArg) => {
+  await runPhpScript('add_representative_rfids.php', [orgId, companyId]);
+  runPhpScriptBackground(
+    'create_data_for_company_db_application.php',
+    extraArg !== undefined ? [orgId, companyId, extraArg] : [orgId, companyId]
+  );
+};
+
+/**
+ * POST /companies — import requested companies, either under a parent group or
+ * as top-level companies, then trigger the PHP data-pipeline rebuild per
+ * company. Faithful port; two legacy bugs fixed: the parent-status update was
+ * missing its where clause (threw for type-1 inactive parents), and the
+ * assignee-list loop awaited the wrong promise array.
+ */
+const createCompanies = async (tenant, auth, { name, parent_company }) => {
+  if (!name || !String(name).length) throw ApiError.badRequest('Name cannot be blank');
+  const requestedIds = JSON.parse(name);
+  if (!Array.isArray(requestedIds) || !requestedIds.length) {
+    throw ApiError.badRequest('Please select companies first.');
+  }
+
+  const requests = await repository.requestsByIds(requestedIds);
+  const accounts = requests.filter((r) => r.account_id > 0).map((r) => r.account_id);
+  const representativeIds = requests.filter((r) => r.representative_id > 0).map((r) => r.representative_id);
+
+  if (accounts.length) {
+    runPhpScriptBackground('transferred_data_from_one_account_to_another_accounts.php', [auth.orgId, accounts.join(',')]);
+  }
+
+  let companyList = [];
+  if (representativeIds.length) {
+    const assignees = await repository.assigneeIdsForRepresentatives(representativeIds);
+    companyList = assignees.map((r) => r.assignor_and_assignee_id);
+  }
+  if (!companyList.length) throw ApiError.badRequest('Please select companies first.');
+
+  const getList = await repository.subsidiaryCompanies(companyList);
+  const currentDate = now();
+  const activityLogs = [];
+
+  if (parent_company !== undefined && parent_company > 0) {
+    const parent = await repository.findParentCompany(tenant, parent_company);
+    if (!parent) throw ApiError.forbidden('Parent company not exist');
+    if (parent.type === 1 && parent.status === 0) {
+      await repository.updateRepresentative(tenant, parent.representative_id, { status: 1 });
+    }
+    const listed = await repository.representativesByParent(tenant, parent.representative_id);
+    const listedNames = [parent.original_name, ...listed.map((l) => l.original_name)];
+
+    const companies = [];
+    const childCompanies = [];
+    let alreadyAdded = false;
+    for (const company of getList) {
+      if (listedNames.includes(company.name)) {
+        alreadyAdded = true;
+        continue;
+      }
+      const instances = company.representative_instances > 0 ? company.representative_instances : company.instances;
+      const row = {
+        original_name: company.name,
+        company_id: company.representative_id,
+        representative_name: company.representative_name != null ? company.representative_name : company.name,
+        instances,
+        parent_id: parent.representative_id,
+      };
+      if (companyList.includes(company.assignor_and_assignee_id)) row.child = 1;
+      companies.push(row);
+      childCompanies.push(company.representative_id);
+      activityLogs.push({
+        organisation_id: auth.orgId, user_id: auth.userId, type: 0,
+        company_name: company.name, representative_company_name: parent.original_name, activity_date: currentDate,
+      });
+    }
+
+    if (!companies.length) {
+      if (alreadyAdded) throw ApiError.forbidden('Company already added');
+      throw ApiError.badRequest('Invalid inputs');
+    }
+    await repository.bulkCreateRepresentatives(tenant, companies);
+    repository.logActivities(activityLogs).catch(() => {});
+    for (const companyId of childCompanies) {
+      await triggerCompanyRebuild(auth.orgId, companyId);
+    }
+    return { added: companies };
+  }
+
+  // top-level companies
+  const companies = [];
+  const originalNames = [];
+  const representativeNames = [];
+  for (const company of getList) {
+    const instances = company.representative_instances > 0 ? company.representative_instances : company.instances;
+    if (company.name != null) originalNames.push(company.name);
+    if (company.representative_name != null) representativeNames.push(company.representative_name);
+    companies.push({
+      instances,
+      representative_id: company.representative_id,
+      original_name: company.name,
+      representative_name: company.representative_name != null ? company.representative_name : company.name,
+    });
+  }
+  if (!companies.length) throw ApiError.badRequest('Invalid inputs');
+
+  const existing = await repository.representativesByNames(tenant, originalNames, representativeNames);
+  const existingNames = new Set();
+  for (const c of existing) {
+    existingNames.add(c.original_name);
+    existingNames.add(c.representative_name);
+  }
+
+  const mainCompanies = [];
+  let added = 0;
+  for (const company of companies) {
+    if (existingNames.has(company.original_name) || existingNames.has(company.representative_name)) continue;
+    const parent = await repository.createRepresentative(tenant, {
+      original_name: company.original_name,
+      company_id: company.representative_id,
+      representative_name: company.representative_name,
+      instances: company.instances,
+    });
+    if (parent) {
+      activityLogs.push({
+        organisation_id: auth.orgId, user_id: auth.userId, type: 0,
+        company_name: company.original_name, representative_company_name: company.original_name, activity_date: currentDate,
+      });
+      mainCompanies.push(company.representative_id);
+      added++;
+    }
+  }
+  if (!added) throw ApiError.internal('Internal server error');
+  repository.logActivities(activityLogs).catch(() => {});
+  for (const companyId of mainCompanies) {
+    await triggerCompanyRebuild(auth.orgId, companyId);
+  }
+  return { added };
+};
+
+/**
+ * DELETE /companies — delete companies (optionally dissolving groups while
+ * keeping their members), clean representative transactions and trigger the
+ * KPI/tree rebuild. Faithful port of the legacy flow.
+ */
+const deleteCompanies = async (tenant, auth, { companies, type }) => {
+  if (!companies.length) throw ApiError.badRequest('No company found');
+  const found = await repository.representativesByIds(tenant, companies);
+  if (!found.length) throw ApiError.badRequest('No company found');
+
+  const currentDate = now();
+  const deleteParents = [];
+  const reUpdate = [];
+  const deleteIds = [];
+  const activityLogs = [];
+  for (const c of found) {
+    if (c.parent_id === 0) deleteParents.push(c.representative_id);
+    else if (!reUpdate.includes(c.parent_id)) reUpdate.push(c.parent_id);
+    deleteIds.push(c.representative_id);
+    activityLogs.push({
+      organisation_id: auth.orgId, user_id: auth.userId, type: 1,
+      company_name: c.original_name, representative_company_name: c.original_name, activity_date: currentDate,
+    });
+  }
+  if (deleteParents.length) {
+    const subs = await repository.childRepresentativeIds(tenant, deleteParents);
+    deleteIds.push(...subs.map((s) => s.representative_id));
+  }
+
+  const where = { representative_id: deleteIds };
+  if (Number(type) === 1) {
+    // dissolve groups: detach members, delete only type-1 rows
+    await repository.updateRepresentativesWhere(tenant, { parent_id: 0 }, { parent_id: deleteIds, type: 0, child: 1 });
+    where.type = 1;
+  }
+  await repository.destroyRepresentatives(tenant, where);
+  repository.logActivities(activityLogs).catch(() => {});
+
+  if (deleteParents.length) {
+    await repository.destroyRepresentativeTransactions({ representative_id: deleteParents, organisation_id: auth.orgId });
+  }
+  if (reUpdate.length) {
+    await repository.destroyRepresentativeTransactions({ representative_id: reUpdate, organisation_id: auth.orgId });
+    const parents = await q_representativesForRebuild(tenant, reUpdate);
+    for (const company of parents) {
+      await triggerCompanyRebuild(auth.orgId, company.company_id);
+    }
+  } else {
+    runPhpScriptBackground('create_data_for_company_db_application.php', [auth.orgId, '']);
+  }
+  return { deleted: deleteIds };
+};
+
+// helper: parents needing a rebuild after member deletion
+const q_representativesForRebuild = async (tenant, ids) => {
+  const rows = await repository.representativesWhere(
+    tenant, 'representative_id IN (:ids) AND type = 0', { ids }, 'representative_id'
+  );
+  return rows;
+};
+
+// DELETE /companies/subcompanies — remove child companies and rebuild parents.
+const deleteSubcompanies = async (tenant, auth, companies) => {
+  if (!companies.length) throw ApiError.badRequest('No company found');
+  const found = await repository.subcompaniesByIds(tenant, companies);
+  if (!found.length) throw ApiError.badRequest('No company found');
+
+  const currentDate = now();
+  const ids = found.map((c) => c.representative_id);
+  const activityLogs = found.map((c) => ({
+    organisation_id: auth.orgId, user_id: auth.userId, type: 1,
+    company_name: c.original_name, representative_company_name: '', activity_date: currentDate,
+  }));
+  await repository.destroyRepresentatives(tenant, { representative_id: ids });
+  repository.logActivities(activityLogs).catch(() => {});
+
+  const parentCompanyIds = [...new Set(found.filter((c) => c.company_id > 0).map((c) => c.company_id))];
+  const mains = parentCompanyIds.length
+    ? await repository.representativesByCompanyIds(tenant, parentCompanyIds)
+    : [];
+  if (mains.length) {
+    await repository.destroyRepresentativeTransactions({ representative_id: parentCompanyIds });
+    for (const company of mains) {
+      await triggerCompanyRebuild(auth.orgId, company.company_id, 1);
+    }
+  } else {
+    runPhpScriptBackground('create_data_for_company_db_application.php', [auth.orgId, '']);
+  }
+  return { deleted: ids };
+};
+
 module.exports = {
+  createCompanies,
+  deleteCompanies,
+  deleteSubcompanies,
   addRequest,
   listRequests,
   companiesWithChildren,

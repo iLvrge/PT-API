@@ -64,7 +64,26 @@ const addGroup = asyncHandler(async (req, res) => {
   res.status(200).json(await service.addGroup(req.tenant, req.body.group_name));
 });
 
+const createCompanies = asyncHandler(async (req, res) => {
+  await service.createCompanies(req.tenant, req.auth, req.body);
+  res.status(200).send('Companies added');
+});
+const deleteCompanies = asyncHandler(async (req, res) => {
+  await service.deleteCompanies(req.tenant, req.auth, {
+    companies: parseIds(req.query.companies, 'companies'),
+    type: req.query.type,
+  });
+  res.status(200).send('Companies deleted.');
+});
+const deleteSubcompanies = asyncHandler(async (req, res) => {
+  await service.deleteSubcompanies(req.tenant, req.auth, parseIds(req.query.companies, 'companies'));
+  res.status(200).send('Companies deleted.');
+});
+
 module.exports = {
+  createCompanies,
+  deleteCompanies,
+  deleteSubcompanies,
   addRequest,
   listRequests,
   companiesWithChildren,
