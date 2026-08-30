@@ -88,6 +88,60 @@ const portfolios = asyncHandler(async (req, res) => {
   );
 });
 
+const transactionsByGroupIds = asyncHandler(async (req, res) => {
+  res.status(200).json(await service.transactionsByGroupIds(parseArray(req.body.group_ids, 'group_ids')));
+});
+
+const transactionsAddress = asyncHandler(async (req, res) => {
+  res.status(200).json(
+    await service.transactionsAddress({
+      companies: parseArray(req.query.companies, 'companies'),
+      tabs: parseArray(req.query.tabs, 'tabs'),
+      customers: parseArray(req.query.customers, 'customers'),
+    })
+  );
+});
+
+const transactionsName = asyncHandler(async (req, res) => {
+  res.status(200).json(
+    await service.transactionsName({
+      companies: parseArray(req.query.companies, 'companies'),
+      tabs: parseArray(req.query.tabs, 'tabs'),
+      customers: parseArray(req.query.customers, 'customers'),
+    })
+  );
+});
+
+const incorrectNames = asyncHandler(async (req, res) => {
+  res.status(200).json(
+    await service.incorrectNames(req.tenant, {
+      companies: parseArray(req.query.companies, 'companies'),
+      id: Number(req.query.id) || 0,
+      orgType: req.auth.orgType,
+    })
+  );
+});
+
+const queueAddress = asyncHandler(async (req, res) => {
+  res.status(200).json(
+    await service.queueAddress(req.tenant, {
+      groupIds: parseArray(req.body.group_ids, 'group_ids'),
+      newAddressId: Number(req.body.new_address) || 0,
+      companyIds: parseArray(req.body.company_ids, 'company_ids'),
+    })
+  );
+});
+
+const queueName = asyncHandler(async (req, res) => {
+  res.status(200).json(
+    await service.queueName(req.tenant, {
+      groupIds: parseArray(req.body.group_ids, 'group_ids'),
+      newName: req.body.new_name,
+      companyIds: parseArray(req.body.company_ids, 'company_ids'),
+    })
+  );
+});
+
 module.exports = {
   assetTypeTabs,
   assetTypeTabCompanies,
@@ -98,4 +152,10 @@ module.exports = {
   lawfirms,
   lenders,
   portfolios,
+  transactionsByGroupIds,
+  transactionsAddress,
+  transactionsName,
+  incorrectNames,
+  queueAddress,
+  queueName,
 };

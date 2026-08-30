@@ -182,6 +182,114 @@ const portfolios = async (tenant, { tabId, portfolio, limit, offset }) => {
   return { portfolios: result, tabs };
 };
 
+// POST /customers/transactions/groupids — transactions with a running total.
+const transactionsByGroupIds = async (groupIds) => {
+  if (!groupIds.length) return { list: [], total_records: 0 };
+  const list = await repository.transactionsByGroupIds(groupIds);
+  return { list, total_records: list.length };
+};
+
+// GET /customers/transactions/address — stored procedure (CSV args by contract).
+// The legacy layout id resolved from a param that never existed, so it is
+// always the default 15; kept explicit here.
+const transactionsAddress = ({ companies, tabs, customers }) =>
+  repository
+    .correctAddress({
+      companiesCsv: companies.join(','),
+      organisationId: 0,
+      tabsCsv: (tabs.length ? checkTabs(tabs) : []).join(','),
+      customersCsv: customers.join(','),
+      layoutId: 15,
+    })
+    .then((list) => ({ list, total_records: list.length }));
+
+// GET /customers/transactions/name — stored procedure (CSV args by contract).
+const transactionsName = ({ companies, tabs, customers }) =>
+  repository
+    .correctNames({
+      companiesCsv: companies.join(','),
+      organisationId: 0,
+      tabsCsv: (tabs.length ? checkTabs(tabs) : []).join(','),
+      customersCsv: customers.join(','),
+    })
+    .then((list) => ({ list, total_records: list.length }));
+
+/**
+ * GET /customers/incorrectnames — assignee name variants for a company, ranked
+ * by Levenshtein distance to the representative's original name. Duplicate
+ * normalised names are merged, summing their asset counts (legacy algorithm).
+ */
+const incorrectNames = async (tenant, { companies, id, orgType }) => {
+  if (!companies.length) return [];
+
+  let representativeName = await repository.tenantRepresentativeName(tenant, companies);
+  if (!representativeName) return [];
+
+  const original = await repository.originalAssigneeName(representativeName);
+  if (original) representativeName = original;
+
+  const list = await repository.incorrectNamesList({
+    organisationId: 0,
+    companies,
+    id: id > 0 ? id : 0,
+    bankMode: orgType === 2,
+  });
+
+  const results = [];
+  const seen = new Map(); // normalised name -> index in results
+  for (const item of list) {
+    const cleaned = String(item.name || '').replace(/,/g, ' ').replace(/\./g, ' ');
+    const key = cleaned.replace(/\s/g, '').trim();
+    if (!seen.has(key)) {
+      item.distance = distance(representativeName, cleaned.trim());
+      if (item.distance > 0) {
+        seen.set(key, results.length);
+        results.push(item);
+      } else {
+        seen.set(key, -1); // exact match: tracked but excluded, like legacy
+      }
+    } else {
+      const idx = seen.get(key);
+      if (idx >= 0) results[idx].count_assets += item.count_assets;
+    }
+  }
+  return results;
+};
+
+// POST /customers/transactions/queues/address — proposed address corrections.
+const queueAddress = async (tenant, { groupIds, newAddressId, companyIds }) => {
+  if (!groupIds.length) return [];
+  const address = await repository.tenantAddress(tenant, newAddressId);
+  if (!address) return [];
+  const newAddress = [
+    address.street_address, address.suite, address.city,
+    address.state, address.zip_code, address.country,
+  ].map((v) => v || '').join(' ').replace(/\s+/g, ' ').trim();
+  return repository.queueAddressList({
+    newAddressId,
+    newAddress,
+    companyIds,
+    rfIds: groupIds,
+    organisationId: 0,
+  });
+};
+
+// POST /customers/transactions/queues/name — proposed name corrections.
+const queueName = async (tenant, { groupIds, newName, companyIds }) => {
+  if (!groupIds.length) return [];
+  let name = newName;
+  if (name === undefined || name === 'undefined') {
+    name = await repository.tenantRepresentativeNameById(tenant, companyIds);
+  }
+  if (!name || name === 'undefined') return [];
+  return repository.queueNameList({
+    newName: String(name).toUpperCase(),
+    companyIds,
+    rfIds: groupIds,
+    organisationId: 0,
+  });
+};
+
 module.exports = {
   assetTypeTabs,
   assetTypeCompanies,
@@ -192,4 +300,10 @@ module.exports = {
   lawfirms,
   lenders,
   portfolios,
+  transactionsByGroupIds,
+  transactionsAddress,
+  transactionsName,
+  incorrectNames,
+  queueAddress,
+  queueName,
 };

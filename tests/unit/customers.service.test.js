@@ -169,3 +169,65 @@ describe('customers.service.portfolios', () => {
     expect(res.portfolios).toHaveLength(1);
   });
 });
+
+describe('customers.service transactions utilities', () => {
+  it('groupids short-circuits on empty and wraps results', async () => {
+    await expect(service.transactionsByGroupIds([])).resolves.toEqual({ list: [], total_records: 0 });
+    repo.transactionsByGroupIds.mockResolvedValue([{ rf_id: 1, assets: 3 }]);
+    const res = await service.transactionsByGroupIds([1, 2]);
+    expect(res.total_records).toBe(1);
+  });
+
+  it('transactionsAddress calls the procedure with CSV args and layout 15', async () => {
+    repo.correctAddress.mockResolvedValue([{ a: 1 }]);
+    await service.transactionsAddress({ companies: [9, 10], tabs: [17], customers: [3] });
+    const args = repo.correctAddress.mock.calls[0][0];
+    expect(args.companiesCsv).toBe('9,10');
+    expect(args.tabsCsv).toBe('17,1,6'); // checkTabs expansion, joined
+    expect(args.layoutId).toBe(15);
+  });
+
+  it('incorrectNames merges all same-key variants into the first occurrence', async () => {
+    repo.tenantRepresentativeName.mockResolvedValue('ACME INC');
+    repo.originalAssigneeName.mockResolvedValue('ACME INC');
+    repo.incorrectNamesList.mockResolvedValue([
+      { name: 'ACME, INC.', count_assets: 2, distance: 0 },
+      { name: 'ACME INC', count_assets: 5, distance: 0 },   // same key -> merged
+      { name: 'ACME  INC.', count_assets: 3, distance: 0 }, // same key -> merged
+      { name: 'ACME LLC', count_assets: 1, distance: 0 },
+    ]);
+    const res = await service.incorrectNames({ id: 't' }, { companies: [9], id: 0, orgType: 1 });
+    const first = res.find((r) => r.name === 'ACME, INC.');
+    expect(first.count_assets).toBe(10); // 2 + 5 + 3, matching legacy merge
+    expect(res.find((r) => r.name === 'ACME LLC')).toBeDefined();
+    expect(res).toHaveLength(2);
+  });
+
+  it('incorrectNames excludes a first-seen exact match (distance 0)', async () => {
+    repo.tenantRepresentativeName.mockResolvedValue('ACME LLC');
+    repo.originalAssigneeName.mockResolvedValue('ACME LLC');
+    repo.incorrectNamesList.mockResolvedValue([
+      { name: 'ACME LLC', count_assets: 4, distance: 0 },   // exact -> excluded
+      { name: 'ACME LLC CORP', count_assets: 1, distance: 0 },
+    ]);
+    const res = await service.incorrectNames({ id: 't' }, { companies: [9], id: 0, orgType: 1 });
+    expect(res).toHaveLength(1);
+    expect(res[0].name).toBe('ACME LLC CORP');
+  });
+
+  it('queueAddress binds the composed address (no SQL splicing)', async () => {
+    repo.tenantAddress.mockResolvedValue({ street_address: '1 Main', suite: null, city: 'NYC', state: 'NY', zip_code: '10001', country: 'US' });
+    repo.queueAddressList.mockResolvedValue([]);
+    await service.queueAddress({ id: 't' }, { groupIds: [1], newAddressId: 7, companyIds: [9] });
+    const args = repo.queueAddressList.mock.calls[0][0];
+    expect(args.newAddress).toBe('1 Main NYC NY 10001 US');
+    expect(args.newAddressId).toBe(7);
+  });
+
+  it('queueName resolves the name from the tenant when not supplied and uppercases it', async () => {
+    repo.tenantRepresentativeNameById.mockResolvedValue('Acme Inc');
+    repo.queueNameList.mockResolvedValue([]);
+    await service.queueName({ id: 't' }, { groupIds: [1], newName: undefined, companyIds: [9] });
+    expect(repo.queueNameList.mock.calls[0][0].newName).toBe('ACME INC');
+  });
+});

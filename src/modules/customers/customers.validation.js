@@ -60,6 +60,28 @@ const portfoliosSchema = z.object({
   }),
 });
 
+const groupIdsSchema = z.object({ body: z.object({ group_ids: jsonArray }) });
+
+const transactionsQuerySchema = z.object({
+  query: z.object({ companies: jsonArray, tabs: jsonArray, customers: jsonArray }),
+});
+
+const incorrectNamesSchema = z.object({
+  query: z.object({ companies: jsonArray, id: z.coerce.number().int().optional() }),
+});
+
+const queueAddressSchema = z.object({
+  body: z.object({
+    group_ids: jsonArray,
+    new_address: z.coerce.number().int().positive(),
+    company_ids: jsonArray,
+  }),
+});
+
+const queueNameSchema = z.object({
+  body: z.object({ group_ids: jsonArray, new_name: z.string().optional(), company_ids: jsonArray }),
+});
+
 module.exports = {
   assetTypesSchema,
   tabCompaniesSchema,
@@ -70,4 +92,9 @@ module.exports = {
   lawfirmSchema,
   lendersSchema,
   portfoliosSchema,
+  groupIdsSchema,
+  transactionsQuerySchema,
+  incorrectNamesSchema,
+  queueAddressSchema,
+  queueNameSchema,
 };

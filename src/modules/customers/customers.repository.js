@@ -301,6 +301,160 @@ const tabCustomerCounts = (representativeIds, organisationId, tabs) =>
     { representativeIds, organisationId, tabs }
   );
 
+// ---- transactions utilities ----
+
+// Transactions for a set of reel/frames with a running asset total (db_uspto CTE).
+const transactionsByGroupIds = (rfIds) =>
+  q.selectAll(
+    connections.applicationNew,
+    `WITH trans AS (
+       SELECT assignment.cname, assignment.caddress_1, assignor.rf_id, assignor.exec_dt AS \`date\`,
+              (SELECT COUNT(DISTINCT documentid.appno_doc_num) FROM db_uspto.documentid AS documentid
+                WHERE documentid.rf_id = assignor.rf_id) AS \`assets\`
+         FROM db_uspto.assignor AS assignor
+         INNER JOIN db_uspto.assignment AS assignment ON assignment.rf_id = assignor.rf_id
+        WHERE assignor.rf_id IN (:rfIds)
+        GROUP BY assignor.rf_id)
+     SELECT rf_id, IF(cname != '', cname, caddress_1) AS name, \`date\`, \`assets\`,
+            SUM(\`assets\`) OVER (ORDER BY rf_id) AS grand_total
+       FROM trans`,
+    { rfIds }
+  );
+
+/**
+ * Stored-procedure calls. The procedures take comma-separated id strings by
+ * contract (unlike the IN-clause bug elsewhere), so the CSV join is deliberate.
+ * The first result set is returned, mirroring the legacy .spread handling.
+ */
+const callProcedure = async (sql, replacements) => {
+  const raw = await q.selectAll(connections.applicationNew, sql, replacements);
+  const first = Array.isArray(raw) ? raw[0] : raw;
+  return first ? Object.values(first) : [];
+};
+
+const correctAddress = ({ companiesCsv, organisationId, tabsCsv, customersCsv, layoutId }) =>
+  callProcedure(`CALL routine_correct_address (:companies, :organisationId, :tabs, :customers, :layoutId);`, {
+    companies: companiesCsv,
+    organisationId,
+    tabs: tabsCsv,
+    customers: customersCsv,
+    layoutId,
+  });
+
+const correctNames = ({ companiesCsv, organisationId, tabsCsv, customersCsv }) =>
+  callProcedure(`CALL routine_correct_names (:companies, :organisationId, :tabs, :customers);`, {
+    companies: companiesCsv,
+    organisationId,
+    tabs: tabsCsv,
+    customers: customersCsv,
+  });
+
+// ---- incorrect names ----
+
+const tenantRepresentativeName = (tenant, companyIds) =>
+  q.selectValue(
+    tenant,
+    `SELECT representative_name FROM representative WHERE company_id IN (:companyIds) LIMIT 1`,
+    { companyIds },
+    'representative_name',
+    ''
+  );
+
+const originalAssigneeName = (name) =>
+  q.selectValue(
+    connections.applicationNew,
+    `SELECT ee.original_name FROM db_uspto.assignee AS ee
+      INNER JOIN db_uspto.assignor_and_assignee AS aaa ON aaa.assignor_and_assignee_id = ee.assignor_and_assignee_id
+      WHERE name = :name LIMIT 1`,
+    { name },
+    'original_name',
+    null
+  );
+
+const incorrectNamesList = ({ organisationId, companies, id, bankMode }) => {
+  const hasCompanies = companies.length > 0;
+  const sql = `SELECT name, assignor_and_assignee_id AS id, COUNT(application) AS count_assets, 0 AS distance FROM (
+    SELECT IF(assignee.original_name != '', assignee.original_name, assignee.ee_name) AS name,
+           aaa.assignor_and_assignee_id, doc.appno_doc_num AS application
+      FROM db_uspto.assignee AS assignee
+      INNER JOIN db_uspto.assignor_and_assignee AS aaa ON aaa.assignor_and_assignee_id = assignee.assignor_and_assignee_id
+      INNER JOIN db_uspto.documentid AS doc ON doc.rf_id = assignee.rf_id
+      INNER JOIN db_uspto.list1 ON list1.assignor_and_assignee_id = aaa.assignor_and_assignee_id
+             AND (list1.organisation_id = :organisationId OR list1.organisation_id IS NULL)
+             ${hasCompanies ? 'AND list1.company_id IN (:companies)' : ''}
+     WHERE assignee.rf_id IN (
+       SELECT rf_id FROM db_new_application.dashboard_items
+        WHERE type = 17 AND organisation_id = :organisationId
+        ${bankMode ? 'AND mode IN (:mode)' : ''}
+        ${hasCompanies ? 'AND representative_id IN (:companies)' : ''})
+     ${id > 0 ? 'AND aaa.assignor_and_assignee_id = :id' : ''}
+    ) AS temp GROUP BY name ORDER BY LENGTH(name) ASC`;
+
+  const repl = { organisationId };
+  if (hasCompanies) repl.companies = companies;
+  if (bankMode) repl.mode = 1;
+  if (id > 0) repl.id = id;
+  return q.selectAll(connections.applicationNew, sql, repl);
+};
+
+// ---- correction queues ----
+
+const tenantAddress = (tenant, addressId) =>
+  q.selectOne(
+    tenant,
+    `SELECT address_id, street_address, suite, city, state, country, zip_code
+       FROM address WHERE address_id = :addressId LIMIT 1`,
+    { addressId }
+  );
+
+const QUEUE_BASE = `
+  FROM db_uspto.assignment AS assignment
+  INNER JOIN db_uspto.assignment_conveyance AS assignment_conveyance ON assignment_conveyance.rf_id = assignment.rf_id
+  INNER JOIN db_uspto.assignee AS assignee ON assignee.rf_id = assignment.rf_id
+  WHERE assignee.assignor_and_assignee_id IN (
+    SELECT assignor_and_assignee_id FROM db_uspto.list1
+     WHERE company_id IN (:companyIds) AND (organisation_id = :organisationId OR organisation_id IS NULL))
+    AND assignment.rf_id IN (:rfIds)`;
+
+const QUEUE_COMMON_COLS = `
+  IF(assignee.original_name != '', assignee.original_name, assignee.ee_name) AS name,
+  TRIM(CONCAT(assignee.ee_address_1, ' ', assignee.ee_address_2, ' ', assignee.ee_city, ' ',
+              assignee.ee_state, ' ', assignee.ee_postcode, ' ', assignee.ee_country)) AS current_address,
+  assignment_conveyance.convey_ty,
+  (SELECT date_format(assignor.exec_dt, '%b %d, %Y') FROM db_uspto.assignor AS assignor
+    WHERE assignor.rf_id = assignment.rf_id LIMIT 1) AS exec_dt,
+  date_format(record_dt, '%b %d, %Y') AS record_dt,
+  (SELECT COUNT(documentid.appno_doc_num) FROM db_uspto.documentid AS documentid
+    WHERE documentid.rf_id = assignment.rf_id) AS assets,
+  IF(cname != '', cname, caddress_1) AS original_correspondence`;
+
+// New values are BOUND, not interpolated - the legacy queries spliced them into
+// the SQL string (an injection hole via address fields / new_name).
+const queueAddressList = ({ newAddressId, newAddress, companyIds, rfIds, organisationId }) =>
+  q.selectAll(
+    connections.applicationNew,
+    `SELECT assignment.rf_id AS id, :newAddressId AS new_address_id, ${QUEUE_COMMON_COLS},
+            :newAddress AS new_address ${QUEUE_BASE}`,
+    { newAddressId, newAddress, companyIds, rfIds, organisationId }
+  );
+
+const tenantRepresentativeNameById = (tenant, representativeIds) =>
+  q.selectValue(
+    tenant,
+    `SELECT representative_name FROM representative WHERE representative_id IN (:representativeIds) LIMIT 1`,
+    { representativeIds },
+    'representative_name',
+    null
+  );
+
+const queueNameList = ({ newName, companyIds, rfIds, organisationId }) =>
+  q.selectAll(
+    connections.applicationNew,
+    `SELECT assignment.rf_id AS id, ${QUEUE_COMMON_COLS},
+            :newName AS new_name ${QUEUE_BASE}`,
+    { newName, companyIds, rfIds, organisationId }
+  );
+
 module.exports = {
   companyRepresentativeIds,
   assetTypeTabs,
@@ -320,4 +474,14 @@ module.exports = {
   assetsForRfIds,
   portfolioRepresentativeTabs,
   tabCustomerCounts,
+  transactionsByGroupIds,
+  correctAddress,
+  correctNames,
+  tenantRepresentativeName,
+  originalAssigneeName,
+  incorrectNamesList,
+  tenantAddress,
+  queueAddressList,
+  tenantRepresentativeNameById,
+  queueNameList,
 };

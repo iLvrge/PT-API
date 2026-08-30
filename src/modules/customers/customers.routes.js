@@ -18,6 +18,12 @@ router.get('/asset_types/assignments/:rfID', guard, validate(schema.rfIdSchema),
 router.get('/asset_types/assets', guard, validate(schema.assetsSchema), controller.assetTypeAssets);
 router.get('/asset_types/:tab_id/companies', guard, validate(schema.tabCompaniesSchema), controller.assetTypeTabCompanies);
 
+router.post('/transactions/groupids', verifyToken, validate(schema.groupIdsSchema), controller.transactionsByGroupIds);
+router.get('/transactions/address', verifyToken, validate(schema.transactionsQuerySchema), controller.transactionsAddress);
+router.get('/transactions/name', verifyToken, validate(schema.transactionsQuerySchema), controller.transactionsName);
+router.get('/incorrectnames', guard, validate(schema.incorrectNamesSchema), controller.incorrectNames);
+router.post('/transactions/queues/address', guard, validate(schema.queueAddressSchema), controller.queueAddress);
+router.post('/transactions/queues/name', guard, validate(schema.queueNameSchema), controller.queueName);
 router.get('/lawfirm', guard, validate(schema.lawfirmSchema), controller.lawfirms);
 router.get('/lenders', guard, validate(schema.lendersSchema), controller.lenders);
 router.get('/portfolios', guard, validate(schema.portfoliosSchema), controller.portfolios);
