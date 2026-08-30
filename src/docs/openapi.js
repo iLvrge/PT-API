@@ -24,6 +24,7 @@ const assets = require('./paths/assets');
 const integrations = require('./paths/integrations');
 const family = require('./paths/family');
 const adminCustomers = require('./paths/admin-customers');
+const events = require('./paths/events');
 
 const errorSchema = {
   type: 'object',
@@ -190,6 +191,7 @@ const tags = [
   { name: 'Customers', description: 'The portfolio explorer.' },
   { name: 'Assets', description: 'Portfolio assets and their CPC classification breakdown.' },
   { name: 'Family', description: 'Worldwide patent families and document content.' },
+  { name: 'Events', description: 'Maintenance-fee history, abandonment and life-span charts.' },
   { name: 'Assets (pending)', description: 'Declared but answering 501 until the Slack and spreadsheet tiers are ported.' },
   { name: 'Dashboards', description: 'Portfolio metrics and their share links.' },
   { name: 'Documents', description: 'Google Drive integration and the tenant document store.' },
@@ -265,6 +267,7 @@ const openapi = {
     ...integrations,
     ...family,
     ...adminCustomers,
+    ...events,
   },
 };
 
