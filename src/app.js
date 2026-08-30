@@ -30,6 +30,7 @@ const commentRoutes = require('./modules/comments/comments.routes');
 const activityRoutes = require('./modules/activities/activities.routes');
 const selectionRoutes = require('./modules/selections/selections.routes');
 const chartRoutes = require('./modules/charts/charts.routes');
+const clientUserRoutes = require('./modules/client-users/client-users.routes');
 
 const createApp = () => {
   const app = express();
@@ -62,6 +63,7 @@ const createApp = () => {
   app.use('/', activityRoutes);
   app.use('/', selectionRoutes);
   app.use('/charts', chartRoutes);
+  app.use('/users', clientUserRoutes);
   app.use('/admin', adminAuthRoutes);
   app.use('/admin', userRoutes);
   app.use('/admin', keywordRoutes);

@@ -181,6 +181,44 @@ const DEFINITIONS = {
     },
   },
 
+  client_user: {
+    attributes: {
+      user_id: { type: DataTypes.INTEGER, primaryKey: true, autoIncrement: true },
+      first_name: { type: DataTypes.STRING, allowNull: true },
+      last_name: { type: DataTypes.STRING, allowNull: true },
+      username: { type: DataTypes.STRING, allowNull: true },
+      email_address: { type: DataTypes.STRING, allowNull: true },
+      linkedin_url: { type: DataTypes.STRING, allowNull: true },
+      job_title: { type: DataTypes.STRING, allowNull: true },
+      telephone: { type: DataTypes.STRING, allowNull: true },
+      telephone1: { type: DataTypes.INTEGER, allowNull: true },
+      logo: { type: DataTypes.STRING, allowNull: true },
+      role_id: { type: DataTypes.INTEGER, allowNull: true },
+      status: { type: DataTypes.INTEGER, allowNull: true },
+    },
+    options: {
+      tableName: 'user',
+      freezeTableName: true,
+      underscored: true,
+      timestamps: true,
+      createdAt: 'created_at',
+      updatedAt: 'updated_at',
+    },
+  },
+
+  firm: {
+    attributes: {
+      firm_id: { type: DataTypes.INTEGER, primaryKey: true, autoIncrement: true },
+      firm_name: { type: DataTypes.STRING, allowNull: true },
+    },
+    options: {
+      tableName: 'firm',
+      freezeTableName: true,
+      underscored: true,
+      timestamps: false,
+    },
+  },
+
   lawfirm: {
     attributes: {
       lawfirm_id: { type: DataTypes.INTEGER, primaryKey: true, autoIncrement: true },
