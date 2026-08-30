@@ -140,6 +140,47 @@ const DEFINITIONS = {
     },
   },
 
+  activity: {
+    attributes: {
+      activity_id: { type: DataTypes.INTEGER, primaryKey: true, autoIncrement: true },
+      user_id: { type: DataTypes.INTEGER, allowNull: true },
+      professional_id: { type: DataTypes.INTEGER, allowNull: true },
+      subject: { type: DataTypes.STRING, allowNull: true },
+      comment: { type: DataTypes.STRING, allowNull: true },
+      subject_type: { type: DataTypes.INTEGER, allowNull: true },
+      document_id: { type: DataTypes.INTEGER, allowNull: true },
+      upload_file: { type: DataTypes.STRING, allowNull: true },
+      complete: { type: DataTypes.INTEGER, allowNull: true },
+      share_url: { type: DataTypes.STRING, allowNull: true },
+      type: { type: DataTypes.INTEGER, allowNull: true },
+    },
+    options: {
+      tableName: 'activity',
+      freezeTableName: true,
+      underscored: true,
+      timestamps: true,
+      createdAt: 'created_at',
+      updatedAt: 'updated_at',
+    },
+  },
+
+  comment: {
+    attributes: {
+      comment_id: { type: DataTypes.INTEGER, primaryKey: true, autoIncrement: true },
+      activity_id: { type: DataTypes.INTEGER, allowNull: true },
+      user_id: { type: DataTypes.INTEGER, allowNull: true },
+      comment: { type: DataTypes.STRING, allowNull: true },
+    },
+    options: {
+      tableName: 'comment',
+      freezeTableName: true,
+      underscored: true,
+      timestamps: true,
+      createdAt: 'created_at',
+      updatedAt: 'updated_at',
+    },
+  },
+
   lawfirm: {
     attributes: {
       lawfirm_id: { type: DataTypes.INTEGER, primaryKey: true, autoIncrement: true },
