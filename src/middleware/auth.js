@@ -38,6 +38,9 @@ const verifyToken = asyncHandler(async (req, res, next) => {
     orgId: user.organisation_id,
     type: user.type,
     orgType: payload.org_type,
+    // share-link tokens carry a company restriction (legacy middleware parity)
+    showOtherCompanies: payload.show_other_companies,
+    shareCode: payload.share_code,
   };
   next();
 });

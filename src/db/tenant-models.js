@@ -219,6 +219,31 @@ const DEFINITIONS = {
     },
   },
 
+  client_representative: {
+    attributes: {
+      representative_id: { type: DataTypes.INTEGER, primaryKey: true, autoIncrement: true },
+      company_id: { type: DataTypes.INTEGER, allowNull: true },
+      representative_name: { type: DataTypes.STRING, allowNull: true },
+      original_name: { type: DataTypes.STRING, allowNull: false },
+      instances: { type: DataTypes.INTEGER, allowNull: false },
+      parent_id: { type: DataTypes.INTEGER, allowNull: true },
+      child: { type: DataTypes.INTEGER, allowNull: true },
+      type: { type: DataTypes.INTEGER, allowNull: true },
+      mode: { type: DataTypes.INTEGER, allowNull: true },
+      status: { type: DataTypes.INTEGER, allowNull: true },
+    },
+    options: { tableName: 'representative', freezeTableName: true, underscored: true, timestamps: false },
+  },
+
+  company_lawfirm: {
+    attributes: {
+      company_lawfirm_id: { type: DataTypes.INTEGER, primaryKey: true, autoIncrement: true },
+      representative_id: { type: DataTypes.INTEGER, allowNull: false },
+      lawfirm_id: { type: DataTypes.INTEGER, allowNull: false },
+    },
+    options: { tableName: 'company_lawfirm', freezeTableName: true, underscored: true, timestamps: false },
+  },
+
   lawfirm: {
     attributes: {
       lawfirm_id: { type: DataTypes.INTEGER, primaryKey: true, autoIncrement: true },
