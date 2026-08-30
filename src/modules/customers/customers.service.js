@@ -4,6 +4,7 @@ const repository = require('./customers.repository');
 const timelineQ = require('./customers.timeline');
 const filters = require('./customers.filters');
 const analytics = require('./customers.analytics');
+const assetsQ = require('./customers.assets');
 const { distance } = require('fastest-levenshtein');
 const ApiError = require('../../utils/api-error');
 const { findLayout, checkTabs, TABS, ASSIGNMENT_TABS, RECORD_LIMIT, OFFSET } = require('./customers.constants');
@@ -560,7 +561,71 @@ const inventorLocations = async (tenant, body, auth) => {
   return result;
 };
 
+/**
+ * GET /customers/:layout/assets — branch selection over the ported builders.
+ * PTAB (37) matches proceedings against owned applications by VALUE (the
+ * legacy compared against the literal strings 'appellantPatentNumber' /
+ * 'appellantApplicationNumberText', so multi-record filtering never matched).
+ */
+const layoutAssets = async (tenant, params, { orgId, orgType }) => {
+  const bankMode = orgType === 2;
+  const { layout, companies, tabs, customers, assignments, column, direction, limit, offset, otherMode, lawyers } = params;
+
+  if (otherMode > 0) {
+    return assetsQ.forSale({ otherMode, bankMode, column, direction, limit, offset });
+  }
+
+  const layoutId = findLayout(layout);
+
+  if (layoutId === 3) {
+    return assetsQ.maintenance({ companies, bankMode, column, direction });
+  }
+
+  if (layoutId === 37) {
+    const empty = { list: [], total_records: 0 };
+    const company = await assetsQ.tenantCompanyName(tenant, companies);
+    if (!company) return empty;
+    const owned = await assetsQ.ownedApplications({ companies, bankMode });
+    const results = await assetsQ.fetchPtabProceedings(company);
+    const number = [];
+    const otherNumber = [];
+    const listData = [];
+    for (const item of results) {
+      const { appellantApplicationNumberText, appellantPatentNumber } = item;
+      if (appellantPatentNumber !== undefined && !number.includes(appellantPatentNumber) && owned.includes(appellantPatentNumber)) {
+        number.push(appellantPatentNumber);
+        listData.push(item);
+      } else if (appellantApplicationNumberText !== undefined && !otherNumber.includes(appellantApplicationNumberText) && owned.includes(appellantApplicationNumberText)) {
+        otherNumber.push(appellantApplicationNumberText);
+        listData.push(item);
+      }
+    }
+    if (!number.length && !otherNumber.length) return empty;
+    const list = await assetsQ.ptabDocuments({ number, otherNumber, orgId, column, direction });
+    return { list, total_records: list.length, other_data: listData };
+  }
+
+  let built;
+  if (layoutId !== 15) {
+    if (layoutId === 30 || layoutId === 31 || layoutId === 22 || layoutId === 45) {
+      built = assetsQ.ownedDashboard({ layoutId, companies, customers, bankMode });
+    } else if (layoutId === 40) {
+      built = await assetsQ.lawfirmAssets({ companies, assignments, lawyers, layoutId, bankMode });
+    } else {
+      const familyList = layoutId === 38 ? await assetsQ.familyGrantList({ companies, bankMode }) : undefined;
+      if (layoutId === 38 && !familyList.length) return { list: [], total_records: 0 };
+      built = assetsQ.genericDashboard({ layoutId, companies, customers, assignments, bankMode, familyList });
+    }
+  } else {
+    const tabSet = tabs.length ? checkTabs(tabs) : [];
+    built = assetsQ.defaultAssets({ companies, tabs: tabSet, customers, assignments, bankMode });
+  }
+
+  return assetsQ.countAndList(built.template, built.repl, { column, direction, limit, offset });
+};
+
 module.exports = {
+  layoutAssets,
   assetAgents,
   assetFamily,
   inventorLocations,

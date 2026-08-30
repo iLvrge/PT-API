@@ -237,7 +237,30 @@ const inventorLocations = asyncHandler(async (req, res) => {
   res.status(200).json(await service.inventorLocations(req.tenant, parseAnalyticsBody(req), req.auth));
 });
 
+const layoutAssets = asyncHandler(async (req, res) => {
+  res.status(200).json(
+    await service.layoutAssets(
+      req.tenant,
+      {
+        layout: req.params.layout,
+        companies: parseArray(req.query.companies, 'companies'),
+        tabs: parseArray(req.query.tabs, 'tabs'),
+        customers: parseArray(req.query.customers, 'customers'),
+        assignments: parseArray(req.query.assignments, 'assignments'),
+        column: req.query.column,
+        direction: req.query.direction,
+        limit: req.query.limit !== undefined ? req.query.limit : 1000,
+        offset: req.query.offset !== undefined ? req.query.offset : 0,
+        otherMode: Number(req.query.other_mode) || 0,
+        lawyers: Number(req.query.lawyers) || 0,
+      },
+      req.auth
+    )
+  );
+});
+
 module.exports = {
+  layoutAssets,
   assetAgents,
   assetFamily,
   inventorLocations,

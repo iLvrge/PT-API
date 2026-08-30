@@ -19,6 +19,9 @@ const globals = {
   clearTimeout: 'readonly',
   clearInterval: 'readonly',
   setImmediate: 'readonly',
+  fetch: 'readonly',
+  URL: 'readonly',
+  URLSearchParams: 'readonly',
 };
 
 const jestGlobals = {

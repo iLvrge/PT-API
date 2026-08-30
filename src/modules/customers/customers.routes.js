@@ -38,6 +38,7 @@ router.get('/portfolios', guard, validate(schema.portfoliosSchema), controller.p
 // Parameterised routes LAST so they never shadow the literal paths above.
 // (/:layout/assets, once ported, must be registered before /:rf_id/assets to
 // preserve the legacy precedence in which the latter was shadowed.)
+router.get('/:layout/assets', guard, controller.layoutAssets);
 router.get('/:layout/parties', guard, validate(schema.layoutPartiesSchema), controller.layoutParties);
 router.get('/:layout/activites', guard, validate(schema.layoutActivitiesSchema), controller.layoutActivities);
 router.get('/:rf_id/assets', verifyToken, validate(schema.rfIdAssetsSchema), controller.rfIdAssets);
