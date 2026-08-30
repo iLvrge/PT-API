@@ -550,6 +550,38 @@ const rfIdAssets = (rfId) =>
     { rfId }
   );
 
+// ---- events / asset life span ----
+
+// Distinct applications (with filing dates) reachable from tree_parties_collection.
+// documentid here is db_application's copy (latin1-local join on rf_id).
+const assetLifeSpanRows = ({ representativeIds, tabId, customerId, rfId, organisationId }) => {
+  let sql = `SELECT d.appno_doc_num AS application, d.appno_date
+    FROM tree_parties_collection AS tpc
+    INNER JOIN documentid AS d ON d.rf_id = tpc.rf_id
+    WHERE tpc.organisation_id = :organisationId`;
+  const repl = { organisationId };
+  if (representativeIds && representativeIds.length) {
+    sql += ` AND tpc.representative_id IN (:representativeIds)`;
+    repl.representativeIds = representativeIds;
+  }
+  if (tabId > 0) {
+    sql += ` AND tpc.tab_id = :tabId`;
+    repl.tabId = tabId;
+  }
+  if (customerId > 0) {
+    sql += ` AND tpc.assignor_and_assignee_id = :customerId`;
+    repl.customerId = customerId;
+  }
+  if (rfId > 0) {
+    sql += ` AND tpc.rf_id = :rfId`;
+    repl.rfId = rfId;
+  }
+  sql += ` AND DATE_FORMAT(d.appno_date, '%Y') >= 2000
+           AND d.appno_doc_num <> '' AND d.grant_doc_num <> ''
+           GROUP BY d.appno_doc_num`;
+  return q.selectAll(connections.application, sql, repl);
+};
+
 module.exports = {
   companyRepresentativeIds,
   assetTypeTabs,
@@ -584,4 +616,5 @@ module.exports = {
   layoutActivities,
   organisationExists,
   rfIdAssets,
+  assetLifeSpanRows,
 };

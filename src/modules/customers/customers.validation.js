@@ -98,7 +98,12 @@ const layoutActivitiesSchema = z.object({
 
 const rfIdAssetsSchema = z.object({ params: z.object({ rf_id: z.coerce.number().int().positive() }) });
 
+const eventsSchema = z.object({
+  query: z.object({ tab_id: z.coerce.number().int().optional(), portfolio: jsonArray }),
+});
+
 module.exports = {
+  eventsSchema,
   layoutPartiesSchema,
   layoutActivitiesSchema,
   rfIdAssetsSchema,

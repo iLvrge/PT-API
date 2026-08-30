@@ -11,6 +11,7 @@ const router = express.Router();
 const guard = [verifyToken, attachTenant];
 
 // Mounted at /customers. More specific paths before parameterised ones.
+router.get('/events', guard, validate(schema.eventsSchema), controller.events);
 router.get('/asset_types', guard, validate(schema.assetTypesSchema), controller.assetTypeTabs);
 router.get('/asset_types/companies', guard, validate(schema.companiesSchema), controller.assetTypeCompanies);
 router.get('/asset_types/assignments', guard, validate(schema.assignmentsSchema), controller.assetTypeAssignments);

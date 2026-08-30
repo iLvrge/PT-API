@@ -167,7 +167,17 @@ const rfIdAssets = asyncHandler(async (req, res) => {
   res.status(200).json(await service.rfIdAssets(req.auth.orgId, Number(req.params.rf_id)));
 });
 
+const events = asyncHandler(async (req, res) => {
+  res.status(200).json(
+    await service.events(req.tenant, req.auth.orgId, {
+      tabId: Number(req.query.tab_id) || 0,
+      portfolio: parseArray(req.query.portfolio, 'portfolio'),
+    })
+  );
+});
+
 module.exports = {
+  events,
   layoutParties,
   layoutActivities,
   rfIdAssets,

@@ -326,7 +326,57 @@ const rfIdAssets = async (orgId, rfId) => {
   return repository.rfIdAssets(rfId);
 };
 
+/**
+ * Build the per-year asset-count timeline from filing dates. Pure port of the
+ * legacy findAssetsTimeSpan/findMaxMin pair: each application counts for the
+ * 20 years from its filing year INCLUSIVE of the end year, and the final
+ * aggregation runs from the minimum to the maximum year EXCLUSIVE (legacy
+ * boundary behaviour, preserved).
+ */
+const buildLifeSpan = (rows) => {
+  const seen = new Set();
+  const counts = new Map(); // year -> count
+  let min = Infinity;
+  let max = -Infinity;
+
+  for (const row of rows) {
+    if (seen.has(row.application)) continue;
+    seen.add(row.application);
+    const start = new Date(row.appno_date).getFullYear();
+    if (!Number.isFinite(start)) continue;
+    const end = start + 20;
+    for (let year = start; year <= end; year++) {
+      counts.set(year, (counts.get(year) || 0) + 1);
+      if (year < min) min = year;
+      if (year > max) max = year;
+    }
+  }
+
+  const out = [];
+  for (let year = min; year < max; year++) {
+    const count = counts.get(year);
+    if (count) out.push({ year, count });
+  }
+  return out;
+};
+
+// GET /customers/events — asset life-span timeline for the caller's portfolios.
+const events = async (tenant, orgId, { tabId, portfolio }) => {
+  const ids = portfolio.length ? portfolio : await repository.companyRepresentativeIds(tenant);
+  if (!ids.length) return [];
+  const rows = await repository.assetLifeSpanRows({
+    representativeIds: ids,
+    tabId: tabId > 0 ? tabId : 0,
+    customerId: 0,
+    rfId: 0,
+    organisationId: orgId,
+  });
+  return buildLifeSpan(rows);
+};
+
 module.exports = {
+  buildLifeSpan,
+  events,
   layoutParties,
   layoutActivities,
   rfIdAssets,

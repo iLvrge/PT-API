@@ -276,3 +276,31 @@ describe('customers.service.rfIdAssets', () => {
     await expect(service.rfIdAssets(118, 5)).resolves.toHaveLength(1);
   });
 });
+
+describe('customers.service.buildLifeSpan', () => {
+  it('spans 20 years inclusive per application, aggregate excludes the max year', () => {
+    const rows = [{ application: 'A', appno_date: '2010-06-01' }];
+    const out = service.buildLifeSpan(rows);
+    expect(out[0]).toEqual({ year: 2010, count: 1 });
+    expect(out[out.length - 1]).toEqual({ year: 2029, count: 1 }); // 2030 excluded (legacy i < max)
+    expect(out).toHaveLength(20);
+  });
+
+  it('overlapping applications sum per year and duplicates are ignored', () => {
+    const rows = [
+      { application: 'A', appno_date: '2010-01-01' },
+      { application: 'B', appno_date: '2015-01-01' },
+      { application: 'A', appno_date: '2011-01-01' }, // duplicate application
+    ];
+    const out = service.buildLifeSpan(rows);
+    expect(out.find((r) => r.year === 2016).count).toBe(2);
+    expect(out.find((r) => r.year === 2012).count).toBe(1);
+  });
+
+  it('events resolves tenant portfolios when none given', async () => {
+    repo.companyRepresentativeIds.mockResolvedValue([9]);
+    repo.assetLifeSpanRows.mockResolvedValue([]);
+    await service.events({ id: 't' }, 118, { tabId: 0, portfolio: [] });
+    expect(repo.assetLifeSpanRows.mock.calls[0][0].organisationId).toBe(118); // real org, not 0
+  });
+});
