@@ -100,6 +100,11 @@ const env = {
 
   jsonBodyLimit: process.env.JSON_BODY_LIMIT || '1mb',
 
+  uploads: {
+    maxBytes: toInt(process.env.FILE_UPLOAD_MAX_MB, 20) * 1024 * 1024,
+    tempDir: process.env.FILE_UPLOAD_TMP_DIR || '/tmp',
+  },
+
   // Public share links. The legacy code hardcoded patentrack.com in each route.
   share: {
     domain: process.env.SHARE_DOMAIN || 'patentrack.com',

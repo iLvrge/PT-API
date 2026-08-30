@@ -6,6 +6,7 @@
  */
 
 const express = require('express');
+const fileUpload = require('express-fileupload');
 const { env } = require('./config/env');
 const security = require('./middleware/security');
 const requestLogger = require('./middleware/request-logger');
@@ -36,6 +37,13 @@ const tabRoutes = require('./modules/tabs/tabs.routes');
 const companyRoutes = require('./modules/company/company.routes');
 const documentRoutes = require('./modules/documents/documents.routes');
 const dashboardRoutes = require('./modules/dashboards/dashboards.routes');
+const entityRoutes = require('./modules/entities/entities.routes');
+const validityRoutes = require('./modules/validity/validity.routes');
+const transactionRoutes = require('./modules/transactions/transactions.routes');
+const updateRoutes = require('./modules/updates/updates.routes');
+const searchRoutes = require('./modules/search/search.routes');
+const treeRoutes = require('./modules/tree/tree.routes');
+const adminTreeRoutes = require('./modules/admin-tree/admin-tree.routes');
 
 const createApp = () => {
   const app = express();
@@ -48,6 +56,17 @@ const createApp = () => {
   app.use(requestLogger);
   app.use(express.json({ limit: env.jsonBodyLimit }));
   app.use(express.urlencoded({ extended: false, limit: env.jsonBodyLimit }));
+  // Multipart uploads land on req.files (documents, comments, admin tree).
+  // abortOnLimit rejects an oversized body instead of buffering it whole.
+  app.use(
+    fileUpload({
+      useTempFiles: false,
+      tempFileDir: env.uploads.tempDir,
+      limits: { fileSize: env.uploads.maxBytes },
+      abortOnLimit: true,
+      createParentPath: true,
+    })
+  );
   app.use(security.globalLimiter);
 
   // API documentation
@@ -74,9 +93,16 @@ const createApp = () => {
   app.use('/companies', companyRoutes);
   app.use('/documents', documentRoutes);
   app.use('/dashboards', dashboardRoutes);
+  app.use('/entity', entityRoutes);
+  app.use('/search', searchRoutes);
+  app.use('/tree', treeRoutes);
+  app.use('/', validityRoutes);
+  app.use('/', transactionRoutes);
+  app.use('/', updateRoutes);
   app.use('/admin', adminAuthRoutes);
   app.use('/admin', userRoutes);
   app.use('/admin', keywordRoutes);
+  app.use('/admin', adminTreeRoutes);
   listModules.routers.forEach((r) => app.use('/admin', r));
 
   // 404 then centralised error handling — always last.
