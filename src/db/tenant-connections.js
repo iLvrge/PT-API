@@ -55,6 +55,8 @@ const getConnection = async (orgId) => {
 
   const sequelize = new Sequelize(org.org_db, org.org_usr, org.org_pass, {
     host: org.org_host,
+    // org_host stores a hostname only, so tenants share the main server's port.
+    port: env.db.port,
     dialect: 'mysql',
     pool: { max: 5, min: 0, acquire: 30000, idle: 10000 },
     logging: false,

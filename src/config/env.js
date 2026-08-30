@@ -59,6 +59,8 @@ const env = {
 
   db: {
     host: process.env.HOST,
+    // The tunnel/proxy in front of MySQL does not always sit on 3306.
+    port: toInt(process.env.DB_PORT, 3306),
     user: process.env.USER,
     password: process.env.PASSWORD,
     names: {

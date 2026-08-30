@@ -17,6 +17,7 @@ const logger = require('../utils/logger');
 
 const common = {
   host: env.db.host,
+  port: env.db.port,
   dialect: 'mysql',
   pool: env.db.pool,
   logging: env.db.logging ? (sql) => logger.debug('sql', { sql }) : false,
