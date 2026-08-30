@@ -21,6 +21,7 @@ const documents = require('./paths/documents');
 const portfolio = require('./paths/portfolio');
 const external = require('./paths/external');
 const assets = require('./paths/assets');
+const integrations = require('./paths/integrations');
 
 const errorSchema = {
   type: 'object',
@@ -203,6 +204,8 @@ const tags = [
   { name: 'Selections', description: 'Per-user saved selections.' },
   { name: 'Charts', description: 'Chart series.' },
   { name: 'Event icons', description: 'Event flag SVGs.' },
+  { name: 'Slack', description: 'Slack channels and conversations for tracked assets.' },
+  { name: 'Microsoft Teams', description: 'Teams channels and messages for tracked assets.' },
   { name: 'Docs', description: 'This specification.' },
 ];
 
@@ -252,6 +255,7 @@ const openapi = {
     ...portfolio,
     ...external,
     ...assets,
+    ...integrations,
   },
 };
 

@@ -260,6 +260,18 @@ const DEFINITIONS = {
     },
   },
 
+  // The Slack channel tracking one asset.
+  assets_channel: {
+    attributes: {
+      id: { type: DataTypes.INTEGER, primaryKey: true, autoIncrement: true },
+      channel_id: { type: DataTypes.STRING, allowNull: false },
+      asset: { type: DataTypes.STRING, allowNull: false },
+    },
+    options: {
+      tableName: 'assets_channel', freezeTableName: true, underscored: true, timestamps: false,
+    },
+  },
+
   lawfirm: {
     attributes: {
       lawfirm_id: { type: DataTypes.INTEGER, primaryKey: true, autoIncrement: true },

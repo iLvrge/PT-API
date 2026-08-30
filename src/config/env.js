@@ -160,6 +160,22 @@ const env = {
     assignmentCenterUrl: process.env.ASSIGNMENT_CENTER_SEARCH_URL,
     staticFilesUrl: (process.env.STATIC_FILES_URL || '').replace(/\/$/, ''),
   },
+
+  // Microsoft Teams integration.
+  microsoft: {
+    tenantId: process.env.MICROSOFT_TENANT_ID,
+    clientId: process.env.MICROSOFT_CLIENT_ID || process.env.MICROSOFT_SECRET_ID,
+    clientSecret: process.env.MICROSOFT_SECRET_KEY,
+    // Every organisation's channels live under one team of this name.
+    teamName: process.env.MICROSOFT_TEAM_NAME || 'PatenTrack',
+  },
+
+  // Slack integration.
+  slack: {
+    clientId: process.env.SLACK_CLIENT_ID,
+    clientSecret: process.env.SLACK_CLIENT_SECRET,
+    redirectUri: process.env.SLACK_REDIRECT_URI,
+  },
 };
 
 module.exports = { env, validate, REQUIRED, dbUser };

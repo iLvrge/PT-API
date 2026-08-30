@@ -50,6 +50,8 @@ const timelineRoutes = require('./modules/timelines/timelines.routes');
 const eventIconRoutes = require('./modules/event-icons/event-icons.routes');
 const externalRoutes = require('./modules/external/external.routes');
 const assetRoutes = require('./modules/assets/assets.routes');
+const microsoftRoutes = require('./modules/microsoft/microsoft.routes');
+const slackRoutes = require('./modules/slack/slack.routes');
 
 const createApp = () => {
   const app = express();
@@ -112,6 +114,8 @@ const createApp = () => {
   app.use('/events_icons', eventIconRoutes);
   app.use('/', externalRoutes);
   app.use('/', assetRoutes);
+  app.use('/microsoft', microsoftRoutes);
+  app.use('/slacks', slackRoutes);
   app.use('/admin', adminAuthRoutes);
   app.use('/admin', userRoutes);
   app.use('/admin', keywordRoutes);
