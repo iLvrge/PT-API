@@ -231,3 +231,48 @@ describe('customers.service transactions utilities', () => {
     expect(repo.queueNameList.mock.calls[0][0].newName).toBe('ACME INC');
   });
 });
+
+describe('customers.service.layoutParties', () => {
+  it('routes non-default layouts to the dashboard query with bank mode', async () => {
+    repo.partiesByLayout.mockResolvedValue([{ id: 1 }]);
+    await service.layoutParties({ layout: 'assigned', companies: [9, 10], tabs: [], customerType: 0, orgType: 2 });
+    const args = repo.partiesByLayout.mock.calls[0][0];
+    expect(args.layoutId).toBe(30);
+    expect(args.companies).toEqual([9, 10]); // real array, not '9,10'
+    expect(args.bankMode).toBe(true);
+    expect(repo.partiesDefault).not.toHaveBeenCalled();
+  });
+
+  it('routes the default layout to the transactions query with expanded tabs', async () => {
+    repo.partiesDefault.mockResolvedValue([]);
+    await service.layoutParties({ layout: 'unknown', companies: [9], tabs: [17], customerType: 1, orgType: 1 });
+    const args = repo.partiesDefault.mock.calls[0][0];
+    expect(args.layoutId).toBe(15);
+    expect(args.tabs).toEqual([17, 1, 6]);
+    expect(args.customerType).toBe(1);
+  });
+});
+
+describe('customers.service.layoutActivities', () => {
+  it('calls the procedure with CSV companies and resolved layout', async () => {
+    repo.layoutActivities.mockResolvedValue([{ x: 1 }]);
+    await service.layoutActivities({ layout: 'acquired', companies: [9, 10] });
+    const args = repo.layoutActivities.mock.calls[0][0];
+    expect(args.companiesCsv).toBe('9,10');
+    expect(args.layoutId).toBe(32);
+  });
+});
+
+describe('customers.service.rfIdAssets', () => {
+  it('returns [] when the organisation does not exist', async () => {
+    repo.organisationExists.mockResolvedValue(false);
+    await expect(service.rfIdAssets(118, 5)).resolves.toEqual([]);
+    expect(repo.rfIdAssets).not.toHaveBeenCalled();
+  });
+
+  it('lists assets for a valid org + rf_id', async () => {
+    repo.organisationExists.mockResolvedValue(true);
+    repo.rfIdAssets.mockResolvedValue([{ id: 'a', name: '123' }]);
+    await expect(service.rfIdAssets(118, 5)).resolves.toHaveLength(1);
+  });
+});

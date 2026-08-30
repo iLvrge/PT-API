@@ -142,7 +142,35 @@ const queueName = asyncHandler(async (req, res) => {
   );
 });
 
+const layoutParties = asyncHandler(async (req, res) => {
+  res.status(200).json(
+    await service.layoutParties({
+      layout: req.params.layout,
+      companies: parseArray(req.query.companies, 'companies'),
+      tabs: parseArray(req.query.tabs, 'tabs'),
+      customerType: Number(req.query.t) || 0,
+      orgType: req.auth.orgType,
+    })
+  );
+});
+
+const layoutActivities = asyncHandler(async (req, res) => {
+  res.status(200).json(
+    await service.layoutActivities({
+      layout: req.params.layout,
+      companies: parseArray(req.query.companies, 'companies'),
+    })
+  );
+});
+
+const rfIdAssets = asyncHandler(async (req, res) => {
+  res.status(200).json(await service.rfIdAssets(req.auth.orgId, Number(req.params.rf_id)));
+});
+
 module.exports = {
+  layoutParties,
+  layoutActivities,
+  rfIdAssets,
   assetTypeTabs,
   assetTypeTabCompanies,
   assetTypeCompanies,

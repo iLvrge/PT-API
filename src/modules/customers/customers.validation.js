@@ -82,7 +82,26 @@ const queueNameSchema = z.object({
   body: z.object({ group_ids: jsonArray, new_name: z.string().optional(), company_ids: jsonArray }),
 });
 
+const layoutPartiesSchema = z.object({
+  params: z.object({ layout: z.string() }),
+  query: z.object({
+    companies: jsonArray,
+    tabs: jsonArray,
+    t: z.coerce.number().int().optional(),
+  }),
+});
+
+const layoutActivitiesSchema = z.object({
+  params: z.object({ layout: z.string() }),
+  query: z.object({ companies: jsonArray }),
+});
+
+const rfIdAssetsSchema = z.object({ params: z.object({ rf_id: z.coerce.number().int().positive() }) });
+
 module.exports = {
+  layoutPartiesSchema,
+  layoutActivitiesSchema,
+  rfIdAssetsSchema,
   assetTypesSchema,
   tabCompaniesSchema,
   companiesSchema,

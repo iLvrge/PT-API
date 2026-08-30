@@ -290,7 +290,46 @@ const queueName = async (tenant, { groupIds, newName, companyIds }) => {
   });
 };
 
+// GET /customers/:layout/parties — two branches by layout, matching legacy.
+const layoutParties = async ({ layout, companies, tabs, customerType, orgType }) => {
+  const layoutId = findLayout(layout);
+  const bankMode = orgType === 2;
+  const tabSet = tabs.length ? checkTabs(tabs) : [];
+
+  const list =
+    layoutId !== 15
+      ? await repository.partiesByLayout({ companies, layoutId, organisationId: 0, bankMode })
+      : await repository.partiesDefault({
+          companies,
+          tabs: tabSet,
+          customerType,
+          layoutId,
+          organisationId: 0,
+        });
+  return { list, total_records: list.length };
+};
+
+// GET /customers/:layout/activites — stored procedure (CSV args by contract).
+const layoutActivities = ({ layout, companies }) =>
+  repository.layoutActivities({
+    companiesCsv: companies.join(','),
+    organisationId: 0,
+    layoutId: findLayout(layout),
+  });
+
+// GET /customers/:rf_id/assets — assets on one reel/frame.
+// NOTE: unreachable in legacy (shadowed by /:layout/assets, defined earlier);
+// registered after it here too so precedence is preserved once that lands.
+const rfIdAssets = async (orgId, rfId) => {
+  if (!(await repository.organisationExists(orgId))) return [];
+  if (!(rfId > 0)) return [];
+  return repository.rfIdAssets(rfId);
+};
+
 module.exports = {
+  layoutParties,
+  layoutActivities,
+  rfIdAssets,
   assetTypeTabs,
   assetTypeCompanies,
   assetTypeTabCompanies,

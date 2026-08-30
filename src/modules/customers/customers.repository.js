@@ -455,6 +455,101 @@ const queueNameList = ({ newName, companyIds, rfIds, organisationId }) =>
     { newName, companyIds, rfIds, organisationId }
   );
 
+// ---- :layout parties / activities ----
+
+// Parties for a non-default layout: dashboard_items joined to the biblio
+// assignor_and_assignee + representative, with window running totals.
+const partiesByLayout = ({ companies, layoutId, organisationId, bankMode }) => {
+  const sql = `SELECT id, entityName, totalTransactions, totalAssets,
+      SUM(totalTransactions) OVER (ORDER BY id) AS grand_total,
+      SUM(totalAssets) OVER (ORDER BY id) AS grand_total_assets
+    FROM (
+      SELECT assignor_and_assignee.assignor_and_assignee_id AS id,
+             IF(representative.representative_name <> '', representative.representative_name, assignor_and_assignee.name) AS entityName,
+             COUNT(application) AS totalAssets, 0 AS totalTransactions, COUNT(application) AS assets
+        FROM db_new_application.dashboard_items AS apt
+        INNER JOIN db_patent_application_bibliographic.assignor_and_assignee AS assignor_and_assignee
+                ON assignor_and_assignee.assignor_and_assignee_id = apt.assignor_id
+        LEFT JOIN db_uspto.representative AS representative
+               ON representative.representative_id = assignor_and_assignee.representative_id
+       WHERE (apt.organisation_id = :organisationId OR apt.organisation_id IS NULL)
+         AND apt.representative_id IN (:companies)
+         AND apt.type = :layoutId ${bankMode ? 'AND apt.mode IN (:mode)' : ''}
+       GROUP BY entityName) AS temp1`;
+  const repl = { companies, layoutId, organisationId };
+  if (bankMode) repl.mode = 1;
+  return q.selectAll(connections.applicationNew, sql, repl);
+};
+
+/**
+ * Parties for the default layout (15): activity_parties_transactions filtered
+ * through the cross-charset assets<->documentid subquery. Fixes two legacy
+ * defects: companies/tabs were bound as one comma-joined string (matching
+ * nothing for multiple values), and the subquery carried a hardcoded
+ * company_id IN (125616) debug literal instead of the bound companies.
+ */
+const partiesDefault = ({ companies, tabs, customerType, layoutId, organisationId }) => {
+  const sql = `SELECT *, SUM(totalTransactions) OVER (ORDER BY id) AS grand_total,
+      SUM(totalAssets) OVER (ORDER BY id) AS grand_total_assets
+    FROM (
+      SELECT id, entityName, totalTransactions,
+             (SELECT COUNT(*) FROM (SELECT appno_doc_num FROM db_uspto.documentid
+                WHERE rf_id IN (totalIDs) GROUP BY appno_doc_num) AS temp) AS totalAssets
+        FROM (
+          SELECT id, entityName, GROUP_CONCAT(DISTINCT rfID) AS totalIDs, COUNT(DISTINCT rfID) AS totalTransactions
+            FROM (
+              SELECT apt.assignor_and_assignee_id AS id,
+                     IF(representative.representative_name <> '', representative.representative_name, assignor_and_assignee.name) AS entityName,
+                     apt.rf_id AS rfID
+                FROM db_new_application.activity_parties_transactions AS apt
+                INNER JOIN db_uspto.assignor_and_assignee AS assignor_and_assignee
+                        ON assignor_and_assignee.assignor_and_assignee_id = apt.assignor_and_assignee_id
+                LEFT JOIN db_uspto.representative AS representative
+                       ON representative.representative_id = assignor_and_assignee.representative_id
+               WHERE apt.company_id IN (:companies) AND apt.organisation_id = :organisationId
+                 AND apt.rf_id IN (
+                   SELECT documentid.rf_id
+                     FROM db_new_application.assets AS assets
+                     INNER JOIN db_uspto.documentid AS documentid
+                             ON documentid.appno_doc_num = CONVERT(assets.appno_doc_num USING latin1)
+                            AND documentid.grant_doc_num = CONVERT(assets.grant_doc_num USING latin1)
+                    WHERE assets.layout_id = :layoutId AND apt.company_id IN (:companies)
+                      AND assets.organisation_id = :organisationId
+                    GROUP BY documentid.rf_id)
+                 AND ${tabs.length ? 'apt.activity_id IN (:tabs)' : 'apt.activity_id > 0'}
+                 AND ${customerType === 1 ? 'apt.activity_id = 10' : 'apt.activity_id <> 10'}
+               GROUP BY entityName, rfID) AS party
+           GROUP BY entityName) AS temp1) AS temp2`;
+  const repl = { companies, layoutId, organisationId };
+  if (tabs.length) repl.tabs = tabs;
+  return q.selectAll(connections.applicationNew, sql, repl);
+};
+
+// Activities stored procedure (CSV args by contract).
+const layoutActivities = ({ companiesCsv, organisationId, layoutId }) =>
+  callProcedure('CALL `routine_activities`(:companies, :organisationId, :layoutId);', {
+    companies: companiesCsv,
+    organisationId,
+    layoutId,
+  });
+
+// Business-side existence check for the caller's organisation.
+const organisationExists = (orgId) =>
+  q.exists(connections.business, `SELECT 1 FROM organisation WHERE organisation_id = :orgId`, { orgId });
+
+// Assets recorded on one rf_id (db_application.documentid, latin1-local).
+const rfIdAssets = (rfId) =>
+  q.selectAll(
+    connections.application,
+    `SELECT CONCAT(appno_doc_num, grant_doc_num) AS id,
+            CASE WHEN grant_doc_num = '' THEN appno_doc_num ELSE grant_doc_num END AS name,
+            CASE WHEN grant_doc_num = '' THEN 1 ELSE 0 END AS type,
+            appno_doc_num, grant_doc_num, 3 AS level
+       FROM documentid WHERE rf_id = :rfId
+      ORDER BY CAST(name AS UNSIGNED) ASC`,
+    { rfId }
+  );
+
 module.exports = {
   companyRepresentativeIds,
   assetTypeTabs,
@@ -484,4 +579,9 @@ module.exports = {
   queueAddressList,
   tenantRepresentativeNameById,
   queueNameList,
+  partiesByLayout,
+  partiesDefault,
+  layoutActivities,
+  organisationExists,
+  rfIdAssets,
 };
