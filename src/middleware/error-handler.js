@@ -57,9 +57,14 @@ const errorHandler = (err, req, res, next) => {
     sentry.captureException(err); // F14: only 5xx / non-operational reach Sentry
   }
 
+  // Hide the message only for unexpected (non-operational) errors, which may
+  // leak internals. Deliberate operational errors — including a 503 for an
+  // unreachable tenant DB — keep their client-safe message.
+  const clientMessage = apiError.isOperational ? apiError.message : 'Internal server error';
+
   res.status(apiError.statusCode).json({
     error: {
-      message: apiError.statusCode >= 500 ? 'Internal server error' : apiError.message,
+      message: clientMessage,
       ...(apiError.details ? { details: apiError.details } : {}),
     },
   });
