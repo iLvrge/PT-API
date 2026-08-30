@@ -69,32 +69,37 @@ const makeListModule = ({ table, idColumn, nameColumn, basePath }) => {
     },
   };
 
+  // controller — the only layer that touches req/res; it calls the service.
+  const controller = {
+    list: asyncHandler(async (req, res) => {
+      res.status(200).json(await service.list());
+    }),
+    create: asyncHandler(async (req, res) => {
+      res.status(201).json(await service.create(req.body.keyword));
+    }),
+    update: asyncHandler(async (req, res) => {
+      res.status(200).json(await service.update(req.params.id, req.body.keyword));
+    }),
+    remove: asyncHandler(async (req, res) => {
+      res.status(200).json(await service.remove(req.params.id));
+    }),
+  };
+
   const idParam = z.coerce.number().int().positive();
   const keywordBody = z.object({ keyword: z.string().trim().min(1, 'keyword is required') });
   const createSchema = z.object({ body: keywordBody });
   const updateSchema = z.object({ params: z.object({ id: idParam }), body: keywordBody });
   const idSchema = z.object({ params: z.object({ id: idParam }) });
 
+  // routes — wiring only: path + middleware + controller.
   const router = express.Router();
   router.use(verifyToken, requireAdmin);
-  router.get(basePath, asyncHandler(async (req, res) => res.status(200).json(await service.list())));
-  router.post(
-    basePath,
-    validate(createSchema),
-    asyncHandler(async (req, res) => res.status(201).json(await service.create(req.body.keyword)))
-  );
-  router.put(
-    `${basePath}/:id`,
-    validate(updateSchema),
-    asyncHandler(async (req, res) => res.status(200).json(await service.update(req.params.id, req.body.keyword)))
-  );
-  router.delete(
-    `${basePath}/:id`,
-    validate(idSchema),
-    asyncHandler(async (req, res) => res.status(200).json(await service.remove(req.params.id)))
-  );
+  router.get(basePath, controller.list);
+  router.post(basePath, validate(createSchema), controller.create);
+  router.put(`${basePath}/:id`, validate(updateSchema), controller.update);
+  router.delete(`${basePath}/:id`, validate(idSchema), controller.remove);
 
-  return { router, service, repository };
+  return { router, controller, service, repository };
 };
 
 module.exports = makeListModule;

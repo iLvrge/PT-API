@@ -6,12 +6,11 @@
  */
 
 const express = require('express');
-const swaggerUi = require('swagger-ui-express');
 const { env } = require('./config/env');
 const security = require('./middleware/security');
 const requestLogger = require('./middleware/request-logger');
 const { notFound, errorHandler } = require('./middleware/error-handler');
-const openapi = require('./docs/openapi');
+const docsRoutes = require('./modules/docs/docs.routes');
 
 const healthRoutes = require('./modules/health/health.routes');
 const authRoutes = require('./modules/auth/auth.routes');
@@ -38,8 +37,7 @@ const createApp = () => {
   app.use(security.globalLimiter);
 
   // API documentation
-  app.get('/docs.json', (req, res) => res.json(openapi));
-  app.use('/docs', swaggerUi.serve, swaggerUi.setup(openapi, { explorer: true }));
+  app.use('/', docsRoutes);
 
   // Routes
   app.use('/', healthRoutes);
