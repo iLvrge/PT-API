@@ -60,4 +60,38 @@ const runPhpScriptBackground = (name, args = []) => {
   });
 };
 
-module.exports = { runPhpScript, runPhpScriptBackground };
+/**
+ * Run one of the Node data-pipeline scripts.
+ *
+ * Same contract as runPhpScript: an argument array, never a shell string. The
+ * legacy admin routes built these with `exec` and a template literal, so a
+ * request value containing a quote and a semicolon ran as a second command
+ * (see TEST_REPORT.md section 3).
+ */
+const runNodeScript = (name, args = []) =>
+  new Promise((resolve, reject) => {
+    execFile(
+      process.execPath,
+      [scriptPath(name), ...args.map(String)],
+      { env: jobEnv(), maxBuffer: 10 * 1024 * 1024 },
+      (err, stdout, stderr) => {
+        if (err) {
+          logger.error('node job failed', { script: name, error: err.message });
+          return reject(err);
+        }
+        if (stderr) logger.warn('node job stderr', { script: name });
+        return resolve({ stdout, stderr });
+      }
+    );
+  });
+
+/** Fire-and-forget variant: never rejects, logs failures. */
+const runNodeScriptBackground = (name, args = []) => {
+  runNodeScript(name, args).catch(() => {
+    // already logged inside runNodeScript
+  });
+};
+
+module.exports = {
+  runPhpScript, runPhpScriptBackground, runNodeScript, runNodeScriptBackground,
+};

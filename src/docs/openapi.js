@@ -23,6 +23,7 @@ const external = require('./paths/external');
 const assets = require('./paths/assets');
 const integrations = require('./paths/integrations');
 const family = require('./paths/family');
+const adminCustomers = require('./paths/admin-customers');
 
 const errorSchema = {
   type: 'object',
@@ -177,6 +178,10 @@ const tags = [
   { name: 'Profile', description: 'The signed-in user.' },
   { name: 'Users', description: 'Users inside the caller organisation.' },
   { name: 'Admin users', description: 'Cross-organisation user management. Admin only.' },
+  { name: 'Admin customers', description: 'Customer organisations. Admin only.' },
+  { name: 'Admin reports', description: 'The fixed asset reports. Admin only.' },
+  { name: 'Admin logs', description: 'Update, family and reclassification logs. Admin only.' },
+  { name: 'Admin jobs', description: 'Data-pipeline jobs. Admin only.' },
   { name: 'Admin lists', description: 'Keyword, state and company-keyword lists. Admin only.' },
   { name: 'Admin tree', description: 'Corporate-structure upload. Admin only.' },
   { name: 'Companies', description: 'The company portfolio.' },
@@ -259,6 +264,7 @@ const openapi = {
     ...assets,
     ...integrations,
     ...family,
+    ...adminCustomers,
   },
 };
 

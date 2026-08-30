@@ -19,3 +19,8 @@ process.env.DATABASE_RAW = 'db_uspto';
 process.env.ASSIGNMENT_CENTER_SEARCH_URL =
   process.env.ASSIGNMENT_CENTER_SEARCH_URL || 'https://assignment-center.example/';
 process.env.STATIC_FILES_URL = process.env.STATIC_FILES_URL || 'https://static.example';
+
+// Where the data-pipeline scripts live. Nothing is executed in the suite; the
+// path only has to exist so the entity-file guard has a directory to resolve
+// against.
+process.env.SCRIPT_PATH = process.env.SCRIPT_PATH || '/tmp/pt-api-scripts';

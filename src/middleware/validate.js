@@ -32,8 +32,12 @@ const validate = (schema) => (req, res, next) => {
   }
 
   if (result.data.body) req.body = result.data.body;
-  if (result.data.params) req.params = result.data.params;
   if (result.data.query) req.query = result.data.query;
+  // Params are merged rather than replaced. A zod object strips keys it does
+  // not declare, so a schema that validates only some of a route's parameters
+  // would silently delete the rest — the handler would then read undefined for
+  // a segment the URL clearly carried.
+  if (result.data.params) req.params = { ...req.params, ...result.data.params };
   return next();
 };
 

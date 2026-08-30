@@ -41,6 +41,15 @@ class ApiError extends Error {
   static internal(message = 'Internal server error') {
     return new ApiError(500, message, { isOperational: false });
   }
+
+  /**
+   * A dependency this request needed is not reachable — a tenant database, say.
+   * Operational, so the message reaches the caller instead of being replaced
+   * with a generic 500.
+   */
+  static serviceUnavailable(message = 'Service unavailable') {
+    return new ApiError(503, message);
+  }
 }
 
 module.exports = ApiError;

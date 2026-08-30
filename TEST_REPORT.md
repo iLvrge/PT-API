@@ -1,6 +1,6 @@
 # Test and manual-verification report
 
-Branch `rewrite/v2` · 30 Aug 2026 · 677 tests, 57 suites, all passing
+Branch `rewrite/v2` · 30 Aug 2026 · 742 tests, 60 suites, all passing
 
 This is the list to work through by hand before deploying. Section 1 explains the
 intermittent test failures and what turned out to be causing them. **Section 3
@@ -122,8 +122,8 @@ command, which then runs as the API process user.
 |---|---|---|---|
 | `routes/application/family.js` | 1756 | `link` query parameter | **anyone — the route has no authentication** — *fixed in v2: route dropped* |
 | `routes/application/family.js` | 441 | `asset` | any signed-in user — *fixed in v2: execFile* |
-| `routes/business/admin_customers.js` | 666 | `type`, `suggestions`, `fixed_identicals` | admins |
-| `routes/business/admin_customers.js` | 778 | `representativeID` and the same three | admins |
+| `routes/business/admin_customers.js` | 666 | `type`, `suggestions`, `fixed_identicals` | admins — *fixed in v2: execFile* |
+| `routes/business/admin_customers.js` | 778 | `representativeID` and the same three | admins — *fixed in v2: execFile* |
 | `routes/business/admin_company_search.js` | 4322 | `assignee_id` | admins |
 
 The unauthenticated one is the urgent one:
@@ -148,8 +148,20 @@ already used in `src/utils/php-jobs.js`.
 nothing depends on it; if it is wanted back it needs to be an `execFile` call
 behind a token with the URL checked against the EPO host.
 
-`admin_customers.js` and `admin_company_search.js` still carry the other three
-and are next.
+**`admin_customers.js` is done:** both of its call sites now go through
+`runNodeScript`, which is `execFile` with an argument array.
+
+`admin_company_search.js` still carries the last one and is next.
+
+### Also in admin_customers.js: a path traversal
+
+`GET /admin/customers/static_file/read_entity_file?fileName=...` joined the
+caller's name straight onto `/var/www/html/script/`, so
+`?fileName=../../../../etc/passwd` returned whatever the API process could
+read. Admin-only, but an admin session should not be able to read the
+filesystem. In v2 the name is reduced to its basename, has to match the shape
+the normalisation scripts actually write, and the resolved path is checked to
+still be inside the directory.
 
 ---
 

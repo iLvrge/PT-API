@@ -55,3 +55,40 @@ describe('error-handler', () => {
     expect(next.mock.calls[0][0].statusCode).toBe(404);
   });
 });
+
+describe('validate middleware — parameter merging', () => {
+  const { z } = require('zod');
+  const validate = require('../../src/middleware/validate');
+
+  const run = (schema, req) => {
+    const next = jest.fn();
+    validate(schema)(req, {}, next);
+    return next;
+  };
+
+  it('keeps route params the schema does not mention', () => {
+    // A zod object strips undeclared keys. Replacing req.params with the parsed
+    // object would delete `type` here, and the handler would read undefined for
+    // a segment the URL plainly carried.
+    const schema = z.object({ params: z.object({ id: z.coerce.number().int() }) });
+    const req = { params: { id: '118', type: '1' }, body: {}, query: {} };
+
+    const next = run(schema, req);
+    expect(next).toHaveBeenCalledWith();
+    expect(req.params).toEqual({ id: 118, type: '1' });
+  });
+
+  it('still coerces the params it does declare', () => {
+    const schema = z.object({ params: z.object({ id: z.coerce.number().int() }) });
+    const req = { params: { id: '118' }, body: {}, query: {} };
+    run(schema, req);
+    expect(req.params.id).toBe(118);
+  });
+
+  it('rejects a param that fails its rule', () => {
+    const schema = z.object({ params: z.object({ id: z.coerce.number().int() }) });
+    const req = { params: { id: 'abc' }, body: {}, query: {} };
+    const next = run(schema, req);
+    expect(next.mock.calls[0][0]).toMatchObject({ statusCode: 400 });
+  });
+});

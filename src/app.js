@@ -53,6 +53,7 @@ const assetRoutes = require('./modules/assets/assets.routes');
 const microsoftRoutes = require('./modules/microsoft/microsoft.routes');
 const slackRoutes = require('./modules/slack/slack.routes');
 const familyRoutes = require('./modules/family/family.routes');
+const adminCustomerRoutes = require('./modules/admin-customers/admin-customers.routes');
 
 const createApp = () => {
   const app = express();
@@ -122,6 +123,7 @@ const createApp = () => {
   app.use('/admin', userRoutes);
   app.use('/admin', keywordRoutes);
   app.use('/admin', adminTreeRoutes);
+  app.use('/admin', adminCustomerRoutes);
   listModules.routers.forEach((r) => app.use('/admin', r));
 
   // 404 then centralised error handling — always last.

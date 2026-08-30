@@ -170,6 +170,11 @@ const env = {
     teamName: process.env.MICROSOFT_TEAM_NAME || 'PatenTrack',
   },
 
+  // Where the data-pipeline scripts live, and where they write their output.
+  scripts: {
+    path: process.env.SCRIPT_PATH,
+  },
+
   // European Patent Office Open Patent Services.
   epo: {
     key: process.env.EPO_KEY,
