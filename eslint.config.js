@@ -21,6 +21,7 @@ const globals = {
   setImmediate: 'readonly',
   fetch: 'readonly',
   AbortController: 'readonly',
+  AbortSignal: 'readonly',
   URL: 'readonly',
   URLSearchParams: 'readonly',
 };
