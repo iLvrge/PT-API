@@ -6,7 +6,8 @@ This is the list to work through by hand before deploying. Section 1 explains th
 intermittent test failures and what turned out to be causing them. **Section 3
 is a command injection in the currently deployed application and should be read
 first.** Section 4 is the set of endpoints that need a human to look at them,
-because a test can only prove the code does what it was told to do.
+because a test can only prove the code does what it was told to do. Section 6
+lists what is deliberately left for later.
 
 ---
 
@@ -241,7 +242,7 @@ npm run start:v2          # http://localhost:3600
 Open **http://localhost:3600/docs**. Call `POST /signin`, copy `accessToken`
 into the **Authorize** dialog, and every other endpoint is callable from the UI.
 
-All 195 mounted routes are documented.
+All 333 mounted routes are documented.
 `tests/integration/docs-coverage.test.js` walks the live Express router and
 fails if a route is undocumented or a documented path no longer exists, so the
 page cannot drift from the code.
@@ -257,3 +258,58 @@ page cannot drift from the code.
       under Docker `-e`, systemd or pm2 an inherited value authenticates as the
       wrong account. `USER` is still read as a fallback.
 - [ ] Decide what `GET /transactions` should do about its missing table.
+
+---
+
+## 6. Deferred — agreed to do later
+
+None of this blocks the route port, which is complete. It is listed so nothing
+here is mistaken for an oversight.
+
+### The reporting and messaging tiers — 20 endpoints answering 501
+
+Every one of these is declared in Swagger under a *(pending)* tag and answers
+501, rather than being hidden, so the gap is visible while testing.
+
+| Surface | Endpoints | Depends on |
+|---|---|---|
+| Document export (`/documents/...`) | 10 | XML generation and the Google Sheets helper |
+| External asset spreadsheets (`/assets/external_assets...`) | 7 | the Google Sheets helper |
+| Slack file sharing (`GET /assets/{n}/files/{channel}/slack/{token}`) | 1 | the messaging tier |
+| `POST /users/invite` | 1 | the messaging tier |
+| `GET /companies/{companyID}/users` | 1 | the messaging tier |
+
+That is the only real implementation work left: a Google Sheets writer and an
+outbound messaging path. Both were out of scope for porting the routes.
+
+To see the current list at any time:
+
+```bash
+node -e "const s=require('./src/docs/openapi');
+Object.entries(s.paths).forEach(([p,ops])=>Object.entries(ops).forEach(([m,o])=>
+  o.responses&&o.responses['501']&&console.log(m.toUpperCase(),p)))"
+```
+
+### CI/CD
+
+Deferred at the start of the rewrite and still open. There are now 848 tests
+across 64 suites that run without a database, plus a lint pass, so a pipeline
+has something worth running. `.github/` was deliberately stripped from this
+branch's history and has not been reintroduced.
+
+### Manual verification through Swagger
+
+Section 4 is the walkthrough. It has not been done yet — the endpoints have
+been smoke-tested against the live database for shape and status, but nobody
+has confirmed the *numbers* match what the current application shows.
+
+### Decisions still needed
+
+- What `GET /transactions` should do about its missing table (section 4).
+- Sign-off on the six endpoints that now require a token and did not before
+  (section 4), in case any of them backs a public page.
+
+### Not deferred
+
+**Section 3 is not on this list.** The command injection is live in the
+deployed application today and does not wait for the rewrite to ship.
