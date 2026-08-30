@@ -208,7 +208,39 @@ const timelineSecurity = asyncHandler(async (req, res) => {
   res.status(200).json(await service.timelineSecurity());
 });
 
+// Shared parser for the analytics POST bodies (legacy form-post fields).
+const parseAnalyticsBody = (req) => ({
+  list: parseArray(req.body.list, 'list'),
+  total: req.body.total,
+  type: req.body.type,
+  companies: parseArray(req.body.selectedCompanies, 'selectedCompanies'),
+  tabs: parseArray(req.body.tabs, 'tabs'),
+  customers: parseArray(req.body.customers, 'customers'),
+  assignments: parseArray(req.body.assignments, 'assignments'),
+  dataType: req.body.data_type !== undefined ? Number(req.body.data_type) : undefined,
+  otherMode: req.body.other_mode,
+  sale: req.body.sale,
+  license: req.body.license,
+  lawfirm: Number(req.body.lawfirm) || 0,
+  check: req.body.check !== undefined ? Number(req.body.check) : undefined,
+});
+
+const assetAgents = asyncHandler(async (req, res) => {
+  res.status(200).json(await service.assetAgents(req.tenant, parseAnalyticsBody(req), req.auth));
+});
+
+const assetFamily = asyncHandler(async (req, res) => {
+  res.status(200).json(await service.assetFamily(req.tenant, parseAnalyticsBody(req), req.auth));
+});
+
+const inventorLocations = asyncHandler(async (req, res) => {
+  res.status(200).json(await service.inventorLocations(req.tenant, parseAnalyticsBody(req), req.auth));
+});
+
 module.exports = {
+  assetAgents,
+  assetFamily,
+  inventorLocations,
   timelineFillingAssets,
   timelineSecurity,
   timeline,

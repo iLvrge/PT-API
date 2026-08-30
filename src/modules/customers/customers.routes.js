@@ -20,6 +20,9 @@ router.get('/asset_types/companies', guard, validate(schema.companiesSchema), co
 router.get('/asset_types/assignments', guard, validate(schema.assignmentsSchema), controller.assetTypeAssignments);
 router.get('/asset_types/assignments/:rfID', guard, validate(schema.rfIdSchema), controller.assignmentAssets);
 router.get('/asset_types/assets', guard, validate(schema.assetsSchema), controller.assetTypeAssets);
+router.post('/asset_types/assets/agents', guard, controller.assetAgents);
+router.post('/asset_types/assets/family', guard, controller.assetFamily);
+router.post('/asset_types/inventors/location', guard, controller.inventorLocations);
 router.get('/asset_types/:tab_id/companies', guard, validate(schema.tabCompaniesSchema), controller.assetTypeTabCompanies);
 
 router.post('/transactions/groupids', verifyToken, validate(schema.groupIdsSchema), controller.transactionsByGroupIds);

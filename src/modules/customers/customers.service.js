@@ -2,6 +2,8 @@
 
 const repository = require('./customers.repository');
 const timelineQ = require('./customers.timeline');
+const filters = require('./customers.filters');
+const analytics = require('./customers.analytics');
 const { distance } = require('fastest-levenshtein');
 const ApiError = require('../../utils/api-error');
 const { findLayout, checkTabs, TABS, ASSIGNMENT_TABS, RECORD_LIMIT, OFFSET } = require('./customers.constants');
@@ -458,7 +460,110 @@ const timelineFillingAssets = async (tenant, { companies, rfIds, start, end, org
 // commented out both executions, so it always returned empty. Kept faithful.
 const timelineSecurity = async () => ({ list: [], groups: [] });
 
+/**
+ * POST /customers/asset_types/assets/agents — filings / lenders / recordings
+ * per name per year. Returns the raw {name, year, counter} rows (the legacy
+ * Google-Charts header variable was declared but never sent).
+ */
+const assetAgents = async (tenant, body, { orgType }) => {
+  const bankMode = orgType === 2;
+  const year = new Date().getFullYear() - 11; // legacy startDate: now - 11y
+  const companies = body.companies;
+  const assignments = body.assignments;
+
+  if (body.dataType === undefined) return [];
+
+  if (body.dataType === 1) {
+    // Filling: asset set from the client list or the filling-assets chain.
+    let assets = [];
+    if (body.check === 1) {
+      assets = body.list;
+    } else {
+      const names = await timelineQ.tenantRepresentativeNames(tenant, companies);
+      if (names.length) {
+        const representativeIds = await timelineQ.representativeIdsByNames(names);
+        assets = await timelineQ.fillingAssets({ companyNames: names, representativeIds });
+      }
+    }
+    if (!assets.length) return [];
+
+    let lawfirms = null;
+    if (assignments.length || body.lawfirm > 0) {
+      lawfirms = await analytics.lawfirmNamesForRfIds(assignments.length ? assignments : [body.lawfirm]);
+    }
+    return analytics.agentsFilling({ assets, lawfirms, checkMode: body.check === 1, bankMode, companies, year });
+  }
+
+  if (body.dataType === 3) {
+    return analytics.agentsLenders({ companies, bankMode, customers: body.customers, year });
+  }
+
+  // Recordings (default): three sub-variants like legacy.
+  const ownedType = findLayout(body.type);
+  if (body.check === 1) {
+    let assets = body.list;
+    if (!body.list.length) {
+      const names = await timelineQ.tenantRepresentativeNames(tenant, companies);
+      if (names.length) {
+        const representativeIds = await timelineQ.representativeIdsByNames(names);
+        assets = await timelineQ.fillingAssets({ companyNames: names, representativeIds });
+      }
+    }
+    if (!assets.length) return [];
+    return analytics.agentsRecordings({ variant: 'assets', assets, companies, ownedType, bankMode, year });
+  }
+  if (assignments.length) {
+    return analytics.agentsRecordings({ variant: 'assignments', assignments, companies, ownedType, bankMode, year });
+  }
+  const firmFilter = body.lawfirm > 0 ? await analytics.lawfirmForRf(body.lawfirm) : null;
+  return analytics.agentsRecordings({ variant: 'company', companies, ownedType, bankMode, firmFilter, year });
+};
+
+/**
+ * POST /customers/asset_types/assets/family — worldwide family distribution as
+ * a Google-Charts array. US count adjusted with grants missing from
+ * assets_family, exactly as legacy did.
+ */
+const assetFamily = async (tenant, body, auth) => {
+  const list = await filters.filterAssets({ ...body, orgId: auth.orgId, orgType: auth.orgType, fType: 1 });
+  const result = [['Country', 'Assets']];
+  if (!Array.isArray(list) || !list.length) return result;
+
+  const totalUS = list.length;
+  const grants =
+    body.type === 'missed_monetization'
+      ? await analytics.biblioGrantsForApps(list, 1999)
+      : await analytics.unionGrantsForApps(list, 1999);
+  const grantList = grants.length ? grants : list;
+
+  const missing = await filters.missingGrantNumbers(grantList);
+  const rows = await analytics.familyCountries(grantList, 1999);
+
+  if (rows.length) {
+    for (const row of rows) result.push([row.name, parseInt(row.number, 10)]);
+    const usIndex = result.findIndex((item) => item[0] === 'United States');
+    if (usIndex !== -1) result[usIndex][1] += missing.length;
+    else result.push(['United States', totalUS]);
+  } else {
+    result.push(['United States', totalUS]);
+  }
+  return result;
+};
+
+// POST /customers/asset_types/inventors/location — country distribution.
+const inventorLocations = async (tenant, body, auth) => {
+  const list = await filters.filterAssets({ ...body, orgId: auth.orgId, orgType: auth.orgType });
+  const result = [['Country', 'Assets']];
+  if (!Array.isArray(list) || !list.length) return result;
+  const rows = await analytics.inventorCountries(list, 1999);
+  for (const row of rows) result.push([row.name, parseInt(row.number, 10)]);
+  return result;
+};
+
 module.exports = {
+  assetAgents,
+  assetFamily,
+  inventorLocations,
   timelineFillingAssets,
   timelineSecurity,
   timeline,
