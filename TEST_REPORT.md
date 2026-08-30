@@ -1,6 +1,6 @@
 # Test and manual-verification report
 
-Branch `rewrite/v2` · 30 Aug 2026 · 576 tests, 53 suites, all passing
+Branch `rewrite/v2` · 30 Aug 2026 · 635 tests, 55 suites, all passing
 
 This is the list to work through by hand before deploying. Section 1 explains the
 intermittent test failures and what turned out to be causing them. **Section 3
