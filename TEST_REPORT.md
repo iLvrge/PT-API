@@ -2,10 +2,11 @@
 
 Branch `rewrite/v2` · 30 Aug 2026 · 576 tests, 53 suites, all passing
 
-This is the list to work through by hand before deploying. Part 1 explains the
-intermittent test failures and what turned out to be causing them. Part 2 is the
-set of endpoints that need a human to look at them, because a test can only
-prove the code does what it was told to do.
+This is the list to work through by hand before deploying. Section 1 explains the
+intermittent test failures and what turned out to be causing them. **Section 3
+is a command injection in the currently deployed application and should be read
+first.** Section 4 is the set of endpoints that need a human to look at them,
+because a test can only prove the code does what it was told to do.
 
 ---
 
@@ -107,7 +108,46 @@ passed depended on how many requests had run before it. It now lives in
 
 ---
 
-## 3. What to verify by hand
+## 3. Command injection in the legacy app — needs attention now
+
+This is independent of the rewrite. **These are live in the currently deployed
+application**, and the first one needs no credentials at all.
+
+Five places build a shell command by interpolating request data into a template
+string and hand it to `child_process.exec`, which runs it through `/bin/sh`. A
+value containing `"` followed by `;` closes the quoted argument and starts a new
+command, which then runs as the API process user.
+
+| File | Line | Value from the request | Reachable by |
+|---|---|---|---|
+| `routes/application/family.js` | 1756 | `link` query parameter | **anyone — the route has no authentication** |
+| `routes/application/family.js` | 441 | `asset` | any signed-in user |
+| `routes/business/admin_customers.js` | 666 | `type`, `suggestions`, `fixed_identicals` | admins |
+| `routes/business/admin_customers.js` | 778 | `representativeID` and the same three | admins |
+| `routes/business/admin_company_search.js` | 4322 | `assignee_id` | admins |
+
+The unauthenticated one is the urgent one:
+
+```js
+// routes/application/family.js:1756 — `link` comes straight from req.query
+exec(`php -f /var/www/html/trash/get_epo_thumbnail.php "${link}"`, ...)
+```
+
+### What to do
+
+Short term, on the deployed app: either take `GET /family/single/file/` out of
+service, or block it at the proxy. It is a thumbnail helper, so losing it
+degrades an image preview rather than breaking a workflow.
+
+In the rewrite these become `execFile` with an argument array, which passes the
+arguments to the process directly and never involves a shell — the pattern
+already used in `src/utils/php-jobs.js`. That is being applied as each of these
+files is ported; `family.js`, `admin_customers.js` and `admin_company_search.js`
+are next.
+
+---
+
+## 4. What to verify by hand
 
 Tests prove the code does what it was told. These need judgement.
 
@@ -163,7 +203,7 @@ tier, which is not ported yet. `POST /users/invite` and `GET
 
 ---
 
-## 4. How to test manually
+## 5. How to test manually
 
 ```bash
 npm run start:v2          # http://localhost:3600
