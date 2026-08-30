@@ -55,6 +55,7 @@ const slackRoutes = require('./modules/slack/slack.routes');
 const familyRoutes = require('./modules/family/family.routes');
 const adminCustomerRoutes = require('./modules/admin-customers/admin-customers.routes');
 const eventRoutes = require('./modules/events/events.routes');
+const adminCompanySearchRoutes = require('./modules/admin-company-search/admin-company-search.routes');
 
 const createApp = () => {
   const app = express();
@@ -126,6 +127,7 @@ const createApp = () => {
   app.use('/admin', keywordRoutes);
   app.use('/admin', adminTreeRoutes);
   app.use('/admin', adminCustomerRoutes);
+  app.use('/admin', adminCompanySearchRoutes);
   listModules.routers.forEach((r) => app.use('/admin', r));
 
   // 404 then centralised error handling — always last.

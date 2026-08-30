@@ -25,6 +25,7 @@ const integrations = require('./paths/integrations');
 const family = require('./paths/family');
 const adminCustomers = require('./paths/admin-customers');
 const events = require('./paths/events');
+const adminCompanySearch = require('./paths/admin-company-search');
 
 const errorSchema = {
   type: 'object',
@@ -182,6 +183,11 @@ const tags = [
   { name: 'Admin customers', description: 'Customer organisations. Admin only.' },
   { name: 'Admin reports', description: 'The fixed asset reports. Admin only.' },
   { name: 'Admin logs', description: 'Update, family and reclassification logs. Admin only.' },
+  { name: 'Admin search', description: 'Company, party and address search. Admin only.' },
+  { name: 'Admin normalise', description: 'Pointing recorded names at a canonical record. Admin only.' },
+  { name: 'Admin law firms', description: 'Law firms and lawyers. Admin only.' },
+  { name: 'Admin assignments', description: 'Recorded transactions and their correspondents. Admin only.' },
+  { name: 'Admin cited', description: 'Cited assignee organisations and their logos. Admin only.' },
   { name: 'Admin jobs', description: 'Data-pipeline jobs. Admin only.' },
   { name: 'Admin lists', description: 'Keyword, state and company-keyword lists. Admin only.' },
   { name: 'Admin tree', description: 'Corporate-structure upload. Admin only.' },
@@ -268,6 +274,7 @@ const openapi = {
     ...family,
     ...adminCustomers,
     ...events,
+    ...adminCompanySearch,
   },
 };
 

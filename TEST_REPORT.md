@@ -1,6 +1,6 @@
 # Test and manual-verification report
 
-Branch `rewrite/v2` · 30 Aug 2026 · 742 tests, 60 suites, all passing
+Branch `rewrite/v2` · 30 Aug 2026 · 848 tests, 64 suites, all passing · **all 41 legacy route files ported**
 
 This is the list to work through by hand before deploying. Section 1 explains the
 intermittent test failures and what turned out to be causing them. **Section 3
@@ -124,7 +124,7 @@ command, which then runs as the API process user.
 | `routes/application/family.js` | 441 | `asset` | any signed-in user — *fixed in v2: execFile* |
 | `routes/business/admin_customers.js` | 666 | `type`, `suggestions`, `fixed_identicals` | admins — *fixed in v2: execFile* |
 | `routes/business/admin_customers.js` | 778 | `representativeID` and the same three | admins — *fixed in v2: execFile* |
-| `routes/business/admin_company_search.js` | 4322 | `assignee_id` | admins |
+| `routes/business/admin_company_search.js` | 4322 | `assignee_id` | admins — *fixed in v2: execFile* |
 
 The unauthenticated one is the urgent one:
 
@@ -148,10 +148,14 @@ already used in `src/utils/php-jobs.js`.
 nothing depends on it; if it is wanted back it needs to be an `execFile` call
 behind a token with the URL checked against the EPO host.
 
-**`admin_customers.js` is done:** both of its call sites now go through
-`runNodeScript`, which is `execFile` with an argument array.
+**All five are now closed in v2.** `family.js`, `admin_customers.js` and
+`admin_company_search.js` route their jobs through `runPhpScript` /
+`runNodeScript`, which are `execFile` with an argument array; the
+unauthenticated thumbnail route is not ported at all.
 
-`admin_company_search.js` still carries the last one and is next.
+**The legacy app is unchanged** — these fixes live on `rewrite/v2`. Until that
+ships, `GET /family/single/file/` on the deployed app is still an
+unauthenticated command execution and should be blocked at the proxy.
 
 ### Also in admin_customers.js: a path traversal
 
@@ -206,6 +210,13 @@ Sign off on each, or tell me to revert it.
 - `GET /dashboards/check` — fired a request for three hardcoded patent numbers and never sent a response, leaking a socket per call.
 - `GET /generate_thumbnail` — ignored its own `file` parameter, read a hardcoded PDF from a developer's laptop, wrote a JPEG into the working directory.
 - `GET /search/:search_string/:type` — ran three expensive queries and then returned an empty list unconditionally.
+
+### Endpoints deliberately not ported (admin_company_search)
+
+- The lender, family, parties, saved-logo, report and company-selection reads duplicate what `/companies`, `/customers` and `/dashboards` already serve.
+- `POST /company/:id/add_bulk_companies` is the same tenant company creation as `POST /companies`.
+- `POST /company/cited/:id/export` and the cited create/delete pair drive a Google Sheet, so they belong with the reporting tier that is still pending.
+- `POST /company/report_dashboard:id/` was registered without a slash before its parameter, so it only ever matched paths like `/company/report_dashboard5/`. No client can have been calling it.
 
 ### Endpoints deliberately not ported (assets)
 
