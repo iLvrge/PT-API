@@ -433,7 +433,10 @@ const createCompanies = async (tenant, auth, { name, parent_company }) => {
       added++;
     }
   }
-  if (!added) throw ApiError.internal('Internal server error');
+  // Every candidate matched a company this organisation already tracks — not
+  // a crash, the same "nothing new to add" outcome the parent_company branch
+  // above reports with the same message.
+  if (!added) throw ApiError.forbidden('Company already added');
   repository.logActivities(activityLogs).catch(() => {});
   for (const companyId of mainCompanies) {
     await triggerCompanyRebuild(auth.orgId, companyId);

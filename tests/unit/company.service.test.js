@@ -137,6 +137,26 @@ describe('company.service.createCompanies', () => {
     repo.findParentCompany.mockResolvedValue(null);
     await expect(service.createCompanies(tenant, authInfo, { name: '[1]', parent_company: 9 })).rejects.toMatchObject({ statusCode: 403 });
   });
+
+  // Found testing against Avaya's own data: resolving a request onto a
+  // representative the org already tracks by name left `added` at 0 and the
+  // top-level branch threw a generic 500 instead of reporting the same
+  // "already added" outcome the parent_company branch above reports.
+  it('403 "Company already added" when every candidate already exists by name — not a 500', async () => {
+    repo.requestsByIds.mockResolvedValue([{ account_id: 0, representative_id: 7 }]);
+    repo.assigneeIdsForRepresentatives.mockResolvedValue([{ assignor_and_assignee_id: 42 }]);
+    repo.subsidiaryCompanies.mockResolvedValue([
+      { assignor_and_assignee_id: 42, name: 'Avaya Management Lp', representative_name: 'Avaya Management Lp', instances: 1, representative_id: 7 },
+    ]);
+    repo.representativesByNames.mockResolvedValue([
+      { original_name: 'Avaya Management Lp', representative_name: 'Avaya Management Lp' },
+    ]);
+
+    await expect(
+      service.createCompanies(tenant, authInfo, { name: '[1]' })
+    ).rejects.toMatchObject({ statusCode: 403, message: 'Company already added' });
+    expect(repo.createRepresentative).not.toHaveBeenCalled();
+  });
 });
 
 describe('company.service.deleteCompanies', () => {

@@ -26,7 +26,7 @@ const AssetTransfer = connections.application.define(
 const AssetForSale = connections.applicationNew.define(
   'assets_for_sale',
   {
-    id: { type: DataTypes.BIGINT, primaryKey: true, autoIncrement: true },
+    sales_id: { type: DataTypes.BIGINT, primaryKey: true, autoIncrement: true },
     appno_doc_num: { type: DataTypes.STRING, allowNull: true },
     grant_doc_num: { type: DataTypes.STRING, allowNull: true },
     type: { type: DataTypes.INTEGER, allowNull: true },
