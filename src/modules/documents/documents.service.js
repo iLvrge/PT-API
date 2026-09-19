@@ -101,6 +101,10 @@ const getRepoFolder = (orgId, userAccount) => {
 
 const setRepoFolder = async (orgId, body) => {
   const { container_id, container_name, user_account, breadcrumb, utilities_container_id, utilities_name, utilities_breadcrumb } = body;
+  // user_account is half the lookup key. Without it Sequelize was handed
+  // undefined and threw 'WHERE parameter "user_account" has invalid "undefined"
+  // value' — a 500 for a missing field.
+  if (!user_account) throw ApiError.badRequest('user_account is required');
   let repo = await repository.findRepository(orgId, user_account);
   if (!repo) {
     let item = null;
@@ -127,6 +131,7 @@ const setRepoFolder = async (orgId, body) => {
 };
 
 const setTemplateFolder = async (orgId, { template_container_id, template_container_name, user_account, template_breadcrumb }) => {
+  if (!user_account) throw ApiError.badRequest('user_account is required');
   const repo = await repository.findRepository(orgId, user_account);
   if (!repo) {
     return repository.createRepository({

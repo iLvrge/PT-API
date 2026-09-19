@@ -14,6 +14,9 @@
 const bcrypt = require('bcrypt');
 const { env } = require('../../config/env');
 const ApiError = require('../../utils/api-error');
+const q = require('../../db/query');
+const tenants = require('../../db/tenant-connections');
+const logger = require('../../utils/logger');
 const repository = require('./users.repository');
 
 const ROLE_MANAGER = 1;
@@ -63,6 +66,89 @@ const create = async (organisationId, input) => {
   return toPublic(created.toJSON());
 };
 
+/**
+ * Update a customer's user.
+ *
+ * A password change is exclusive: when `password` is present the legacy handler
+ * wrote ONLY the hash and ignored every other field, and the console relies on
+ * that — its "change password" dialog posts the password alone. Keeping the two
+ * paths separate also means a profile edit can never blank a password.
+ *
+ * The same person exists twice: once in db_business (which owns sign-in) and
+ * once in the customer's own tenant database (which owns their activity). The
+ * business row is authoritative; if the tenant copy cannot be updated the edit
+ * still stands and the divergence is logged, matching the legacy behaviour.
+ */
+const update = async (organisationId, userId, input) => {
+  const existing = await repository.findByIdInOrganisation(userId, organisationId);
+  if (!existing) throw ApiError.notFound('User not found');
+
+  if (input.password) {
+    const passwordHash = await bcrypt.hash(input.password, env.auth.bcryptRounds);
+    await repository.updateById(userId, organisationId, { password: passwordHash });
+    return { user_id: Number(userId), updated: ['password'] };
+  }
+
+  if (input.email_address && input.email_address !== existing.username
+      && await repository.emailTakenByAnother(input.email_address, userId)) {
+    throw ApiError.conflict('A user with this email already exists');
+  }
+
+  const attributes = {
+    first_name: input.first_name,
+    last_name: input.last_name || '',
+    email_address: input.email_address,
+    username: input.email_address,
+    job_title: input.job_title || null,
+    linkedin_url: input.linkedin_url || null,
+    type: input.type,
+    role_id: input.type === TYPE_MANAGER ? ROLE_MANAGER : ROLE_MEMBER,
+  };
+  await repository.updateById(userId, organisationId, attributes);
+  await syncTenantUser(organisationId, existing.username, attributes);
+
+  return { user_id: Number(userId), updated: Object.keys(attributes) };
+};
+
+/** Mirror a profile edit into the customer's own database. Best effort. */
+const syncTenantUser = async (organisationId, currentUsername, attributes) => {
+  try {
+    const tenant = await tenants.getConnection(Number(organisationId));
+    if (!tenant) return;
+
+    const row = await q.selectOne(
+      tenant,
+      'SELECT user_id FROM user WHERE username = :username LIMIT 1',
+      { username: currentUsername }
+    );
+    if (!row) return;
+
+    await tenant.query(
+      `UPDATE user SET first_name = :first_name, last_name = :last_name,
+              email_address = :email_address, username = :username,
+              job_title = :job_title, linkedin_url = :linkedin_url, role_id = :role_id
+        WHERE user_id = :userId`,
+      {
+        replacements: {
+          first_name: attributes.first_name,
+          last_name: attributes.last_name,
+          email_address: attributes.email_address,
+          username: attributes.username,
+          job_title: attributes.job_title,
+          linkedin_url: attributes.linkedin_url,
+          role_id: attributes.role_id,
+          userId: row.user_id,
+        },
+        logging: false,
+      }
+    );
+  } catch (err) {
+    logger.warn('customer user updated in business but not in the tenant', {
+      organisationId, error: err.message,
+    });
+  }
+};
+
 const remove = async (organisationId, userId) => {
   const user = await repository.findByIdInOrganisation(userId, organisationId);
   if (!user) throw ApiError.notFound('User not found');
@@ -73,4 +159,4 @@ const remove = async (organisationId, userId) => {
   return { user_id: userId, deleted: true };
 };
 
-module.exports = { list, create, remove, toPublic };
+module.exports = { list, create, update, remove, toPublic };

@@ -195,8 +195,28 @@ const normaliseLawyers = asyncHandler(async (req, res) => {
 
 /* ----------------------------------------------------------- assignments */
 
-const rawAssignment = asyncHandler(async (req, res) => {
-  res.status(200).json(await service.rawAssignment(Number(req.params.id)));
+/**
+ * `:id` is the customer, not a transaction — the console asks for the whole
+ * correspondence list for a customer's portfolio.
+ */
+const correspondence = asyncHandler(async (req, res) => {
+  res.status(200).json(
+    await service.correspondenceFor({
+      organisationId: Number(req.params.id),
+      portfolios: parseList(req.query.portfolios, 'portfolios'),
+      raw: false,
+    })
+  );
+});
+
+const rawCorrespondence = asyncHandler(async (req, res) => {
+  res.status(200).json(
+    await service.correspondenceFor({
+      organisationId: Number(req.params.id),
+      portfolios: parseList(req.query.portfolios, 'portfolios'),
+      raw: true,
+    })
+  );
 });
 
 const updateAssignment = asyncHandler(async (req, res) => {
@@ -229,8 +249,27 @@ const companyMaintenance = asyncHandler(async (req, res) => {
 
 /* ----------------------------------------------------------------- cited */
 
+/** The paging and sorting the cited/party grids send. */
+const gridQuery = (req) => ({
+  organisationId: Number(req.params.id),
+  portfolios: parseList(req.query.portfolios, 'portfolios'),
+  sortBy: req.query.sort_by,
+  sortDirection: req.query.sort_direction,
+  rowsPerPage: req.query.rows_per_page,
+  currentPage: req.query.current_page,
+  assigneeId: req.query.assignee_id,
+});
+
 const citedOrganisations = asyncHandler(async (req, res) => {
-  res.status(200).json(await service.citedOrganisations(Number(req.params.id)));
+  res.status(200).json(await service.citedOrganisations(gridQuery(req)));
+});
+
+const parties = asyncHandler(async (req, res) => {
+  res.status(200).json(await service.parties({ ...gridQuery(req), savedLogos: false }));
+});
+
+const savedLogoParties = asyncHandler(async (req, res) => {
+  res.status(200).json(await service.parties({ ...gridQuery(req), savedLogos: true }));
 });
 
 const citedCounters = asyncHandler(async (req, res) => {
@@ -255,7 +294,98 @@ const assigneeLogos = asyncHandler(async (req, res) => {
   );
 });
 
+
+/* -------------------------------------------------- representative report */
+
+const representativeReports = asyncHandler(async (req, res) => {
+  res.status(200).json(await service.representativeReports());
+});
+
+const searchLenders = asyncHandler(async (req, res) => {
+  res.status(200).json(await service.searchLenders(req.query.search));
+});
+
+const normalisationCandidates = asyncHandler(async (req, res) => {
+  res.status(200).json(await service.normalisationCandidates(Number(req.params.id)));
+});
+
+const lawFirmNormalisationCandidates = asyncHandler(async (req, res) => {
+  res.status(200).json(await service.lawFirmNormalisationCandidates(Number(req.params.id)));
+});
+
+/* --------------------------------------------------------- family rebuild */
+
+const runFamilyAssets = asyncHandler(async (req, res) => {
+  res.status(202).json(
+    service.runFamilyAssets({
+      customerId: Number(req.params.id),
+      representativeIds: parseList(req.params.representativeID, 'representativeID'),
+      retrieveAll: req.query.retrievedAll,
+    })
+  );
+});
+
+/* -------------------------------------------------- company selection */
+
+const setCompanySelection = asyncHandler(async (req, res) => {
+  res.status(200).json(
+    await service.setCompanySelection({
+      organisationId: Number(req.params.id),
+      companyIds: parseList(req.body.representative_id, 'representative_id'),
+      status: req.body.status,
+    })
+  );
+});
+
+/* ------------------------------------------------------- google oauth */
+
+const googleAuthToken = asyncHandler(async (req, res) => {
+  res.status(200).json(await service.googleAuthToken(req.query.code));
+});
+
+/* ---------------------------------------------- cited assignee ownership */
+
+const assignCitedToOrganisation = asyncHandler(async (req, res) => {
+  res.status(200).json(
+    await service.assignCitedToOrganisation({
+      assigneeIds: parseList(req.body.assignee_id, 'assignee_id'),
+      organisationId: req.body.organisation_id,
+    })
+  );
+});
+
+/* ------------------------------------------------- conveyance-text grid */
+
+const transactions = asyncHandler(async (req, res) => {
+  // /company/transactions/0?search= is the grid's search box, not a customer.
+  if (Number(req.params.id) === 0 && req.query.search) {
+    res.status(200).json(await service.searchTransactions(req.query.search));
+    return;
+  }
+  res.status(200).json(
+    await service.transactionsFor({
+      organisationId: Number(req.params.id),
+      portfolios: parseList(req.params.representativeID ?? req.query.portfolios, 'portfolios'),
+    })
+  );
+});
+
+const retypeTransaction = asyncHandler(async (req, res) => {
+  res.status(200).json(
+    await service.retypeTransaction({
+      rfId: Number(req.body.rf_id),
+      conveyanceType: req.body.convey_ty ?? req.body.type,
+    })
+  );
+});
+
+const lenderCompanies = asyncHandler(async (req, res) => {
+  res.status(200).json(await service.companiesForLender(parseList(req.params.id, 'id')));
+});
+
 module.exports = {
+  representativeReports, searchLenders, normalisationCandidates,
+  lawFirmNormalisationCandidates, runFamilyAssets,
   companyRequests, resolveCompanyRequests,
   searchAll, searchCompanies, searchRepresentatives, searchAccounts,
   searchByAddress, searchByCountry, searchCompanyAddresses, searchLawFirmAddresses,
@@ -263,8 +393,10 @@ module.exports = {
   normaliseCompanies,
   lawFirms, lawFirmCompanies, companyLawFirms, normaliseLawFirms,
   lawyers, lawyersForFirm, normaliseLawyers,
-  rawAssignment, updateAssignment, recentTransactions, transactionsByConveyance,
+  correspondence, rawCorrespondence, updateAssignment,
+  transactions, retypeTransaction, lenderCompanies, setCompanySelection,
+  assignCitedToOrganisation, googleAuthToken, recentTransactions, transactionsByConveyance,
   partyAssets, companyMaintenance,
-  citedOrganisations, citedCounters, updateCitedAssignee, assigneeLogos,
+  citedOrganisations, parties, savedLogoParties, citedCounters, updateCitedAssignee, assigneeLogos,
   selectionFrom, filterValue, addressesFrom,
 };

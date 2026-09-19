@@ -11,7 +11,13 @@
 
 const ApiError = require('../../utils/api-error');
 const logger = require('../../utils/logger');
-const { runNodeScript } = require('../../utils/php-jobs');
+const { exchangeCode } = require('../../utils/google');
+const { runNodeScript, runPhpScriptBackground } = require('../../utils/php-jobs');
+const q = require('../../db/query');
+const tenants = require('../../db/tenant-connections');
+const {
+  CONVEYANCE_ORDINALS, CONVEYANCE_TYPES, CONVEYANCE_CHOICES,
+} = require('./conveyance.constants');
 const repository = require('./admin-company-search.repository');
 
 /* ------------------------------------------------------ company requests */
@@ -212,6 +218,9 @@ const rawAssignment = async (rfId) => {
 
 /** Correct the correspondent recorded on an assignment. */
 const updateAssignment = async ({ rfId, fields }) => {
+  // Without rf_id this reached the query as NaN and MySQL answered
+  // "Unknown column 'NaN' in 'where clause'" — a 500 for a missing field.
+  if (!Number.isFinite(rfId) || rfId <= 0) throw ApiError.badRequest('rf_id is required');
   const existing = await repository.rawAssignment(rfId);
   if (!existing) throw ApiError.notFound('No such transaction');
 
@@ -238,9 +247,187 @@ const transactionsByConveyance = (conveyanceType) =>
 const partyAssets = (partyId) => repository.assetsForParty(partyId);
 const companyMaintenance = (representativeId) => repository.maintenanceForCompany(representativeId);
 
+/* -------------------------------------------------- company selection */
+
+/**
+ * Turn a customer's companies on or off in their own database.
+ *
+ * `status` is what the console's checkbox column writes. The update is scoped by
+ * company_id, so it only ever touches rows inside that customer's tenant.
+ */
+const setCompanySelection = async ({ organisationId, companyIds, status }) => {
+  if (!companyIds.length) throw ApiError.badRequest('No companies were given');
+
+  const tenant = await tenants.getConnection(Number(organisationId));
+  if (!tenant) throw ApiError.serviceUnavailable('Organisation database is unavailable');
+
+  const [, affected] = await tenant.query(
+    'UPDATE representative SET status = :status WHERE company_id IN (:companyIds)',
+    { replacements: { status: Number(status) ? 1 : 0, companyIds }, logging: false }
+  );
+  return { updated: affected ?? companyIds.length, status: Number(status) ? 1 : 0 };
+};
+
+/* ------------------------------------------------------- google oauth */
+
+/**
+ * Exchange the OAuth code the console received for Google tokens.
+ *
+ * Used by the cited-assignee spreadsheet export, which writes to a Google Sheet
+ * on the operator's behalf. The tokens are handed back to the console and never
+ * stored here.
+ */
+const googleAuthToken = async (code) => {
+  if (!code) throw ApiError.badRequest('Authentication code is missing');
+  try {
+    return await exchangeCode(code);
+  } catch (err) {
+    logger.warn('google token exchange failed', { error: err.message });
+    throw ApiError.badRequest('Unable to authenticate token');
+  }
+};
+
+/* ---------------------------------------------- cited assignee ownership */
+
+/**
+ * Attach a set of cited assignees to an organisation.
+ *
+ * The legacy handler declared its result `const` and then assigned to it, so it
+ * threw a TypeError on every successful call. The throw was swallowed by an
+ * empty catch and no response was ever sent — the request hung until the client
+ * gave up.
+ */
+const assignCitedToOrganisation = async ({ assigneeIds, organisationId }) => {
+  if (!assigneeIds.length) throw ApiError.badRequest('No assignees were given');
+  if (!organisationId) throw ApiError.badRequest('organisation_id is required');
+
+  const [updated] = await repository.assignCitedToOrganisation({ assigneeIds, organisationId });
+  return { updated: updated ?? assigneeIds.length, organisation_id: Number(organisationId) };
+};
+
+/* ------------------------------------------------- conveyance-text grid */
+
+/**
+ * The conveyance-text grid.
+ *
+ * Answers { list, conveyance, update_conveyance, type, assignment_type } — the
+ * console reads all five: the rows, the filter options, the retype options and
+ * the name→number map it posts back with.
+ */
+const transactionsFor = async ({ organisationId, portfolios }) => {
+  const shape = {
+    list: [],
+    conveyance: CONVEYANCE_CHOICES,
+    update_conveyance: CONVEYANCE_CHOICES,
+    type: CONVEYANCE_TYPES,
+    assignment_type: CONVEYANCE_ORDINALS,
+  };
+  const companyIds = await companyIdsFor({ organisationId, portfolios });
+  if (!companyIds.length) return shape;
+  return { ...shape, list: await repository.assignmentsForCompanies(companyIds) };
+};
+
+/** Retype one transaction. Only a known conveyance type is accepted. */
+const retypeTransaction = async ({ rfId, conveyanceType }) => {
+  if (!rfId) throw ApiError.badRequest('rf_id is required');
+  if (!Object.prototype.hasOwnProperty.call(CONVEYANCE_ORDINALS, conveyanceType)) {
+    throw ApiError.badRequest(`Unknown conveyance type: ${conveyanceType}`);
+  }
+  return repository.setReviewedConveyance({ rfId, conveyanceType });
+};
+
+const searchTransactions = (search) =>
+  (search && search.length ? repository.searchConveyanceText(search) : Promise.resolve([]));
+
+const companiesForLender = (lenderIds) =>
+  (lenderIds.length ? repository.companiesForLender(lenderIds) : Promise.resolve([]));
+
+/* ------------------------------------------------ correspondence lists */
+
+/**
+ * The correspondence lists behind GET /admin/company/assignments/:id and
+ * /admin/company/raw/assignments/:id.
+ *
+ * `:id` is the CUSTOMER here, not a transaction. An earlier version of these
+ * two routes read it as an rf_id and looked up a single assignment, so the
+ * console's Correspondence column answered 404 for every customer.
+ */
+const correspondenceFor = async ({ organisationId, portfolios, raw }) => {
+  const companyIds = await companyIdsFor({ organisationId, portfolios });
+  if (!companyIds.length) return [];
+
+  const rows = await repository.partyIdsForCompanies(companyIds);
+  const partyIds = rows.map((r) => r.assignor_and_assignee_id);
+
+  return raw
+    ? repository.rawCorrespondence({ companyIds, partyIds })
+    : repository.correspondenceAddresses({ companyIds, partyIds });
+};
+
 /* ----------------------------------------------------------------- cited */
 
-const citedOrganisations = (organisationId) => repository.citedOrganisations(organisationId);
+/**
+ * The customer's companies, either as chosen in the portfolio filter or all of
+ * them. Every cited/party read is scoped by this list.
+ */
+const companyIdsFor = async ({ organisationId, portfolios }) => {
+  if (portfolios && portfolios.length) return portfolios;
+  const tenant = await tenants.getConnection(Number(organisationId));
+  if (!tenant) return [];
+  const rows = await q.selectAll(
+    tenant,
+    'SELECT company_id FROM representative WHERE company_id > 0 GROUP BY company_id'
+  );
+  return rows.map((r) => r.company_id);
+};
+
+/**
+ * Cited assignees for a customer, paged.
+ *
+ * Answers { citedAssignees, organizations, total_records } — the console reads
+ * those three keys off the response. An earlier version of this returned a bare
+ * array, which left the cited panel permanently empty.
+ */
+const citedOrganisations = async (input) => {
+  const empty = { citedAssignees: [], organizations: [], total_records: 0 };
+  const companyIds = await companyIdsFor(input);
+  if (!companyIds.length) return empty;
+
+  const scope = { ...input, companyIds };
+  const total = await repository.citedAssigneesCount(scope);
+  if (!total) return empty;
+
+  return {
+    citedAssignees: await repository.citedAssigneesPage(scope),
+    organizations: [],
+    total_records: total,
+  };
+};
+
+/**
+ * Parties on the customer's transactions, paged.
+ *
+ * `savedLogos` switches to the logos a customer has saved for themselves rather
+ * than the shared ones. Only the shared view records newly seen names, so
+ * browsing the saved view never writes.
+ */
+const parties = async (input) => {
+  const empty = { list: [], total_records: 0 };
+  const companyIds = await companyIdsFor(input);
+  if (!companyIds.length) return empty;
+
+  const rows = await repository.partyNamesForCompanies(companyIds);
+  const names = rows.map((r) => r.partyName).filter(Boolean);
+  if (!names.length) return empty;
+
+  if (!input.savedLogos) await repository.rememberPartyNames(names);
+
+  const scope = { ...input, names };
+  const total = await repository.partiesCount(scope);
+  if (!total) return empty;
+
+  return { list: await repository.partiesPage(scope), total_records: total };
+};
 
 const citedCounters = async (organisationId) => {
   const row = await repository.citedCounters(organisationId);
@@ -297,7 +484,57 @@ const assigneeLogos = async ({ assigneeIds, type }) => {
   throw ApiError.badRequest(`Unknown logo action: ${type}`);
 };
 
+
+/* -------------------------------------------------- representative report */
+
+const representativeReports = () => repository.representativeReports();
+
+/* --------------------------------------------------------- lender search */
+
+/** Empty search returns [] rather than scanning the whole corpus. */
+const searchLenders = (search) =>
+  (search && search.length ? repository.searchLenders(search) : Promise.resolve([]));
+
+/* ------------------------------------------- normalisation candidate lists */
+
+const normalisationCandidates = (assignorAndAssigneeId) =>
+  repository.normalisationCandidates(assignorAndAssigneeId);
+
+const lawFirmNormalisationCandidates = (lawFirmId) =>
+  repository.lawFirmNormalisationCandidates(lawFirmId);
+
+/* ------------------------------------------------------- family rebuild */
+
+/**
+ * Kick off the family-assets rebuild for a customer. Fire-and-forget: the job
+ * takes minutes, so the route acknowledges and the console polls the log.
+ */
+const runFamilyAssets = ({ customerId, representativeIds = [], retrieveAll }) => {
+  runPhpScriptBackground('assets_family.php', [
+    String(customerId),
+    JSON.stringify(representativeIds),
+    String(retrieveAll === undefined ? '' : retrieveAll),
+  ]);
+  return { message: representativeIds.length
+    ? 'Run assets family with representatives'
+    : 'Run assets family' };
+};
+
 module.exports = {
+  parties,
+  googleAuthToken,
+  assignCitedToOrganisation,
+  setCompanySelection,
+  transactionsFor,
+  retypeTransaction,
+  searchTransactions,
+  companiesForLender,
+  correspondenceFor,
+  representativeReports,
+  searchLenders,
+  normalisationCandidates,
+  lawFirmNormalisationCandidates,
+  runFamilyAssets,
   companyRequests,
   resolveCompanyRequests,
   searchCompanies,

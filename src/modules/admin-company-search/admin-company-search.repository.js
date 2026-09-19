@@ -3,6 +3,7 @@
 const { connections } = require('../../db');
 const q = require('../../db/query');
 const models = require('../../db/models/uspto.models');
+const { ordinalCase } = require('./conveyance.constants');
 const { AssigneeOrganization } = require('../../db/models/citations.models');
 
 const uspto = () => connections.resources;
@@ -450,12 +451,464 @@ const clearAssigneeLogos = (assigneeIds) =>
     { where: { assignee_id: assigneeIds } }
   );
 
+/** Move a set of cited assignees onto an organisation. */
+const assignCitedToOrganisation = ({ assigneeIds, organisationId }) =>
+  AssigneeOrganization.update(
+    { organisation_id: organisationId },
+    { where: { assignee_id: assigneeIds } }
+  );
+
 const findAssignee = (assigneeId) =>
   q.selectOne(
     app(),
     `SELECT assignee_id, assignee_organization, assignee_query FROM assignee_organizations
       WHERE assignee_id = :assigneeId LIMIT 1`,
     { assigneeId }
+  );
+
+
+/* ------------------------------------------------- conveyance-text grid */
+
+/**
+ * Every recorded transaction touching a customer's assets, with the conveyance
+ * text and both the original and the reviewed type.
+ *
+ * `ac.convey_ty` is what the USPTO recorded; `rac.convey_ty` is what a reviewer
+ * has since corrected it to. The console shows both and edits the second.
+ */
+const assignmentsForCompanies = (companyIds) =>
+  q.selectAll(
+    uspto(),
+    `SELECT a.rf_id AS id, a.convey_text AS text,
+            (SELECT GROUP_CONCAT(or_name) FROM assignor WHERE assignor.rf_id = a.rf_id) AS assingor,
+            (SELECT GROUP_CONCAT(ee_name) FROM assignee WHERE assignee.rf_id = a.rf_id) AS assingee,
+            CONCAT(a.reel_no, '/', a.frame_no) AS reel_frame, a.frame_no, a.reel_no,
+            ac.convey_ty, rac.convey_ty AS updated_convey_ty,
+            ${ordinalCase('rac.convey_ty')} AS assignment_convey_ty
+       FROM db_uspto.assignment AS a
+       INNER JOIN db_uspto.assignment_conveyance AS ac ON ac.rf_id = a.rf_id
+       LEFT JOIN db_uspto.representative_assignment_conveyance AS rac ON rac.rf_id = a.rf_id
+       INNER JOIN assignor AS aor
+               ON aor.rf_id = a.rf_id AND DATE_FORMAT(aor.exec_dt, '%Y') > :year
+      WHERE a.rf_id IN (
+              SELECT rf_id FROM documentid
+               WHERE appno_doc_num IN (
+                       SELECT d.appno_doc_num FROM db_uspto.documentid AS d
+                        WHERE d.appno_doc_num <> ''
+                          AND d.rf_id IN (SELECT rf_id FROM db_uspto.list2
+                                           WHERE (organisation_id = 0 OR organisation_id IS NULL)
+                                             AND company_id IN (:companyIds))
+                        GROUP BY d.appno_doc_num)
+               GROUP BY rf_id)
+      GROUP BY a.rf_id`,
+    { companyIds, year: YEAR_FLOOR() }
+  );
+
+/**
+ * Retype one transaction. Written to representative_assignment_conveyance, which
+ * overlays the USPTO's own typing rather than replacing it.
+ */
+const setReviewedConveyance = async ({ rfId, conveyanceType }) => {
+  const existing = await q.selectOne(
+    uspto(),
+    `SELECT rf_id FROM representative_assignment_conveyance WHERE rf_id = :rfId LIMIT 1`,
+    { rfId }
+  );
+  const sql = existing
+    ? `UPDATE representative_assignment_conveyance SET convey_ty = :conveyanceType
+        WHERE rf_id = :rfId`
+    : `INSERT INTO representative_assignment_conveyance (rf_id, convey_ty)
+       VALUES (:rfId, :conveyanceType)`;
+  await uspto().query(sql, { replacements: { rfId, conveyanceType }, logging: false });
+  return { rf_id: rfId, convey_ty: conveyanceType, created: !existing };
+};
+
+/** Free-text search over conveyance text, for the grid's search box. */
+const searchConveyanceText = (search) =>
+  q.selectAll(
+    uspto(),
+    `SELECT a.rf_id AS id, a.convey_text AS text,
+            CONCAT(a.reel_no, '/', a.frame_no) AS reel_frame, a.reel_no, a.frame_no,
+            ac.convey_ty, rac.convey_ty AS updated_convey_ty,
+            ${ordinalCase('rac.convey_ty')} AS assignment_convey_ty
+       FROM db_uspto.assignment AS a
+       INNER JOIN db_uspto.assignment_conveyance AS ac ON ac.rf_id = a.rf_id
+       LEFT JOIN db_uspto.representative_assignment_conveyance AS rac ON rac.rf_id = a.rf_id
+      WHERE MATCH(a.convey_text) AGAINST (:search IN BOOLEAN MODE)
+      GROUP BY a.rf_id
+      LIMIT 500`,
+    { search }
+  );
+
+/**
+ * Companies a lender has lent to — the lender drill-down. A lender reaches a
+ * company through a security-interest assignment.
+ */
+const companiesForLender = (lenderIds) =>
+  q.selectAll(
+    uspto(),
+    `SELECT aaa.assignor_and_assignee_id AS id, aaa.name,
+            COUNT(DISTINCT a.rf_id) AS counter,
+            r.representative_name AS normalize_name, r.representative_id
+       FROM assignor AS aor
+       INNER JOIN assignment AS a ON a.rf_id = aor.rf_id
+       INNER JOIN representative_assignment_conveyance AS rac ON rac.rf_id = a.rf_id
+       INNER JOIN assignor_and_assignee AS aaa
+               ON aaa.assignor_and_assignee_id = aor.assignor_and_assignee_id
+       LEFT JOIN representative AS r ON r.representative_id = aaa.representative_id
+      WHERE a.rf_id IN (SELECT rf_id FROM assignee WHERE assignor_and_assignee_id IN (:lenderIds))
+        AND rac.convey_ty IN (:conveyanceTypes)
+        AND DATE_FORMAT(a.record_dt, '%Y') >= :year
+      GROUP BY aaa.name
+      ORDER BY counter DESC`,
+    { lenderIds, conveyanceTypes: ['security', 'restatedsecurity'], year: YEAR_FLOOR() }
+  );
+
+/* ------------------------------------------------ correspondence lists */
+
+/**
+ * The assignor_and_assignee ids belonging to a customer's companies. The
+ * correspondence lists are filtered by these.
+ */
+const partyIdsForCompanies = (companyIds) =>
+  q.selectAll(
+    uspto(),
+    `SELECT assignor_and_assignee_id FROM assignor_and_assignee
+      WHERE representative_id IN (:companyIds)`,
+    { companyIds }
+  );
+
+/**
+ * Correspondents on a customer's recorded assignments — the console's
+ * "Correspondence" column.
+ *
+ * Grouped by name and the first two address lines, because the same firm is
+ * recorded once per transaction and the grid wants one row per address.
+ */
+const correspondenceAddresses = ({ companyIds, partyIds }) => {
+  const scoped = partyIds && partyIds.length > 0;
+  return q.selectAll(
+    uspto(),
+    `SELECT a.rf_id AS id, a.rf_id, a.cname, a.caddress_1, a.caddress_2,
+            a.reel_no, a.frame_no
+       FROM assignment AS a
+       INNER JOIN list2 AS l ON l.rf_id = a.rf_id
+       INNER JOIN assignee AS e ON e.rf_id = l.rf_id
+      WHERE l.organisation_id = 0
+        AND l.representative_id IN (:companyIds)
+        ${scoped ? 'AND e.assignor_and_assignee_id IN (:partyIds)' : ''}
+        AND (a.caddress_1 <> '' OR a.caddress_2 <> '')
+      GROUP BY a.cname, a.caddress_1, a.caddress_2`,
+    { companyIds, partyIds: scoped ? partyIds : [0] }
+  );
+};
+
+/**
+ * The same correspondents with every address line, for the address-cleaning
+ * screen. Two passes, as in the legacy handler: the ones with an address, then
+ * the wholly blank ones, which the screen lists so they can be filled in.
+ */
+const rawCorrespondence = ({ companyIds, partyIds }) => {
+  const scoped = partyIds && partyIds.length > 0;
+  const columns = `c.rf_id AS id, c.rf_id, c.cname, c.caddress_1, c.caddress_2,
+            c.caddress_7, c.caddress_5, c.caddress_6, c.caddress_3, c.caddress_4`;
+  const partyFilter = scoped ? 'AND e.assignor_and_assignee_id IN (:partyIds)' : '';
+  const repl = { companyIds, partyIds: scoped ? partyIds : [0], year: YEAR_FLOOR() };
+
+  return Promise.all([
+    q.selectAll(
+      uspto(),
+      `SELECT ${columns}
+         FROM correspondent AS c
+         INNER JOIN list2 AS l ON l.rf_id = c.rf_id
+         INNER JOIN assignee AS e ON e.rf_id = l.rf_id
+         INNER JOIN db_new_application.activity_parties_transactions AS apt ON apt.rf_id = l.rf_id
+        WHERE l.organisation_id = 0
+          AND l.company_id IN (:companyIds)
+          ${partyFilter}
+          AND DATE_FORMAT(apt.exec_dt, '%Y') >= :year
+          AND apt.exec_dt <> '0000-00-00'
+        GROUP BY c.cname, c.caddress_1, c.caddress_2`,
+      repl
+    ),
+    q.selectAll(
+      uspto(),
+      `SELECT ${columns}
+         FROM correspondent AS c
+         INNER JOIN list2 AS l ON l.rf_id = c.rf_id
+         INNER JOIN assignee AS e ON e.rf_id = l.rf_id
+        WHERE l.organisation_id = 0
+          AND l.company_id IN (:companyIds)
+          ${partyFilter}
+          AND c.cname = '' AND c.caddress_1 = '' AND c.caddress_2 = ''`,
+      repl
+    ),
+  ]).then(([withAddress, blank]) => [...withAddress, ...blank]);
+};
+
+/* ------------------------------------------------- cited and party lists */
+
+// Sortable columns for the cited/party grids. Anything else falls back to
+// occurences. The legacy handlers spliced sort_by, sort_direction, current_page
+// and rows_per_page straight into the SQL string.
+const PARTY_SORT_COLUMNS = new Set([
+  'occurences', 'assignee_organization', 'assignee_query', 'domain', 'assignee_id',
+]);
+
+const page = ({ rowsPerPage, currentPage }) => {
+  const limit = Math.min(Math.max(Number(rowsPerPage) || 50, 1), 500);
+  const offset = Math.max(Number(currentPage) || 0, 0) * limit;
+  return { limit, offset };
+};
+
+const orderClause = (sortBy, sortDirection) =>
+  `ORDER BY ${q.identifier(sortBy, PARTY_SORT_COLUMNS, 'occurences')} ${q.direction(sortDirection)}`;
+
+/** The logo columns the console reads, with the literal string "null" blanked. */
+const LOGO_COLUMNS = Array.from({ length: 10 }, (_, i) => {
+  const col = i === 0 ? 'api_logo' : `api_logo${i}`;
+  return `IF(ao.${col} <> 'null', ao.${col}, '') AS ${col}`;
+}).join(', ');
+
+const PARTY_COLUMNS = `ao.assignee_id, COUNT(ao.assignee_id) AS occurences,
+        ao.assignee_organization, ao.assignee_query, ao.domain, ao.domain2, ao.domain3,
+        ${LOGO_COLUMNS}, ao.without_square, ao.image_url, '' AS img`;
+
+/**
+ * Cited assignees for a customer: the organisations citing the customer's
+ * patents, joined through cited_patents to the customer's dashboard items.
+ *
+ * The patent-number join crosses a utf8mb4 column and a latin1 one, so it needs
+ * an explicit COLLATE — see COLLATION.md.
+ */
+const citedAssigneesBase = ({ companyIds, assigneeId }) => {
+  const repl = { organisationId: 0, companyIds, assigneeId };
+  let sql = `
+      FROM assignee_organizations AS ao
+      INNER JOIN cited_patents AS cp ON cp.assignee_id = ao.assignee_id
+      INNER JOIN dashboard_items AS a
+              ON a.patent COLLATE utf8mb4_general_ci = cp.patent_number COLLATE utf8mb4_general_ci
+     WHERE a.organisation_id = :organisationId
+       AND a.representative_id IN (:companyIds)
+       AND ao.organisation_id = 0`;
+  if (assigneeId !== undefined) sql += ` AND ao.assignee_id = :assigneeId`;
+  return { sql: `${sql} GROUP BY ao.assignee_id`, repl };
+};
+
+const citedAssigneesCount = async ({ companyIds, assigneeId }) => {
+  const { sql, repl } = citedAssigneesBase({ companyIds, assigneeId });
+  const row = await q.selectOne(
+    app(),
+    `SELECT COUNT(*) AS total_records FROM (SELECT ao.assignee_id ${sql}) AS temp`,
+    repl
+  );
+  return Number(row ? row.total_records : 0);
+};
+
+const citedAssigneesPage = ({ companyIds, assigneeId, sortBy, sortDirection, rowsPerPage, currentPage }) => {
+  const { sql, repl } = citedAssigneesBase({ companyIds, assigneeId });
+  const { limit, offset } = page({ rowsPerPage, currentPage });
+  return q.selectAll(
+    app(),
+    `SELECT ${PARTY_COLUMNS} ${sql} ${orderClause(sortBy, sortDirection)} LIMIT :offset, :limit`,
+    { ...repl, limit, offset }
+  );
+};
+
+/**
+ * Every party that appears on the customer's transactions, excluding anyone
+ * already recorded as an inventor — the console lists companies here, not
+ * people.
+ */
+const partyNamesForCompanies = (companyIds) =>
+  q.selectAll(
+    app(),
+    `SELECT partyName FROM (
+        SELECT IF(r.representative_name <> '', r.representative_name, aaa.name) AS partyName
+          FROM (SELECT apt.assignor_and_assignee_id
+                  FROM db_new_application.activity_parties_transactions AS apt
+                  LEFT JOIN db_uspto.inventors AS inv
+                         ON inv.assignor_and_assignee_id = apt.assignor_and_assignee_id
+                 WHERE apt.activity_id IN (:activityIds)
+                   AND (apt.organisation_id = :organisationId OR apt.organisation_id IS NULL)
+                   AND apt.company_id IN (:companyIds)
+                   AND DATE_FORMAT(apt.exec_dt, '%Y') > :year
+                   AND inv.assignor_and_assignee_id IS NULL
+                 GROUP BY apt.assignor_and_assignee_id) AS temp
+          INNER JOIN db_uspto.assignor_and_assignee AS aaa
+                  ON aaa.assignor_and_assignee_id = temp.assignor_and_assignee_id
+          LEFT JOIN db_uspto.representative AS r
+                 ON r.representative_id = aaa.representative_id
+      ) AS temp
+      GROUP BY partyName`,
+    {
+      organisationId: 0,
+      activityIds: [1, 6, 2, 7, 3, 4, 5, 12, 9, 14, 8, 11, 15, 16, 17, 18],
+      companyIds,
+      year: 1998,
+    }
+  );
+
+/** Record any party name we have not seen before, so a logo can be attached. */
+const rememberPartyNames = (names) =>
+  AssigneeOrganization.bulkCreate(
+    names.map((name) => ({ assignee_organization: name, assignee_query: name })),
+    { ignoreDuplicates: true }
+  );
+
+const partiesBase = ({ names, assigneeId, savedLogos }) => {
+  const repl = { names, assigneeId };
+  const logo = savedLogos
+    ? `IF(o.logo_optimize <> 'null', o.logo_optimize, ao.api_logo) AS api_logo`
+    : `IF(ao.api_logo <> 'null', ao.api_logo, '') AS api_logo`;
+  const extraLogos = Array.from({ length: 9 }, (_, i) =>
+    `IF(ao.api_logo${i + 1} <> 'null', ao.api_logo${i + 1}, '') AS api_logo${i + 1}`).join(', ');
+  const columns = `ao.assignee_id, COUNT(ao.assignee_id) AS occurences,
+        ao.assignee_organization, ao.assignee_query, ao.domain, ao.domain2, ao.domain3,
+        ${logo}, ${extraLogos}, ao.without_square, ao.image_url, '' AS img`;
+
+  let sql = ` FROM assignee_organizations AS ao`;
+  if (savedLogos) sql += ` INNER JOIN organisations AS o ON ao.organisation_id = o.organisation_id`;
+  sql += ` WHERE ao.assignee_organization IN (:names)`;
+  sql += savedLogos ? ` AND ao.organisation_id <> 0` : ` AND ao.organisation_id = 0`;
+  if (assigneeId !== undefined) sql += ` AND ao.assignee_id = :assigneeId`;
+  return { columns, sql: `${sql} GROUP BY ao.assignee_id`, repl };
+};
+
+const partiesCount = async (input) => {
+  const { sql, repl } = partiesBase(input);
+  const row = await q.selectOne(
+    app(),
+    `SELECT COUNT(*) AS total_records FROM (SELECT ao.assignee_id ${sql}) AS temp`,
+    repl
+  );
+  return Number(row ? row.total_records : 0);
+};
+
+const partiesPage = (input) => {
+  const { columns, sql, repl } = partiesBase(input);
+  const { limit, offset } = page(input);
+  return q.selectAll(
+    app(),
+    `SELECT ${columns} ${sql} ${orderClause(input.sortBy, input.sortDirection)} LIMIT :offset, :limit`,
+    { ...repl, limit, offset }
+  );
+};
+
+/* -------------------------------------------------- representative report */
+
+/**
+ * The corpus-wide company report (admin console "Reports" tab). Pre-aggregated
+ * into admin_representative_reports by the nightly pipeline.
+ *
+ * `product` is parties minus transactions and `tranaction_assets` is the
+ * transactions-per-asset ratio; both names (including the misspelling) are what
+ * the admin console's column accessors read, so they are kept as-is.
+ */
+const representativeReports = () =>
+  q.selectAll(
+    uspto(),
+    `SELECT representative_id, representative_name,
+            no_of_assets AS assets, no_of_transactions, no_of_parties,
+            (no_of_parties - no_of_transactions) AS product,
+            (no_of_transactions / no_of_assets) AS tranaction_assets,
+            no_of_loans, no_of_banks
+       FROM admin_representative_reports`
+  );
+
+/* ------------------------------------------------------- lender search */
+
+/**
+ * Lenders: parties on a security-interest transaction. Either the conveyance is
+ * typed as security/restatedsecurity, or it is untyped ("missing") and the
+ * free-text conveyance says SECURITY INTEREST.
+ */
+const searchLenders = (search) =>
+  q.selectAll(
+    uspto(),
+    `SELECT a.assignor_and_assignee_id AS id, a.assignor_and_assignee_id, a.name,
+            COUNT(a.name) AS counter, c.representative_name AS normalize_name,
+            (SELECT rr.representative_name FROM representative AS rr
+              WHERE rr.representative_name = a.name GROUP BY rr.representative_name)
+              AS representative_company,
+            CONCAT(assignment.reel_no, '-', assignment.frame_no) AS assigneeRFID,
+            '' AS assignorRFID
+       FROM assignor_and_assignee AS a
+       LEFT JOIN representative AS c ON c.representative_id = a.representative_id
+       INNER JOIN assignee ON assignee.assignor_and_assignee_id = a.assignor_and_assignee_id
+       INNER JOIN assignment ON assignment.rf_id = assignee.rf_id
+       INNER JOIN representative_assignment_conveyance AS rac ON assignment.rf_id = rac.rf_id
+      WHERE ((rac.convey_ty IN (:conveyanceType))
+             OR (rac.convey_ty IN (:missingType)
+                 AND MATCH(assignment.convey_text) AGAINST (:securityText IN BOOLEAN MODE)))
+        AND DATE_FORMAT(assignment.record_dt, '%Y') >= :year
+        AND MATCH(a.name) AGAINST (:search IN BOOLEAN MODE)
+      GROUP BY a.name
+      ORDER BY counter DESC`,
+    {
+      search,
+      year: YEAR_FLOOR(),
+      conveyanceType: ['security', 'restatedsecurity'],
+      missingType: 'missing',
+      securityText: '"SECURITY INTEREST"',
+    }
+  );
+
+/* ------------------------------------------- normalisation candidate lists */
+
+/**
+ * The other spellings that normalise onto the same company as :id — the
+ * "Normalised Companies" list in the console.
+ */
+const normalisationCandidates = (assignorAndAssigneeId) =>
+  q.selectAll(
+    uspto(),
+    `SELECT a.assignor_and_assignee_id AS id, a.assignor_and_assignee_id, a.name,
+            a.instances AS counter, c.representative_name AS normalize_name,
+            (SELECT rr.representative_name FROM representative AS rr
+              WHERE rr.representative_name = a.name GROUP BY rr.representative_name)
+              AS representative_company,
+            (SELECT CONCAT(ass.reel_no, '-', ass.frame_no)
+               FROM assignee AS ee INNER JOIN assignment AS ass ON ass.rf_id = ee.rf_id
+              WHERE ee.assignor_and_assignee_id = a.assignor_and_assignee_id LIMIT 1)
+              AS assigneeRFID,
+            (SELECT CONCAT(asss.reel_no, '-', asss.frame_no)
+               FROM assignor AS assi INNER JOIN assignment AS asss ON asss.rf_id = assi.rf_id
+              WHERE assi.assignor_and_assignee_id = a.assignor_and_assignee_id LIMIT 1)
+              AS assignorRFID,
+            0 AS assigneeBibRFID, 0 AS assignorBibRFID, '1' AS flag
+       FROM assignor_and_assignee AS a
+       LEFT JOIN representative AS c ON c.representative_id = a.representative_id
+      WHERE a.representative_id IN (
+              SELECT r.representative_id
+                FROM db_uspto.assignor_and_assignee AS aaa
+                INNER JOIN db_uspto.representative AS r
+                        ON r.representative_id = aaa.representative_id
+               WHERE aaa.assignor_and_assignee_id = :assignorAndAssigneeId)
+      GROUP BY a.name
+      ORDER BY counter DESC`,
+    { assignorAndAssigneeId }
+  );
+
+/**
+ * The other law firms that normalise onto the same firm as :id.
+ */
+const lawFirmNormalisationCandidates = (lawFirmId) =>
+  q.selectAll(
+    uspto(),
+    `SELECT law_firm_id, name, instances AS counter,
+            (SELECT SUM(instances) FROM db_uspto.law_firm AS l
+              WHERE l.representative_id = law_firm.representative_id) AS total_occurences,
+            rlf.representative_id, rlf.representative_name
+       FROM db_uspto.law_firm AS law_firm
+       LEFT JOIN db_uspto.representative_law_firm AS rlf
+              ON rlf.representative_id = law_firm.representative_id
+      WHERE law_firm.representative_id IN (
+              SELECT rlf2.representative_id
+                FROM db_uspto.representative_law_firm AS rlf2
+                INNER JOIN db_uspto.law_firm AS lf ON rlf2.representative_id = lf.representative_id
+               WHERE lf.law_firm_id = :lawFirmId AND lf.representative_id > 0)`,
+    { lawFirmId }
   );
 
 module.exports = {
@@ -503,5 +956,23 @@ module.exports = {
   updateAssignee,
   clearAssigneeLogos,
   findAssignee,
+  assignCitedToOrganisation,
+  assignmentsForCompanies,
+  setReviewedConveyance,
+  searchConveyanceText,
+  companiesForLender,
+  partyIdsForCompanies,
+  correspondenceAddresses,
+  rawCorrespondence,
+  citedAssigneesCount,
+  citedAssigneesPage,
+  partyNamesForCompanies,
+  rememberPartyNames,
+  partiesCount,
+  partiesPage,
+  representativeReports,
+  searchLenders,
+  normalisationCandidates,
+  lawFirmNormalisationCandidates,
   YEAR_FLOOR,
 };

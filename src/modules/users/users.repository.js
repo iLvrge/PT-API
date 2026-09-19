@@ -41,7 +41,8 @@ const findActiveById = (userId, organisationId) =>
 const isAdmin = (userId) =>
   q.exists(
     connections.business,
-    `SELECT 1 FROM user WHERE user_id = :userId AND type = 9 AND status = 0`,
+    // enum('0','1','9') — the literal must be quoted, see auth.repository.js.
+    `SELECT 1 FROM user WHERE user_id = :userId AND type = '9' AND status = 0`,
     { userId }
   );
 
@@ -51,16 +52,30 @@ const existsByEmail = (email) =>
 const findByIdInOrganisation = (userId, organisationId) =>
   q.selectOne(
     connections.business,
-    `SELECT user_id, first_name, last_name, email_address, organisation_id
+    `SELECT user_id, first_name, last_name, email_address, username, organisation_id
        FROM user
       WHERE user_id = :userId AND organisation_id = :organisationId
       LIMIT 1`,
     { userId, organisationId }
   );
 
+/** Is this email already on a DIFFERENT user? Used when changing an address. */
+const emailTakenByAnother = (email, userId) =>
+  q.exists(
+    connections.business,
+    `SELECT 1 FROM user WHERE username = :email AND user_id <> :userId`,
+    { email, userId }
+  );
+
 // ---- writes (Sequelize) ---------------------------------------------------
 
 const create = (attributes, options = {}) => User.create(attributes, options);
+
+const updateById = (userId, organisationId, attributes, options = {}) =>
+  User.update(attributes, {
+    where: { user_id: userId, organisation_id: organisationId },
+    ...options,
+  });
 
 const destroyById = (userId, organisationId, options = {}) =>
   User.destroy({ where: { user_id: userId, organisation_id: organisationId }, ...options });
@@ -71,7 +86,9 @@ module.exports = {
   isAdmin,
   existsByEmail,
   findByIdInOrganisation,
+  emailTakenByAnother,
   create,
+  updateById,
   destroyById,
   // exposed so the service can open a transaction on the same connection
   connection: connections.business,

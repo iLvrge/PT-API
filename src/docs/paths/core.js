@@ -96,4 +96,23 @@ module.exports = {
       ok: h.jsonResponse('The profile.', h.ref('Profile')),
     }),
   },
+  '/errors/{type}/{companyName}': {
+    get: h.operation({
+      tag: 'Companies',
+      summary: 'Data-quality counts for a company (placeholder)',
+      description:
+        'A placeholder in the deployed application as well: the legacy handler ignores both '
+        + 'parameters and answers hardcoded zeros, so this panel has never shown real numbers. '
+        + 'Ported at the same fidelity so the console gets its expected shape rather than a 404. '
+        + 'Unlike the legacy version, an unrecognised type answers 400 instead of leaving the '
+        + 'request open.',
+      params: [
+        h.pathParam('type', "Either 'count' or 'list'."),
+        h.pathParam('companyName', 'Company name; currently ignored.'),
+      ],
+      ok: h.objectResponse('Zeroed counts, or empty lists.'),
+      errors: h.AUTH_ERRORS,
+      extraResponses: { 400: h.errorResponse("type must be 'count' or 'list'.") },
+    }),
+  },
 };

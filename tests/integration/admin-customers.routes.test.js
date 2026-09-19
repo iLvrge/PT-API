@@ -106,8 +106,35 @@ describe('GET /admin/customers/run_query/:name/:query_no', () => {
 
   it('is not shadowed by /customers/:id', async () => {
     repo.runReport.mockResolvedValue([]);
-    await auth(request(app).get('/admin/customers/run_query/Acme/2')).expect(200);
+    await auth(request(app)
+      .get('/admin/customers/run_query/Acme/2?company_id=9&organisation_id=118'))
+      .expect(200);
     expect(repo.findCustomer).not.toHaveBeenCalled();
+  });
+
+  // company_id and organisation_id are bound into the report SQL. They used to
+  // be optional, so a request without them reached Sequelize and failed with
+  // 'Named parameter ":companyId" has no value' — a 500 for a missing argument.
+  it('400s when the bound parameters are missing, rather than 500', async () => {
+    const res = await auth(request(app).get('/admin/customers/run_query/Acme/1')).expect(400);
+    const fields = res.body.error.details.map((d) => d.field);
+    expect(fields).toEqual(expect.arrayContaining(['company_id', 'organisation_id']));
+    expect(repo.runReport).not.toHaveBeenCalled();
+  });
+
+  it('400s when only one of the two is given', async () => {
+    await auth(request(app).get('/admin/customers/run_query/Acme/1?company_id=9')).expect(400);
+    expect(repo.runReport).not.toHaveBeenCalled();
+  });
+
+  it('passes both through to the repository once given', async () => {
+    repo.runReport.mockResolvedValue([]);
+    await auth(request(app)
+      .get('/admin/customers/run_query/Acme/1?company_id=9&organisation_id=118'))
+      .expect(200);
+    expect(repo.runReport).toHaveBeenCalledWith(
+      expect.objectContaining({ companyId: 9, organisationId: 118 })
+    );
   });
 });
 

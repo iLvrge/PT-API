@@ -44,11 +44,12 @@ const BusinessUser = connections.business.define(
   { tableName: 'user', freezeTableName: true, underscored: true, timestamps: false }
 );
 
-const AccountProcess = connections.business.define(
+// db_uspto, not db_business — and the key column is process_id, not id.
+const AccountProcess = connections.resources.define(
   'admin_account_process',
   {
-    id: { type: DataTypes.INTEGER, primaryKey: true, autoIncrement: true },
-    organisation_id: { type: DataTypes.INTEGER, allowNull: false },
+    process_id: { type: DataTypes.BIGINT, primaryKey: true, autoIncrement: true },
+    organisation_id: { type: DataTypes.BIGINT, allowNull: false },
     button_id: { type: DataTypes.INTEGER, allowNull: false },
     status: { type: DataTypes.INTEGER, allowNull: false },
   },
@@ -64,12 +65,14 @@ const UpdateLog = connections.applicationNew.define(
   { tableName: 'log_update_company', freezeTableName: true, underscored: true, timestamps: false }
 );
 
-const MissingInventorProcess = connections.applicationNew.define(
+// db_uspto, not db_new_application — and the key column is process_id, like
+// admin_account_process above.
+const MissingInventorProcess = connections.resources.define(
   'missing_inventor_process',
   {
-    id: { type: DataTypes.BIGINT, primaryKey: true, autoIncrement: true },
+    process_id: { type: DataTypes.INTEGER, primaryKey: true, autoIncrement: true },
     organisation_id: { type: DataTypes.INTEGER, allowNull: false },
-    representative_id: { type: DataTypes.BIGINT, allowNull: false },
+    representative_id: { type: DataTypes.INTEGER, allowNull: false },
     status: { type: DataTypes.INTEGER, allowNull: false },
   },
   { tableName: 'missing_inventor_process', freezeTableName: true, underscored: true, timestamps: false }
@@ -260,20 +263,199 @@ const destroyLogMessages = (table, { organisationId, companyIds }) => {
   return connections.resources.query(sql, { replacements: repl, logging: false });
 };
 
+/* -------------------------------------------------- manual inventor flag */
+
+/**
+ * Mark a set of assignors as employee-inventors, or clear the mark.
+ *
+ * Setting the flag also retypes the conveyance to 'employee': an assignment
+ * from a named individual to their employer is an employment transfer, not a
+ * sale, and the rest of the product reads convey_ty to decide that. Clearing it
+ * leaves the conveyance alone, because the original type is not recoverable.
+ */
+const setEmployerAssign = ({ partyIds, flag }) => {
+  const setEmployeeType = Number(flag) === 1;
+  const sql = `
+    UPDATE representative_assignment_conveyance
+       SET employer_assign = :flag${setEmployeeType ? ', convey_ty = :conveyType' : ''}
+     WHERE rf_id IN (SELECT rf_id FROM assignor WHERE assignor_and_assignee_id IN (:partyIds))`;
+  const replacements = { flag, partyIds };
+  if (setEmployeeType) replacements.conveyType = 'employee';
+  return connections.resources.query(sql, { replacements, logging: false });
+};
+
+/** Record the parties as known inventors. Existing rows are left alone. */
+const rememberInventors = (partyIds) =>
+  connections.resources.query(
+    `INSERT IGNORE INTO inventors (assignor_and_assignee_id) VALUES ${
+      partyIds.map((_, i) => `(:p${i})`).join(', ')}`,
+    {
+      replacements: Object.fromEntries(partyIds.map((id, i) => [`p${i}`, id])),
+      logging: false,
+    }
+  );
+
+/* ---------------------------------------------- per-company report rows */
+
+/**
+ * The summary row per company, for the customer's company list.
+ *
+ * organisation_id is pinned to 0 here, matching the legacy helper: the roll-up
+ * rows for individual companies are written under organisation 0, not under the
+ * owning customer.
+ */
+const summaryForCompanies = (companyIds) =>
+  q.selectAll(
+    connections.resources,
+    `SELECT company_id, companies, activities,
+            entities AS no_of_entities, parties AS no_of_parties,
+            employees AS no_of_employees, transactions AS no_of_transactions,
+            assets AS assets, arrows AS product, 0 AS documents
+       FROM summary
+      WHERE organisation_id = 0 AND company_id IN (:companyIds)`,
+    { companyIds }
+  );
+
+/** Latest update-log row per company. */
+const latestUpdateLogByCompany = (companyIds) =>
+  q.selectAll(
+    connections.applicationNew,
+    `SELECT company_id, MAX(id) AS id, MAX(end_time) AS end_time
+       FROM log_update_company
+      WHERE company_id IN (:companyIds)
+      GROUP BY company_id`,
+    { companyIds }
+  );
+
+/** Latest family-assets log row per company. */
+const latestFamilyLogByCompany = (companyIds) =>
+  q.selectAll(
+    connections.applicationNew,
+    `SELECT company_id, MAX(id) AS id,
+            SUBSTRING_INDEX(GROUP_CONCAT(retrieved_assets ORDER BY id DESC), ',', 1) AS retrieved_assets
+       FROM log_family_assets_messages
+      WHERE company_id IN (:companyIds)
+      GROUP BY company_id`,
+    { companyIds }
+  );
+
+/* ------------------------------------------------------- asset lookup */
+
+/** Does this number exist as a grant or an application? */
+const assetExists = (asset, flag) => {
+  const column = flag === 1 ? 'grant_doc_num = :asset'
+    : flag === 0 ? 'appno_doc_num = :asset'
+      : '(grant_doc_num = :asset OR appno_doc_num = :asset)';
+  return q.exists(
+    connections.resources,
+    `SELECT 1 FROM documentid WHERE ${column} LIMIT 1`,
+    { asset }
+  );
+};
+
+/* ------------------------------------------------------- customer patents */
+
+/**
+ * Every asset number for a customer, newest grant year first.
+ *
+ * Two shapes: scoped to chosen companies (which live under organisation 0), or
+ * to the whole customer. `number` is the grant number when there is one and the
+ * application number otherwise; asset_type flags which.
+ */
+const customerPatents = ({ organisationId, representativeIds, direction }) => {
+  const scoped = representativeIds.length > 0;
+  const order = String(direction).toUpperCase() === 'DESC' ? 'DESC' : 'ASC';
+  const sql = `
+    SELECT CASE WHEN grant_doc_num = '' OR grant_doc_num IS NULL
+                THEN appno_doc_num ELSE grant_doc_num END AS number,
+           appno_doc_num AS application,
+           CASE WHEN grant_doc_num = '' OR grant_doc_num IS NULL THEN 1 ELSE 0 END AS asset_type
+      FROM assets
+     WHERE ${scoped
+        ? '(organisation_id = 0 OR organisation_id IS NULL) AND company_id IN (:representativeIds)'
+        : 'organisation_id = :organisationId'}
+       AND DATE_FORMAT(grant_date, '%Y') >= :year
+     GROUP BY number, application
+     ORDER BY asset_type ASC, ABS(number) ${order}`;
+  return q.selectAll(connections.applicationNew, sql, {
+    organisationId,
+    representativeIds: scoped ? representativeIds : [0],
+    year: new Date().getFullYear() - 24,
+  });
+};
+
+/* ------------------------------------------------------ customer reports */
+
+/**
+ * The per-organisation totals shown on each dashboard row. Stored pre-aggregated
+ * in db_uspto.summary; company_id = 0 is the organisation-wide roll-up.
+ *
+ * SUM() over a single row is kept from the legacy query so the response shape
+ * (no_of_entities, no_of_parties, ...) stays byte-identical for the admin app.
+ */
+const summaryForOrganisation = (organisationId) =>
+  q.selectOne(
+    connections.resources,
+    `SELECT organisation_id, companies, activities,
+            SUM(entities) AS no_of_entities, SUM(parties) AS no_of_parties,
+            employees, SUM(transactions) AS no_of_transactions,
+            SUM(assets) AS assets, SUM(arrows) AS product, 0 AS documents
+       FROM summary
+      WHERE organisation_id = :organisationId AND company_id = 0`,
+    { organisationId }
+  );
+
+/**
+ * The same roll-up rows for many organisations at once, for the dashboard.
+ *
+ * The console asks for these one customer at a time, which is 330 requests on a
+ * single page load — past the default rate limit and minutes of wall time. This
+ * answers all of them in one query.
+ */
+const summariesForOrganisations = (organisationIds) =>
+  q.selectAll(
+    connections.resources,
+    `SELECT organisation_id, companies, activities,
+            SUM(entities) AS no_of_entities, SUM(parties) AS no_of_parties,
+            employees, SUM(transactions) AS no_of_transactions,
+            SUM(assets) AS assets, SUM(arrows) AS product, 0 AS documents
+       FROM summary
+      WHERE organisation_id IN (:organisationIds) AND company_id = 0
+      GROUP BY organisation_id`,
+    { organisationIds }
+  );
+
+/** Which of these organisations have a share link. */
+const organisationsWithShareLink = (organisationIds) =>
+  q.selectAll(
+    connections.business,
+    `SELECT DISTINCT organisation_id FROM share_link
+      WHERE organisation_id IN (:organisationIds)`,
+    { organisationIds }
+  );
+
+/** Whether a share link has been issued for this organisation. */
+const hasShareLink = (organisationId) =>
+  q.exists(
+    connections.business,
+    `SELECT 1 FROM share_link WHERE organisation_id = :organisationId LIMIT 1`,
+    { organisationId }
+  );
+
 /* ------------------------------------------------------- account switches */
 
 const findAccountProcess = (organisationId, buttonId) =>
   q.selectOne(
-    connections.business,
-    `SELECT id, organisation_id, button_id, status FROM admin_account_process
+    connections.resources,
+    `SELECT process_id, organisation_id, button_id, status FROM admin_account_process
       WHERE organisation_id = :organisationId AND button_id = :buttonId LIMIT 1`,
     { organisationId, buttonId }
   );
 
 const listAccountProcesses = (organisationId) =>
   q.selectAll(
-    connections.business,
-    `SELECT id, organisation_id, button_id, status FROM admin_account_process
+    connections.resources,
+    `SELECT process_id, organisation_id, button_id, status FROM admin_account_process
       WHERE organisation_id = :organisationId`,
     { organisationId }
   );
@@ -297,17 +479,57 @@ const upsertAccountProcess = async ({ organisationId, buttonId, status }) => {
 
 const findInventorProcess = ({ organisationId, representativeId }) =>
   q.selectOne(
-    connections.applicationNew,
-    `SELECT id, status FROM missing_inventor_process
+    connections.resources,
+    `SELECT process_id, status FROM missing_inventor_process
       WHERE organisation_id = :organisationId AND representative_id = :representativeId
         AND status = 0 LIMIT 1`,
     { organisationId, representativeId }
   );
 
-const createInventorProcess = ({ organisationId, representativeId }) =>
-  MissingInventorProcess.create({
-    organisation_id: organisationId, representative_id: representativeId, status: 0,
-  });
+/**
+ * Start (or restart) a search for one company.
+ *
+ * missing_inventor_process has a UNIQUE index on
+ * (organisation_id, representative_id), so a plain INSERT succeeds exactly once
+ * per company and every later run fails on the constraint — the search could be
+ * used once and never again. A finished row is reset to status 0 instead.
+ */
+const restartExisting = async (organisationId, representativeId) => {
+  const existing = await q.selectOne(
+    connections.resources,
+    `SELECT process_id FROM missing_inventor_process
+      WHERE organisation_id = :organisationId AND representative_id = :representativeId
+      LIMIT 1`,
+    { organisationId, representativeId }
+  );
+  if (!existing) return null;
+  await MissingInventorProcess.update(
+    { status: 0 },
+    { where: { process_id: existing.process_id } }
+  );
+  return { process_id: existing.process_id, restarted: true };
+};
+
+const createInventorProcess = async ({ organisationId, representativeId }) => {
+  const restarted = await restartExisting(organisationId, representativeId);
+  if (restarted) return restarted;
+
+  try {
+    const created = await MissingInventorProcess.create({
+      organisation_id: organisationId, representative_id: representativeId, status: 0,
+    });
+    return created.toJSON ? created.toJSON() : created;
+  } catch (err) {
+    // Two requests for the same company arriving together can both pass the
+    // check above before either INSERT lands, so the second hits the UNIQUE
+    // constraint. That's a concurrent restart, not an error — read back
+    // whichever row won and reuse it.
+    if (err.name !== 'SequelizeUniqueConstraintError') throw err;
+    const restartedByOther = await restartExisting(organisationId, representativeId);
+    if (restartedByOther) return restartedByOther;
+    throw err;
+  }
+};
 
 const stopInventorProcess = ({ organisationId, representativeId }) =>
   MissingInventorProcess.update(
@@ -337,6 +559,17 @@ module.exports = {
   familyLogs,
   reclassifyLogs,
   destroyLogMessages,
+  setEmployerAssign,
+  rememberInventors,
+  summaryForCompanies,
+  latestUpdateLogByCompany,
+  latestFamilyLogByCompany,
+  assetExists,
+  customerPatents,
+  summaryForOrganisation,
+  summariesForOrganisations,
+  organisationsWithShareLink,
+  hasShareLink,
   findAccountProcess,
   listAccountProcesses,
   upsertAccountProcess,

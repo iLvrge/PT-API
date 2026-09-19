@@ -19,6 +19,22 @@ const createUserSchema = z.object({
   }),
 });
 
+// A password change carries only the password; a profile edit carries the rest.
+const updateUserSchema = z.object({
+  params: z.object({ id: orgIdParam, userId: z.coerce.number().int().positive() }),
+  body: z.union([
+    z.object({ password: z.string().min(6, 'password must be at least 6 characters') }),
+    z.object({
+      first_name: z.string().trim().min(1, 'first_name is required'),
+      last_name: z.string().trim().optional().default(''),
+      email_address: z.string().trim().email('email_address must be a valid email'),
+      job_title: z.string().trim().optional(),
+      linkedin_url: z.string().trim().url().optional().or(z.literal('')),
+      type: z.coerce.number().int().min(0).max(1),
+    }),
+  ]),
+});
+
 const listUsersSchema = z.object({
   params: z.object({ id: orgIdParam }),
 });
@@ -30,4 +46,4 @@ const deleteUserSchema = z.object({
   }),
 });
 
-module.exports = { createUserSchema, listUsersSchema, deleteUserSchema };
+module.exports = { createUserSchema, updateUserSchema, listUsersSchema, deleteUserSchema };

@@ -203,3 +203,18 @@ describe('POST /admin/corporate_tree', () => {
     );
   });
 });
+
+// GET /customers/:layout/parties spliced its company list into
+// `apt.company_id IN (:companies)`. With no companies selected that rendered as
+// `IN ()` — a MySQL syntax error — so the route answered 500 for a request that
+// was merely empty. /dashboards already guarded this; this route did not.
+describe('GET /customers/:layout/parties with no companies', () => {
+  it('400s instead of producing invalid SQL', async () => {
+    const res = await auth(request(app).get('/customers/15/parties')).expect(400);
+    expect(res.body.error.message).toMatch(/companies/i);
+  });
+
+  it('400s for an explicitly empty list too', async () => {
+    await auth(request(app).get('/customers/15/parties?companies=%5B%5D')).expect(400);
+  });
+});

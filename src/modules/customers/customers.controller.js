@@ -143,10 +143,17 @@ const queueName = asyncHandler(async (req, res) => {
 });
 
 const layoutParties = asyncHandler(async (req, res) => {
+  // companies is spliced into `apt.company_id IN (:companies)`. An empty array
+  // renders as `IN ()`, which is a MySQL syntax error, so the route answered 500
+  // for a request that simply selected no companies. Guarded the same way
+  // /dashboards already guards it.
+  const companies = parseArray(req.query.companies, 'companies');
+  if (!companies.length) throw ApiError.badRequest('companies is required and must not be empty');
+
   res.status(200).json(
     await service.layoutParties({
       layout: req.params.layout,
-      companies: parseArray(req.query.companies, 'companies'),
+      companies,
       tabs: parseArray(req.query.tabs, 'tabs'),
       customerType: Number(req.query.t) || 0,
       orgType: req.auth.orgType,

@@ -56,6 +56,7 @@ const familyRoutes = require('./modules/family/family.routes');
 const adminCustomerRoutes = require('./modules/admin-customers/admin-customers.routes');
 const eventRoutes = require('./modules/events/events.routes');
 const adminCompanySearchRoutes = require('./modules/admin-company-search/admin-company-search.routes');
+const errorRoutes = require('./modules/errors/errors.routes');
 
 const createApp = () => {
   const app = express();
@@ -122,6 +123,7 @@ const createApp = () => {
   app.use('/slacks', slackRoutes);
   app.use('/', familyRoutes);
   app.use('/', eventRoutes);
+  app.use('/', errorRoutes);
   app.use('/admin', adminAuthRoutes);
   app.use('/admin', userRoutes);
   app.use('/admin', keywordRoutes);

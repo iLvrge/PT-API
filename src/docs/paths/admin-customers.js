@@ -74,6 +74,21 @@ module.exports = {
     }),
   },
 
+  '/admin/customers/reports': {
+    get: h.operation({
+      tag: 'Admin customers',
+      summary: 'Dashboard totals for many customers at once',
+      description:
+        'Two queries instead of one request per customer. The console currently asks per row, '
+        + 'which is 331 requests on a full dashboard load against a default global rate limit of '
+        + '300 per fifteen minutes — the last rows answer 429 and render as zeros. Customers with '
+        + 'no summary row are omitted rather than returned as zeros, so the caller can tell '
+        + '"not computed yet" from "computed as zero".',
+      params: [h.jsonArrayQuery('ids', 'Organisation ids.', '[68,146]')],
+      ok: h.objectResponse('Totals keyed by organisation id.'),
+      errors: E,
+    }),
+  },
   '/admin/customers/{id}': {
     get: h.operation({
       tag: 'Admin customers',
@@ -185,6 +200,99 @@ module.exports = {
       summary: 'Clear the update log',
       params: [orgParam(), companiesParam],
       ok: h.objectResponse('Cleared.'),
+      errors: E,
+    }),
+  },
+  '/admin/customers/{id}/flag_update_manually': {
+    put: job({
+      tag: 'Admin jobs',
+      summary: 'Flag parties as employee-inventors by hand',
+      description:
+        'Setting the flag also retypes the conveyance to `employee` — an assignment from a named '
+        + 'individual to their employer is an employment transfer, not a sale. Clearing it leaves '
+        + 'the conveyance alone, since the original type is not recoverable. An empty list is '
+        + 'refused rather than running an unbounded UPDATE.',
+      params: [orgParam()],
+      body: h.formBody({
+        type: 'object',
+        required: ['inventors', 'flag'],
+        properties: {
+          inventors: h.jsonArrayField('assignor_and_assignee ids.', '[1,2]'),
+          flag: { type: 'integer', enum: [0, 1] },
+        },
+      }),
+    }),
+  },
+  '/admin/customers/{organisation_id}/{representative_id}/find_inventor': {
+    get: job({
+      summary: 'Search for assignments with a missing inventor',
+      description:
+        'The same job as /missing_inventor, under the path the admin console calls. Answers '
+        + '"Already in process." rather than starting a second run.',
+      params: [
+        orgParam('organisation_id'),
+        h.numericPathParam('representative_id', 'Company id.'),
+      ],
+    }),
+  },
+  '/admin/patents/{asset}': {
+    get: h.operation({
+      tag: 'Admin reports',
+      summary: 'Illustration JSON for one asset',
+      description:
+        'The number is checked against documentid first, so an unknown one answers 400 rather '
+        + 'than waiting on the pipeline. The pipeline itself degrades to an empty body when it '
+        + 'cannot produce anything, which is what the console expects.',
+      params: [
+        h.pathParam('asset', 'Grant or application number.'),
+        h.queryParam('flag', '1 grant only, 0 application only; omit for either.',
+          { type: 'integer', enum: [0, 1] }),
+      ],
+      ok: h.textResponse('The illustration JSON, or an empty body.'),
+      errors: E,
+      extraResponses: { 400: h.errorResponse('Invalid number.') },
+    }),
+  },
+  '/admin/customers/{id}/reports': {
+    get: h.operation({
+      tag: 'Admin customers',
+      summary: 'Dashboard totals for one customer',
+      description:
+        'The pre-aggregated figures the console shows on each customer row, plus share_url when a '
+        + 'share link has been issued. A customer with no tenant database, or with no companies '
+        + 'yet, answers {} rather than an error — the console lists provisioned and unprovisioned '
+        + 'customers side by side.',
+      params: [orgParam()],
+      ok: h.objectResponse('The totals, or {} when nothing has been computed yet.'),
+      errors: E,
+    }),
+  },
+  '/admin/customers/{id}/companies': {
+    get: h.operation({
+      tag: 'Admin customers',
+      summary: 'The customer\'s companies with their figures',
+      description:
+        'Company rows come from the customer\'s tenant database and the figures from the shared '
+        + 'corpus. A company with no summary row still appears, reported as zeros.',
+      params: [orgParam()],
+      ok: h.listResponse('Companies.'),
+      errors: E,
+    }),
+  },
+  '/admin/customers/{id}/patents': {
+    get: h.operation({
+      tag: 'Admin customers',
+      summary: 'Every asset number held by a customer',
+      description:
+        'Grant number where there is one, application number otherwise; asset_type flags which. '
+        + 'Pass representativeID to scope to particular companies.',
+      params: [
+        orgParam(),
+        h.jsonArrayQuery('representativeID', 'Company ids to scope to.', '[]'),
+        { name: 'direction', in: 'query', schema: { type: 'string', enum: ['ASC', 'DESC'] },
+          description: 'Sort direction on the asset number.' },
+      ],
+      ok: h.listResponse('Assets.'),
       errors: E,
     }),
   },

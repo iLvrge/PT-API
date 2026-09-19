@@ -299,21 +299,26 @@ module.exports = {
   '/admin/company/assignments/{id}': {
     get: h.operation({
       tag: 'Admin assignments',
-      summary: 'One transaction as recorded',
-      params: [idParam],
-      ok: h.objectResponse('The transaction and its correspondent.'),
+      summary: "Correspondents on a customer's transactions",
+      description:
+        '`id` is the CUSTOMER, not a transaction. One row per distinct name and address, which is '
+        + 'what the console\'s Correspondence column lists. An earlier version read `id` as an '
+        + 'rf_id and answered 404 for every customer.',
+      params: [h.numericPathParam('id', 'Organisation id.'), h.jsonArrayQuery('portfolios', 'Company ids to scope to; omit for all.', '[]')],
+      ok: h.listResponse('Correspondents.'),
       errors: E,
-      extraResponses: { 404: h.errorResponse('No such transaction.') },
     }),
   },
   '/admin/company/raw/assignments/{id}': {
     get: h.operation({
       tag: 'Admin assignments',
-      summary: 'One transaction as recorded (alias)',
-      params: [idParam],
-      ok: h.objectResponse('The transaction and its correspondent.'),
+      summary: "Correspondents on a customer's transactions, with every address line",
+      description:
+        'As above, but returning all nine address lines for the address-cleaning screen, and '
+        + 'including the wholly blank correspondents so they can be filled in.',
+      params: [h.numericPathParam('id', 'Organisation id.'), h.jsonArrayQuery('portfolios', 'Company ids to scope to; omit for all.', '[]')],
+      ok: h.listResponse('Correspondents.'),
       errors: E,
-      extraResponses: { 404: h.errorResponse('No such transaction.') },
     }),
     put: h.operation({
       tag: 'Admin assignments',
@@ -368,11 +373,43 @@ module.exports = {
   /* ----------------------------------------------------------------- cited */
 
   '/admin/company/cited/{id}': {
+    put: h.operation({
+      tag: 'Admin cited',
+      summary: 'Attach cited assignees to an organisation',
+      description:
+        'The legacy handler declared its result `const` and then assigned to it, so it threw on '
+        + 'every successful call; the throw was swallowed by an empty catch and no response was '
+        + 'ever sent, leaving the request open until the client gave up.',
+      params: [h.numericPathParam('id', 'Organisation id.')],
+      body: h.formBody({
+        type: 'object',
+        required: ['assignee_id', 'organisation_id'],
+        properties: {
+          assignee_id: h.jsonArrayField('Assignee ids.', '[1,2]'),
+          organisation_id: { type: 'integer' },
+        },
+      }),
+      ok: h.objectResponse('How many were moved.'),
+      errors: E,
+    }),
     get: h.operation({
       tag: 'Admin cited',
       summary: 'Cited assignee organisations for a customer',
-      params: [h.numericPathParam('id', 'Organisation id.')],
-      ok: h.listResponse('Assignees with their domains and logos.'),
+      description:
+        'Paged. Answers { citedAssignees, organizations, total_records } — the console reads those '
+        + 'three keys, so this is an object and not a bare array. Scoped to the chosen portfolio, '
+        + 'or to every company the customer has when none is given.',
+      params: [
+        h.numericPathParam('id', 'Organisation id.'),
+        h.jsonArrayQuery('portfolios', 'Company ids to scope to; omit for all.', '[]'),
+        h.queryParam('sort_by', 'Sortable column; anything else falls back to occurences.',
+          { type: 'string', enum: ['occurences', 'assignee_organization', 'assignee_query', 'domain', 'assignee_id'] }),
+        h.queryParam('sort_direction', 'ASC or DESC.', { type: 'string', enum: ['asc', 'desc'] }),
+        h.queryParam('rows_per_page', 'Page size, 1-500 (default 50).', { type: 'integer' }),
+        h.queryParam('current_page', 'Zero-based page number.', { type: 'integer' }),
+        h.queryParam('assignee_id', 'Narrow to one assignee.', { type: 'integer' }),
+      ],
+      ok: h.objectResponse('citedAssignees, organizations and total_records.'),
       errors: E,
     }),
   },
@@ -380,8 +417,78 @@ module.exports = {
     get: h.operation({
       tag: 'Admin cited',
       summary: 'Cited assignee organisations (alias)',
-      params: [h.numericPathParam('id', 'Organisation id.')],
-      ok: h.listResponse('Assignees.'),
+      params: [
+        h.numericPathParam('id', 'Organisation id.'),
+        h.jsonArrayQuery('portfolios', 'Company ids to scope to; omit for all.', '[]'),
+        h.queryParam('sort_by', 'Sortable column; anything else falls back to occurences.',
+          { type: 'string', enum: ['occurences', 'assignee_organization', 'assignee_query', 'domain', 'assignee_id'] }),
+        h.queryParam('sort_direction', 'ASC or DESC.', { type: 'string', enum: ['asc', 'desc'] }),
+        h.queryParam('rows_per_page', 'Page size, 1-500 (default 50).', { type: 'integer' }),
+        h.queryParam('current_page', 'Zero-based page number.', { type: 'integer' }),
+        h.queryParam('assignee_id', 'Narrow to one assignee.', { type: 'integer' }),
+      ],
+      ok: h.objectResponse('citedAssignees, organizations and total_records.'),
+      errors: E,
+    }),
+  },
+  '/admin/company/parties/{id}': {
+    get: h.operation({
+      tag: 'Admin cited',
+      summary: 'Parties on a customer\'s transactions',
+      description:
+        'Every party on the customer\'s transactions except those already recorded as inventors — '
+        + 'the grid lists companies, not people. Names not seen before are recorded so a logo can '
+        + 'be attached to them later. Answers { list, total_records }.',
+      params: [
+        h.numericPathParam('id', 'Organisation id.'),
+        h.jsonArrayQuery('portfolios', 'Company ids to scope to; omit for all.', '[]'),
+        h.queryParam('sort_by', 'Sortable column; anything else falls back to occurences.',
+          { type: 'string', enum: ['occurences', 'assignee_organization', 'assignee_query', 'domain', 'assignee_id'] }),
+        h.queryParam('sort_direction', 'ASC or DESC.', { type: 'string', enum: ['asc', 'desc'] }),
+        h.queryParam('rows_per_page', 'Page size, 1-500 (default 50).', { type: 'integer' }),
+        h.queryParam('current_page', 'Zero-based page number.', { type: 'integer' }),
+        h.queryParam('assignee_id', 'Narrow to one assignee.', { type: 'integer' }),
+      ],
+      ok: h.objectResponse('list and total_records.'),
+      errors: E,
+    }),
+  },
+  '/admin/company/parties/all/{id}': {
+    get: h.operation({
+      tag: 'Admin cited',
+      summary: 'Parties on a customer\'s transactions (alias)',
+      params: [
+        h.numericPathParam('id', 'Organisation id.'),
+        h.jsonArrayQuery('portfolios', 'Company ids to scope to; omit for all.', '[]'),
+        h.queryParam('sort_by', 'Sortable column; anything else falls back to occurences.',
+          { type: 'string', enum: ['occurences', 'assignee_organization', 'assignee_query', 'domain', 'assignee_id'] }),
+        h.queryParam('sort_direction', 'ASC or DESC.', { type: 'string', enum: ['asc', 'desc'] }),
+        h.queryParam('rows_per_page', 'Page size, 1-500 (default 50).', { type: 'integer' }),
+        h.queryParam('current_page', 'Zero-based page number.', { type: 'integer' }),
+        h.queryParam('assignee_id', 'Narrow to one assignee.', { type: 'integer' }),
+      ],
+      ok: h.objectResponse('list and total_records.'),
+      errors: E,
+    }),
+  },
+  '/admin/company/saved_logo/parties/all/{id}': {
+    get: h.operation({
+      tag: 'Admin cited',
+      summary: 'Parties, showing the logos this customer saved',
+      description:
+        'Same list, but the logo column comes from the customer\'s own saved logos rather than the '
+        + 'shared ones. This view never records new names.',
+      params: [
+        h.numericPathParam('id', 'Organisation id.'),
+        h.jsonArrayQuery('portfolios', 'Company ids to scope to; omit for all.', '[]'),
+        h.queryParam('sort_by', 'Sortable column; anything else falls back to occurences.',
+          { type: 'string', enum: ['occurences', 'assignee_organization', 'assignee_query', 'domain', 'assignee_id'] }),
+        h.queryParam('sort_direction', 'ASC or DESC.', { type: 'string', enum: ['asc', 'desc'] }),
+        h.queryParam('rows_per_page', 'Page size, 1-500 (default 50).', { type: 'integer' }),
+        h.queryParam('current_page', 'Zero-based page number.', { type: 'integer' }),
+        h.queryParam('assignee_id', 'Narrow to one assignee.', { type: 'integer' }),
+      ],
+      ok: h.objectResponse('list and total_records.'),
       errors: E,
     }),
   },
@@ -434,6 +541,183 @@ module.exports = {
       }),
       ok: h.objectResponse('What was started.'),
       errors: E,
+    }),
+  },
+  '/admin/company/report': {
+    get: h.operation({
+      tag: 'Admin reports',
+      summary: 'The corpus-wide company report',
+      description:
+        'Pre-aggregated by the nightly pipeline into admin_representative_reports. `product` is '
+        + 'parties minus transactions; `tranaction_assets` (spelling kept from the client) is the '
+        + 'transactions-per-asset ratio.',
+      ok: h.listResponse('One row per company.'),
+      errors: E,
+    }),
+  },
+  '/admin/company/lender': {
+    get: h.operation({
+      tag: 'Admin search',
+      summary: 'Search lenders by name',
+      description:
+        'A lender is a party on a security-interest transaction: either the conveyance is typed '
+        + 'security/restatedsecurity, or it is untyped and the conveyance text says SECURITY '
+        + 'INTEREST. An empty search returns [] rather than scanning the corpus.',
+      params: [h.queryParam('search', 'Full-text search term.', { type: 'string' })],
+      ok: h.listResponse('Matching lenders, most frequent first.'),
+      errors: E,
+    }),
+  },
+  '/admin/company/{id}/companies': {
+    get: h.operation({
+      tag: 'Admin normalise',
+      summary: 'Other spellings that normalise onto the same company',
+      description: 'Drives the console\'s "Normalised Companies" list.',
+      params: [h.numericPathParam('id', 'assignor_and_assignee id.')],
+      ok: h.listResponse('Candidate spellings, most frequent first.'),
+      errors: E,
+    }),
+  },
+  '/admin/company/law_firms/{id}/normalize_lawfirms': {
+    get: h.operation({
+      tag: 'Admin law firms',
+      summary: 'Other spellings that normalise onto the same law firm',
+      params: [h.numericPathParam('id', 'Law firm id.')],
+      ok: h.listResponse('Candidate spellings.'),
+      errors: E,
+    }),
+  },
+  '/admin/company/family/{id}': {
+    get: h.operation({
+      tag: 'Admin jobs',
+      summary: 'Rebuild a customer\'s asset families',
+      description:
+        'Queues assets_family.php and answers 202 straight away — the rebuild takes minutes and '
+        + 'the console polls the family log for progress.',
+      params: [
+        h.numericPathParam('id', 'Organisation id.'),
+        h.queryParam('retrievedAll', 'Rebuild everything rather than only what is missing.',
+          { type: 'string' }),
+      ],
+      ok: h.jsonResponse('The job was started.', {
+        type: 'object', properties: { message: { type: 'string' } },
+      }),
+      status: 202,
+      errors: E,
+    }),
+  },
+  '/admin/company/family/{id}/{representativeID}': {
+    get: h.operation({
+      tag: 'Admin jobs',
+      summary: 'Rebuild asset families for chosen companies',
+      params: [
+        h.numericPathParam('id', 'Organisation id.'),
+        h.pathParam('representativeID', 'JSON array of company ids, e.g. [1,2].'),
+        h.queryParam('retrievedAll', 'Rebuild everything rather than only what is missing.',
+          { type: 'string' }),
+      ],
+      ok: h.jsonResponse('The job was started.', {
+        type: 'object', properties: { message: { type: 'string' } },
+      }),
+      status: 202,
+      errors: E,
+    }),
+  },
+  '/admin/company/transactions/{id}': {
+    get: h.operation({
+      tag: 'Admin assignments',
+      summary: 'The conveyance-text grid for a customer',
+      description:
+        'Every recorded transaction touching the customer\'s assets. `convey_ty` is what the USPTO '
+        + 'recorded and `updated_convey_ty` what a reviewer has since corrected it to. The response '
+        + 'also carries the filter options and the name-to-number map the console posts back with, '
+        + 'so it answers { list, conveyance, update_conveyance, type, assignment_type }. '
+        + 'Passing id 0 with ?search= runs a free-text search over conveyance text instead.',
+      params: [
+        h.numericPathParam('id', 'Organisation id, or 0 with ?search=.'),
+        h.jsonArrayQuery('portfolios', 'Company ids to scope to; omit for all.', '[]'),
+        h.queryParam('search', 'Free-text search, only when id is 0.', { type: 'string' }),
+      ],
+      ok: h.objectResponse('The grid rows and its option lists.'),
+      errors: E,
+    }),
+  },
+  '/admin/company/transactions/{id}/{representativeID}': {
+    get: h.operation({
+      tag: 'Admin assignments',
+      summary: 'The conveyance-text grid, scoped to chosen companies',
+      params: [
+        h.numericPathParam('id', 'Organisation id.'),
+        h.pathParam('representativeID', 'JSON array of company ids, e.g. [55].'),
+      ],
+      ok: h.objectResponse('The grid rows and its option lists.'),
+      errors: E,
+    }),
+  },
+  '/admin/company/transactions/{customerID}': {
+    put: h.operation({
+      tag: 'Admin assignments',
+      summary: 'Retype one transaction',
+      description:
+        'Writes to representative_assignment_conveyance, which overlays the USPTO typing rather '
+        + 'than replacing it. Only a conveyance type in the fixed set is accepted.',
+      params: [h.numericPathParam('customerID', 'Organisation id.')],
+      body: h.formBody({
+        type: 'object',
+        required: ['rf_id', 'convey_ty'],
+        properties: {
+          rf_id: { type: 'integer' },
+          convey_ty: { type: 'string', example: 'security' },
+        },
+      }),
+      ok: h.objectResponse('What was written.'),
+      errors: E,
+    }),
+  },
+  '/admin/company/lenders/{id}/companies': {
+    get: h.operation({
+      tag: 'Admin search',
+      summary: 'Companies a lender has lent to',
+      description:
+        'A lender reaches a company through a security-interest assignment. `id` is a JSON array '
+        + 'of assignor_and_assignee ids.',
+      params: [h.pathParam('id', 'JSON array of lender ids, e.g. [123].')],
+      ok: h.listResponse('Companies, most frequent first.'),
+      errors: E,
+    }),
+  },
+  '/admin/company/{id}/company_selection': {
+    put: h.operation({
+      tag: 'Admin customers',
+      summary: "Turn a customer's companies on or off",
+      description:
+        'Writes `status` on the chosen companies inside that customer\'s own database. An empty '
+        + 'list is refused rather than updating every company.',
+      params: [h.numericPathParam('id', 'Organisation id.')],
+      body: h.formBody({
+        type: 'object',
+        required: ['representative_id', 'status'],
+        properties: {
+          representative_id: h.jsonArrayField('Company ids.', '[1,2]'),
+          status: { type: 'integer', enum: [0, 1] },
+        },
+      }),
+      ok: h.objectResponse('How many rows were updated.'),
+      errors: { ...E, 503: h.errorResponse('Organisation database is unavailable.') },
+    }),
+  },
+  '/admin/company/auth_token': {
+    get: h.operation({
+      tag: 'Admin cited',
+      summary: 'Exchange a Google OAuth code for tokens',
+      description:
+        'Used by the cited-assignee spreadsheet export, which writes to a Google Sheet on the '
+        + 'operator\'s behalf. The tokens are returned to the caller and never stored here. A code '
+        + 'Google rejects answers 400, not 500.',
+      params: [h.queryParam('code', 'The OAuth authorisation code.', { type: 'string' })],
+      ok: h.objectResponse('The Google token set.'),
+      errors: E,
+      extraResponses: { 400: h.errorResponse('Missing code, or Google rejected it.') },
     }),
   },
 };

@@ -40,6 +40,12 @@ const assetTypeCompanies = async (tenant, companies, tabs, limit, offset) => {
 // GET /asset_types/:tab_id/companies — companies for one tab (cross-charset).
 const assetTypeTabCompanies = async (companies, tabId, layout) => {
   const company = Array.isArray(companies) ? companies[0] : companies;
+  // Same guard as assetTypeAssignments below. Without a company the value
+  // reached Sequelize as undefined and it threw 'Named parameter ":company" has
+  // no value' — a 500 for a request that named no company.
+  if (company === undefined || company === null || company === '') {
+    throw ApiError.badRequest('companies is required and must not be empty');
+  }
   const layoutId = findLayout(layout);
   const list = await repository.assetTypeTabCompanies(company, tabId, layoutId, 0);
   return { list, tab_id: tabId, total_records: list.length };

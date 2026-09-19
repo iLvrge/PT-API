@@ -21,6 +21,16 @@ const reportSchema = z.object({
     // client error rather than an empty result.
     query_no: z.coerce.number().int().min(1).max(7),
   }),
+  // Both are bound into the report SQL. They were optional, so a request
+  // without them reached Sequelize and died with
+  // 'Named parameter ":companyId" has no value' — a 500 for what is a missing
+  // argument. The legacy handler hid this by defaulting to a hardcoded
+  // company_id 99999 / organisation_id 68 and looking the company up in an
+  // array of TDK subsidiaries pasted into the route file.
+  query: z.object({
+    company_id: z.coerce.number().int().nonnegative(),
+    organisation_id: z.coerce.number().int().positive(),
+  }),
 });
 const inventorSchema = z.object({
   params: z.object({
@@ -32,6 +42,7 @@ const inventorSchema = z.object({
 /* ----------------------------------------------------- literal paths first */
 
 router.get('/customers/run_query/:representative_name/:query_no', validate(reportSchema), controller.runReport);
+router.get('/patents/:asset', controller.assetIllustration);
 router.get('/customers/static_file/read_entity_file', controller.entityFileByName);
 router.get('/customers/read_static_file/read_entity_file/:id/:portfolios/:type', controller.entityFile);
 router.get('/customers/retrieve_cited_patents/:customerID', controller.retrieveCitedPatents);
@@ -40,6 +51,7 @@ router.post('/customers/retrieve_cited_patents_logo', controller.retrieveCitedPa
 
 /* -------------------------------------------------------------- customers */
 
+router.get('/customers/reports', controller.customerReports);
 router.get('/customers', controller.listCustomers);
 router.post('/customers', controller.createCustomer);
 router.put('/customers', controller.updateCustomer);
@@ -51,6 +63,10 @@ router.put('/customers/:id/logo', validate(idSchema), controller.setLogo);
 router.get('/customers/:organisation_id/buttons', validate(orgSchema), controller.listSwitches);
 router.put('/customers/:organisation_id/buttons', validate(orgSchema), controller.setSwitch);
 
+router.get('/customers/:id/reports', validate(idSchema), controller.customerReport);
+router.put('/customers/:id/flag_update_manually', validate(idSchema), controller.flagInventors);
+router.get('/customers/:id/companies', validate(idSchema), controller.customerCompanies);
+router.get('/customers/:id/patents', validate(idSchema), controller.customerPatents);
 router.get('/customers/:id/run_update_log', validate(idSchema), controller.updateLogs);
 router.delete('/customers/:id/run_update_log', validate(idSchema), controller.clearUpdateLogs);
 router.get('/customers/:id/family', validate(idSchema), controller.familyLogs);
@@ -69,6 +85,7 @@ router.get('/customers/:organisation_id/publish', validate(orgSchema), controlle
 router.get('/customers/:organisation_id/address/publish', validate(orgSchema), controller.publishAddresses);
 router.get('/customers/:organisation_id/:representative_id/missing_inventor/stop', validate(inventorSchema), controller.stopMissingInventors);
 router.get('/customers/:organisation_id/:representative_id/missing_inventor', validate(inventorSchema), controller.findMissingInventors);
+router.get('/customers/:organisation_id/:representative_id/find_inventor', validate(inventorSchema), controller.findMissingInventors);
 
 /* ------------------------------------------------------------ admin users */
 

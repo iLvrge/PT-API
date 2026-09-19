@@ -13,6 +13,7 @@ router.use(verifyToken, requireAdmin);
 
 router.get('/customers/:id/users', validate(schema.listUsersSchema), controller.list);
 router.post('/customers/:id/users', validate(schema.createUserSchema), controller.create);
+router.put('/customers/:id/users/:userId', validate(schema.updateUserSchema), controller.update);
 router.delete('/customers/:id/users/:userId', validate(schema.deleteUserSchema), controller.remove);
 
 module.exports = router;

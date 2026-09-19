@@ -107,6 +107,60 @@ const runReport = asyncHandler(async (req, res) => {
   );
 });
 
+/* -------------------------------------------------- manual inventor flag */
+
+const flagInventors = asyncHandler(async (req, res) => {
+  res.status(200).json(
+    await service.flagInventors({
+      organisationId: req.params.id,
+      partyIds: parseList(req.body.inventors, 'inventors'),
+      flag: req.body.flag,
+    })
+  );
+});
+
+/* ------------------------------------------------------- asset lookup */
+
+const assetIllustration = asyncHandler(async (req, res) => {
+  const raw = req.query.flag;
+  const body = await service.assetIllustration({
+    asset: req.params.asset,
+    flag: raw === undefined || raw === '' ? undefined : Number(raw),
+    orgId: req.auth.orgId,
+    userId: req.auth.userId,
+  });
+  res.status(200).send(body);
+});
+
+/* -------------------------------------------- customer company list */
+
+const customerCompanies = asyncHandler(async (req, res) => {
+  res.status(200).json(await service.customerCompanies(req.params.id));
+});
+
+const customerPatents = asyncHandler(async (req, res) => {
+  res.status(200).json(
+    await service.customerPatents({
+      organisationId: req.params.id,
+      representativeIds: parseList(req.query.representativeID, 'representativeID'),
+      direction: req.query.direction,
+    })
+  );
+});
+
+/* ------------------------------------------------- dashboard totals, bulk */
+
+const customerReports = asyncHandler(async (req, res) => {
+  const ids = parseList(req.query.ids, 'ids').map(Number).filter(Boolean);
+  res.status(200).json(await service.customerReports(ids));
+});
+
+/* ------------------------------------------------------ customer reports */
+
+const customerReport = asyncHandler(async (req, res) => {
+  res.status(200).json(await service.customerReport(req.params.id));
+});
+
 /* ------------------------------------------------------------------ logs */
 
 const companiesFrom = (req) => parseList(req.query.companies, 'companies');
@@ -283,7 +337,8 @@ const retrieveCitedPatentLogos = asyncHandler(async (req, res) => {
 module.exports = {
   listCustomers, customer, createCustomer, updateCustomer, deleteCustomer, setLogo,
   listAdminUsers, createAdminUser, updateAdminUser, deleteCustomerUser,
-  runReport, updateLogs, clearUpdateLogs, familyLogs, clearFamilyLogs,
+  runReport, customerReport, customerReports, customerCompanies, customerPatents, flagInventors,
+  assetIllustration, updateLogs, clearUpdateLogs, familyLogs, clearFamilyLogs,
   reclassifyLogs, clearReclassifyLogs, listSwitches, setSwitch,
   entityFile, entityFileByName, normaliseNames,
   runFlagUpdate, runMissingConveyance, findMissingInventors, stopMissingInventors,

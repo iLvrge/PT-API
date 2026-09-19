@@ -114,6 +114,47 @@ module.exports = {
   },
 
   '/admin/customers/{id}/users/{userId}': {
+    put: h.operation({
+      tag: 'Admin users',
+      summary: 'Update a user, or change their password',
+      description:
+        'Two mutually exclusive bodies. Sending `password` changes only the password and leaves '
+        + 'every other field alone — the console\'s password dialog posts nothing else. Any other '
+        + 'body is a profile edit and never touches the password. A profile edit is also mirrored '
+        + 'into the customer\'s own database; if that copy cannot be reached the edit still stands '
+        + 'and the divergence is logged.',
+      params: [
+        h.numericPathParam('id', 'Organisation id.'),
+        h.numericPathParam('userId', 'User id.'),
+      ],
+      body: h.jsonBody({
+        oneOf: [
+          {
+            type: 'object',
+            required: ['password'],
+            properties: { password: { type: 'string', minLength: 6 } },
+          },
+          {
+            type: 'object',
+            required: ['first_name', 'email_address', 'type'],
+            properties: {
+              first_name: { type: 'string' },
+              last_name: { type: 'string' },
+              email_address: { type: 'string', format: 'email' },
+              job_title: { type: 'string' },
+              linkedin_url: { type: 'string' },
+              type: { type: 'integer', enum: [0, 1], description: '0 manager, 1 member.' },
+            },
+          },
+        ],
+      }),
+      ok: h.objectResponse('Which fields were written.'),
+      errors: { ...h.AUTH_ERRORS, 403: h.errorResponse('Admin access required.') },
+      extraResponses: {
+        404: h.errorResponse('No such user in that organisation.'),
+        409: h.errorResponse('That email address is already registered.'),
+      },
+    }),
     delete: h.operation({
       tag: 'Admin users',
       summary: 'Delete a user from a customer organisation',

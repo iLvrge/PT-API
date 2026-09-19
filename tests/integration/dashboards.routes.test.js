@@ -264,3 +264,29 @@ describe('unknown dashboard paths', () => {
     await auth(request(app).get('/dashboards/check')).expect(404);
   });
 });
+
+// POST /dashboards/count, /example and /parties splice selectedCompanies into
+// `company_id IN (:companies)`. Empty, that renders as `IN ()` — a MySQL syntax
+// error — so each answered 500 for a request that merely selected nothing.
+// GET /dashboards above already guarded this; these three did not.
+describe('empty selectedCompanies', () => {
+  const cases = [
+    ['/dashboards/count', 'counts'],
+    ['/dashboards/example', 'example'],
+    ['/dashboards/parties', 'parties'],
+  ];
+
+  it.each(cases)('%s 400s instead of producing invalid SQL', async (path) => {
+    const res = await auth(request(app).post(path)).send({}).expect(400);
+    expect(res.body.error.message).toMatch(/selectedCompanies/i);
+  });
+
+  it.each(cases)('%s 400s for an explicitly empty list too', async (path) => {
+    await auth(request(app).post(path)).send({ selectedCompanies: '[]' }).expect(400);
+  });
+
+  it('does not reach the repository when the list is empty', async () => {
+    await auth(request(app).post('/dashboards/count')).send({ selectedCompanies: '[]' }).expect(400);
+    expect(repo.counts).not.toHaveBeenCalled();
+  });
+});

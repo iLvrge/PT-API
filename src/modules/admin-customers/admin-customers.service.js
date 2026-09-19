@@ -9,8 +9,10 @@ const ApiError = require('../../utils/api-error');
 const logger = require('../../utils/logger');
 const { runPhpScript, runNodeScript } = require('../../utils/php-jobs');
 const { uploadFile } = require('../../utils/uploads');
+const q = require('../../db/query');
 const tenants = require('../../db/tenant-connections');
 const repository = require('./admin-customers.repository');
+const { illustrationJson } = require('../../utils/background-job');
 const files = require('./admin-customers.files');
 
 /* ------------------------------------------------------------- customers */
@@ -213,11 +215,172 @@ const clearReclassifyLogs = async (input) => {
   return { deleted: true };
 };
 
+/* -------------------------------------------- customer company list */
+
+const num = (v) => Number(v) || 0;
+const ratio = (top, bottom) => (top && bottom ? Math.floor(top / bottom) : 0);
+
+/**
+ * The customer's companies with their report figures attached.
+ *
+ * The company rows come from the tenant database and the figures from the
+ * shared corpus, so they are joined in JS — the two live on different servers
+ * in some deployments. A company with no summary row yet renders as zeros
+ * rather than being dropped.
+ */
+const customerCompanies = async (organisationId) => {
+  const org = await repository.findCustomer(organisationId);
+  if (!org) return [];
+
+  const tenant = await tenants.getConnection(Number(organisationId));
+  if (!tenant) return [];
+
+  const companies = await q.selectAll(
+    tenant,
+    `SELECT company_id AS representative_id, original_name, representative_name, status
+       FROM representative
+      WHERE company_id > 0
+      GROUP BY company_id
+      ORDER BY representative_name ASC, original_name ASC`
+  );
+  if (!companies.length) return companies;
+
+  const ids = companies.map((c) => c.representative_id).filter((id) => id !== 0);
+  if (!ids.length) return companies;
+
+  const [reports, updates, families] = await Promise.all([
+    repository.summaryForCompanies(ids),
+    repository.latestUpdateLogByCompany(ids),
+    repository.latestFamilyLogByCompany(ids),
+  ]);
+
+  const byCompany = (rows) => new Map(rows.map((r) => [r.company_id, r]));
+  const reportMap = byCompany(reports);
+  const updateMap = byCompany(updates);
+  const familyMap = byCompany(families);
+
+  return companies.map((representative) => {
+    const report = reportMap.get(representative.representative_id) || {};
+    const update = updateMap.get(representative.representative_id) || {};
+    const family = familyMap.get(representative.representative_id) || {};
+    const assets = num(report.assets);
+    const transactions = num(report.no_of_transactions);
+    const product = num(report.product);
+    const endTime = update.end_time ? new Date(update.end_time) : null;
+
+    return {
+      ...representative,
+      assets,
+      no_of_transactions: transactions,
+      no_of_entities: num(report.no_of_entities),
+      no_of_employees: num(report.no_of_employees),
+      no_of_parties: num(report.no_of_parties),
+      product,
+      arrow_assets: ratio(product, assets),
+      arrow_transactions: ratio(product, transactions),
+      family: num(family.retrieved_assets),
+      updated: endTime && !Number.isNaN(endTime.getTime())
+        ? endTime.toISOString().slice(0, 10)
+        : null,
+    };
+  });
+};
+
+/* ------------------------------------------------------- asset lookup */
+
+/**
+ * The illustration JSON for one asset, for the console's patent lookup.
+ *
+ * The number is checked against documentid first so an unknown one answers 400
+ * rather than making the caller wait on the pipeline. The pipeline itself
+ * degrades to an empty body when it cannot produce anything, which is what the
+ * console expects.
+ */
+const assetIllustration = async ({ asset, flag, orgId, userId }) => {
+  const known = await repository.assetExists(asset, flag);
+  if (!known) throw ApiError.badRequest('Invalid number');
+  return illustrationJson({ asset, flag: flag ?? '', orgId, userId });
+};
+
+/* ------------------------------------------------------- customer patents */
+
+const customerPatents = async ({ organisationId, representativeIds, direction }) => {
+  const org = await repository.findCustomer(organisationId);
+  if (!org) return [];
+  return repository.customerPatents({ organisationId, representativeIds, direction });
+};
+
+/* ------------------------------------------------------ customer reports */
+
+/**
+ * Dashboard totals for one customer.
+ *
+ * Mirrors the legacy guard chain: an organisation with no tenant database, or
+ * with no top-level (type 0) representatives yet, reports nothing rather than
+ * erroring — the admin console renders a row per customer and half of them are
+ * not provisioned.
+ */
+const customerReport = async (organisationId) => {
+  const org = await repository.findCustomer(organisationId);
+  if (!org) return {};
+
+  const tenant = await tenants.getConnection(Number(organisationId));
+  if (!tenant) return {};
+
+  const hasCompanies = await q.exists(
+    tenant,
+    'SELECT 1 FROM representative WHERE type = 0 LIMIT 1'
+  );
+  if (!hasCompanies) return {};
+
+  const [summary, shared] = await Promise.all([
+    repository.summaryForOrganisation(organisationId),
+    repository.hasShareLink(organisationId),
+  ]);
+  if (!summary) return {};
+  return shared ? { ...summary, share_url: 1 } : summary;
+};
+
+/* ------------------------------------------------- dashboard totals, bulk */
+
+/**
+ * Dashboard totals for many customers in one call.
+ *
+ * The console currently asks per customer, which is one request per row — 330
+ * on a full page load, past the default global rate limit of 300 per fifteen
+ * minutes, so the last rows answer 429 and render as zeros. Two queries here
+ * replace all of them.
+ *
+ * Customers with no summary row are omitted rather than returned as zeros, so
+ * the caller can tell "nothing computed yet" from "computed as zero".
+ */
+const customerReports = async (organisationIds) => {
+  if (!organisationIds.length) return {};
+
+  const [summaries, shared] = await Promise.all([
+    repository.summariesForOrganisations(organisationIds),
+    repository.organisationsWithShareLink(organisationIds),
+  ]);
+
+  const sharedIds = new Set(shared.map((r) => Number(r.organisation_id)));
+  const byOrganisation = {};
+  for (const row of summaries) {
+    const id = Number(row.organisation_id);
+    byOrganisation[id] = sharedIds.has(id) ? { ...row, share_url: 1 } : row;
+  }
+  return byOrganisation;
+};
+
 /* ------------------------------------------------------- account switches */
 
 const listSwitches = (organisationId) => repository.listAccountProcesses(organisationId);
-const setSwitch = ({ organisationId, buttonId, status }) =>
-  repository.upsertAccountProcess({ organisationId, buttonId, status });
+const setSwitch = async ({ organisationId, buttonId, status }) => {
+  // button_id selects which switch to write. Missing, it reached the query as
+  // NaN and MySQL answered "Unknown column 'NaN' in 'where clause'".
+  if (!Number.isFinite(buttonId)) throw ApiError.badRequest('button_id is required');
+  if (!Number.isFinite(status)) throw ApiError.badRequest('status is required');
+  return repository.upsertAccountProcess({ organisationId, buttonId, status });
+};
 
 /* ---------------------------------------------------------- entity files */
 
@@ -289,6 +452,22 @@ const stopMissingInventors = async ({ organisationId, representativeId }) => {
   return { message: 'Stopped.' };
 };
 
+/* -------------------------------------------------- manual inventor flag */
+
+/**
+ * Flag a set of parties as employee-inventors by hand, from the console's
+ * inventor review screen.
+ */
+const flagInventors = async ({ organisationId, partyIds, flag }) => {
+  await requireCustomer(organisationId);
+  if (!partyIds.length) throw ApiError.badRequest('No inventors were given');
+
+  await repository.setEmployerAssign({ partyIds, flag });
+  if (Number(flag) === 1) await repository.rememberInventors(partyIds);
+
+  return { updated: partyIds.length, flag: Number(flag) };
+};
+
 const publishCompanies = async (organisationId) => {
   const org = await requireCustomer(organisationId);
   await runPhpScript('update_client_companies.php', [organisationId, '']);
@@ -340,6 +519,11 @@ module.exports = {
   updateAdminUser,
   deleteCustomerUser,
   runReport,
+  customerCompanies,
+  assetIllustration,
+  customerPatents,
+  customerReport,
+  customerReports,
   updateLogs,
   clearUpdateLogs,
   familyLogs,
@@ -354,6 +538,7 @@ module.exports = {
   runFlagUpdate,
   runMissingConveyance,
   findMissingInventors,
+  flagInventors,
   stopMissingInventors,
   publishCompanies,
   publishAddresses,

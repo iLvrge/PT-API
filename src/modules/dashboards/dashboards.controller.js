@@ -61,10 +61,18 @@ const inventorParty = asyncHandler(async (req, res) => {
 
 const parties = asyncHandler(async (req, res) => {
   const list = parseList(req.body.list, 'list');
+  // selectedCompanies is spliced into `company_id IN (:companies)`. Empty, it
+  // renders as `IN ()` — a MySQL syntax error — so the route answered 500 for a
+  // request that simply selected nothing. GET /dashboards above already guards
+  // this; these three did not.
+  const companies = parseList(req.body.selectedCompanies, 'selectedCompanies');
+  if (!companies.length) {
+    throw ApiError.badRequest('selectedCompanies is required and must not be empty');
+  }
   res.status(200).json(
     await service.parties({
       tenant: req.tenant,
-      companies: parseList(req.body.selectedCompanies, 'selectedCompanies'),
+      companies,
       search: req.body.search,
       layout: req.body.layout,
       type: req.body.type,
@@ -92,9 +100,17 @@ const timeline = asyncHandler(async (req, res) => {
 });
 
 const counts = asyncHandler(async (req, res) => {
+  // selectedCompanies is spliced into `company_id IN (:companies)`. Empty, it
+  // renders as `IN ()` — a MySQL syntax error — so the route answered 500 for a
+  // request that simply selected nothing. GET /dashboards above already guards
+  // this; these three did not.
+  const companies = parseList(req.body.selectedCompanies, 'selectedCompanies');
+  if (!companies.length) {
+    throw ApiError.badRequest('selectedCompanies is required and must not be empty');
+  }
   res.status(200).json(
     await service.counts({
-      companies: parseList(req.body.selectedCompanies, 'selectedCompanies'),
+      companies,
       types: parseList(req.body.type, 'type'),
       bankMode: isBankOrg(req),
     })
@@ -103,9 +119,17 @@ const counts = asyncHandler(async (req, res) => {
 
 const example = asyncHandler(async (req, res) => {
   const bank = service.isBank(req.body.format_type);
+  // selectedCompanies is spliced into `company_id IN (:companies)`. Empty, it
+  // renders as `IN ()` — a MySQL syntax error — so the route answered 500 for a
+  // request that simply selected nothing. GET /dashboards above already guards
+  // this; these three did not.
+  const companies = parseList(req.body.selectedCompanies, 'selectedCompanies');
+  if (!companies.length) {
+    throw ApiError.badRequest('selectedCompanies is required and must not be empty');
+  }
   res.status(200).json(
     await service.example({
-      companies: parseList(req.body.selectedCompanies, 'selectedCompanies'),
+      companies,
       types: parseList(req.body.type, 'type'),
       parties: bank ? parseList(req.body.customers, 'customers') : [],
     })

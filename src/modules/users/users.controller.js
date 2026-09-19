@@ -18,9 +18,14 @@ const create = asyncHandler(async (req, res) => {
   res.status(201).json(user);
 });
 
+const update = asyncHandler(async (req, res) => {
+  const result = await service.update(req.params.id, req.params.userId, req.body);
+  res.status(200).json(result);
+});
+
 const remove = asyncHandler(async (req, res) => {
   const result = await service.remove(req.params.id, req.params.userId);
   res.status(200).json(result);
 });
 
-module.exports = { list, create, remove };
+module.exports = { list, create, update, remove };

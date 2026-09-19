@@ -16,13 +16,19 @@ const findByUsername = (username) =>
     { username }
   );
 
-/** Look up an active ADMIN user (type 9) by username. Raw read. */
+/**
+ * Look up an active ADMIN user by username. Raw read.
+ *
+ * `user.type` is enum('0','1','9'), so the literal must be quoted: an unquoted
+ * `type = 9` is read as the 9th enum ordinal, which does not exist, and the
+ * predicate silently matches no rows.
+ */
 const findAdminByUsername = (username) =>
   q.selectOne(
     connections.business,
     `SELECT user_id, organisation_id, password, type, status
        FROM user
-      WHERE username = :username AND type = 9 AND status = 0
+      WHERE username = :username AND type = '9' AND status = 0
       LIMIT 1`,
     { username }
   );

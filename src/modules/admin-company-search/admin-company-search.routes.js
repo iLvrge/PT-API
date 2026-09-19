@@ -46,6 +46,8 @@ router.put('/company/law_firms', controller.normaliseLawFirms);
 router.get('/company/law_firms/:id/companies', validate(idSchema), controller.lawFirmCompanies);
 router.get('/company/law_firms/:id', validate(idSchema), controller.lawyersForFirm);
 router.get('/company/:companyID/law_firms', controller.companyLawFirms);
+router.get('/company/:id/companies', validate(idSchema), controller.normalisationCandidates);
+router.put('/company/:id/company_selection', validate(idSchema), controller.setCompanySelection);
 
 /* --------------------------------------------------------------- lawyers */
 
@@ -57,9 +59,13 @@ router.get('/company/lawyers/:id', validate(idSchema), controller.lawyersForFirm
 
 router.get('/company/assignments', controller.recentTransactions);
 router.put('/company/assignments', controller.updateAssignment);
-router.get('/company/assignments/:id', validate(idSchema), controller.rawAssignment);
-router.get('/company/raw/assignments/:id', validate(idSchema), controller.rawAssignment);
+router.get('/company/assignments/:id', validate(idSchema), controller.correspondence);
+router.get('/company/raw/assignments/:id', validate(idSchema), controller.rawCorrespondence);
 router.put('/company/raw/assignments/:id', validate(idSchema), controller.updateAssignment);
+router.get('/company/transactions/:id', controller.transactions);
+router.get('/company/transactions/:id/:representativeID', controller.transactions);
+router.put('/company/transactions/:customerID', controller.retypeTransaction);
+router.get('/company/lenders/:id/companies', controller.lenderCompanies);
 router.get('/company/recent_transactions', controller.recentTransactions);
 router.get('/all/transactions/:conveyanceType', controller.transactionsByConveyance);
 
@@ -70,16 +76,24 @@ router.get('/company/:representativeID/event_maintainence', controller.companyMa
 
 /* ------------------------------------------------------------- cited */
 
+router.get('/company/auth_token', controller.googleAuthToken);
+router.get('/company/report', controller.representativeReports);
+router.get('/company/lender', controller.searchLenders);
+router.get('/company/law_firms/:id/normalize_lawfirms', validate(idSchema), controller.lawFirmNormalisationCandidates);
+router.get('/company/family/:id', validate(idSchema), controller.runFamilyAssets);
+router.get('/company/family/:id/:representativeID', validate(idSchema), controller.runFamilyAssets);
 router.get('/company/get_counter_cited_organisations_and_logo', controller.citedCounters);
+router.get('/company/parties/all/:id', validate(idSchema), controller.parties);
+router.get('/company/saved_logo/parties/all/:id', validate(idSchema), controller.savedLogoParties);
+router.get('/company/parties/:id', validate(idSchema), controller.parties);
 router.get('/company/cited/:id', validate(idSchema), controller.citedOrganisations);
 router.get('/company/owned/cited/:id', validate(idSchema), controller.citedOrganisations);
+router.put('/company/cited/:id', validate(idSchema), controller.assignCitedToOrganisation);
 router.put('/company/assignees/query_name', controller.updateCitedAssignee);
 router.put('/company/assignees/logos', controller.assigneeLogos);
 
-// The remaining legacy endpoints in admin_company_search.js are not ported:
+// Still not ported from admin_company_search.js:
 //
-// - the lender, family, parties, saved-logo, report and company-selection
-//   reads duplicate what /companies, /customers and /dashboards already serve;
 // - POST /company/:id/add_bulk_companies is the same tenant company creation
 //   as POST /companies, which is already ported;
 // - POST /company/cited/:id/export and the cited create/delete pair drive a
@@ -87,5 +101,10 @@ router.put('/company/assignees/logos', controller.assigneeLogos);
 // - POST /company/report_dashboard:id/ was registered without a slash before
 //   its parameter, so it only ever matched paths like
 //   /company/report_dashboard5/ — no client can have been calling it.
+//
+// The lender, family, report, normalisation and law-firm-normalisation reads
+// were previously listed here as duplicates of /companies, /customers and
+// /dashboards. They are not: the admin console calls these exact paths and got
+// a 404 on every one, so they are ported above.
 
 module.exports = router;

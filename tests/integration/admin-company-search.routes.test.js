@@ -185,9 +185,25 @@ describe('assignments', () => {
     expect(repo.updateCorrespondent).toHaveBeenCalledWith(500, { cname: 'New Firm' });
   });
 
-  it('404s for a transaction that does not exist', async () => {
-    repo.rawAssignment.mockResolvedValue(null);
-    await auth(request(app).get('/admin/company/assignments/999')).expect(404);
+  // This used to assert a 404, which encoded the bug: the rewrite read `:id` as
+  // an rf_id, so the console's Correspondence column answered "No such
+  // transaction" for every customer. `:id` is the customer, and a customer with
+  // nothing recorded is an empty list, not a missing resource.
+  it('answers a list for a customer, never 404', async () => {
+    repo.partyIdsForCompanies.mockResolvedValue([]);
+    repo.correspondenceAddresses.mockResolvedValue([]);
+    const res = await auth(request(app).get('/admin/company/assignments/146?portfolios=[1]'))
+      .expect(200);
+    expect(res.body).toEqual([]);
+  });
+
+  it('scopes the correspondence list to the chosen portfolio', async () => {
+    repo.partyIdsForCompanies.mockResolvedValue([{ assignor_and_assignee_id: 55 }]);
+    repo.correspondenceAddresses.mockResolvedValue([{ rf_id: 900, cname: 'Acme LLP' }]);
+    const res = await auth(request(app).get('/admin/company/assignments/146?portfolios=[7]'))
+      .expect(200);
+    expect(repo.partyIdsForCompanies).toHaveBeenCalledWith([7]);
+    expect(res.body).toEqual([{ rf_id: 900, cname: 'Acme LLP' }]);
   });
 
   it('caps the recent-transaction limit', async () => {
