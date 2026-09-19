@@ -58,7 +58,7 @@ const create = async (organisationId, input) => {
     job_title: input.job_title || null,
     linkedin_url: input.linkedin_url || null,
     logo: input.logo || null,
-    type: input.type,
+    type: String(input.type), // enum('0','1','9') — see user.model.js
     role_id: input.type === TYPE_MANAGER ? ROLE_MANAGER : ROLE_MEMBER,
     organisation_id: organisationId,
   });
@@ -101,7 +101,7 @@ const update = async (organisationId, userId, input) => {
     username: input.email_address,
     job_title: input.job_title || null,
     linkedin_url: input.linkedin_url || null,
-    type: input.type,
+    type: String(input.type), // enum('0','1','9') — see user.model.js
     role_id: input.type === TYPE_MANAGER ? ROLE_MANAGER : ROLE_MEMBER,
   };
   await repository.updateById(userId, organisationId, attributes);

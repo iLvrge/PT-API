@@ -28,7 +28,13 @@ const User = connections.business.define(
     logo: { type: DataTypes.STRING, allowNull: true },
     linkedin_url: { type: DataTypes.STRING, allowNull: true },
     role_id: { type: DataTypes.INTEGER, allowNull: false },
-    type: { type: DataTypes.INTEGER, allowNull: false },
+    // enum('0','1','9') in the schema, not an integer. Writing a raw JS
+    // number here reaches mysql2 as a numeric literal, and MySQL reads an
+    // unquoted number on an enum column as an ORDINAL, not a value: type: 1
+    // silently stores '0' (ordinal 1 is the enum's first member) and type: 0
+    // throws "Data truncated for column 'type'" (ordinal 0 has no member).
+    // Declaring the real type forces callers to hand it a matching string.
+    type: { type: DataTypes.ENUM('0', '1', '9'), allowNull: false },
     status: { type: DataTypes.INTEGER, allowNull: true },
     authentication_code: { type: DataTypes.STRING, allowNull: true },
     auth_token_expire: { type: DataTypes.DATE, allowNull: true },
