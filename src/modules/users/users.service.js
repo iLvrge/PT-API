@@ -49,6 +49,7 @@ const create = async (organisationId, input) => {
 
   const passwordHash = await bcrypt.hash(input.password, env.auth.bcryptRounds);
 
+  const roleId = input.type === TYPE_MANAGER ? ROLE_MANAGER : ROLE_MEMBER;
   const created = await repository.create({
     first_name: input.first_name,
     last_name: input.last_name || '', // S1: optional surname, NOT NULL column
@@ -59,11 +60,92 @@ const create = async (organisationId, input) => {
     linkedin_url: input.linkedin_url || null,
     logo: input.logo || null,
     type: String(input.type), // enum('0','1','9') — see user.model.js
-    role_id: input.type === TYPE_MANAGER ? ROLE_MANAGER : ROLE_MEMBER,
+    role_id: roleId,
     organisation_id: organisationId,
   });
+  const row = created.toJSON();
 
-  return toPublic(created.toJSON());
+  provisionTenantUser(organisationId, {
+    userId: row.user_id,
+    firstName: row.first_name,
+    lastName: row.last_name,
+    email: row.email_address,
+    jobTitle: row.job_title,
+    linkedinUrl: row.linkedin_url,
+    logo: row.logo,
+    roleId,
+  });
+
+  return toPublic(row);
+};
+
+/**
+ * Mirror a new user into the customer's own database: the user row itself
+ * (sharing its business-side id, matching the legacy behaviour so a later
+ * lookup by username finds it), a firm named after the organisation
+ * (found-or-created), and a professional record at that firm — this is what
+ * lets a brand-new user show up as an assignable professional in their own
+ * account. Best effort and fire-and-forget: without it the user still exists
+ * and can sign in, they just can't use tenant-scoped actions gated on having
+ * a role in their own database (e.g. isTenantAdmin checks) until this lands.
+ */
+const provisionTenantUser = async (organisationId, user) => {
+  try {
+    const tenant = await tenants.getConnection(Number(organisationId));
+    if (!tenant) {
+      logger.warn('user created in business only — no tenant database to provision', {
+        organisationId, userId: user.userId,
+      });
+      return;
+    }
+
+    await tenant.query(
+      `INSERT INTO user
+         (user_id, first_name, last_name, username, email_address,
+          job_title, linkedin_url, logo, role_id, status)
+       VALUES
+         (:userId, :firstName, :lastName, :email, :email,
+          :jobTitle, :linkedinUrl, :logo, :roleId, 0)`,
+      {
+        replacements: {
+          userId: user.userId, firstName: user.firstName, lastName: user.lastName,
+          email: user.email, jobTitle: user.jobTitle, linkedinUrl: user.linkedinUrl,
+          logo: user.logo, roleId: user.roleId,
+        },
+        logging: false,
+      }
+    );
+
+    const orgName = await repository.organisationName(organisationId);
+    let firm = await q.selectOne(
+      tenant, 'SELECT firm_id FROM firm WHERE firm_name = :orgName LIMIT 1', { orgName }
+    );
+    if (!firm) {
+      const [insertId] = await tenant.query(
+        'INSERT INTO firm (firm_name) VALUES (:orgName)',
+        { replacements: { orgName }, logging: false }
+      );
+      firm = { firm_id: insertId };
+    }
+
+    await tenant.query(
+      `INSERT INTO professional
+         (first_name, last_name, email_address, telephone1, linkedin_url, type, firm_id, profile_logo)
+       VALUES
+         (:firstName, :lastName, :email, '', :linkedinUrl, 0, :firmId, :logo)`,
+      {
+        replacements: {
+          firstName: user.firstName, lastName: user.lastName, email: user.email,
+          linkedinUrl: user.linkedinUrl, firmId: firm.firm_id, logo: user.logo,
+        },
+        logging: false,
+      }
+    );
+  } catch (err) {
+    logger.warn('user created in business but tenant provisioning failed', {
+      organisationId, userId: user.userId, error: err.message,
+    });
+  }
 };
 
 /**
@@ -159,4 +241,10 @@ const remove = async (organisationId, userId) => {
   return { user_id: userId, deleted: true };
 };
 
-module.exports = { list, create, update, remove, toPublic };
+module.exports = {
+  list, create, update, remove, toPublic,
+  // exposed for direct unit testing — create() fires it and does not await it,
+  // so a create()-level test cannot observe its completion without either
+  // guessing at timing or awaiting the real thing directly, as tests do here.
+  provisionTenantUser,
+};

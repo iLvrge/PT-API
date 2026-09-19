@@ -67,6 +67,15 @@ const emailTakenByAnother = (email, userId) =>
     { email, userId }
   );
 
+/** The organisation's own name, used to name its auto-provisioned tenant firm. */
+const organisationName = (organisationId) =>
+  q.selectValue(
+    connections.business,
+    `SELECT name FROM organisation WHERE organisation_id = :organisationId LIMIT 1`,
+    { organisationId },
+    'name'
+  );
+
 // ---- writes (Sequelize) ---------------------------------------------------
 
 const create = (attributes, options = {}) => User.create(attributes, options);
@@ -87,6 +96,7 @@ module.exports = {
   existsByEmail,
   findByIdInOrganisation,
   emailTakenByAnother,
+  organisationName,
   create,
   updateById,
   destroyById,
