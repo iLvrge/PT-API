@@ -30,6 +30,20 @@ const LIST_COLS = `assets.organisation_id,
   CASE WHEN assets.grant_doc_num = '' OR assets.grant_doc_num IS NULL THEN assets.appno_doc_num ELSE assets.grant_doc_num END AS asset,
   CASE WHEN assets.grant_doc_num = '' OR assets.grant_doc_num IS NULL THEN 1 ELSE 0 END AS asset_type, assets.appno_doc_num, assets.grant_doc_num, 0 AS child_count, '' AS channel `;
 
+// The dashboard layouts (30/31/22/45, 38 and the other non-15 layouts) do not
+// read the assets table at all: they project a derived table built from
+// dashboard_items, which exposes only the columns its inner SELECT names - and
+// no organisation_id. LIST_COLS therefore cannot be used over them; asking for
+// assets.organisation_id there is "Unknown column 'assets.organisation_id' in
+// 'field list'" and a 500 for every one of those layouts.
+//
+// So those branches spell their projection out and carry no STRING_COLUMNS
+// placeholder, which makes countAndList's replace() a deliberate no-op for
+// them. That is exactly what the legacy handler did: its dashboard branches
+// were plain `SELECT * FROM (...) AS queryTemp`, never had the placeholder,
+// and returned this same shape with no organisation_id.
+const DERIVED_COLS = ` format_asset, asset, asset_type, appno_doc_num, grant_doc_num, child_count, channel `;
+
 // Shared count-then-page runner over a STRING_COLUMNS template.
 const countAndList = async (template, repl, { column, direction, limit, offset }) => {
   const total = await q.selectValue(
@@ -52,20 +66,72 @@ const countAndList = async (template, repl, { column, direction, limit, offset }
   return { list, total_records: total };
 };
 
-// The two-customer inventor-union fragment (verbatim COLLATEs).
-const inventorUnion = (bankMode) => ` OR application IN ( SELECT appno_doc_num COLLATE utf8mb4_0900_ai_ci FROM (
-  Select appno_doc_num, assignor_and_assignee_id from db_patent_application_bibliographic.inventor
-  where appno_doc_num COLLATE utf8mb4_0900_ai_ci IN (
-    select application FROM db_new_application.dashboard_items
-    WHERE organisation_id = :organisationID AND type = :layoutID
-      AND representative_id IN (:companies) ${bankMode ? 'AND mode IN (:mode)' : ''})
-  UNION
-  Select appno_doc_num, assignor_and_assignee_id from db_patent_grant_bibliographic.inventor_new
-  where appno_doc_num COLLATE utf8mb4_0900_ai_ci IN (
-    select application FROM db_new_application.dashboard_items
-    WHERE organisation_id = :organisationID AND type = :layoutID
-      AND representative_id IN (:companies) ${bankMode ? 'AND mode IN (:mode)' : ''})) AS tempInventor
-  where assignor_and_assignee_id IN (:inventor)))`;
+/**
+ * Every `x IN (SELECT ...)` in this file is written as a join instead.
+ *
+ * The legacy shapes nested two of them — `application IN (SELECT appno_doc_num
+ * FROM db_uspto.documentid WHERE rf_id IN (SELECT rf_id FROM
+ * activity_parties_transactions ...))` — over tables with tens of millions of
+ * rows. MySQL materialises that into a temp table per outer row group, which on
+ * this data is what takes the server down and kills the app with no error
+ * anywhere. Driven as joins, the optimiser starts from
+ * activity_parties_transactions' own index instead.
+ *
+ * Bound scalar lists (`IN (:companies)`, `IN (:customers)`) are left alone:
+ * they are a handful of ids, they are not subqueries, and turning them into
+ * derived VALUES tables would be slower and far less readable.
+ */
+
+/** Applications touched by a transaction involving the requested parties. */
+const customerApplications = (scopeCompanies) => `
+  SELECT did.appno_doc_num AS application
+    FROM db_new_application.activity_parties_transactions AS apt
+    INNER JOIN db_uspto.documentid AS did ON did.rf_id = apt.rf_id
+   WHERE ( apt.organisation_id = :organisationID OR apt.organisation_id IS NULL )
+     ${scopeCompanies ? 'AND apt.company_id IN (:companies)' : ''}
+     AND apt.assignor_and_assignee_id IN (:customers)
+   GROUP BY did.appno_doc_num`;
+
+/** The two-customer inventor half, as a joinable set (verbatim COLLATEs). */
+const inventorApplications = (bankMode) => `
+  SELECT tempInventor.appno_doc_num COLLATE utf8mb4_0900_ai_ci AS application
+    FROM (
+      SELECT inventor.appno_doc_num, inventor.assignor_and_assignee_id
+        FROM db_patent_application_bibliographic.inventor AS inventor
+        INNER JOIN db_new_application.dashboard_items AS inventorItems
+                ON inventorItems.application = inventor.appno_doc_num COLLATE utf8mb4_0900_ai_ci
+               AND inventorItems.organisation_id = :organisationID
+               AND inventorItems.type = :layoutID
+               AND inventorItems.representative_id IN (:companies)
+               ${bankMode ? 'AND inventorItems.mode IN (:mode)' : ''}
+      UNION
+      SELECT inventorNew.appno_doc_num, inventorNew.assignor_and_assignee_id
+        FROM db_patent_grant_bibliographic.inventor_new AS inventorNew
+        INNER JOIN db_new_application.dashboard_items AS inventorNewItems
+                ON inventorNewItems.application = inventorNew.appno_doc_num COLLATE utf8mb4_0900_ai_ci
+               AND inventorNewItems.organisation_id = :organisationID
+               AND inventorNewItems.type = :layoutID
+               AND inventorNewItems.representative_id IN (:companies)
+               ${bankMode ? 'AND inventorNewItems.mode IN (:mode)' : ''}
+    ) AS tempInventor
+   WHERE tempInventor.assignor_and_assignee_id IN (:inventor)
+   GROUP BY application`;
+
+/**
+ * The party filter over a dashboard_items query aliased `di`.
+ * One customer joins straight through; the legacy two-customer form is
+ * "customer OR inventor", so both sides become left joins and the OR moves to
+ * the WHERE — still join-driven, still no IN subquery.
+ */
+const partyJoins = ({ split, bankMode, scopeCompanies }) => {
+  const customer = `(${customerApplications(scopeCompanies)}) AS customerMatch ON customerMatch.application = di.application`;
+  if (!split) return { joins: ` INNER JOIN ${customer} `, where: '' };
+  return {
+    joins: ` LEFT JOIN ${customer}
+             LEFT JOIN (${inventorApplications(bankMode)}) AS inventorMatch ON inventorMatch.application = di.application `,
+    where: ` AND ( customerMatch.application IS NOT NULL OR inventorMatch.application IS NOT NULL ) `,
+  };
+};
 
 // customers.length === 2 means [customerId, inventorId] in the legacy contract.
 const applyCustomerSplit = (repl, customers) => {
@@ -112,7 +178,32 @@ const forSale = async ({ otherMode, bankMode, column, direction, limit, offset }
 
 // ---- branch: maintenance (layout 3) ----
 const maintenance = async ({ companies, bankMode, column, direction }) => {
-  const sql = `SELECT asset, asset_type, channel, appno_doc_num, grant_doc_num, grant_date, date_format(payment_due, '%b %d, %Y') AS payment_due, date_format(payment_grace, '%b %d, %Y') AS payment_grace, type, fee_code, fee_amount, fee_code_surcharge, fee_surcharge, remaining_year, source, fwd_citation, technology, child_count FROM maintainence_assets WHERE company_id IN (:representativeIDs) AND ( organisation_id = :organisationID OR organisation_id IS NULL ) AND appno_doc_num IN (SELECT application COLLATE utf8mb4_0900_ai_ci FROM dashboard_items where organisation_id = :organisationID AND representative_id IN (:representativeIDs) ${bankMode ? 'AND mode IN (:mode)' : ''} AND type = 35 GROUP BY application) AND appno_doc_num NOT IN (SELECT appno_doc_num FROM db_application.assets_transfer WHERE appno_doc_num <> '' AND status = 0 AND layout_id = :layoutID AND ( organisation_id = :organisationID OR organisation_id IS NULL )) AND grant_doc_num NOT IN (SELECT grant_doc_num FROM db_application.assets_transfer WHERE appno_doc_num = '' AND grant_doc_num <> '' AND status = 0 AND layout_id = :layoutID AND ( organisation_id = :organisationID OR organisation_id IS NULL )) GROUP BY grant_doc_num, appno_doc_num, company_id` + orderClause(column, direction);
+  // The IN / NOT IN trio here became one join and two anti-joins.
+  const sql = `SELECT ma.asset, ma.asset_type, ma.channel, ma.appno_doc_num, ma.grant_doc_num, ma.grant_date,
+      date_format(ma.payment_due, '%b %d, %Y') AS payment_due, date_format(ma.payment_grace, '%b %d, %Y') AS payment_grace,
+      ma.type, ma.fee_code, ma.fee_amount, ma.fee_code_surcharge, ma.fee_surcharge, ma.remaining_year, ma.source,
+      ma.fwd_citation, ma.technology, ma.child_count
+    FROM maintainence_assets AS ma
+    INNER JOIN dashboard_items AS dueItems
+            ON dueItems.application COLLATE utf8mb4_0900_ai_ci = ma.appno_doc_num
+           AND dueItems.organisation_id = :organisationID
+           AND dueItems.representative_id IN (:representativeIDs)
+           AND dueItems.type = 35
+           ${bankMode ? 'AND dueItems.mode IN (:mode)' : ''}
+    LEFT JOIN db_application.assets_transfer AS movedApplication
+           ON movedApplication.appno_doc_num = ma.appno_doc_num
+          AND movedApplication.appno_doc_num <> '' AND movedApplication.status = 0
+          AND movedApplication.layout_id = :layoutID
+          AND ( movedApplication.organisation_id = :organisationID OR movedApplication.organisation_id IS NULL )
+    LEFT JOIN db_application.assets_transfer AS movedGrant
+           ON movedGrant.grant_doc_num = ma.grant_doc_num
+          AND movedGrant.appno_doc_num = '' AND movedGrant.grant_doc_num <> '' AND movedGrant.status = 0
+          AND movedGrant.layout_id = :layoutID
+          AND ( movedGrant.organisation_id = :organisationID OR movedGrant.organisation_id IS NULL )
+    WHERE ma.company_id IN (:representativeIDs)
+      AND ( ma.organisation_id = :organisationID OR ma.organisation_id IS NULL )
+      AND movedApplication.appno_doc_num IS NULL AND movedGrant.grant_doc_num IS NULL
+    GROUP BY ma.grant_doc_num, ma.appno_doc_num, ma.company_id` + orderClause(column, direction);
   const repl = { representativeIDs: companies, organisationID: 0, layoutID: 3 };
   if (bankMode) repl.mode = 1;
   const list = await q.selectAll(connections.applicationNew, sql, repl);
@@ -168,27 +259,41 @@ const ownedDashboard = ({ layoutId, companies, customers, bankMode }) => {
   if (bankMode) repl.mode = 1;
   if (companies.length) repl.companies = companies;
 
-  let sql = `SELECT * FROM (SELECT STRING_COLUMNS_INNER FROM db_new_application.dashboard_items WHERE organisation_id = :organisationID `;
-  sql += layoutId === 45 ? `${bankMode ? 'AND mode IN (:mode)' : ''} ` : `AND type = :layoutID ${bankMode ? 'AND mode IN (:mode)' : ''} `;
-  if (companies.length) sql += ` AND representative_id IN (:companies) `;
+  let joins = '';
+  let where = ` di.organisation_id = :organisationID `;
+  where += layoutId === 45 ? `${bankMode ? 'AND di.mode IN (:mode)' : ''} ` : `AND di.type = :layoutID ${bankMode ? 'AND di.mode IN (:mode)' : ''} `;
+  if (companies.length) where += ` AND di.representative_id IN (:companies) `;
+
   if (layoutId === 45) {
-    sql += ` AND type = 30 AND application NOT IN (SELECT application FROM db_new_application.dashboard_items WHERE organisation_id = :organisationID AND representative_id IN (:companies) ${customers.length ? 'AND assignor_id IN (:customers)' : ''} ${bankMode ? 'AND mode IN (:mode)' : ''} AND type = 34 GROUP BY application) `;
+    // was: AND application NOT IN (SELECT application FROM dashboard_items ... AND type = 34)
+    joins += ` LEFT JOIN db_new_application.dashboard_items AS collateralised
+                      ON collateralised.application = di.application
+                     AND collateralised.organisation_id = :organisationID
+                     AND collateralised.type = 34
+                     ${companies.length ? 'AND collateralised.representative_id IN (:companies)' : ''}
+                     ${customers.length ? 'AND collateralised.assignor_id IN (:customers)' : ''}
+                     ${bankMode ? 'AND collateralised.mode IN (:mode)' : ''} `;
+    where += ` AND di.type = 30 AND collateralised.application IS NULL `;
   }
   if (customers.length) {
     const split = applyCustomerSplit(repl, customers);
-    sql += ` AND ${split ? '(' : ''} application IN ( SELECT documentid.appno_doc_num FROM db_uspto.documentid WHERE rf_id IN ( SELECT apt.rf_id FROM db_new_application.activity_parties_transactions AS apt WHERE ( apt.organisation_id = :organisationID OR apt.organisation_id IS NULL ) ${companies.length ? 'AND company_id IN (:companies)' : ''} AND apt.assignor_and_assignee_id IN (:customers) GROUP BY apt.rf_id ) GROUP BY documentid.appno_doc_num) `;
-    if (split) sql += inventorUnion(bankMode);
+    const party = partyJoins({ split, bankMode, scopeCompanies: companies.length > 0 });
+    joins += party.joins;
+    where += party.where;
   }
-  sql += ` GROUP BY application) AS queryTemp `;
+
+  const sql = `SELECT * FROM (SELECT STRING_COLUMNS_INNER
+    FROM db_new_application.dashboard_items AS di ${joins}
+    WHERE ${where} GROUP BY di.application) AS queryTemp `;
 
   // dashboard rows expose application/patent; adapt the shared column templates
   const template = sql.replace(
     'STRING_COLUMNS_INNER',
-    `CASE WHEN patent = '' OR patent IS NULL THEN CONCAT(SUBSTRING(application, 1, 2), '/', FORMAT(SUBSTRING(application, 3), 0)) ELSE FORMAT(patent, 0) END AS format_asset,
-     CASE WHEN patent = '' OR patent IS NULL THEN application ELSE patent END AS asset,
-     CASE WHEN patent = '' OR patent IS NULL THEN 1 ELSE 0 END AS asset_type, application AS appno_doc_num, patent AS grant_doc_num, 0 AS child_count, '' AS channel`
+    `CASE WHEN di.patent = '' OR di.patent IS NULL THEN CONCAT(SUBSTRING(di.application, 1, 2), '/', FORMAT(SUBSTRING(di.application, 3), 0)) ELSE FORMAT(di.patent, 0) END AS format_asset,
+     CASE WHEN di.patent = '' OR di.patent IS NULL THEN di.application ELSE di.patent END AS asset,
+     CASE WHEN di.patent = '' OR di.patent IS NULL THEN 1 ELSE 0 END AS asset_type, di.application AS appno_doc_num, di.patent AS grant_doc_num, 0 AS child_count, '' AS channel`
   );
-  return { template: `SELECT STRING_COLUMNS FROM (${template}) AS assets`, repl };
+  return { template: `SELECT ${DERIVED_COLS} FROM (${template}) AS assets`, repl };
 };
 
 // ---- branch: lawfirm assets (layout 40) ----
@@ -196,14 +301,24 @@ const lawfirmAssets = async ({ companies, assignments, lawyers, layoutId, bankMo
   const repl = { organisationID: 0, layoutID: layoutId, date: 1999, companies };
   if (bankMode) repl.mode = 1;
 
-  let sql = `SELECT STRING_COLUMNS FROM db_new_application.assets AS assets WHERE ( organisation_id = :organisationID OR organisation_id IS NULL ) and company_id IN (:companies) and layout_id = 15 AND date_format(assets.appno_date, '%Y') > :date AND appno_doc_num IN ( select appno_doc_num from db_uspto.documentid where rf_id IN (`;
+  // The transactions whose documents this firm's assets hang off: either the
+  // caller's explicit rf_id list, or the firm's own dashboard rows.
+  let joins = ` INNER JOIN db_uspto.documentid AS firmDocs ON firmDocs.appno_doc_num = assets.appno_doc_num `;
+  let itemsJoined = false;
   if (assignments.length) {
-    sql += ` :assignments `;
     repl.assignments = assignments;
+    joins += ` AND firmDocs.rf_id IN (:assignments) `;
   } else {
-    sql += ` SELECT rf_id FROM db_new_application.dashboard_items WHERE organisation_id = :organisationID AND representative_id IN (:companies) AND type = :layoutID ${bankMode ? 'AND mode IN (:mode)' : ''}`;
+    joins += ` INNER JOIN db_new_application.dashboard_items AS firmItems
+                       ON firmItems.rf_id = firmDocs.rf_id
+                      AND firmItems.organisation_id = :organisationID
+                      AND firmItems.representative_id IN (:companies)
+                      AND firmItems.type = :layoutID
+                      ${bankMode ? 'AND firmItems.mode IN (:mode)' : ''} `;
+    itemsJoined = true;
   }
 
+  let firmWhere = '';
   if (lawyers > 0) {
     const firm = await q.selectOne(
       connections.applicationNew,
@@ -211,61 +326,121 @@ const lawfirmAssets = async ({ companies, assignments, lawyers, layoutId, bankMo
       { lawyers }
     );
     if (firm) {
-      let tempQuery = `SELECT lf.law_firm_id FROM db_uspto.law_firm as lf LEFT JOIN db_uspto.representative_law_firm AS rlf ON rlf.representative_id = lf.representative_id WHERE `;
+      // was: AND lawfirm_id IN (SELECT lf.law_firm_id FROM law_firm ...), where
+      // lawfirm_id is a dashboard_items column - so the firm filter hangs off
+      // that join. (The legacy spliced this inside `rf_id IN ( :assignments ...`
+      // when assignments were supplied, producing invalid SQL and a guaranteed
+      // 500; joining dashboard_items for the filter is the coherent reading.)
+      if (!itemsJoined) {
+        joins += ` INNER JOIN db_new_application.dashboard_items AS firmItems
+                           ON firmItems.rf_id = firmDocs.rf_id
+                          AND firmItems.organisation_id = :organisationID `;
+      }
+      joins += ` INNER JOIN db_uspto.law_firm AS lawFirm ON lawFirm.law_firm_id = firmItems.lawfirm_id
+                 LEFT JOIN db_uspto.representative_law_firm AS firmRep ON firmRep.representative_id = lawFirm.representative_id `;
       if (firm.representative_id > 0) {
-        tempQuery += ` rlf.representative_id = :representative_id`;
+        firmWhere = ` AND firmRep.representative_id = :representative_id `;
         repl.representative_id = firm.representative_id;
       } else {
-        tempQuery += ` lf.name = :name`;
+        firmWhere = ` AND lawFirm.name = :name `;
         repl.name = firm.cname;
       }
-      tempQuery += ` GROUP BY lf.law_firm_id`;
-      sql += ` AND lawfirm_id IN (${tempQuery}) `;
     }
   }
-  sql += ` )) GROUP BY appno_doc_num`;
+
+  const sql = `SELECT STRING_COLUMNS FROM db_new_application.assets AS assets ${joins}
+    WHERE ( assets.organisation_id = :organisationID OR assets.organisation_id IS NULL )
+      AND assets.company_id IN (:companies) AND assets.layout_id = 15
+      AND date_format(assets.appno_date, '%Y') > :date ${firmWhere}
+    GROUP BY assets.appno_doc_num`;
   return { template: sql, repl };
 };
 
 // ---- branch: generic non-15 dashboard layouts ----
-const genericDashboard = ({ layoutId, companies, customers, assignments, bankMode, familyList }) => {
+const genericDashboard = ({ layoutId, companies, customers, assignments, bankMode }) => {
   const repl = { organisationID: 0, layoutID: layoutId };
   if (bankMode) repl.mode = 1;
   if (companies.length) repl.companies = companies;
 
   if (layoutId === 38) {
-    repl.assetList = familyList;
-    const template = `SELECT STRING_COLUMNS FROM (SELECT * FROM (SELECT CASE WHEN grant_doc_num = '' OR grant_doc_num IS NULL THEN CONCAT(SUBSTRING(appno_doc_num, 1, 2), '/', FORMAT(SUBSTRING(grant_doc_num, 3), 0)) ELSE FORMAT(grant_doc_num, 0) END AS format_asset,
-      CASE WHEN grant_doc_num = '' OR grant_doc_num IS NULL THEN grant_doc_num ELSE grant_doc_num END AS asset,
-      CASE WHEN grant_doc_num = '' OR grant_doc_num IS NULL THEN 1 ELSE 0 END AS asset_type, appno_doc_num, grant_doc_num, 0 AS child_count, '' AS channel FROM db_patent_application_bibliographic.application_grant WHERE grant_doc_num IN (:assetList) GROUP BY grant_doc_num) AS inner1) AS assets`;
+    // The non-US family members of this company's granted patents. This used to
+    // run familyGrantList first and splice its result back in as
+    // `grant_doc_num IN (:assetList)` - thousands of numbers in one statement.
+    // Joined to assets_family directly it is one query and no IN list.
+    repl.familyType = 30;
+    const template = `SELECT ${DERIVED_COLS} FROM (SELECT * FROM (SELECT CASE WHEN ag.grant_doc_num = '' OR ag.grant_doc_num IS NULL THEN CONCAT(SUBSTRING(ag.appno_doc_num, 1, 2), '/', FORMAT(SUBSTRING(ag.grant_doc_num, 3), 0)) ELSE FORMAT(ag.grant_doc_num, 0) END AS format_asset,
+      CASE WHEN ag.grant_doc_num = '' OR ag.grant_doc_num IS NULL THEN ag.grant_doc_num ELSE ag.grant_doc_num END AS asset,
+      CASE WHEN ag.grant_doc_num = '' OR ag.grant_doc_num IS NULL THEN 1 ELSE 0 END AS asset_type, ag.appno_doc_num, ag.grant_doc_num, 0 AS child_count, '' AS channel
+      FROM db_patent_application_bibliographic.application_grant AS ag
+      INNER JOIN (
+        SELECT af.grant_doc_num
+          FROM db_uspto.assets_family AS af
+          INNER JOIN db_new_application.dashboard_items AS familyItems
+                  ON familyItems.patent = af.grant_doc_num
+                 AND familyItems.organisation_id = :organisationID
+                 AND familyItems.representative_id IN (:companies)
+                 AND familyItems.type = :familyType
+                 ${bankMode ? 'AND familyItems.mode IN (:mode)' : ''}
+         WHERE af.application_country NOT IN ('WO', 'US', 'EP')
+         GROUP BY af.grant_doc_num
+      ) AS family ON family.grant_doc_num = ag.grant_doc_num
+      GROUP BY ag.grant_doc_num) AS inner1) AS assets`;
     return { template, repl };
   }
 
-  let sql = `SELECT * FROM (SELECT CASE WHEN patent = '' OR patent IS NULL THEN CONCAT(SUBSTRING(application, 1, 2), '/', FORMAT(SUBSTRING(application, 3), 0)) ELSE FORMAT(patent, 0) END AS format_asset,
-    CASE WHEN patent = '' OR patent IS NULL THEN application ELSE TRIM(LEADING '0' FROM patent) END AS asset,
-    CASE WHEN patent = '' OR patent IS NULL THEN 1 ELSE 0 END AS asset_type, application AS appno_doc_num, TRIM(LEADING '0' FROM patent) AS grant_doc_num, 0 AS child_count, '' AS channel FROM db_new_application.dashboard_items WHERE organisation_id = :organisationID AND type = :layoutID ${bankMode ? 'AND mode IN (:mode)' : ''} `;
-  if (companies.length) sql += ` AND representative_id IN (:companies) `;
+  let joins = '';
+  let where = ` di.organisation_id = :organisationID AND di.type = :layoutID ${bankMode ? 'AND di.mode IN (:mode)' : ''} `;
+  if (companies.length) where += ` AND di.representative_id IN (:companies) `;
 
   if (customers.length && (layoutId === 32 || layoutId === 33)) {
     const split = applyCustomerSplit(repl, customers);
-    sql += ` AND ${split ? '(' : ''} application IN ( SELECT documentid.appno_doc_num FROM db_uspto.documentid WHERE rf_id IN ( SELECT apt.rf_id FROM db_new_application.activity_parties_transactions AS apt WHERE ( apt.organisation_id = :organisationID OR apt.organisation_id IS NULL ) AND apt.company_id IN (:companies) AND apt.assignor_and_assignee_id IN (:customers) GROUP BY apt.rf_id ) GROUP BY documentid.appno_doc_num) `;
-    if (split) sql += inventorUnion(bankMode);
+    const party = partyJoins({ split, bankMode, scopeCompanies: true });
+    joins += party.joins;
+    where += party.where;
   } else if (customers.length) {
     const split = applyCustomerSplit(repl, customers);
-    sql += ` AND ${split ? '(' : ''}`;
     if (layoutId === 41) {
-      sql += ` assignor_id IN ( SELECT assignor_and_assignee_id FROM ( SELECT assignor_and_assignee_id FROM db_uspto.assignor_and_assignee WHERE assignor_and_assignee_id IN (:customers) UNION SELECT assignor_and_assignee_id FROM db_uspto.assignor_and_assignee WHERE representative_id IN (SELECT representative_id FROM db_uspto.assignor_and_assignee WHERE assignor_and_assignee_id IN (:customers) AND representative_id > 0)) As tempAssignorAndAssignee GROUP BY assignor_and_assignee_id ) `;
+      // was: assignor_id IN (SELECT ... UNION SELECT ... WHERE representative_id IN (SELECT ...))
+      const related = `(
+        SELECT direct.assignor_and_assignee_id
+          FROM db_uspto.assignor_and_assignee AS direct
+         WHERE direct.assignor_and_assignee_id IN (:customers)
+         UNION
+        SELECT sibling.assignor_and_assignee_id
+          FROM db_uspto.assignor_and_assignee AS seed
+          INNER JOIN db_uspto.assignor_and_assignee AS sibling
+                  ON sibling.representative_id = seed.representative_id
+         WHERE seed.assignor_and_assignee_id IN (:customers) AND seed.representative_id > 0
+      ) AS tempAssignorAndAssignee ON tempAssignorAndAssignee.assignor_and_assignee_id = di.assignor_id`;
+      if (split) {
+        joins += ` LEFT JOIN ${related}
+                   LEFT JOIN (${inventorApplications(bankMode)}) AS inventorMatch ON inventorMatch.application = di.application `;
+        where += ` AND ( tempAssignorAndAssignee.assignor_and_assignee_id IS NOT NULL OR inventorMatch.application IS NOT NULL ) `;
+      } else {
+        joins += ` INNER JOIN ${related} `;
+      }
+    } else if (split) {
+      // assignor_id is a plain bound list here, so only the inventor half needs a join
+      joins += ` LEFT JOIN (${inventorApplications(bankMode)}) AS inventorMatch ON inventorMatch.application = di.application `;
+      where += ` AND ( di.assignor_id IN (:customers) OR inventorMatch.application IS NOT NULL ) `;
     } else {
-      sql += ` assignor_id IN (:customers) `;
+      where += ` AND di.assignor_id IN (:customers) `;
     }
-    if (split) sql += inventorUnion(bankMode);
   }
   if (assignments.length) {
     repl.assignments = assignments;
-    sql += ` AND application IN ( SELECT documentid.appno_doc_num FROM db_uspto.documentid WHERE rf_id IN ( :assignments ) GROUP BY documentid.appno_doc_num) `;
+    // was: AND application IN (SELECT appno_doc_num FROM db_uspto.documentid WHERE rf_id IN (:assignments))
+    joins += ` INNER JOIN db_uspto.documentid AS assignmentDocs
+                       ON assignmentDocs.appno_doc_num = di.application
+                      AND assignmentDocs.rf_id IN (:assignments) `;
   }
-  sql += ` GROUP BY application) AS queryTemp `;
-  return { template: `SELECT STRING_COLUMNS FROM (${sql}) AS assets`, repl };
+
+  const sql = `SELECT * FROM (SELECT CASE WHEN di.patent = '' OR di.patent IS NULL THEN CONCAT(SUBSTRING(di.application, 1, 2), '/', FORMAT(SUBSTRING(di.application, 3), 0)) ELSE FORMAT(di.patent, 0) END AS format_asset,
+    CASE WHEN di.patent = '' OR di.patent IS NULL THEN di.application ELSE TRIM(LEADING '0' FROM di.patent) END AS asset,
+    CASE WHEN di.patent = '' OR di.patent IS NULL THEN 1 ELSE 0 END AS asset_type, di.application AS appno_doc_num, TRIM(LEADING '0' FROM di.patent) AS grant_doc_num, 0 AS child_count, '' AS channel
+    FROM db_new_application.dashboard_items AS di ${joins}
+    WHERE ${where} GROUP BY di.application) AS queryTemp `;
+  return { template: `SELECT ${DERIVED_COLS} FROM (${sql}) AS assets`, repl };
 };
 
 // ---- branch: default layout 15 over the assets table ----
@@ -277,35 +452,41 @@ const defaultAssets = ({ companies, tabs, customers, assignments, bankMode }) =>
   if (customers.length) repl.customers = customers;
   if (assignments.length) repl.assignments = assignments;
 
-  let sql = `SELECT STRING_COLUMNS FROM db_new_application.assets AS assets WHERE date_format(assets.appno_date, '%Y') > :date AND assets.layout_id = :layoutID AND ( assets.organisation_id = :organisationID OR assets.organisation_id IS NULL ) `;
-  if (companies.length) sql += ` AND assets.company_id IN (:companies)`;
-
-  if (assignments.length || tabs.length || customers.length) {
-    sql += ` AND assets.appno_doc_num IN ( SELECT documentid.appno_doc_num FROM db_uspto.documentid WHERE rf_id IN ( SELECT apt.rf_id FROM db_new_application.activity_parties_transactions AS apt WHERE ( apt.organisation_id = :organisationID OR apt.organisation_id IS NULL ) `;
-    if (companies.length) sql += ` AND apt.company_id IN (:companies) `;
-    if (assignments.length) sql += ` AND apt.rf_id IN (:assignments)`;
-    if (tabs.length) sql += ` AND apt.activity_id IN (:tabs)`;
-    if (customers.length) sql += ` AND apt.assignor_and_assignee_id IN (:customers)`;
-    sql += ` GROUP BY apt.rf_id ) GROUP BY documentid.appno_doc_num) `;
+  // was: AND assets.appno_doc_num IN (SELECT appno_doc_num FROM db_uspto.documentid
+  //      WHERE rf_id IN (SELECT rf_id FROM activity_parties_transactions ...))
+  const filtered = assignments.length || tabs.length || customers.length;
+  let transactionFilter = '';
+  if (filtered) {
+    transactionFilter = `
+      ${companies.length ? 'AND apt.company_id IN (:companies)' : ''}
+      ${assignments.length ? 'AND apt.rf_id IN (:assignments)' : ''}
+      ${tabs.length ? 'AND apt.activity_id IN (:tabs)' : ''}
+      ${customers.length ? 'AND apt.assignor_and_assignee_id IN (:customers)' : ''}`;
   } else if (tabs.length === 0) {
-    sql += ` AND assets.appno_doc_num IN ( SELECT documentid.appno_doc_num FROM db_uspto.documentid WHERE rf_id IN ( SELECT apt.rf_id FROM db_new_application.activity_parties_transactions AS apt WHERE ( apt.organisation_id = :organisationID OR apt.organisation_id IS NULL ) `;
-    if (companies.length) sql += ` AND apt.company_id IN (:companies) `;
-    sql += ` GROUP BY apt.rf_id ) GROUP BY documentid.appno_doc_num) `;
+    transactionFilter = companies.length ? ' AND apt.company_id IN (:companies) ' : '';
   }
-  sql += ` GROUP BY appno_doc_num`;
+  const joins = (filtered || tabs.length === 0)
+    ? ` INNER JOIN (
+          SELECT did.appno_doc_num
+            FROM db_new_application.activity_parties_transactions AS apt
+            INNER JOIN db_uspto.documentid AS did ON did.rf_id = apt.rf_id
+           WHERE ( apt.organisation_id = :organisationID OR apt.organisation_id IS NULL )
+             ${transactionFilter}
+           GROUP BY did.appno_doc_num
+        ) AS transactionMatch ON transactionMatch.appno_doc_num = assets.appno_doc_num `
+    : '';
+
+  const sql = `SELECT STRING_COLUMNS FROM db_new_application.assets AS assets ${joins}
+    WHERE date_format(assets.appno_date, '%Y') > :date AND assets.layout_id = :layoutID
+      AND ( assets.organisation_id = :organisationID OR assets.organisation_id IS NULL )
+      ${companies.length ? 'AND assets.company_id IN (:companies)' : ''}
+    GROUP BY assets.appno_doc_num`;
   return { template: sql, repl };
 };
 
-const familyGrantList = async ({ companies, bankMode }) => {
-  const repl = { organisationID: 0, companies, type: 30 };
-  if (bankMode) repl.mode = 1;
-  const rows = await q.selectAll(
-    connections.applicationNew,
-    `SELECT grant_doc_num FROM db_uspto.assets_family AS af WHERE grant_doc_num IN ( SELECT patent FROM db_new_application.dashboard_items WHERE organisation_id = :organisationID AND representative_id IN (:companies) AND type = :type ${bankMode ? 'AND mode IN (:mode)' : ''} GROUP BY patent ) AND application_country NOT IN ('WO', 'US', 'EP') GROUP BY grant_doc_num`,
-    repl
-  );
-  return rows.map((r) => `${r.grant_doc_num}`);
-};
+// familyGrantList used to run first for layout 38 and hand its result back as
+// `grant_doc_num IN (:assetList)`. genericDashboard now joins assets_family
+// directly, so the pre-query (and the thousands-long IN list) are both gone.
 
 module.exports = {
   orderClause,
@@ -320,5 +501,4 @@ module.exports = {
   lawfirmAssets,
   genericDashboard,
   defaultAssets,
-  familyGrantList,
 };

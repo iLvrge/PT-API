@@ -12,7 +12,6 @@ jest.mock('../../src/modules/customers/customers.assets', () => {
     fetchPtabProceedings: jest.fn(),
     ptabDocuments: jest.fn(),
     lawfirmAssets: jest.fn(),
-    familyGrantList: jest.fn(),
     countAndList: jest.fn(),
   };
 });
@@ -40,11 +39,39 @@ describe('orderClause (F7 allowlist)', () => {
   });
 });
 
+// `IN (SELECT ...)` over db_uspto.documentid / dashboard_items is what takes
+// MySQL (and the app, silently) down on this data. Every branch must express
+// those as joins; these guard against anyone reintroducing one.
+describe('no IN-subqueries in generated SQL', () => {
+  const builders = {
+    'ownedDashboard 30': () => actual.ownedDashboard({ layoutId: 30, companies: [9], customers: [5], bankMode: false }),
+    'ownedDashboard 45': () => actual.ownedDashboard({ layoutId: 45, companies: [9], customers: [5], bankMode: true }),
+    'ownedDashboard split': () => actual.ownedDashboard({ layoutId: 30, companies: [9], customers: [5, 6], bankMode: false }),
+    'genericDashboard 38': () => actual.genericDashboard({ layoutId: 38, companies: [9], customers: [], assignments: [], bankMode: false }),
+    'genericDashboard 32': () => actual.genericDashboard({ layoutId: 32, companies: [9], customers: [5], assignments: [7], bankMode: false }),
+    'genericDashboard 41': () => actual.genericDashboard({ layoutId: 41, companies: [9], customers: [5], assignments: [], bankMode: false }),
+    'genericDashboard 41 split': () => actual.genericDashboard({ layoutId: 41, companies: [9], customers: [5, 6], assignments: [], bankMode: false }),
+    'defaultAssets filtered': () => actual.defaultAssets({ companies: [9], tabs: [1], customers: [5], assignments: [7], bankMode: false }),
+    'defaultAssets bare': () => actual.defaultAssets({ companies: [9], tabs: [], customers: [], assignments: [], bankMode: false }),
+  };
+
+  for (const [name, build] of Object.entries(builders)) {
+    it(`${name} uses joins, never IN (SELECT ...)`, () => {
+      const { template } = build();
+      // \b so this does not trip on the "IN (" inside "JOIN ("
+      expect(template).not.toMatch(/\bIN\s*\(\s*SELECT/i);
+      expect(template).toContain('JOIN');
+    });
+  }
+});
+
 describe('builder SQL shapes', () => {
-  it('ownedDashboard 45 adds the NOT IN type-34 exclusion', () => {
+  it('ownedDashboard 45 excludes the type-34 rows with an anti-join', () => {
     const { template } = actual.ownedDashboard({ layoutId: 45, companies: [9], customers: [], bankMode: false });
-    expect(template).toContain('AND type = 30');
-    expect(template).toContain('AND type = 34');
+    expect(template).toContain('AND di.type = 30');
+    expect(template).toContain('collateralised.type = 34');
+    // the anti-join half: matched rows are the ones to drop
+    expect(template).toContain('collateralised.application IS NULL');
   });
 
   it('two-customer split binds customer + inventor separately with the union', () => {
@@ -92,11 +119,17 @@ describe('layoutAssets branch selection', () => {
     expect(res.other_data).toHaveLength(1);
   });
 
-  it('layout 38 short-circuits when the family list is empty', async () => {
-    assetsQ.familyGrantList.mockResolvedValue([]);
+  // Layout 38 used to run familyGrantList first and hand the result back as
+  // `grant_doc_num IN (:assetList)` — thousands of numbers in one statement.
+  // It now joins assets_family itself, so there is no pre-query to short
+  // circuit on: an empty family simply counts zero.
+  it('layout 38 joins the family set in one query instead of pre-fetching it', async () => {
+    assetsQ.countAndList.mockResolvedValue({ list: [], total_records: 0 });
     const res = await service.layoutAssets(tenant, { ...base, layout: 'top_non_us_members' }, auth);
     expect(res).toEqual({ list: [], total_records: 0 });
-    expect(assetsQ.countAndList).not.toHaveBeenCalled();
+    const [template] = assetsQ.countAndList.mock.calls[0];
+    expect(template).toContain('db_uspto.assets_family');
+    expect(template).not.toContain(':assetList');
   });
 
   it('default layout expands tabs and runs the count/list skeleton', async () => {

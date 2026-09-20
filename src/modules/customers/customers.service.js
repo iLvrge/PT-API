@@ -619,9 +619,10 @@ const layoutAssets = async (tenant, params, { orgId, orgType }) => {
     } else if (layoutId === 40) {
       built = await assetsQ.lawfirmAssets({ companies, assignments, lawyers, layoutId, bankMode });
     } else {
-      const familyList = layoutId === 38 ? await assetsQ.familyGrantList({ companies, bankMode }) : undefined;
-      if (layoutId === 38 && !familyList.length) return { list: [], total_records: 0 };
-      built = assetsQ.genericDashboard({ layoutId, companies, customers, assignments, bankMode, familyList });
+      // Layout 38 used to pre-fetch its family grant numbers here and pass them
+      // back in; genericDashboard joins assets_family itself now, and an empty
+      // result falls out of countAndList's own zero-count short circuit.
+      built = assetsQ.genericDashboard({ layoutId, companies, customers, assignments, bankMode });
     }
   } else {
     const tabSet = tabs.length ? checkTabs(tabs) : [];
