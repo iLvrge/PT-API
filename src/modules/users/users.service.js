@@ -231,12 +231,29 @@ const syncTenantUser = async (organisationId, currentUsername, attributes) => {
   }
 };
 
+/** Mirror a deletion into the customer's own database. Best effort, like syncTenantUser. */
+const removeTenantUser = async (organisationId, userId) => {
+  try {
+    const tenant = await tenants.getConnection(Number(organisationId));
+    if (!tenant) return;
+    await tenant.query('DELETE FROM user WHERE user_id = :userId', {
+      replacements: { userId }, logging: false,
+    });
+  } catch (err) {
+    logger.warn('customer user deleted from business but not from the tenant', {
+      organisationId, userId, error: err.message,
+    });
+  }
+};
+
 const remove = async (organisationId, userId) => {
   const user = await repository.findByIdInOrganisation(userId, organisationId);
   if (!user) throw ApiError.notFound('User not found');
 
   const deleted = await repository.destroyById(userId, organisationId);
   if (deleted === 0) throw ApiError.notFound('User not found');
+
+  await removeTenantUser(organisationId, userId);
 
   return { user_id: userId, deleted: true };
 };

@@ -1,9 +1,11 @@
 'use strict';
 
 jest.mock('../../src/modules/users/users.repository');
+jest.mock('../../src/db/tenant-connections');
 
 const bcrypt = require('bcrypt');
 const repository = require('../../src/modules/users/users.repository');
+const tenants = require('../../src/db/tenant-connections');
 const service = require('../../src/modules/users/users.service');
 const ApiError = require('../../src/utils/api-error');
 
@@ -77,6 +79,42 @@ describe('users.service', () => {
       repository.findByIdInOrganisation.mockResolvedValue({ user_id: 335 });
       repository.destroyById.mockResolvedValue(0);
       await expect(service.remove(118, 335)).rejects.toMatchObject({ statusCode: 404 });
+    });
+
+    // Found testing the admin console against real Avaya data: this route
+    // deleted the business row but left the tenant's own copy behind forever
+    // (a different route, admin-customers.deleteCustomerUser, already knew to
+    // clean up both — this one never did), so a "deleted" user kept showing
+    // up in the customer's own user list.
+    it('also deletes the tenant-side copy of the user', async () => {
+      repository.findByIdInOrganisation.mockResolvedValue({ user_id: 335 });
+      repository.destroyById.mockResolvedValue(1);
+      const query = jest.fn().mockResolvedValue([]);
+      tenants.getConnection.mockResolvedValue({ query });
+
+      await service.remove(118, 335);
+
+      expect(tenants.getConnection).toHaveBeenCalledWith(118);
+      expect(query).toHaveBeenCalledWith(
+        expect.stringContaining('DELETE FROM user'),
+        expect.objectContaining({ replacements: { userId: 335 } })
+      );
+    });
+
+    it('still reports success when the organisation has no tenant database', async () => {
+      repository.findByIdInOrganisation.mockResolvedValue({ user_id: 335 });
+      repository.destroyById.mockResolvedValue(1);
+      tenants.getConnection.mockResolvedValue(null);
+
+      await expect(service.remove(118, 335)).resolves.toEqual({ user_id: 335, deleted: true });
+    });
+
+    it('still reports success when the tenant-side delete itself fails', async () => {
+      repository.findByIdInOrganisation.mockResolvedValue({ user_id: 335 });
+      repository.destroyById.mockResolvedValue(1);
+      tenants.getConnection.mockResolvedValue({ query: jest.fn().mockRejectedValue(new Error('down')) });
+
+      await expect(service.remove(118, 335)).resolves.toEqual({ user_id: 335, deleted: true });
     });
   });
 
