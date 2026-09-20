@@ -20,21 +20,43 @@ const windowTransactions = async ({ layoutId, companies, customers, lawfirm, ban
   const repl = { organisationID: 0, layoutID: layoutId, companies };
   if (bankMode) repl.mode = 1;
 
-  let sql = `SELECT trans.rf_id, assignment.reel_no, assignment.frame_no, '' AS channel, trans.date, assets, sum(assets) OVER (ORDER BY trans.date) AS grand_total FROM (SELECT documentid.rf_id, (SELECT date_format(exec_dt,'%m-%d-%Y') FROM db_uspto.assignor AS assignor WHERE assignor.rf_id = documentid.rf_id LIMIT 1) AS date, COUNT(distinct documentid.appno_doc_num) AS assets FROM db_uspto.documentid As documentid WHERE documentid.rf_id IN (SELECT rf_id FROM dashboard_items WHERE organisation_id = :organisationID AND representative_id IN (:companies) AND type = :layoutID `;
+  // The dashboard_items scope is joined to documentid, not tested with
+  // `documentid.rf_id IN (SELECT ...)`. documentid has millions of rows, and
+  // the membership form made MySQL materialise the subquery against all of
+  // them. DISTINCT gives one row per rf_id, so the join counts what the IN did.
+  let scope = `SELECT DISTINCT di.rf_id FROM dashboard_items AS di
+      WHERE di.organisation_id = :organisationID AND di.representative_id IN (:companies)
+        AND di.type = :layoutID `;
 
   if (layoutId === 41) {
     if (customers.length) {
       repl.customers = customers;
-      sql += ` AND assignor_id IN ( SELECT assignor_and_assignee_id FROM ( SELECT assignor_and_assignee_id FROM db_uspto.assignor_and_assignee WHERE assignor_and_assignee_id IN (:customers) UNION SELECT assignor_and_assignee_id FROM db_uspto.assignor_and_assignee WHERE representative_id IN (SELECT representative_id FROM db_uspto.assignor_and_assignee WHERE assignor_and_assignee_id IN (:customers) AND representative_id > 0)) As tempAssignorAndAssignee GROUP BY assignor_and_assignee_id ) `;
+      // The party expansion - a customer plus everyone sharing its
+      // representative - is also a join now, against the same union.
+      scope = `SELECT DISTINCT di.rf_id FROM dashboard_items AS di
+          INNER JOIN ( SELECT assignor_and_assignee_id FROM db_uspto.assignor_and_assignee
+                        WHERE assignor_and_assignee_id IN (:customers)
+                        UNION
+                       SELECT aae.assignor_and_assignee_id FROM db_uspto.assignor_and_assignee AS aae
+                        INNER JOIN db_uspto.assignor_and_assignee AS seed
+                                ON seed.representative_id = aae.representative_id
+                         WHERE seed.assignor_and_assignee_id IN (:customers)
+                           AND seed.representative_id > 0
+                     ) AS tempAssignorAndAssignee
+                  ON tempAssignorAndAssignee.assignor_and_assignee_id = di.assignor_id
+          WHERE di.organisation_id = :organisationID AND di.representative_id IN (:companies)
+            AND di.type = :layoutID `;
     }
   } else {
     // Legacy appended this unconditionally; an empty selection binds '' and
     // matches nothing meaningful, preserved for parity.
     repl.customers = customers.length ? customers : '';
-    sql += ` AND assignor_id IN (:customers) `;
+    scope += ` AND di.assignor_id IN (:customers) `;
   }
 
-  sql += ` ${bankMode ? 'AND mode IN (:mode)' : ''} GROUP BY rf_id) GROUP BY documentid.rf_id) AS trans INNER JOIN db_uspto.assignment AS assignment ON assignment.rf_id = trans.rf_id `;
+  scope += ` ${bankMode ? 'AND di.mode IN (:mode)' : ''}`;
+
+  let sql = `SELECT trans.rf_id, assignment.reel_no, assignment.frame_no, '' AS channel, trans.date, assets, sum(assets) OVER (ORDER BY trans.date) AS grand_total FROM (SELECT documentid.rf_id, (SELECT date_format(exec_dt,'%m-%d-%Y') FROM db_uspto.assignor AS assignor WHERE assignor.rf_id = documentid.rf_id LIMIT 1) AS date, COUNT(distinct documentid.appno_doc_num) AS assets FROM db_uspto.documentid As documentid INNER JOIN (${scope}) AS scope ON scope.rf_id = documentid.rf_id GROUP BY documentid.rf_id) AS trans INNER JOIN db_uspto.assignment AS assignment ON assignment.rf_id = trans.rf_id `;
 
   if (lawfirm > 0) {
     const firm = await q.selectOne(

@@ -215,10 +215,22 @@ describe('buildOwnedAssetsQuery', () => {
     const built = sql.buildOwnedAssetsQuery({
       ...owned, tabs: [5], customers: [7], assignments: [11],
     });
-    expect(built.sql).toContain('activity_parties_transactions.activity_id IN (:tabs)');
-    expect(built.sql).toContain('activity_parties_transactions.assignor_and_assignee_id IN (:customers)');
-    expect(built.sql).toContain('activity_parties_transactions.rf_id IN (:assignments)');
+    // activity_parties_transactions is joined as `apt` now, not re-tested with
+    // a nested IN (SELECT ...); the filters themselves are unchanged.
+    expect(built.sql).toContain('apt.activity_id IN (:tabs)');
+    expect(built.sql).toContain('apt.assignor_and_assignee_id IN (:customers)');
+    expect(built.sql).toContain('apt.rf_id IN (:assignments)');
     expect(built.replacements).toMatchObject({ tabs: [5], customers: [7], assignments: [11] });
+  });
+
+  // db_uspto.documentid has millions of rows; a membership test against it is
+  // what takes MySQL down on this data.
+  it('joins the transaction filter instead of nesting IN (SELECT ...)', () => {
+    const built = sql.buildOwnedAssetsQuery({
+      ...owned, tabs: [5], customers: [7], assignments: [11],
+    });
+    expect(built.sql).not.toMatch(/\bIN\s*\(\s*SELECT/i);
+    expect(built.sql).toContain('INNER JOIN');
   });
 
   it('still excludes employee-only assets when no filters are supplied', () => {

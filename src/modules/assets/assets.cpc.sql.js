@@ -39,18 +39,25 @@ const INVENTOR_ORIGIN = (inventorTable, assignorTable) => `(SELECT GROUP_CONCAT(
 
 // The party an asset was originally assigned to by its inventors — an employer
 // assignment (employer_assign = 1) is what makes it the origin.
+// documentid is joined, not tested with `rf_id IN (SELECT ...)`. That subquery
+// was correlated on application_number, so MySQL re-ran it against a
+// multi-million-row table for every row this projection produced. The join can
+// repeat an assignee row where the membership test matched once, but the
+// GROUP_CONCAT is DISTINCT, so the concatenated value is unchanged - verified
+// identical across 60 real application numbers.
 const EMPLOYER_ORIGIN = `(SELECT GROUP_CONCAT(DISTINCT
       IF(representative_name <> '', representative_name, name) SEPARATOR '@@ ')
     FROM db_uspto.assignee
+    INNER JOIN db_uspto.documentid AS origin_doc
+            ON origin_doc.rf_id = assignee.rf_id
+           AND origin_doc.appno_doc_num = application_cpc.application_number
     INNER JOIN db_uspto.assignor_and_assignee
             ON assignor_and_assignee.assignor_and_assignee_id = assignee.assignor_and_assignee_id
     LEFT JOIN db_uspto.representative
            ON representative.representative_id = assignor_and_assignee.representative_id
     INNER JOIN db_uspto.representative_assignment_conveyance
             ON representative_assignment_conveyance.rf_id = assignee.rf_id
-   WHERE assignee.rf_id IN (SELECT rf_id FROM db_uspto.documentid
-                             WHERE documentid.appno_doc_num = application_cpc.application_number)
-     AND representative_assignment_conveyance.employer_assign = 1) AS origin`;
+   WHERE representative_assignment_conveyance.employer_assign = 1) AS origin`;
 
 /** The scope filter, if the caller narrowed to particular CPC codes. */
 const scopeClause = ({ scope, rangeExpr, bySection }) => {

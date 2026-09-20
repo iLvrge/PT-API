@@ -325,29 +325,38 @@ const buildOwnedAssetsQuery = ({ type, companies, tabs, customers, assignments, 
   if (customers.length) repl.customers = customers;
   if (assignments.length) repl.assignments = assignments;
 
-  let sql = `SELECT appno_doc_num FROM db_new_application.assets AS assets
+  const filtered = assignments.length > 0 || tabs.length > 0 || customers.length > 0;
+
+  // The transaction filter is a joined derived table, not
+  //   appno_doc_num IN (SELECT ... WHERE rf_id IN (SELECT ...))
+  // Nested membership tests made MySQL materialise db_uspto.documentid before
+  // it could test one asset. DISTINCT keeps one row per application number, so
+  // the join selects exactly the assets the IN did.
+  let join = '';
+  if (filtered || tabs.length === 0) {
+    // assets.appno_doc_num is utf8mb4; documentid.appno_doc_num is latin1 and
+    // indexed, so the utf8mb4 side is narrowed (application numbers are ASCII).
+    let where = `(apt.organisation_id = :organisationId OR apt.organisation_id IS NULL)`;
+    if (companies.length) where += ` AND apt.company_id IN (:companies)`;
+    if (filtered) {
+      if (assignments.length) where += ` AND apt.rf_id IN (:assignments)`;
+      if (tabs.length) where += ` AND apt.activity_id IN (:tabs)`;
+      if (customers.length) where += ` AND apt.assignor_and_assignee_id IN (:customers)`;
+    }
+    join = ` INNER JOIN (
+        SELECT DISTINCT ${asLatin1('documentid.appno_doc_num')} AS appno
+          FROM db_uspto.documentid
+          INNER JOIN db_new_application.activity_parties_transactions AS apt
+                  ON apt.rf_id = documentid.rf_id
+         WHERE ${where}
+      ) AS transactionMatch ON transactionMatch.appno = ${asLatin1('assets.appno_doc_num')}`;
+  }
+
+  let sql = `SELECT assets.appno_doc_num FROM db_new_application.assets AS assets${join}
      WHERE date_format(assets.appno_date, '%Y') > :year AND assets.layout_id = :layoutId
        AND (assets.organisation_id = :organisationId OR assets.organisation_id IS NULL)`;
   if (companies.length) sql += ` AND assets.company_id IN (:companies)`;
 
-  const filtered = assignments.length > 0 || tabs.length > 0 || customers.length > 0;
-  if (filtered || tabs.length === 0) {
-    // assets.appno_doc_num is utf8mb4; documentid.appno_doc_num is latin1 and
-    // indexed, so the utf8mb4 side is narrowed (application numbers are ASCII).
-    let inner = `SELECT ${asLatin1('documentid.appno_doc_num')} FROM db_uspto.documentid
-        WHERE rf_id IN (SELECT activity_parties_transactions.rf_id
-                          FROM db_new_application.activity_parties_transactions
-                         WHERE (activity_parties_transactions.organisation_id = :organisationId
-                                OR activity_parties_transactions.organisation_id IS NULL)`;
-    if (companies.length) inner += ` AND activity_parties_transactions.company_id IN (:companies)`;
-    if (filtered) {
-      if (assignments.length) inner += ` AND activity_parties_transactions.rf_id IN (:assignments)`;
-      if (tabs.length) inner += ` AND activity_parties_transactions.activity_id IN (:tabs)`;
-      if (customers.length) inner += ` AND activity_parties_transactions.assignor_and_assignee_id IN (:customers)`;
-    }
-    inner += ` GROUP BY activity_parties_transactions.rf_id) GROUP BY documentid.appno_doc_num`;
-    sql += ` AND ${asLatin1('assets.appno_doc_num')} IN (${inner})`;
-  }
   return { sql, replacements: repl };
 };
 

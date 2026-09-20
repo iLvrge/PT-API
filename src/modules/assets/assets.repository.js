@@ -64,31 +64,42 @@ const grantYears = (list) =>
 const applicationsForMetric = ({ companies, type, assignments, customers, bankMode }) => {
   const repl = { organisationId: 0, companies, type };
   if (bankMode) repl.mode = 1;
-  let sql = `SELECT application FROM db_new_application.dashboard_items
-      WHERE organisation_id = :organisationId AND representative_id IN (:companies)
-      ${bankMode ? ' AND mode IN (:mode) ' : ''}`;
+  let join = '';
+  let where = `di.organisation_id = :organisationId AND di.representative_id IN (:companies)
+      ${bankMode ? ' AND di.mode IN (:mode) ' : ''}`;
 
   if (assignments.length) {
     repl.assignments = assignments;
     if (type === 30) {
       // Metric 30 is "assigned": narrow to the assets on those transactions,
-      // but keep the metric itself unfiltered.
-      sql += ` AND application IN (SELECT application FROM db_new_application.dashboard_items
-                 WHERE organisation_id = :organisationId AND representative_id IN (:companies)
-                   AND rf_id IN (:assignments) ${bankMode ? ' AND mode IN (:mode) ' : ''})`;
+      // but keep the metric itself unfiltered. A join to the distinct set of
+      // those applications, not `application IN (SELECT ...)` over the same
+      // table - DISTINCT means it matches once, exactly as membership did.
+      join = ` INNER JOIN (SELECT DISTINCT application
+                   FROM db_new_application.dashboard_items
+                  WHERE organisation_id = :organisationId
+                    AND representative_id IN (:companies)
+                    AND rf_id IN (:assignments)
+                    ${bankMode ? ' AND mode IN (:mode) ' : ''}
+              ) AS assigned ON assigned.application = di.application`;
     } else {
-      sql += ` AND type = :type AND rf_id IN (:assignments)`;
+      where += ` AND di.type = :type AND di.rf_id IN (:assignments)`;
     }
   } else {
-    sql += ` AND type = :type`;
+    where += ` AND di.type = :type`;
   }
 
   if (customers.length) {
     repl.customers = customers;
-    sql += ` AND assignor_id IN (:customers)`;
+    where += ` AND di.assignor_id IN (:customers)`;
   }
 
-  return q.selectAll(connections.application, `${sql} GROUP BY application`, repl);
+  return q.selectAll(
+    connections.application,
+    `SELECT di.application FROM db_new_application.dashboard_items AS di${join}
+      WHERE ${where} GROUP BY di.application`,
+    repl
+  );
 };
 
 /** The law firms filing for a company, from the top-law-firms metric. */
@@ -122,32 +133,40 @@ const selectionAssets = ({ companies, tabs, customers, assignments, layoutId, ye
   if (customers.length) repl.customers = customers;
   if (assignments.length) repl.assignments = assignments;
 
-  let sql = `SELECT appno_doc_num FROM db_new_application.assets AS assets
+  const hasFilter = assignments.length > 0 || tabs.length > 0 || customers.length > 0;
+
+  // The transaction filter is a joined derived table, not
+  //   CONVERT(...) IN (SELECT ... WHERE rf_id IN (SELECT ...))
+  // Those two nested membership tests forced db_uspto.documentid to be
+  // materialised in full before a single asset could be tested. DISTINCT keeps
+  // one row per application number, so the join selects the same assets.
+  let join = '';
+  if (hasFilter) {
+    // assets.appno_doc_num is utf8mb4; db_uspto.documentid is latin1 and
+    // indexed, so the utf8mb4 side is narrowed. See COLLATION.md.
+    let where = `(apt.organisation_id = :organisationId OR apt.organisation_id IS NULL)`;
+    if (companies.length) where += ` AND apt.company_id IN (:companies)`;
+    if (assignments.length) where += ` AND apt.rf_id IN (:assignments)`;
+    if (tabs.length) where += ` AND apt.activity_id IN (:tabs)`;
+    else if (excludeEmployees) where += ` AND apt.activity_id <> 10`;
+    if (customers.length) where += ` AND apt.assignor_and_assignee_id IN (:customers)`;
+
+    join = ` INNER JOIN (
+        SELECT DISTINCT CONVERT(documentid.appno_doc_num USING latin1) AS appno
+          FROM db_uspto.documentid
+          INNER JOIN db_new_application.activity_parties_transactions AS apt
+                  ON apt.rf_id = documentid.rf_id
+         WHERE ${where}
+      ) AS transactionMatch
+        ON transactionMatch.appno = CONVERT(assets.appno_doc_num USING latin1)`;
+  }
+
+  let sql = `SELECT assets.appno_doc_num FROM db_new_application.assets AS assets${join}
       WHERE date_format(assets.appno_date, '%Y') > :year AND assets.layout_id = :layoutId
         AND (assets.organisation_id = :organisationId OR assets.organisation_id IS NULL)`;
   if (companies.length) sql += ` AND assets.company_id IN (:companies)`;
 
-  const hasFilter = assignments.length > 0 || tabs.length > 0 || customers.length > 0;
-  if (hasFilter) {
-    // assets.appno_doc_num is utf8mb4; db_uspto.documentid is latin1 and
-    // indexed, so the utf8mb4 side is narrowed. See COLLATION.md.
-    let inner = `SELECT CONVERT(documentid.appno_doc_num USING latin1) FROM db_uspto.documentid
-        WHERE rf_id IN (SELECT activity_parties_transactions.rf_id
-                          FROM db_new_application.activity_parties_transactions
-                         WHERE (activity_parties_transactions.organisation_id = :organisationId
-                                OR activity_parties_transactions.organisation_id IS NULL)`;
-    if (companies.length) inner += ` AND activity_parties_transactions.company_id IN (:companies)`;
-    if (assignments.length) inner += ` AND activity_parties_transactions.rf_id IN (:assignments)`;
-    if (tabs.length) inner += ` AND activity_parties_transactions.activity_id IN (:tabs)`;
-    else if (excludeEmployees) inner += ` AND activity_parties_transactions.activity_id <> 10`;
-    if (customers.length) {
-      inner += ` AND activity_parties_transactions.assignor_and_assignee_id IN (:customers)`;
-    }
-    inner += ` GROUP BY activity_parties_transactions.rf_id) GROUP BY documentid.appno_doc_num`;
-    sql += ` AND CONVERT(assets.appno_doc_num USING latin1) IN (${inner})`;
-  }
-
-  return q.selectAll(app(), `${sql} GROUP BY appno_doc_num`, repl);
+  return q.selectAll(app(), `${sql} GROUP BY assets.appno_doc_num`, repl);
 };
 
 /** Assets the organisation has listed for sale. */

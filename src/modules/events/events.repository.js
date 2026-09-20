@@ -158,27 +158,40 @@ const statusHistory = (applicationNumber) =>
 const assetsToRecord = ({ companies, customers, bankMode }) => {
   const repl = { organisationId: 0, companies, type: 22 };
   if (bankMode) repl.mode = 1;
-  let sql = `SELECT application, patent, '' AS eventdate, '13' AS event_code, '' AS event_icon,
-            IF(patent <> '', FORMAT(patent, 0),
-               CONCAT(SUBSTRING(application, 1, 2), '/', FORMAT(SUBSTRING(application, 3), 0)))
-            AS template_string
-       FROM dashboard_items
-      WHERE organisation_id = :organisationId AND representative_id IN (:companies)
-        ${bankMode ? ' AND mode IN (:mode) ' : ''} AND type = :type`;
 
+  // Narrowing to the applications on a customer's transactions is a join, not
+  //   application IN (SELECT ... WHERE rf_id IN (SELECT ...))
+  // That nested pair made MySQL materialise db_uspto.documentid - millions of
+  // rows - before it could test a single application. DISTINCT keeps the
+  // derived table one row per application, so the join matches what the
+  // membership test did without multiplying rows.
+  let join = '';
   if (customers.length) {
     repl.customers = customers;
-    sql += ` AND application IN (
-        SELECT CONVERT(documentid.appno_doc_num USING utf8mb4) COLLATE utf8mb4_general_ci
+    join = ` INNER JOIN (
+        SELECT DISTINCT CONVERT(documentid.appno_doc_num USING utf8mb4)
+                 COLLATE utf8mb4_general_ci AS appno
           FROM db_uspto.documentid
-         WHERE rf_id IN (SELECT activity_parties_transactions.rf_id
-                           FROM db_new_application.activity_parties_transactions
-                          WHERE activity_parties_transactions.organisation_id = :organisationId
-                            AND activity_parties_transactions.company_id IN (:companies)
-                            AND activity_parties_transactions.assignor_and_assignee_id IN (:customers)
-                          GROUP BY activity_parties_transactions.rf_id)
-         GROUP BY documentid.appno_doc_num)`;
+          INNER JOIN db_new_application.activity_parties_transactions AS apt
+                  ON apt.rf_id = documentid.rf_id
+         WHERE apt.organisation_id = :organisationId
+           AND apt.company_id IN (:companies)
+           AND apt.assignor_and_assignee_id IN (:customers)
+      ) AS customerAssets ON customerAssets.appno = dashboard_items.application`;
   }
+
+  const sql = `SELECT dashboard_items.application, dashboard_items.patent, '' AS eventdate,
+            '13' AS event_code, '' AS event_icon,
+            IF(dashboard_items.patent <> '', FORMAT(dashboard_items.patent, 0),
+               CONCAT(SUBSTRING(dashboard_items.application, 1, 2), '/',
+                      FORMAT(SUBSTRING(dashboard_items.application, 3), 0)))
+            AS template_string
+       FROM dashboard_items${join}
+      WHERE dashboard_items.organisation_id = :organisationId
+        AND dashboard_items.representative_id IN (:companies)
+        ${bankMode ? ' AND dashboard_items.mode IN (:mode) ' : ''}
+        AND dashboard_items.type = :type`;
+
   return q.selectAll(app(), sql, repl);
 };
 
