@@ -170,6 +170,17 @@ describe('events.service.eventsForAsset', () => {
     expect(result.events).toHaveLength(1);
   });
 
+  // The timeline reads `main`, as it does for the transactions route. Returning
+  // only `events` made it dereference `events.main.length` on an undefined, so
+  // selecting any asset threw and left the panel blank.
+  it('returns the events as `main`, the name every caller reads', async () => {
+    const rows = [{ event_code: 'M1551', eventdate: '2018-01-01' }];
+    repo.eventsForApplication.mockResolvedValue(rows);
+    const result = await service.eventsForAsset({ applicationNumber: '13456789' });
+    expect(result.main).toHaveLength(1);
+    expect(result.main).toEqual(result.events);
+  });
+
   it('reports expiry and its date', async () => {
     repo.eventsForApplication.mockResolvedValue([
       { event_code: 'M1551', eventdate: '2018-01-01' },

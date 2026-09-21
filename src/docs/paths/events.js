@@ -168,7 +168,17 @@ module.exports = {
       ok: h.jsonResponse('The history.', {
         type: 'object',
         properties: {
-          events: { type: 'array', items: { type: 'object' } },
+          main: {
+            type: 'array',
+            items: { type: 'object' },
+            description: 'The events. Named to match /events/assets/transactions/{rfID}, '
+              + 'and what the timeline reads.',
+          },
+          events: {
+            type: 'array',
+            items: { type: 'object' },
+            description: 'The same array as `main`, kept for the original contract.',
+          },
           icons: { type: 'object' },
           expired: { type: 'boolean' },
           expired_date: { type: 'string' },

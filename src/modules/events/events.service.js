@@ -136,7 +136,13 @@ const eventsForAsset = async ({ applicationNumber, patentNumber }) => {
     }
   });
 
-  return { events, icons: iconsByCode, expired, expired_date: expiredOn };
+  // `main` is the name every caller reads, and the one the sibling route
+  // GET /events/assets/transactions/:rfID already returns. Calling it only
+  // `events` here left the timeline reading `events.main.length` on an
+  // undefined - the asset panel threw and rendered blank for every asset.
+  // `events` is kept alongside it: it is the documented field, so anything
+  // written against the published contract keeps working.
+  return { main: events, events, icons: iconsByCode, expired, expired_date: expiredOn };
 };
 
 /**
