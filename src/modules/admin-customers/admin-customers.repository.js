@@ -202,7 +202,7 @@ const runReport = ({ queryNo, representativeName, companyId, organisationId }) =
   }
 
   const expand = REPORT_EXPANSIONS[queryNo];
-  return q.selectAll(connections.resources, expand ? expand(inner) : inner, repl);
+  return q.selectAll(connections.resources, expand ? expand(inner, spec.column) : inner, repl);
 };
 
 /* -------------------------------------------------------------- log reads */
@@ -275,10 +275,15 @@ const destroyLogMessages = (table, { organisationId, companyIds }) => {
  */
 const setEmployerAssign = ({ partyIds, flag }) => {
   const setEmployeeType = Number(flag) === 1;
+  // A multi-table UPDATE rather than `rf_id IN (SELECT ... FROM assignor ...)`.
+  // DISTINCT keeps one row per transaction, so each conveyance is still
+  // matched once however many of its assignors are in the party list.
   const sql = `
-    UPDATE representative_assignment_conveyance
-       SET employer_assign = :flag${setEmployeeType ? ', convey_ty = :conveyType' : ''}
-     WHERE rf_id IN (SELECT rf_id FROM assignor WHERE assignor_and_assignee_id IN (:partyIds))`;
+    UPDATE representative_assignment_conveyance AS rac
+     INNER JOIN (SELECT DISTINCT rf_id FROM assignor
+                  WHERE assignor_and_assignee_id IN (:partyIds)) AS parties
+             ON parties.rf_id = rac.rf_id
+       SET rac.employer_assign = :flag${setEmployeeType ? ', rac.convey_ty = :conveyType' : ''}`;
   const replacements = { flag, partyIds };
   if (setEmployeeType) replacements.conveyType = 'employee';
   return connections.resources.query(sql, { replacements, logging: false });

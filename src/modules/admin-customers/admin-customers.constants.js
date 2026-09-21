@@ -22,23 +22,34 @@ const REPORT_QUERIES = {
  * Numbers 6 and 7 read the asset table directly and need no second hop.
  */
 const REPORT_EXPANSIONS = {
-  // Parties: every asset on any transaction they were a party to.
-  1: (inner) => `SELECT * FROM (
-        SELECT appno_doc_num, grant_doc_num FROM documentid
-         WHERE rf_id IN (SELECT rf_id FROM assignor
-                          WHERE assignor_and_assignee_id IN (${inner}) GROUP BY rf_id)
+  // Parties: every asset on any transaction they were a party to. `inner`
+  // selects `column` from the report table; it is joined rather than tested
+  // with a membership subquery, because every one of these lands on
+  // db_uspto.documentid, which has millions of rows. The outer GROUP BY
+  // already collapses repeats, so a join cannot change the result.
+  1: (inner, column) => `SELECT * FROM (
+        SELECT d.appno_doc_num, d.grant_doc_num FROM documentid AS d
+         INNER JOIN (SELECT DISTINCT aor.rf_id FROM assignor AS aor
+                      INNER JOIN (${inner}) AS parties
+                              ON parties.${column} = aor.assignor_and_assignee_id
+                    ) AS assignedFrom ON assignedFrom.rf_id = d.rf_id
         UNION
-        SELECT appno_doc_num, grant_doc_num FROM documentid
-         WHERE rf_id IN (SELECT rf_id FROM assignee
-                          WHERE assignor_and_assignee_id IN (${inner}) GROUP BY rf_id)
+        SELECT d.appno_doc_num, d.grant_doc_num FROM documentid AS d
+         INNER JOIN (SELECT DISTINCT ass.rf_id FROM assignee AS ass
+                      INNER JOIN (${inner}) AS parties
+                              ON parties.${column} = ass.assignor_and_assignee_id
+                    ) AS assignedTo ON assignedTo.rf_id = d.rf_id
       ) AS temp GROUP BY appno_doc_num`,
   // Transactions: the assets they cover.
-  2: (inner) => `SELECT appno_doc_num, grant_doc_num FROM documentid
-                  WHERE rf_id IN (${inner}) GROUP BY appno_doc_num`,
-  4: (inner) => `SELECT appno_doc_num, grant_doc_num FROM documentid
-                  WHERE appno_doc_num IN (${inner}) GROUP BY appno_doc_num`,
-  5: (inner) => `SELECT appno_doc_num, grant_doc_num FROM documentid
-                  WHERE appno_doc_num IN (${inner}) GROUP BY appno_doc_num`,
+  2: (inner, column) => `SELECT d.appno_doc_num, d.grant_doc_num FROM documentid AS d
+                  INNER JOIN (${inner}) AS scope ON scope.${column} = d.rf_id
+                  GROUP BY d.appno_doc_num`,
+  4: (inner, column) => `SELECT d.appno_doc_num, d.grant_doc_num FROM documentid AS d
+                  INNER JOIN (${inner}) AS scope ON scope.${column} = d.appno_doc_num
+                  GROUP BY d.appno_doc_num`,
+  5: (inner, column) => `SELECT d.appno_doc_num, d.grant_doc_num FROM documentid AS d
+                  INNER JOIN (${inner}) AS scope ON scope.${column} = d.appno_doc_num
+                  GROUP BY d.appno_doc_num`,
 };
 
 // The admin users all live in this organisation, with this type.

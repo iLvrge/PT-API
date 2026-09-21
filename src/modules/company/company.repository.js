@@ -128,7 +128,37 @@ const maintainenceAssets = ({ representativeIds, orgId, bankMode }) => {
   if (bankMode) repl.mode = 1;
   return q.selectAll(
     connections.applicationNew,
-    `SELECT asset, asset_type, channel, appno_doc_num, grant_doc_num, grant_date, payment_due, payment_grace, type, fee_code, fee_amount, fee_code_surcharge, fee_surcharge, remaining_year, source, fwd_citation, technology, child_count FROM maintainence_assets WHERE company_id IN (:representativeIDs) AND organisation_id = :organisationID AND appno_doc_num IN (SELECT application COLLATE utf8mb4_0900_ai_ci FROM dashboard_items WHERE organisation_id = :organisationID AND representative_id IN (:representativeIDs) ${bankMode ? 'AND mode IN (:mode)' : ''} AND type = :type GROUP BY application) AND appno_doc_num NOT IN (SELECT appno_doc_num FROM db_application.assets_transfer WHERE appno_doc_num <> '' AND status = 0 AND layout_id = :layoutID AND organisation_id = :organisationID) AND grant_doc_num NOT IN (SELECT grant_doc_num FROM db_application.assets_transfer WHERE appno_doc_num = '' AND grant_doc_num <> '' AND status = 0 AND layout_id = :layoutID AND organisation_id = :organisationID) GROUP BY grant_doc_num, appno_doc_num, company_id`,
+    // Three membership tests became joins: the held-assets one an INNER JOIN,
+    // and the two `NOT IN (... assets_transfer ...)` exclusions LEFT JOIN
+    // anti-joins. An anti-join is also safer than NOT IN, which returns no
+    // rows at all if the subquery ever yields a NULL.
+    `SELECT ma.asset, ma.asset_type, ma.channel, ma.appno_doc_num, ma.grant_doc_num,
+            ma.grant_date, ma.payment_due, ma.payment_grace, ma.type, ma.fee_code,
+            ma.fee_amount, ma.fee_code_surcharge, ma.fee_surcharge, ma.remaining_year,
+            ma.source, ma.fwd_citation, ma.technology, ma.child_count
+       FROM maintainence_assets AS ma
+       INNER JOIN (SELECT DISTINCT application COLLATE utf8mb4_0900_ai_ci AS application
+                     FROM dashboard_items
+                    WHERE organisation_id = :organisationID
+                      AND representative_id IN (:representativeIDs)
+                      ${bankMode ? 'AND mode IN (:mode)' : ''}
+                      AND type = :type) AS held
+               ON held.application = ma.appno_doc_num
+       LEFT JOIN db_application.assets_transfer AS movedApplication
+              ON movedApplication.appno_doc_num = ma.appno_doc_num
+             AND movedApplication.appno_doc_num <> '' AND movedApplication.status = 0
+             AND movedApplication.layout_id = :layoutID
+             AND movedApplication.organisation_id = :organisationID
+       LEFT JOIN db_application.assets_transfer AS movedGrant
+              ON movedGrant.grant_doc_num = ma.grant_doc_num
+             AND movedGrant.appno_doc_num = '' AND movedGrant.grant_doc_num <> ''
+             AND movedGrant.status = 0 AND movedGrant.layout_id = :layoutID
+             AND movedGrant.organisation_id = :organisationID
+      WHERE ma.company_id IN (:representativeIDs)
+        AND ma.organisation_id = :organisationID
+        AND movedApplication.appno_doc_num IS NULL
+        AND movedGrant.grant_doc_num IS NULL
+      GROUP BY ma.grant_doc_num, ma.appno_doc_num, ma.company_id`,
     repl
   );
 };
@@ -209,10 +239,11 @@ const requestsByIds = (companyIds) =>
 const assigneeIdsForRepresentatives = (representativeIds) =>
   q.selectAll(
     connections.resources,
-    `SELECT assignor_and_assignee_id FROM db_uspto.assignor_and_assignee
-      WHERE name IN (SELECT representative_name FROM db_uspto.representative
-                      WHERE representative_id IN (:representativeIds) GROUP BY representative_name)
-      GROUP BY assignor_and_assignee_id`,
+    `SELECT aaa.assignor_and_assignee_id FROM db_uspto.assignor_and_assignee AS aaa
+      INNER JOIN (SELECT DISTINCT representative_name FROM db_uspto.representative
+                   WHERE representative_id IN (:representativeIds)) AS reps
+              ON reps.representative_name = aaa.name
+      GROUP BY aaa.assignor_and_assignee_id`,
     { representativeIds }
   );
 
@@ -221,8 +252,9 @@ const subsidiaryCompanies = (ids) =>
     connections.resources,
     `SELECT aaa.assignor_and_assignee_id, aaa.name, r.representative_name, aaa.instances, r.representative_id,
             (SELECT sum(a.instances) as counter FROM assignor_and_assignee as a
-              WHERE a.representative_id IN (SELECT representative_id FROM representative
-                                             WHERE representative_name = r.representative_name)
+              INNER JOIN representative AS named
+                      ON named.representative_id = a.representative_id
+                     AND named.representative_name = r.representative_name
               GROUP BY a.representative_id) as representative_instances
        FROM assignor_and_assignee as aaa
        LEFT JOIN representative as r ON r.representative_id = aaa.representative_id

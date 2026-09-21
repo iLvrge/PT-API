@@ -97,12 +97,22 @@ const agentsLenders = ({ companies, bankMode, customers, year }) => {
   if (bankMode) repl.mode = 1;
   if (customers.length) {
     repl.customers = customers;
-    sql += ` AND assignor_id IN (SELECT assignor_and_assignee_id FROM (
-        SELECT assignor_and_assignee_id FROM db_uspto.assignor_and_assignee WHERE assignor_and_assignee_id = :customers
-        UNION
-        SELECT assignor_and_assignee_id FROM db_uspto.assignor_and_assignee WHERE representative_id IN (
-          SELECT representative_id FROM db_uspto.assignor_and_assignee WHERE assignor_and_assignee_id = :customers
-        )) AS tempParties)`;
+    // The party expansion - the selected customer plus everyone sharing its
+    // representative - is joined, not nested two membership tests deep. The
+    // inner half is a self-join on assignor_and_assignee instead of
+    // `representative_id IN (SELECT representative_id FROM ...)`.
+    sql = sql.replace(
+      'INNER JOIN db_uspto.assignor_and_assignee AS aaa ON aaa.assignor_and_assignee_id = di.assignor_id',
+      `INNER JOIN db_uspto.assignor_and_assignee AS aaa ON aaa.assignor_and_assignee_id = di.assignor_id
+      INNER JOIN (SELECT assignor_and_assignee_id FROM db_uspto.assignor_and_assignee
+                   WHERE assignor_and_assignee_id = :customers
+                  UNION
+                  SELECT related.assignor_and_assignee_id FROM db_uspto.assignor_and_assignee AS related
+                   INNER JOIN db_uspto.assignor_and_assignee AS seed
+                           ON seed.representative_id = related.representative_id
+                   WHERE seed.assignor_and_assignee_id = :customers
+                 ) AS tempParties ON tempParties.assignor_and_assignee_id = di.assignor_id`
+    );
   }
   sql += ` GROUP BY cor.convey_ty, apt.rf_id) AS temp GROUP BY name, year`;
   return q.selectAll(connections.application, sql, repl);

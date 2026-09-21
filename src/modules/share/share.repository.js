@@ -103,8 +103,10 @@ const resolveAssets = ({ grants, applications }) => {
 const organisationLogo = (code) =>
   q.selectValue(
     app(),
-    `SELECT logo FROM db_business.organisation
-      WHERE organisation_id IN (SELECT organisation_id FROM db_new_application.share WHERE code = :code)
+    `SELECT organisation.logo FROM db_business.organisation
+      INNER JOIN db_new_application.share
+              ON share.organisation_id = organisation.organisation_id
+      WHERE share.code = :code
       LIMIT 1`,
     { code },
     'logo',

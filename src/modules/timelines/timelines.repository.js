@@ -130,13 +130,13 @@ const DRILL_JOIN = `INNER JOIN assignor_and_assignee as aa
      LEFT JOIN representative as r ON r.representative_id = aa.representative_id`;
 const DRILL_NAME = 'CASE WHEN r.representative_name <> null THEN r.representative_name ELSE aa.name END';
 
-const drillPoints = ({ predicate, replacements, truncateNames }) =>
+const drillPoints = ({ predicate, join = '', replacements, truncateNames }) =>
   q.selectAll(
     app(),
     `SELECT t.rf_id as id,
             ${truncateNames ? `SUBSTRING_INDEX(${DRILL_NAME}, " ", 1)` : DRILL_NAME} as content,
             "point" as type, t.exec_dt as start
-       FROM timeline as t ${DRILL_JOIN}
+       FROM timeline as t ${DRILL_JOIN} ${join}
       WHERE ${predicate} AND t.tab = :tab AND t.organisation_id = :orgId
         AND t.representative_id = :representativeId
       GROUP BY id ORDER BY start ASC`,

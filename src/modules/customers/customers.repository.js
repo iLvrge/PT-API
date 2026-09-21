@@ -165,7 +165,8 @@ const ASSET_LIST_SQL = `SELECT appno_doc_num, grant_doc_num,
   CASE WHEN grant_doc_num = '' THEN appno_doc_num ELSE grant_doc_num END AS asset,
   0 AS child_count
   FROM documentid
-  WHERE rf_id IN (SELECT rf_id FROM tree_parties_collection WHERE REPLACE_WHERE)
+  INNER JOIN (SELECT DISTINCT rf_id FROM tree_parties_collection WHERE REPLACE_WHERE) AS parties
+          ON parties.rf_id = documentid.rf_id
   GROUP BY appno_doc_num, grant_doc_num`;
 
 const assetTypeAssetsCount = (filters, replacements) => {

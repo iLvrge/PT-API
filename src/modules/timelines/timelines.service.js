@@ -140,11 +140,18 @@ const drillDown = async ({ tenant, orgId, organisation, name, depth, groupId }) 
     name, tab: groupId, orgId, representativeId: company.representative_id,
   };
   let predicate;
+  let join = '';
 
   if (depth === DEPTH.ASSET) {
     // Try the number as a granted patent first, then as an application.
     const column = (await repository.isGrantNumber(name)) ? 'grant_doc_num' : 'appno_doc_num';
-    predicate = `t.rf_id IN (SELECT rf_id FROM documentid WHERE ${column} IN (:name))`;
+    // documentid is joined, not tested with `t.rf_id IN (SELECT ...)`: it has
+    // millions of rows, and the membership form made MySQL materialise the
+    // whole matching set before a single timeline row could be checked.
+    // DISTINCT keeps one row per rf_id, so the join selects the same rows.
+    join = `INNER JOIN (SELECT DISTINCT rf_id FROM documentid WHERE ${column} IN (:name)) AS assetDocs
+                    ON assetDocs.rf_id = t.rf_id`;
+    predicate = '1 = 1';
   } else if (depth === DEPTH.TRANSACTION) {
     predicate = 't.rf_id = :name';
   } else if (depth === DEPTH.PARTY) {
@@ -156,6 +163,7 @@ const drillDown = async ({ tenant, orgId, organisation, name, depth, groupId }) 
 
   const items = await repository.drillPoints({
     predicate,
+    join,
     replacements,
     // Tab 9 is the employee tab, drawn with surnames only.
     truncateNames: Number(groupId) === 9,

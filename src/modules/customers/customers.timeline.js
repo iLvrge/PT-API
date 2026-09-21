@@ -58,7 +58,9 @@ const branchLawfirm = ({ companies, layoutId, bankMode, start, end, organisation
   if (start && end) Object.assign(repl, { start, end });
 
   if (firm) {
-    let tempQuery = `SELECT c.rf_id FROM db_uspto.correspondent AS c LEFT JOIN db_uspto.law_firm as lf ON c.cname = lf.name LEFT JOIN db_uspto.representative_law_firm AS rlf ON rlf.representative_id = lf.representative_id WHERE c.rf_id IN (SELECT rf_id FROM db_new_application.activity_parties_transactions WHERE (organisation_id = :organisationId OR organisation_id IS NULL) AND company_id IN (:companies))`;
+    // activity_parties_transactions is joined, not tested with
+    // `c.rf_id IN (SELECT ...)`; DISTINCT keeps one row per transaction.
+    let tempQuery = `SELECT c.rf_id FROM db_uspto.correspondent AS c LEFT JOIN db_uspto.law_firm as lf ON c.cname = lf.name LEFT JOIN db_uspto.representative_law_firm AS rlf ON rlf.representative_id = lf.representative_id INNER JOIN (SELECT DISTINCT rf_id FROM db_new_application.activity_parties_transactions WHERE (organisation_id = :organisationId OR organisation_id IS NULL) AND company_id IN (:companies)) AS scopedTransactions ON scopedTransactions.rf_id = c.rf_id WHERE 1 = 1`;
     if (firm.representative_id > 0) {
       tempQuery += ` AND rlf.representative_id = :representativeId`;
       repl.representativeId = firm.representative_id;
@@ -67,7 +69,10 @@ const branchLawfirm = ({ companies, layoutId, bankMode, start, end, organisation
       repl.cname = firm.cname;
     }
     tempQuery += ` GROUP BY c.rf_id`;
-    sql += ` AND apt.rf_id IN (${tempQuery})`;
+    sql = sql.replace(
+      'FROM db_new_application.activity_parties_transactions AS apt',
+      `FROM db_new_application.activity_parties_transactions AS apt INNER JOIN (${tempQuery}) AS firmTransactions ON firmTransactions.rf_id = apt.rf_id`
+    );
   }
 
   sql += ` GROUP BY apt.rf_id ORDER BY apt.exec_dt DESC LIMIT 0, 500`;
@@ -108,7 +113,7 @@ const branchGenericLayout = ({ companies, layoutId, bankMode, start, end, organi
   } else {
     sql += `(SELECT count(asset) FROM (SELECT dd.appno_doc_num AS asset FROM db_uspto.documentid AS dd WHERE dd.rf_id = assignment.rf_id GROUP BY asset) AS temp) AS totalAssets `;
   }
-  sql += `FROM db_uspto.assignment INNER JOIN activity_parties_transactions AS apt ON apt.rf_id = assignment.rf_id ${layoutId === 26 ? 'LEFT JOIN db_uspto.assignment AS assign1 ON assign1.rf_id = apt.release_rf_id' : ''} INNER JOIN db_uspto.correspondent AS correspondent ON correspondent.rf_id = assignment.rf_id LEFT JOIN db_uspto.law_firm AS law_firm ON law_firm.name = correspondent.cname LEFT JOIN db_uspto.representative_law_firm AS representative_law_firm ON representative_law_firm.representative_id = law_firm.representative_id INNER JOIN db_uspto.assignee AS ass ON ass.rf_id = assignment.rf_id INNER JOIN db_uspto.assignor AS aor ON aor.rf_id = assignment.rf_id INNER JOIN db_uspto.assignor_and_assignee AS assignor_and_assignee ON assignor_and_assignee.assignor_and_assignee_id = ass.assignor_and_assignee_id LEFT JOIN db_uspto.representative AS representative ON representative.representative_id = assignor_and_assignee.representative_id WHERE assignment.rf_id IN (SELECT rf_id FROM dashboard_items WHERE organisation_id = :organisationId ${bankMode ? 'AND mode IN (:mode)' : ''} AND representative_id IN (:companies) AND type = :layoutId GROUP BY rf_id)${dateWindow(start, end, 'aor.exec_dt')} GROUP BY assignment.rf_id ORDER BY aor.exec_dt DESC LIMIT 0, 500`;
+  sql += `FROM db_uspto.assignment INNER JOIN activity_parties_transactions AS apt ON apt.rf_id = assignment.rf_id ${layoutId === 26 ? 'LEFT JOIN db_uspto.assignment AS assign1 ON assign1.rf_id = apt.release_rf_id' : ''} INNER JOIN db_uspto.correspondent AS correspondent ON correspondent.rf_id = assignment.rf_id LEFT JOIN db_uspto.law_firm AS law_firm ON law_firm.name = correspondent.cname LEFT JOIN db_uspto.representative_law_firm AS representative_law_firm ON representative_law_firm.representative_id = law_firm.representative_id INNER JOIN db_uspto.assignee AS ass ON ass.rf_id = assignment.rf_id INNER JOIN db_uspto.assignor AS aor ON aor.rf_id = assignment.rf_id INNER JOIN db_uspto.assignor_and_assignee AS assignor_and_assignee ON assignor_and_assignee.assignor_and_assignee_id = ass.assignor_and_assignee_id LEFT JOIN db_uspto.representative AS representative ON representative.representative_id = assignor_and_assignee.representative_id INNER JOIN (SELECT DISTINCT rf_id FROM dashboard_items WHERE organisation_id = :organisationId ${bankMode ? 'AND mode IN (:mode)' : ''} AND representative_id IN (:companies) AND type = :layoutId) AS heldTransactions ON heldTransactions.rf_id = assignment.rf_id WHERE 1 = 1${dateWindow(start, end, 'aor.exec_dt')} GROUP BY assignment.rf_id ORDER BY aor.exec_dt DESC LIMIT 0, 500`;
   const repl = { organisationId, companies, layoutId, year: 1999 };
   if (bankMode) repl.mode = 1;
   if (start && end) Object.assign(repl, { start, end });

@@ -490,16 +490,23 @@ const assignmentsForCompanies = (companyIds) =>
        LEFT JOIN db_uspto.representative_assignment_conveyance AS rac ON rac.rf_id = a.rf_id
        INNER JOIN assignor AS aor
                ON aor.rf_id = a.rf_id AND DATE_FORMAT(aor.exec_dt, '%Y') > :year
-      WHERE a.rf_id IN (
-              SELECT rf_id FROM documentid
-               WHERE appno_doc_num IN (
-                       SELECT d.appno_doc_num FROM db_uspto.documentid AS d
-                        WHERE d.appno_doc_num <> ''
-                          AND d.rf_id IN (SELECT rf_id FROM db_uspto.list2
-                                           WHERE (organisation_id = 0 OR organisation_id IS NULL)
-                                             AND company_id IN (:companyIds))
-                        GROUP BY d.appno_doc_num)
-               GROUP BY rf_id)
+       -- Three nested membership tests over db_uspto.documentid, unwound into
+       -- joins: the applications the companies hold, then every transaction
+       -- touching one of them. Nested like that, MySQL had to materialise a
+       -- multi-million-row table twice before it could test one assignment.
+       INNER JOIN (
+              SELECT DISTINCT scoped.rf_id
+                FROM db_uspto.documentid AS scoped
+                INNER JOIN (
+                      SELECT DISTINCT d.appno_doc_num
+                        FROM db_uspto.documentid AS d
+                        INNER JOIN db_uspto.list2 AS l ON l.rf_id = d.rf_id
+                       WHERE d.appno_doc_num <> ''
+                         AND (l.organisation_id = 0 OR l.organisation_id IS NULL)
+                         AND l.company_id IN (:companyIds)
+                     ) AS companyApplications
+                     ON companyApplications.appno_doc_num = scoped.appno_doc_num
+            ) AS companyTransactions ON companyTransactions.rf_id = a.rf_id
       GROUP BY a.rf_id`,
     { companyIds, year: YEAR_FLOOR() }
   );
@@ -556,8 +563,11 @@ const companiesForLender = (lenderIds) =>
        INNER JOIN assignor_and_assignee AS aaa
                ON aaa.assignor_and_assignee_id = aor.assignor_and_assignee_id
        LEFT JOIN representative AS r ON r.representative_id = aaa.representative_id
-      WHERE a.rf_id IN (SELECT rf_id FROM assignee WHERE assignor_and_assignee_id IN (:lenderIds))
-        AND rac.convey_ty IN (:conveyanceTypes)
+       -- The lenders' transactions, joined rather than tested with a subquery.
+       INNER JOIN (SELECT DISTINCT rf_id FROM assignee
+                    WHERE assignor_and_assignee_id IN (:lenderIds)) AS lenderTransactions
+               ON lenderTransactions.rf_id = a.rf_id
+      WHERE rac.convey_ty IN (:conveyanceTypes)
         AND DATE_FORMAT(a.record_dt, '%Y') >= :year
       GROUP BY aaa.name
       ORDER BY counter DESC`,

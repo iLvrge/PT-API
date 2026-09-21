@@ -65,7 +65,9 @@ const windowTransactions = async ({ layoutId, companies, customers, lawfirm, ban
       { lawfirm }
     );
     if (firm) {
-      let tempQuery = `SELECT c.rf_id FROM db_uspto.correspondent AS c LEFT JOIN db_uspto.law_firm as lf ON c.cname = lf.name LEFT JOIN db_uspto.representative_law_firm AS rlf ON rlf.representative_id = lf.representative_id WHERE c.rf_id IN (SELECT rf_id FROM db_new_application.activity_parties_transactions WHERE ( organisation_id = :organisationID OR organisation_id IS NULL ) AND company_id IN (:companies)) `;
+      // activity_parties_transactions joined, not tested with a subquery;
+      // DISTINCT keeps one row per transaction so the match count is unchanged.
+      let tempQuery = `SELECT c.rf_id FROM db_uspto.correspondent AS c LEFT JOIN db_uspto.law_firm as lf ON c.cname = lf.name LEFT JOIN db_uspto.representative_law_firm AS rlf ON rlf.representative_id = lf.representative_id INNER JOIN (SELECT DISTINCT rf_id FROM db_new_application.activity_parties_transactions WHERE ( organisation_id = :organisationID OR organisation_id IS NULL ) AND company_id IN (:companies)) AS scopedTransactions ON scopedTransactions.rf_id = c.rf_id WHERE 1 = 1 `;
       if (firm.representative_id > 0) {
         tempQuery += ` AND rlf.representative_id = :representative_id`;
         repl.representative_id = firm.representative_id;
@@ -74,7 +76,7 @@ const windowTransactions = async ({ layoutId, companies, customers, lawfirm, ban
         repl.name = firm.cname;
       }
       tempQuery += ` GROUP BY c.rf_id`;
-      sql += ` WHERE assignment.rf_id IN (${tempQuery}) `;
+      sql += ` INNER JOIN (${tempQuery}) AS firmTransactions ON firmTransactions.rf_id = assignment.rf_id `;
     }
   }
 

@@ -160,18 +160,31 @@ describe('timelines.service.drillDown', () => {
     expect(repo.drillPoints.mock.calls[0][0].predicate).toBe('t.rf_id = :name');
   });
 
+  // The asset lookup is a join now, not a predicate: documentid has millions of
+  // rows and `t.rf_id IN (SELECT ...)` against it is what takes MySQL down.
   it('looks an asset up as a patent first, then as an application', async () => {
     repo.isGrantNumber.mockResolvedValue(true);
     await service.drillDown({
       tenant, orgId: 118, organisation: 'Acme', name: '999', depth: 3, groupId: 1,
     });
-    expect(repo.drillPoints.mock.calls[0][0].predicate).toContain('grant_doc_num');
+    expect(repo.drillPoints.mock.calls[0][0].join).toContain('grant_doc_num');
 
     repo.isGrantNumber.mockResolvedValue(false);
     await service.drillDown({
       tenant, orgId: 118, organisation: 'Acme', name: '111', depth: 3, groupId: 1,
     });
-    expect(repo.drillPoints.mock.calls[1][0].predicate).toContain('appno_doc_num');
+    expect(repo.drillPoints.mock.calls[1][0].join).toContain('appno_doc_num');
+  });
+
+  it('joins documentid for an asset rather than testing membership', async () => {
+    repo.isGrantNumber.mockResolvedValue(true);
+    await service.drillDown({
+      tenant, orgId: 118, organisation: 'Acme', name: '999', depth: 3, groupId: 1,
+    });
+    const { join, predicate } = repo.drillPoints.mock.calls[0][0];
+    expect(join).toContain('INNER JOIN');
+    expect(join).not.toMatch(/\bIN\s*\(\s*SELECT/i);
+    expect(predicate).toBe('1 = 1');
   });
 
   it('has no extra predicate for the whole company at depth 0', async () => {
