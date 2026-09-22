@@ -57,8 +57,40 @@ const ping = async () => {
   return results;
 };
 
+/**
+ * Open the pool's minimum connections up front, in the background.
+ *
+ * A pool opens connections lazily, and establishing one costs a full TCP and
+ * MySQL handshake — around 2.5 seconds through the SSH tunnel used for local
+ * work, and not free even beside the database. Lazily, that cost lands on
+ * whichever request first needs a connection the pool has not opened yet, so
+ * the opening clicks of a session each stall on one. Paying it at startup
+ * instead makes those first requests as quick as the rest.
+ *
+ * `min` queries run at once per pool so the pool has to open `min` distinct
+ * connections rather than reusing one. Failures are logged, never thrown: a
+ * database that is slow or briefly down must not stop the process starting,
+ * and /health already reports reachability.
+ */
+const warmUp = async () => {
+  const min = Math.max(1, Number(env.db.pool && env.db.pool.min) || 1);
+  await Promise.all(
+    Object.entries(connections).map(async ([name, sequelize]) => {
+      const started = Date.now();
+      try {
+        await Promise.all(
+          Array.from({ length: min }, () => sequelize.query('SELECT 1', { logging: false }))
+        );
+        logger.info('db pool warmed', { db: name, connections: min, ms: Date.now() - started });
+      } catch (err) {
+        logger.error('db pool warm-up failed', { db: name, error: err.message });
+      }
+    })
+  );
+};
+
 const closeAll = async () => {
   await Promise.all(Object.values(connections).map((s) => s.close().catch(() => {})));
 };
 
-module.exports = { Sequelize, connections, ping, closeAll };
+module.exports = { Sequelize, connections, ping, warmUp, closeAll };

@@ -15,7 +15,7 @@ sentry.init(); // must run before the app is built
 
 const createApp = require('./app');
 const { env } = require('./config/env');
-const { closeAll } = require('./db');
+const { closeAll, warmUp } = require('./db');
 const { closeAll: closeTenants } = require('./db/tenant-connections');
 const logger = require('./utils/logger');
 
@@ -25,6 +25,9 @@ let server = null;
 const start = () => {
   server = app.listen(env.port, '0.0.0.0', () => {
     logger.info('server started', { port: env.port, env: env.nodeEnv });
+    // After listening, not before: warming is an optimisation, so it must not
+    // delay readiness or fail the boot if a database is briefly unreachable.
+    warmUp().catch((err) => logger.error('db warm-up failed', { error: err.message }));
   });
 };
 

@@ -84,6 +84,54 @@ describe('company.service.companyList', () => {
     expect(res.list[0].status).toBe(1);
     expect(group.status).toBe(0);
   });
+
+  /*
+   * total_records used to come from its own COUNT. Both list endpoints are
+   * unpaginated and the COUNT reused their exact predicate, so it could only
+   * ever restate the list's length — at the price of a full round trip, about
+   * 320ms through the tunnel used for local work and several seconds when it
+   * was the first query on a connection the pool had not opened yet.
+   */
+  it('counts the rows it already has instead of issuing a COUNT', async () => {
+    repo.representativesWhere.mockReset();
+    repo.representativesWhere
+      .mockResolvedValueOnce([
+        { representative_id: 1, company_id: 11, type: 0, status: 1, original_name: 'A', representative_name: 'A' },
+        { representative_id: 2, company_id: 22, type: 0, status: 1, original_name: 'B', representative_name: 'B' },
+      ])
+      .mockResolvedValueOnce([]);
+    repo.representativeReports.mockResolvedValue([]);
+    repo.adminRepresentativeReports.mockResolvedValue([]);
+
+    const res = await service.companyList(tenant, {}, {});
+
+    expect(res.total_records).toBe(2);
+    expect(repo.countRepresentativesWhere).not.toHaveBeenCalled();
+  });
+
+  it('counts the children it already has, for the children endpoint too', async () => {
+    repo.representativesWhere.mockReset();
+    repo.representativesWhere.mockResolvedValueOnce([
+      { representative_id: 3, company_id: 33, parent_id: 1, type: 0, status: 1, original_name: 'C', representative_name: 'C' },
+    ]);
+    repo.representativeReports.mockResolvedValue([]);
+    repo.adminRepresentativeReports.mockResolvedValue([]);
+
+    const res = await service.companyChildren(tenant, 1);
+
+    expect(res.total_records).toBe(1);
+    expect(repo.countRepresentativesWhere).not.toHaveBeenCalled();
+  });
+
+  it('reports zero, not a stale count, when there are no rows', async () => {
+    repo.representativesWhere.mockReset();
+    repo.representativesWhere.mockResolvedValue([]);
+
+    const res = await service.companyList(tenant, {}, {});
+
+    expect(res).toEqual({ list: [], total_records: 0 });
+    expect(repo.countRepresentativesWhere).not.toHaveBeenCalled();
+  });
 });
 
 describe('company.service lawfirm mappings', () => {

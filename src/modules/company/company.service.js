@@ -98,11 +98,15 @@ const mergeReports = (name, findReports, findAdminReports) => {
 const companyChildren = async (tenant, companyId) => {
   const whereSql = '(parent_id = :companyId AND child = 0) OR (parent_id = :companyId AND child = 1)';
   const repl = { companyId };
-  const total_records = await repository.countRepresentativesWhere(tenant, whereSql, repl);
+  // Counted from the rows, not with a second query: the list is unpaginated
+  // and uses this exact predicate, so a COUNT can only ever return its length.
+  // It cost a full round trip — about 320ms against the tunnel used for local
+  // work, and the first query on a fresh pooled connection several seconds.
   const list = await repository.representativesWhere(
     tenant, whereSql, repl,
     'type ASC, status DESC, original_name ASC, representative_name ASC'
   );
+  const total_records = list.length;
   if (!list.length) return { list: [], total_records };
 
   const names = list.map((r) => r.representative_name);
@@ -126,7 +130,6 @@ const companyChildren = async (tenant, companyId) => {
 // share-code filtering. Faithful port of the legacy assembly.
 const companyList = async (tenant, auth, { column, direction }) => {
   const whereSql = 'parent_id = 0';
-  const total_records = await repository.countRepresentativesWhere(tenant, whereSql, {});
 
   let orderSql = 'type ASC, status DESC, original_name ASC, representative_name ASC';
   if (column !== undefined && direction !== undefined) {
@@ -134,7 +137,10 @@ const companyList = async (tenant, auth, { column, direction }) => {
     const dir = String(direction).toUpperCase() === 'ASC' ? 'ASC' : 'DESC';
     orderSql = `type ASC, status DESC, ${col} ${dir}${col === 'original_name' ? ', representative_name ASC' : ''}`;
   }
+  // Same as companyChildren above: unpaginated and on the same predicate, so
+  // the COUNT round trip only ever restated the list's own length.
   const list = await repository.representativesWhere(tenant, whereSql, {}, orderSql);
+  const total_records = list.length;
   if (!list.length) return { list: [], total_records };
 
   let representativeNames = list.filter((r) => r.company_id > 0).map(reportName);
