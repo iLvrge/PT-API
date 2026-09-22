@@ -56,6 +56,7 @@ const familyRoutes = require('./modules/family/family.routes');
 const adminCustomerRoutes = require('./modules/admin-customers/admin-customers.routes');
 const eventRoutes = require('./modules/events/events.routes');
 const adminCompanySearchRoutes = require('./modules/admin-company-search/admin-company-search.routes');
+const jobRoutes = require('./modules/jobs/jobs.routes');
 const errorRoutes = require('./modules/errors/errors.routes');
 
 const createApp = () => {
@@ -130,6 +131,7 @@ const createApp = () => {
   app.use('/admin', adminTreeRoutes);
   app.use('/admin', adminCustomerRoutes);
   app.use('/admin', adminCompanySearchRoutes);
+  app.use('/admin', jobRoutes);
   listModules.routers.forEach((r) => app.use('/admin', r));
 
   // 404 then centralised error handling — always last.

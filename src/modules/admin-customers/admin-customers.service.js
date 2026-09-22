@@ -7,7 +7,7 @@
 
 const ApiError = require('../../utils/api-error');
 const logger = require('../../utils/logger');
-const { runPhpScript, runNodeScript } = require('../../utils/php-jobs');
+const jobs = require('../../jobs/queue');
 const { uploadFile } = require('../../utils/uploads');
 const q = require('../../db/query');
 const tenants = require('../../db/tenant-connections');
@@ -44,8 +44,10 @@ const createCustomer = async ({ companyName, organisationType }) => {
   if (!org || !(org.organisation_id > 0)) throw ApiError.internal('Could not create the customer');
 
   await repository.assignUuid(org.organisation_id);
-  runPhpScript('script_create_customer_db.php', [org.organisation_id]).catch((err) =>
-    logger.error('customer provisioning failed', { organisationId: org.organisation_id, error: err.message }));
+  jobs.enqueue('customer.provision', { organisationId: org.organisation_id }).catch((err) =>
+    logger.error('customer provisioning could not be queued', {
+      organisationId: org.organisation_id, error: err.message,
+    }));
 
   return org;
 };
@@ -468,13 +470,13 @@ const foldParties = (rows) => {
 };
 
 const normaliseNames = ({ organisationId, representativeIds, type, suggestions, fixedIdenticals }) => {
-  runNodeScript('normalize_names.js', [
+  jobs.enqueue('names.normalise', {
     organisationId,
-    JSON.stringify(representativeIds || []),
+    representativeIds: representativeIds || [],
     type,
-    suggestions === undefined ? '' : suggestions,
-    fixedIdenticals === undefined ? '' : fixedIdenticals,
-  ]).catch((err) => logger.error('name normalisation failed', {
+    suggestions,
+    fixedIdenticals,
+  }).catch((err) => logger.error('name normalisation could not be queued', {
     organisationId, error: err.message,
   }));
 };
@@ -489,19 +491,20 @@ const requireCustomer = async (organisationId) => {
 const runFlagUpdate = async ({ organisationId, companyIds }) => {
   await requireCustomer(organisationId);
   if (companyIds.length > 1) {
-    runPhpScript('run_script_for_update_flag.php', [organisationId, JSON.stringify(companyIds)])
-      .catch((err) => logger.error('flag update failed', { organisationId, error: err.message }));
+    await jobs.enqueue('repair.update-flag-bulk', { organisationId, companyIds });
   } else {
-    runPhpScript('update_flag.php', [organisationId, companyIds[0] === undefined ? '' : companyIds[0]])
-      .catch((err) => logger.error('flag update failed', { organisationId, error: err.message }));
+    await jobs.enqueue('repair.update-flag', {
+      organisationId, companyId: companyIds[0] === undefined ? '' : companyIds[0],
+    });
   }
   return { message: 'Fixing flag in process' };
 };
 
 const runMissingConveyance = async ({ organisationId, companyId }) => {
   await requireCustomer(organisationId);
-  runPhpScript('update_missing_type.php', [organisationId, companyId === undefined ? '' : companyId])
-    .catch((err) => logger.error('conveyance fix failed', { organisationId, error: err.message }));
+  await jobs.enqueue('repair.missing-conveyance', {
+    organisationId, companyId: companyId === undefined ? '' : companyId,
+  });
   return { message: 'Fixing conveyance in process' };
 };
 
@@ -511,8 +514,7 @@ const findMissingInventors = async ({ organisationId, representativeId }) => {
   if (running) return { message: 'Already in process.' };
 
   await repository.createInventorProcess({ organisationId, representativeId });
-  runPhpScript('find_missing_from_api_inventor_xml.php', [organisationId, representativeId])
-    .catch((err) => logger.error('inventor search failed', { organisationId, error: err.message }));
+  await jobs.enqueue('repair.missing-inventors', { organisationId, representativeId });
   return { message: 'Finding the number of assignments with a missing inventor.' };
 };
 
@@ -539,40 +541,38 @@ const flagInventors = async ({ organisationId, partyIds, flag }) => {
 
 const publishCompanies = async (organisationId) => {
   const org = await requireCustomer(organisationId);
-  await runPhpScript('update_client_companies.php', [organisationId, '']);
+  await jobs.enqueue('customer.publish-companies', { organisationId });
   return { message: 'UPDATED!', name: org.name };
 };
 
 const publishAddresses = async (organisationId) => {
   await requireCustomer(organisationId);
-  await runPhpScript('update_client_companies_address.php', [organisationId, '']);
+  await jobs.enqueue('customer.publish-addresses', { organisationId });
   return { message: 'UPDATED!' };
 };
 
 const createTree = async (organisationId) => {
   const org = await requireCustomer(organisationId);
-  runPhpScript('tree_script.php', [org.name])
-    .catch((err) => logger.error('tree script failed', { organisationId, error: err.message }));
+  jobs.enqueue('customer.build-tree', { organisationName: org.name })
+    .catch((err) => logger.error('tree build could not be queued', { organisationId, error: err.message }));
   return { message: 'Tree build started' };
 };
 
 const retrieveCitedPatents = async ({ customerId, companies, type }) => {
-  runNodeScript('retrieve_cited_patents_assignees.js', [customerId, companies, type])
-    .catch((err) => logger.error('cited patents job failed', { customerId, error: err.message }));
+  await jobs.enqueue('cited.retrieve-assignees', { customerId, companies, type });
   return { message: 'Run retrieved assignee script.' };
 };
 
 const retrieveCitedPatentDomains = async ({ customerId, apiName, assignees }) => {
-  runNodeScript('name_to_domain_api.js', [customerId, apiName, assignees, 0])
-    .catch((err) => logger.error('domain lookup failed', { customerId, error: err.message }));
+  await jobs.enqueue('cited.retrieve-domains', { customerId, apiName, assignees });
   return { message: 'run domain script' };
 };
 
 const retrieveCitedPatentLogos = async (input) => {
   const { clientId, apiName, assignees, all, companyId, type, sourceData } = input;
-  runNodeScript('name_to_domain_api.js', [
-    clientId, apiName, assignees, 1, companyId, all, type, sourceData,
-  ]).catch((err) => logger.error('logo download failed', { clientId, error: err.message }));
+  await jobs.enqueue('cited.retrieve-logos', {
+    clientId, apiName, assignees, companyId, all, type, sourceData,
+  });
   return { message: 'run logo script' };
 };
 

@@ -12,7 +12,7 @@
 const ApiError = require('../../utils/api-error');
 const logger = require('../../utils/logger');
 const { exchangeCode } = require('../../utils/google');
-const { runNodeScript, runPhpScriptBackground } = require('../../utils/php-jobs');
+const jobs = require('../../jobs/queue');
 const q = require('../../db/query');
 const tenants = require('../../db/tenant-connections');
 const {
@@ -562,9 +562,8 @@ const assigneeLogos = async ({ assigneeIds, type }) => {
     return { message: 'Assignee data cleared' };
   }
   if (type === 'download') {
-    runNodeScript('download_assignees_logos.js', [JSON.stringify(assigneeIds)])
-      .catch((err) => logger.error('logo download failed', { error: err.message }));
-    return { message: 'Assignee logo download script started' };
+    const queued = await jobs.enqueue('cited.download-assignee-logos', { assigneeIds });
+    return { message: 'Assignee logo download script started', jobId: queued.id };
   }
   throw ApiError.badRequest(`Unknown logo action: ${type}`);
 };
@@ -591,18 +590,20 @@ const lawFirmNormalisationCandidates = (lawFirmId) =>
 /* ------------------------------------------------------- family rebuild */
 
 /**
- * Kick off the family-assets rebuild for a customer. Fire-and-forget: the job
- * takes minutes, so the route acknowledges and the console polls the log.
+ * Kick off the family-assets rebuild for a customer. The route acknowledges
+ * with a job id; the console follows it at GET /admin/jobs/:id rather than
+ * guessing from the log, which is what it had to do before.
  */
-const runFamilyAssets = ({ customerId, representativeIds = [], retrieveAll }) => {
-  runPhpScriptBackground('assets_family.php', [
-    String(customerId),
-    JSON.stringify(representativeIds),
-    String(retrieveAll === undefined ? '' : retrieveAll),
-  ]);
-  return { message: representativeIds.length
-    ? 'Run assets family with representatives'
-    : 'Run assets family' };
+const runFamilyAssets = async ({ customerId, representativeIds = [], retrieveAll }) => {
+  const queued = await jobs.enqueue('family.build-for-customer', {
+    customerId, representativeIds, retrieveAll,
+  });
+  return {
+    message: representativeIds.length
+      ? 'Run assets family with representatives'
+      : 'Run assets family',
+    jobId: queued.id,
+  };
 };
 
 module.exports = {

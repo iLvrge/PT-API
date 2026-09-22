@@ -3,14 +3,14 @@
 jest.mock('../../src/modules/users/users.repository');
 jest.mock('../../src/db/tenant-connections');
 jest.mock('../../src/modules/admin-customers/admin-customers.repository');
-jest.mock('../../src/utils/php-jobs');
+jest.mock('../../src/jobs/queue');
 jest.mock('../../src/utils/uploads');
 
 const request = require('supertest');
 const jwt = require('jsonwebtoken');
 const usersRepo = require('../../src/modules/users/users.repository');
 const repo = require('../../src/modules/admin-customers/admin-customers.repository');
-const jobs = require('../../src/utils/php-jobs');
+const jobs = require('../../src/jobs/queue');
 const { startTestServer } = require('../helpers/server');
 const { env } = require('../../src/config/env');
 
@@ -29,8 +29,7 @@ beforeEach(() => {
       }),
     },
   };
-  jobs.runPhpScript.mockResolvedValue({ stdout: '', stderr: '' });
-  jobs.runNodeScript.mockResolvedValue({ stdout: '', stderr: '' });
+  jobs.enqueue.mockResolvedValue({ id: 'job-1', deduped: false });
 });
 
 describe('admin access', () => {
@@ -174,17 +173,17 @@ describe('pipeline jobs', () => {
 
   it('queues name normalisation with an argument array', async () => {
     await auth(request(app).get('/admin/customers/customers/118/1?suggestions=yes')).expect(202);
-    expect(jobs.runNodeScript).toHaveBeenCalledWith(
-      'normalize_names.js', [118, '[]', '1', 'yes', '']
-    );
+    expect(jobs.enqueue).toHaveBeenCalledWith('names.normalise', {
+      organisationId: 118, representativeIds: [], type: '1', suggestions: 'yes', fixedIdenticals: undefined,
+    });
   });
 
   it('passes named companies through as JSON, not shell text', async () => {
     // A plain type-1 request is the Inventors list now; the script needs a flag.
     await auth(request(app).get('/admin/customers/customers/118/%5B9%2C10%5D/1?fixed_identicals=1')).expect(202);
-    expect(jobs.runNodeScript).toHaveBeenCalledWith(
-      'normalize_names.js', [118, '[9,10]', '1', '', '1']
-    );
+    expect(jobs.enqueue).toHaveBeenCalledWith('names.normalise', {
+      organisationId: 118, representativeIds: [9, 10], type: '1', suggestions: undefined, fixedIdenticals: '1',
+    });
   });
 
   it('starts a missing-inventor run once per company', async () => {
@@ -205,7 +204,7 @@ describe('pipeline jobs', () => {
 
   it('publishes company changes', async () => {
     const res = await auth(request(app).get('/admin/customers/118/publish')).expect(200);
-    expect(jobs.runPhpScript).toHaveBeenCalledWith('update_client_companies.php', [118, '']);
+    expect(jobs.enqueue).toHaveBeenCalledWith('customer.publish-companies', { organisationId: 118 });
     expect(res.body.message).toBe('UPDATED!');
   });
 });
@@ -268,7 +267,7 @@ describe('customer entities', () => {
   const entity = { assignor_and_assignee_id: 7, name: 'Avaya Inc', counter: '3', normalize_name: null,
     representativeCompany: null, total_occurences: 9, rf_id: 1, flag: 1 };
 
-  beforeEach(() => { jobs.runNodeScript.mockClear(); repo.entitiesForCustomer.mockReset(); });
+  beforeEach(() => { jobs.enqueue.mockClear(); repo.entitiesForCustomer.mockReset(); });
 
   it('answers the entities list for type 3 without starting the script', async () => {
     repo.entitiesForCustomer.mockResolvedValue([entity]);
@@ -277,7 +276,7 @@ describe('customer entities', () => {
       expect.objectContaining({ companyIds: [859, 864] })
     );
     expect(res.body).toEqual([expect.objectContaining({ id: 7, name: 'Avaya Inc', counter: 3, total_occurences: 9 })]);
-    expect(jobs.runNodeScript).not.toHaveBeenCalled();
+    expect(jobs.enqueue).not.toHaveBeenCalled();
   });
 
   it('folds names differing only in case into one row, counts summed', async () => {
@@ -290,10 +289,10 @@ describe('customer entities', () => {
   });
 
   it('still starts the script when normalisation flags are sent', async () => {
-    jobs.runNodeScript.mockResolvedValue({});
+    jobs.enqueue.mockResolvedValue({ id: 'job-1' });
     await auth(request(app).get('/admin/customers/customers/68/[859]/3?suggestions=1')).expect(202);
     expect(repo.entitiesForCustomer).not.toHaveBeenCalled();
-    expect(jobs.runNodeScript).toHaveBeenCalled();
+    expect(jobs.enqueue).toHaveBeenCalled();
   });
 
   it('answers the inventors list for type 1 from both sources, folded together', async () => {
@@ -301,6 +300,6 @@ describe('customer entities', () => {
     repo.bibliographicInventorsForCustomer.mockResolvedValue([{ ...entity, assignor_and_assignee_id: 9, name: 'KEVIN JAMES', counter: '5', flag: 4, rf_id: 0 }]);
     const res = await auth(request(app).get('/admin/customers/customers/68/[859]/1')).expect(200);
     expect(res.body).toEqual([expect.objectContaining({ name: 'Kevin James', counter: 9 })]);
-    expect(jobs.runNodeScript).not.toHaveBeenCalled();
+    expect(jobs.enqueue).not.toHaveBeenCalled();
   });
 });

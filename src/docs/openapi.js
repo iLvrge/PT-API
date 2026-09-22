@@ -26,6 +26,7 @@ const family = require('./paths/family');
 const adminCustomers = require('./paths/admin-customers');
 const events = require('./paths/events');
 const adminCompanySearch = require('./paths/admin-company-search');
+const jobs = require('./paths/jobs');
 
 const errorSchema = {
   type: 'object',
@@ -186,6 +187,7 @@ const tags = [
   { name: 'Admin search', description: 'Company, party and address search. Admin only.' },
   { name: 'Admin normalise', description: 'Pointing recorded names at a canonical record. Admin only.' },
   { name: 'Admin law firms', description: 'Law firms and lawyers. Admin only.' },
+  { name: 'Background jobs', description: 'The data-pipeline scripts: queued, tracked and retried. Admin only.' },
   { name: 'Admin assignments', description: 'Recorded transactions and their correspondents. Admin only.' },
   { name: 'Admin cited', description: 'Cited assignee organisations and their logos. Admin only.' },
   { name: 'Admin jobs', description: 'Data-pipeline jobs. Admin only.' },
@@ -275,6 +277,7 @@ const openapi = {
     ...adminCustomers,
     ...events,
     ...adminCompanySearch,
+    ...jobs,
   },
 };
 

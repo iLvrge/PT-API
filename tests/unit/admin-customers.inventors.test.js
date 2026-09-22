@@ -8,10 +8,10 @@
 jest.mock('../../src/modules/admin-customers/admin-customers.repository');
 jest.mock('../../src/db/tenant-connections');
 jest.mock('../../src/db/query');
-jest.mock('../../src/utils/php-jobs');
+jest.mock('../../src/jobs/queue');
 
 const repo = require('../../src/modules/admin-customers/admin-customers.repository');
-const jobs = require('../../src/utils/php-jobs');
+const jobs = require('../../src/jobs/queue');
 const service = require('../../src/modules/admin-customers/admin-customers.service');
 
 beforeEach(() => {
@@ -19,7 +19,7 @@ beforeEach(() => {
   repo.findCustomer.mockResolvedValue({ organisation_id: 146, name: 'AMPACC LAW GROUP' });
   repo.setEmployerAssign.mockResolvedValue([]);
   repo.rememberInventors.mockResolvedValue([]);
-  jobs.runPhpScript.mockResolvedValue({ stdout: '', stderr: '' });
+  jobs.enqueue.mockResolvedValue({ id: 'job-1' });
 });
 
 describe('flagInventors', () => {
@@ -73,7 +73,7 @@ describe('findMissingInventors', () => {
 
     expect(result).toEqual({ message: 'Already in process.' });
     expect(repo.createInventorProcess).not.toHaveBeenCalled();
-    expect(jobs.runPhpScript).not.toHaveBeenCalled();
+    expect(jobs.enqueue).not.toHaveBeenCalled();
   });
 });
 

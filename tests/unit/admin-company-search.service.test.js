@@ -1,15 +1,15 @@
 'use strict';
 
 jest.mock('../../src/modules/admin-company-search/admin-company-search.repository');
-jest.mock('../../src/utils/php-jobs');
+jest.mock('../../src/jobs/queue');
 
 const repo = require('../../src/modules/admin-company-search/admin-company-search.repository');
-const jobs = require('../../src/utils/php-jobs');
+const jobs = require('../../src/jobs/queue');
 const service = require('../../src/modules/admin-company-search/admin-company-search.service');
 
 beforeEach(() => {
   jest.clearAllMocks();
-  jobs.runNodeScript.mockResolvedValue({ stdout: '', stderr: '' });
+  jobs.enqueue.mockResolvedValue({ id: 'job-1' });
 });
 
 describe('booleanTerms', () => {
@@ -204,14 +204,14 @@ describe('assigneeLogos', () => {
     const result = await service.assigneeLogos({ assigneeIds: [1, 2], type: 'clear' });
     expect(repo.clearAssigneeLogos).toHaveBeenCalledWith([1, 2]);
     expect(result.message).toMatch(/cleared/);
-    expect(jobs.runNodeScript).not.toHaveBeenCalled();
+    expect(jobs.enqueue).not.toHaveBeenCalled();
   });
 
   it('queues the download with an argument array, not a shell string', async () => {
     await service.assigneeLogos({ assigneeIds: [1, 2], type: 'download' });
-    expect(jobs.runNodeScript).toHaveBeenCalledWith(
-      'download_assignees_logos.js', ['[1,2]']
-    );
+    expect(jobs.enqueue).toHaveBeenCalledWith('cited.download-assignee-logos', {
+      assigneeIds: [1, 2],
+    });
   });
 
   it('rejects an unknown action', async () => {
