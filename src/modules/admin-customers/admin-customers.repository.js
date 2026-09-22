@@ -188,11 +188,28 @@ const destroyBusinessUser = (userId, transaction) =>
  * One of the fixed reports. The table, the column and the layout all come from
  * REPORT_QUERIES; only the values are bound.
  */
-const runReport = ({ queryNo, representativeName, companyId, organisationId }) => {
+const runReport = async ({ queryNo, representativeName, companyId, organisationId }) => {
   const spec = REPORT_QUERIES[queryNo];
-  if (!spec) return Promise.resolve([]);
+  if (!spec) return [];
 
   const repl = { representativeName, companyId, organisationId };
+
+  /*
+   * Fill the report table before reading it.
+   *
+   * The procedure name comes from REPORT_QUERIES, so it is never interpolated
+   * from the request; its arguments are bound. Two of the procedures take the
+   * company only - passing a name to those is an argument-count error, not a
+   * silent no-op, which is why the arity is part of the map.
+   */
+  await q.callProcedure(
+    connections.resources,
+    spec.withoutName
+      ? `CALL ${spec.procedure}(:companyId, :organisationId)`
+      : `CALL ${spec.procedure}(:representativeName, :companyId, :organisationId)`,
+    repl
+  );
+
   let inner = `SELECT ${spec.column} FROM ${spec.table} WHERE `;
   if (spec.byName) inner += `representative_name = :representativeName AND `;
   inner += `company_id = :companyId AND organisation_id = :organisationId`;
@@ -204,6 +221,142 @@ const runReport = ({ queryNo, representativeName, companyId, organisationId }) =
   const expand = REPORT_EXPANSIONS[queryNo];
   return q.selectAll(connections.resources, expand ? expand(inner, spec.column) : inner, repl);
 };
+
+/* ------------------------------------------------------------- entities */
+
+/**
+ * The parties on a customer's transactions - the console's Entities list
+ * (GET /admin/customers/customers/:id/:portfolios/3).
+ *
+ * Scope is every transaction that shares an application with one of the
+ * customer's own transactions, back to the year floor; that is the legacy
+ * `documentid` two-hop, written as joins instead of nested IN (SELECT ...)
+ * over a 17,000-id list. Assignors and assignees on those transactions are
+ * counted by name, employer assignments excluded on both sides and inventors
+ * excluded from the assignee side, exactly as before.
+ *
+ * `total_occurences` is the party's corpus-wide instance count, read off the
+ * join rather than a per-row subselect. 7 seconds for a 2,300-row customer.
+ */
+const partyScopeSql = `SELECT d2.rf_id
+       FROM list2 AS l2
+       INNER JOIN documentid AS d1 ON d1.rf_id = l2.rf_id
+       INNER JOIN documentid AS d2 ON d2.appno_doc_num = d1.appno_doc_num
+      WHERE (l2.organisation_id = 0 OR l2.organisation_id IS NULL)
+        AND l2.company_id IN (:companyIds)
+        AND d1.appno_date >= :yearFloor
+      GROUP BY d2.rf_id`;
+
+const partySideSql = (table, nameColumn, extraJoin, extraWhere) => `
+      SELECT a.assignor_and_assignee_id, a.${nameColumn} AS name, COUNT(*) AS counter,
+             r.representative_name AS normalize_name,
+             (SELECT rr.representative_name FROM representative AS rr
+               WHERE rr.representative_name = aaa.name LIMIT 1) AS representativeCompany,
+             aaa.instances AS total_occurences, MIN(a.rf_id) AS rf_id, 1 AS flag
+        FROM (${partyScopeSql}) AS scope
+        INNER JOIN ${table} AS a ON a.rf_id = scope.rf_id
+        INNER JOIN representative_assignment_conveyance AS rac
+                ON rac.rf_id = a.rf_id AND rac.employer_assign = 0
+        INNER JOIN assignor_and_assignee AS aaa
+                ON aaa.assignor_and_assignee_id = a.assignor_and_assignee_id
+        LEFT JOIN representative AS r ON r.representative_id = aaa.representative_id
+        ${extraJoin}
+       WHERE 1 = 1 ${extraWhere}
+       GROUP BY a.${nameColumn}`;
+
+const entitiesForCustomer = ({ companyIds, yearFloor }) =>
+  q.selectAll(
+    connections.resources,
+    `SELECT assignor_and_assignee_id, name, SUM(counter) AS counter, normalize_name,
+            representativeCompany, total_occurences, MIN(rf_id) AS rf_id, flag
+       FROM (${partySideSql('assignor', 'or_name', '', '')}
+             UNION ALL
+             ${partySideSql(
+    'assignee',
+    'ee_name',
+    'LEFT JOIN inventors AS inv ON inv.assignor_and_assignee_id = aaa.assignor_and_assignee_id',
+    'AND inv.assignor_and_assignee_id IS NULL'
+  )}) AS t
+      GROUP BY name
+      ORDER BY name`,
+    { companyIds, yearFloor }
+  );
+
+/**
+ * The customer's inventors, two ways - GET .../:portfolios/1.
+ *
+ * Assignors on the customer's transactions where the conveyance is an employee
+ * assignment (`employer_assign = 1`): an inventor signing rights over to the
+ * employer. Scope is the same application two-hop as the entities list, but
+ * the year floor applies to the execution date, as before.
+ */
+const inventorAssignorsForCustomer = ({ companyIds, yearFloor }) =>
+  q.selectAll(
+    connections.resources,
+    `SELECT a.assignor_and_assignee_id, a.or_name AS name, COUNT(*) AS counter,
+            r.representative_name AS normalize_name,
+            (SELECT rr.representative_name FROM representative AS rr
+              WHERE rr.representative_name = aaa.name LIMIT 1) AS representativeCompany,
+            aaa.instances AS total_occurences, MIN(a.rf_id) AS rf_id, 1 AS flag
+       FROM (SELECT d2.rf_id
+               FROM list2 AS l2
+               INNER JOIN documentid AS d1 ON d1.rf_id = l2.rf_id
+               INNER JOIN documentid AS d2 ON d2.appno_doc_num = d1.appno_doc_num
+              WHERE (l2.organisation_id = 0 OR l2.organisation_id IS NULL)
+                AND l2.company_id IN (:companyIds)
+              GROUP BY d2.rf_id) AS scope
+       INNER JOIN assignor AS a ON a.rf_id = scope.rf_id
+       INNER JOIN representative_assignment_conveyance AS rac
+               ON rac.rf_id = a.rf_id AND rac.employer_assign = 1
+       LEFT JOIN assignor_and_assignee AS aaa
+              ON aaa.assignor_and_assignee_id = a.assignor_and_assignee_id
+       LEFT JOIN representative AS r ON r.representative_id = aaa.representative_id
+      WHERE a.exec_dt >= :yearFloor
+      GROUP BY a.or_name`,
+    { companyIds, yearFloor }
+  );
+
+/**
+ * Inventors named on the customer's applications in the two bibliographic
+ * databases (applications and grants), matched on application number. Flag 4,
+ * no rf_id - they come from the bibliographic record, not a transaction.
+ *
+ * The legacy handler fetched the application numbers first and sent them
+ * back as an IN (...) list - 14,000 values for this customer; the number set
+ * is a derived table here instead.
+ */
+const customerApplicationsSql = `SELECT d.appno_doc_num
+       FROM list2 AS l2
+       INNER JOIN documentid AS d ON d.rf_id = l2.rf_id
+      WHERE (l2.organisation_id = 0 OR l2.organisation_id IS NULL)
+        AND l2.company_id IN (:companyIds)
+        AND d.appno_date >= :yearFloor
+      GROUP BY d.appno_doc_num`;
+
+const bibliographicInventorsSql = (table) => `
+      SELECT appInv.assignor_and_assignee_id, aaa.name, COUNT(*) AS counter,
+             r.representative_name AS normalize_name,
+             (SELECT rr.representative_name FROM representative AS rr
+               WHERE rr.representative_name = aaa.name LIMIT 1) AS representativeCompany,
+             aaa.instances AS total_occurences, 0 AS rf_id, 4 AS flag
+        FROM (${customerApplicationsSql}) AS assets
+        INNER JOIN ${table} AS appInv ON appInv.appno_doc_num = assets.appno_doc_num
+        INNER JOIN db_patent_application_bibliographic.assignor_and_assignee AS aaa
+                ON aaa.assignor_and_assignee_id = appInv.assignor_and_assignee_id
+        LEFT JOIN representative AS r ON r.representative_id = aaa.representative_id
+       GROUP BY aaa.name`;
+
+const bibliographicInventorsForCustomer = ({ companyIds, yearFloor }) =>
+  q.selectAll(
+    connections.resources,
+    `SELECT assignor_and_assignee_id, name, SUM(counter) AS counter, normalize_name,
+            representativeCompany, total_occurences, rf_id, flag
+       FROM (${bibliographicInventorsSql('db_patent_application_bibliographic.inventor')}
+             UNION ALL
+             ${bibliographicInventorsSql('db_patent_grant_bibliographic.inventor_new')}) AS t
+      GROUP BY name`,
+    { companyIds, yearFloor }
+  );
 
 /* -------------------------------------------------------------- log reads */
 
@@ -559,6 +712,9 @@ module.exports = {
   findUserInOrganisation,
   destroyBusinessUser,
   runReport,
+  entitiesForCustomer,
+  inventorAssignorsForCustomer,
+  bibliographicInventorsForCustomer,
   updateLogs,
   destroyUpdateLogs,
   familyLogs,

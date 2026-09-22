@@ -240,18 +240,69 @@ const pointPtabNamesAt = (names, representativeId) =>
 
 /* ------------------------------------------------------------- law firms */
 
-const lawFirms = ({ search }) => {
-  const repl = {};
-  let sql = `SELECT lf.law_firm_id, lf.name, lf.instances, lf.representative_id,
-            rlf.representative_name
+/**
+ * The law-firm search grid.
+ *
+ * `counter` and `total_occurences` are the two columns the grid shows beside
+ * the name; they were missing, so both stayed blank. `total_occurences` is
+ * every instance recorded against the same normalised firm, which is why it is
+ * summed over the representative rather than read off the row.
+ *
+ * Unsearched, this is the whole of law_firm - 897k rows and a payload big
+ * enough that the client gives up on it - so the no-search case is capped.
+ * The grid always sends a search in normal use.
+ */
+const lawFirms = ({ search, limit = 500 }) => {
+  const repl = { limit };
+  let sql = `SELECT lf.law_firm_id, lf.name, lf.instances AS counter,
+            rep.total_occurences, lf.representative_id, rlf.representative_name
        FROM law_firm AS lf
-       LEFT JOIN representative_law_firm AS rlf ON rlf.representative_id = lf.representative_id`;
+       LEFT JOIN representative_law_firm AS rlf ON rlf.representative_id = lf.representative_id
+       LEFT JOIN (SELECT representative_id, SUM(instances) AS total_occurences
+                    FROM law_firm WHERE representative_id IS NOT NULL
+                   GROUP BY representative_id) AS rep
+              ON rep.representative_id = lf.representative_id`;
   if (search) {
     sql += ` WHERE MATCH(lf.name) AGAINST (:search IN BOOLEAN MODE)`;
     repl.search = search;
   }
-  return q.selectAll(uspto(), `${sql} ORDER BY lf.instances DESC`, repl);
+  return q.selectAll(uspto(), `${sql} ORDER BY lf.instances DESC LIMIT :limit`, repl);
 };
+
+/**
+ * A customer's law firms, from the correspondents on their transactions.
+ *
+ * `:id` on this route is the CUSTOMER, not a law firm. The port read it as a
+ * law_firm_id and answered with that firm's lawyers, so the console's LAW FIRMS
+ * button returned an unrelated list for every customer.
+ *
+ * The party filter is a join onto assignor_and_assignee rather than a list of
+ * ids fetched first and sent back in an IN (...) - a customer can have tens of
+ * thousands of parties, and that list is what makes MySQL fall over here.
+ */
+const lawFirmsForCustomer = ({ companyIds, yearFloor }) =>
+  q.selectAll(
+    uspto(),
+    `SELECT lf.law_firm_id,
+            IF(lf.name <> '', lf.name, cor.cname) AS name,
+            COUNT(*) AS counter,
+            lf.instances AS total_occurences,
+            rlf.representative_id, rlf.representative_name
+       FROM correspondent AS cor
+       INNER JOIN list2 AS l ON l.rf_id = cor.rf_id
+       INNER JOIN assignee AS e ON e.rf_id = l.rf_id
+       INNER JOIN assignor_and_assignee AS aa
+               ON aa.assignor_and_assignee_id = e.assignor_and_assignee_id
+              AND aa.representative_id IN (:companyIds)
+       INNER JOIN db_new_application.activity_parties_transactions AS apt ON apt.rf_id = e.rf_id
+       LEFT JOIN law_firm AS lf ON lf.name = cor.cname
+       LEFT JOIN representative_law_firm AS rlf ON rlf.representative_id = lf.representative_id
+      WHERE apt.exec_dt >= :yearFloor
+        AND (l.organisation_id = 0 OR l.organisation_id IS NULL)
+        AND l.company_id IN (:companyIds)
+      GROUP BY name`,
+    { companyIds, yearFloor }
+  );
 
 const lawFirmsByIds = (ids) =>
   q.selectAll(
@@ -338,6 +389,49 @@ const lawyersForFirm = (lawFirmId) =>
     { lawFirmId }
   );
 
+/**
+ * A customer's lawyers — GET /admin/company/lawyers/:id, `:id` the customer.
+ *
+ * A lawyer is the correspondent named on a transaction at a given firm, so the
+ * match is the pair (law_firm_id, caddress_1) from the customer's assignments
+ * against (law_firm_id, name) in lawyer. The legacy handler matched the two
+ * columns independently - any of the firms with any of the names - which
+ * over-reports; the pair is what it meant.
+ *
+ * Shape matters here more than usual: `lawyer` has no index on law_firm_id or
+ * name, only its primary key, and that cannot be changed on this database. The
+ * customer's pairs are grouped first (hundreds of rows) and STRAIGHT_JOIN then
+ * makes MySQL scan lawyer once against them. Written as a single join the
+ * optimiser hashed lawyer against the raw assignment rows instead and ran for
+ * over ten minutes before it was killed; this returns in about 1.5 seconds.
+ */
+const lawyersForCustomer = ({ companyIds }) =>
+  q.selectAll(
+    uspto(),
+    `SELECT STRAIGHT_JOIN l.lawyer_id, l.name, p.counter, l.instances AS total_occurences,
+            rl.representative_lawyer_id, rl.representative_name AS lawyer_representative_name,
+            lf.law_firm_id, lf.name AS law_firm_name,
+            rlf.representative_id AS law_firm_representative_id,
+            rlf.representative_name AS law_firm_representative_name
+       FROM (SELECT a.law_firm_id, a.caddress_1, COUNT(*) AS counter
+               FROM list2 AS l2
+               INNER JOIN assignee AS e ON e.rf_id = l2.rf_id
+               INNER JOIN assignor_and_assignee AS aa
+                       ON aa.assignor_and_assignee_id = e.assignor_and_assignee_id
+                      AND aa.representative_id IN (:companyIds)
+               INNER JOIN assignment AS a ON a.rf_id = l2.rf_id
+              WHERE a.caddress_1 <> '' AND a.law_firm_id > 0
+                AND (l2.organisation_id = 0 OR l2.organisation_id IS NULL)
+                AND l2.representative_id IN (:companyIds)
+              GROUP BY a.law_firm_id, a.caddress_1) AS p
+       INNER JOIN lawyer AS l ON l.law_firm_id = p.law_firm_id AND l.name = p.caddress_1
+       LEFT JOIN representative_lawyer AS rl
+              ON rl.representative_lawyer_id = l.representative_lawyer_id
+       LEFT JOIN law_firm AS lf ON lf.law_firm_id = l.law_firm_id
+       LEFT JOIN representative_law_firm AS rlf ON rlf.representative_id = lf.representative_id`,
+    { companyIds }
+  );
+
 const findLawyerRepresentative = (name) =>
   q.selectOne(
     uspto(),
@@ -372,24 +466,95 @@ const rawAssignment = (rfId) =>
 const updateCorrespondent = (rfId, fields) =>
   models.Correspondent.update(fields, { where: { rf_id: rfId } });
 
+/**
+ * The transactions carrying the most assets, for the console's Recent panel.
+ *
+ * Despite the name this is "biggest", not "newest": the ranking is by how many
+ * documents hang off the rf_id, with the recording date only breaking ties.
+ *
+ * The shape here is what the grid reads - assets, exec_dt, date_difference,
+ * convey_ty, assingor and assingee (the last two misspelled in the client, kept
+ * as-is so this stays a drop-in). An earlier port returned reel/frame/cname
+ * instead, so every column except the date rendered blank.
+ *
+ * The ranking needs a count over all 15.6M rows of documentid, which cannot be
+ * avoided - but it can be kept to itself. Aggregating first and taking the top
+ * few hundred rf_ids means the join to assignment (11.6M rows) sees a few
+ * hundred rows rather than the ~5M-row materialised grouping the original
+ * joined wholesale. Same 100 rows, 190s down to about 8.
+ *
+ * The window is deliberately wider than the limit: a heavily-documented rf_id
+ * can be missing from assignment, and the spare rows absorb that without
+ * returning short.
+ */
 const recentTransactions = (limit) =>
   q.selectAll(
     uspto(),
-    `SELECT a.rf_id, a.reel_no, a.frame_no, a.record_dt, a.convey_text, a.cname
-       FROM assignment AS a ORDER BY a.record_dt DESC LIMIT :limit`,
-    { limit }
+    `SELECT records.rf_id, records.reel_frame, records.frame_no, records.reel_no,
+            DATE_FORMAT(records.record_dt, '%b %d, %Y') AS record_dt,
+            rac.convey_ty, records.counter AS assets,
+            DATE_FORMAT(records.exec_dt, '%b %d, %Y') AS exec_dt,
+            DATEDIFF(records.record_dt, records.exec_dt) AS date_difference,
+            (SELECT GROUP_CONCAT(or_name) FROM assignor
+              WHERE assignor.rf_id = records.rf_id) AS assingor,
+            (SELECT GROUP_CONCAT(ee_name) FROM assignee
+              WHERE assignee.rf_id = records.rf_id) AS assingee
+       FROM (
+             SELECT CONCAT(a.reel_no, '/', a.frame_no) AS reel_frame,
+                    a.frame_no, a.reel_no, a.record_dt, a.rf_id, top.counter,
+                    (SELECT exec_dt FROM assignor
+                      WHERE assignor.rf_id = a.rf_id LIMIT 1) AS exec_dt
+               FROM (SELECT d.rf_id, COUNT(d.appno_doc_num) AS counter
+                       FROM documentid AS d
+                      GROUP BY d.rf_id
+                      ORDER BY counter DESC
+                      LIMIT :window) AS top
+              INNER JOIN assignment AS a ON a.rf_id = top.rf_id
+              ORDER BY top.counter DESC, a.record_dt DESC, a.rf_id DESC
+              LIMIT :limit
+            ) AS records
+      INNER JOIN representative_assignment_conveyance AS rac
+              ON rac.rf_id = records.rf_id`,
+    { limit, window: limit * 5 }
   );
 
-const transactionsByConveyance = (conveyanceType) =>
-  q.selectAll(
+/**
+ * The parties on one side of every transaction of the given conveyance types,
+ * with how many transactions each appears on. Feeds the console's Lenders and
+ * Borrowers lists.
+ *
+ * `party` is which side to read: 'assignee' (who received the interest) or
+ * 'assignor' (who granted it). It is a table name spliced into the SQL, so it
+ * is allowlisted here and never taken from the request.
+ *
+ * STRAIGHT_JOIN is load-bearing. Left to itself the optimiser drives this from
+ * `assignee` - a full scan of 12M rows, then a lookup into the 95k conveyance
+ * rows - and the query runs for five to seven minutes. Driving from the
+ * conveyance rows and probing the party table's rf_id index returns the same
+ * 33,644 rows in 18 seconds. The legacy version also filtered on documentid and
+ * joined assignment; both were measured to change nothing and are gone.
+ */
+const PARTY_TABLES = new Set(['assignee', 'assignor']);
+
+const partiesOnConveyances = ({ party, conveyanceTypes }) => {
+  if (!PARTY_TABLES.has(party)) throw new Error(`Unknown party side: ${party}`);
+  return q.selectAll(
     uspto(),
-    `SELECT a.rf_id, a.reel_no, a.frame_no, a.record_dt, rac.convey_ty
-       FROM assignment AS a
-       INNER JOIN representative_assignment_conveyance AS rac ON rac.rf_id = a.rf_id
-      WHERE rac.convey_ty = :conveyanceType
-      ORDER BY a.record_dt DESC LIMIT 1000`,
-    { conveyanceType }
+    `SELECT STRAIGHT_JOIN aaa.assignor_and_assignee_id, aaa.name,
+            COUNT(DISTINCT rac.rf_id) AS counter,
+            r.representative_name AS normalize_name,
+            (SELECT rr.representative_name FROM representative AS rr
+              WHERE rr.representative_name = aaa.name LIMIT 1) AS representative_company
+       FROM representative_assignment_conveyance AS rac
+       INNER JOIN ${party} AS aa ON aa.rf_id = rac.rf_id
+       INNER JOIN assignor_and_assignee AS aaa
+               ON aaa.assignor_and_assignee_id = aa.assignor_and_assignee_id
+       LEFT JOIN representative AS r ON r.representative_id = aaa.representative_id
+      WHERE rac.convey_ty IN (:conveyanceTypes)
+      GROUP BY aaa.name`,
+    { conveyanceTypes }
   );
+};
 
 /* ---------------------------------------------------------------- assets */
 
@@ -942,6 +1107,7 @@ module.exports = {
   pointPartiesAt,
   pointPtabNamesAt,
   lawFirms,
+  lawFirmsForCustomer,
   lawFirmsByIds,
   lawFirmsByNames,
   createLawFirmsFromCorrespondence,
@@ -951,6 +1117,7 @@ module.exports = {
   companiesForLawFirm,
   lawFirmsForCompany,
   lawyers,
+  lawyersForCustomer,
   lawyersForFirm,
   findLawyerRepresentative,
   createLawyerRepresentative,
@@ -958,7 +1125,7 @@ module.exports = {
   rawAssignment,
   updateCorrespondent,
   recentTransactions,
-  transactionsByConveyance,
+  partiesOnConveyances,
   assetsForParty,
   maintenanceForCompany,
   citedOrganisations,

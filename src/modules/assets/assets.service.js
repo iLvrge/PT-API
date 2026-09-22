@@ -134,8 +134,19 @@ const cpcBreakdown = async (input) => {
     ? await repository.cpcBreakdown({ ...common, list: remaining, fallback: true })
     : [];
 
-  const rows = [...primary, ...fallback].sort((a, b) =>
-    String(a.cpc_code).localeCompare(String(b.cpc_code)));
+  /*
+   * Deliberately NOT re-sorted. Both breakdown queries already end in
+   * `ORDER BY cpc_code DESC`, and the group ids below are handed out in
+   * first-seen order over these rows - so the SQL's ordering *is* the axis
+   * ordering on the Innovation chart, and the fallback rows belong after the
+   * primary ones, not merged in among them.
+   *
+   * An ascending sort here inverted the whole technology axis: the chart draws
+   * the highest id at the back, so descending codes put A61B there, which is
+   * what production shows. Sorting ascending made H04W the last id and stood
+   * the chart on its head.
+   */
+  const rows = [...primary, ...fallback];
 
   // One group entry per distinct CPC code, in first-seen order.
   const group = [];

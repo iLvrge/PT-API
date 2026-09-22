@@ -32,8 +32,9 @@ describe('auth', () => {
 
 describe('GET /events/tabs', () => {
   it('builds the life-span series from the stored procedure', async () => {
+    const thisYear = new Date().getFullYear();
     repo.lifeSpan.mockResolvedValue([[
-      { application: '111', appno_date: '2000-01-01' },
+      { application: '111', patent: '9446259', appno_date: `${thisYear - 5}-01-01` },
     ]]);
 
     const res = await auth(
@@ -43,8 +44,19 @@ describe('GET /events/tabs', () => {
     expect(repo.lifeSpan).toHaveBeenCalledWith(
       expect.objectContaining({ layoutId: 32, companies: [9] })
     );
-    expect(res.body[0]).toEqual({ year: 2000, count: 1 });
-    expect(res.body).toHaveLength(21);
+    // A charting table, not { year, count } objects: the panel feeds this
+    // response straight to a Google ColumnChart, which reads row 0 as the
+    // column headers and threw "Column header row must be an array" on the
+    // object form, leaving the Lifespan panel blank.
+    expect(res.body[0]).toEqual([
+      'year',
+      'count',
+      { type: 'string', role: 'style' },
+      { type: 'string', role: 'tooltip', p: { html: true } },
+    ]);
+    // Forward-looking only: the years already gone are not drawn.
+    expect(res.body[1][0]).toBeGreaterThanOrEqual(thisYear);
+    expect(res.body[1][1]).toBe(1);
   });
 
   it('expands the shorthand tab before calling the procedure', async () => {

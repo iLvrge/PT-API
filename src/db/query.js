@@ -64,6 +64,21 @@ const exists = async (db, sql, replacements) => {
 };
 
 /**
+ * Run a stored procedure for its effect.
+ *
+ * A CALL comes back as a multi-result set — the procedure's own result sets
+ * followed by an OK packet — which QueryTypes.SELECT cannot format: it reaches
+ * `results.map` with the packet and throws 'results.map is not a function',
+ * surfacing as a 500 with nothing about a procedure in it. RAW hands the whole
+ * thing back unformatted, which is all a caller running a procedure for its
+ * side effect needs.
+ *
+ * The procedure name is part of the SQL, so it must come from a constant in the
+ * calling module and never from the request; arguments are bound as usual.
+ */
+const callProcedure = (db, sql, replacements) => run(db, sql, replacements, { type: QueryTypes.RAW });
+
+/**
  * Allowlist a value that is spliced into SQL as an identifier (ORDER BY column,
  * table alias) rather than bound as a parameter — bind params can't be used for
  * these. Audit finding F7 (ORDER BY injection).
@@ -75,4 +90,6 @@ const identifier = (value, allowed, fallback) => {
 
 const direction = (value) => (String(value).toUpperCase() === 'ASC' ? 'ASC' : 'DESC');
 
-module.exports = { selectAll, selectOne, selectValue, exists, identifier, direction };
+module.exports = {
+  selectAll, selectOne, selectValue, exists, callProcedure, identifier, direction,
+};

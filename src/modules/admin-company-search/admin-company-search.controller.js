@@ -156,6 +156,16 @@ const lawFirms = asyncHandler(async (req, res) => {
   res.status(200).json(await service.lawFirms({ search: req.query.search }));
 });
 
+// `:id` is the customer here, not a law firm — see the service.
+const lawFirmsForCustomer = asyncHandler(async (req, res) => {
+  res.status(200).json(
+    await service.lawFirmsForCustomer({
+      organisationId: Number(req.params.id),
+      portfolios: parseList(req.query.portfolios, 'portfolios'),
+    })
+  );
+});
+
 const lawFirmCompanies = asyncHandler(async (req, res) => {
   res.status(200).json(await service.lawFirmCompanies(Number(req.params.id)));
 });
@@ -182,6 +192,16 @@ const lawyers = asyncHandler(async (req, res) => {
 
 const lawyersForFirm = asyncHandler(async (req, res) => {
   res.status(200).json(await service.lawyersForFirm(Number(req.params.id)));
+});
+
+// `:id` is the customer here, not a law firm — see the service.
+const lawyersForCustomer = asyncHandler(async (req, res) => {
+  res.status(200).json(
+    await service.lawyersForCustomer({
+      organisationId: Number(req.params.id),
+      portfolios: parseList(req.query.portfolios, 'portfolios'),
+    })
+  );
 });
 
 const normaliseLawyers = asyncHandler(async (req, res) => {
@@ -233,8 +253,10 @@ const recentTransactions = asyncHandler(async (req, res) => {
   res.status(200).json(await service.recentTransactions(limit));
 });
 
+// `:conveyanceType` is really the side — 'lenders' or 'borrowers'. The route
+// keeps its legacy name; the console hard-codes it.
 const transactionsByConveyance = asyncHandler(async (req, res) => {
-  res.status(200).json(await service.transactionsByConveyance(req.params.conveyanceType));
+  res.status(200).json(await service.partiesForSide(req.params.conveyanceType));
 });
 
 /* ---------------------------------------------------------------- assets */
@@ -391,7 +413,7 @@ module.exports = {
   searchByAddress, searchByCountry, searchCompanyAddresses, searchLawFirmAddresses,
   lawFirmAddresses, partyAddresses, addressesWithTransactions, rememberAddress,
   normaliseCompanies,
-  lawFirms, lawFirmCompanies, companyLawFirms, normaliseLawFirms,
+  lawFirms, lawFirmsForCustomer, lawyersForCustomer, lawFirmCompanies, companyLawFirms, normaliseLawFirms,
   lawyers, lawyersForFirm, normaliseLawyers,
   correspondence, rawCorrespondence, updateAssignment,
   transactions, retypeTransaction, lenderCompanies, setCompanySelection,

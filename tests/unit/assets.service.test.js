@@ -164,6 +164,47 @@ describe('assets.service.cpcBreakdown', () => {
     expect(repo.cpcBreakdown).toHaveBeenCalledTimes(1);
   });
 
+  /*
+   * The Innovation chart's technology axis is `group.id`, and the ids are
+   * handed out in the order the rows arrive. Both breakdown queries end in
+   * `ORDER BY cpc_code DESC`, so that descending order has to survive into the
+   * response untouched - the original API assigned its ids straight off the
+   * query result and never re-sorted.
+   *
+   * Re-sorting ascending here reversed the axis: production reads A61B at the
+   * top through to H04W at the front, and the rewrite drew it upside down.
+   */
+  it('keeps the descending CPC order the queries return, for the chart axis', async () => {
+    repo.assetsForSale.mockResolvedValue([]);
+    repo.cpcBreakdown.mockResolvedValue([
+      { cpc_code: 'H04W', appNum: '111' },
+      { cpc_code: 'G06F', appNum: '222' },
+      { cpc_code: 'A61B', appNum: '333' },
+    ]);
+    repo.cpcDefinitions.mockResolvedValue([]);
+
+    const res = await service.cpcBreakdown({
+      ...input, list: ['111', '222', '333'], total: 3,
+    });
+
+    expect(res.group.map((g) => g.cpc_code)).toEqual(['H04W', 'G06F', 'A61B']);
+    expect(res.group.map((g) => g.id)).toEqual([1, 2, 3]);
+    expect(res.list.map((r) => r.cpc_code)).toEqual(['H04W', 'G06F', 'A61B']);
+  });
+
+  it('appends the second pass after the first, rather than merging by code', async () => {
+    repo.assetsForSale.mockResolvedValue([]);
+    repo.cpcBreakdown
+      .mockResolvedValueOnce([{ cpc_code: 'H04L', appNum: '111' }])
+      // Sorted in, this would come first and take id 1; appended, it stays last.
+      .mockResolvedValueOnce([{ cpc_code: 'G06F', appNum: '222' }]);
+    repo.cpcDefinitions.mockResolvedValue([]);
+
+    const res = await service.cpcBreakdown({ ...input, list: ['111', '222'], total: 2 });
+
+    expect(res.group.map((g) => g.cpc_code)).toEqual(['H04L', 'G06F']);
+  });
+
   it('builds one group entry per CPC code and attaches its definition', async () => {
     repo.assetsForSale.mockResolvedValue([]);
     repo.cpcBreakdown.mockResolvedValue([

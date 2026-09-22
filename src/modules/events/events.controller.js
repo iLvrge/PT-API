@@ -37,8 +37,16 @@ const lifeSpanForSelection = asyncHandler(async (req, res) => {
   );
 });
 
+// The selection is read alongside the list: it decides whether the assets the
+// organisation has divested are left off the chart.
 const lifeSpanForAssets = asyncHandler(async (req, res) => {
-  res.status(200).json(await service.lifeSpanForAssets(parseList(req.body.list, 'list')));
+  res.status(200).json(
+    await service.lifeSpanForAssets(parseList(req.body.list, 'list'), {
+      type: req.body.type,
+      companies: parseList(req.body.selectedCompanies, 'selectedCompanies'),
+      tabs: parseList(req.body.tabs, 'tabs'),
+    })
+  );
 });
 
 const maintenanceAbandonment = asyncHandler(async (req, res) => {

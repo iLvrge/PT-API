@@ -72,18 +72,120 @@ const lifeSpan = ({ layoutId, companies, tabs, customers, assignments }) =>
     }
   );
 
-/** Filing dates for a set of applications, used to draw their term. */
-const filingDates = (applications) =>
+/**
+ * Filing dates for a set of applications, used to draw their term.
+ *
+ * Reads db_uspto.documentid directly, and only granted patents
+ * (`grant_doc_num <> ''`): the life-span chart plots patent terms, and a
+ * pending application has no term to plot. `filingDatesFallback` then covers
+ * the numbers this does not answer for.
+ *
+ * It does NOT join db_new_application.assets. That join was what made this
+ * unusable: the two tables differ in charset, and converting
+ * `assets.appno_doc_num` to compare them hid its index on a 13.4M-row table,
+ * so MySQL made it the driving table and scanned 12.6M index entries on every
+ * call - ten applications cost the same 90 seconds as a thousand, and the
+ * panel's request never returned. Nothing in the series needs a column from
+ * `assets`, so the join is simply gone; the remaining filter is on
+ * documentid's own indexed `appno_doc_num`.
+ */
+/**
+ * An anti-join that drops assets the organisation has already divested.
+ *
+ * Written as LEFT JOIN ... IS NULL rather than
+ *   NOT IN (SELECT application FROM dashboard_items WHERE ...)
+ * or `NOT IN (:divestedList)` with the ids fetched first, which is what the
+ * original did. Both shapes are banned here: the subquery form materialises
+ * dashboard_items before a single asset can be tested, and the list form grows
+ * an IN clause with one entry per divested asset.
+ *
+ * `dashboard_items` has an index on (application, type, organisation_id,
+ * representative_id), so this is a keyed lookup per row. The CONVERT() goes on
+ * whichever column the *caller* drives from - never on
+ * `divested.application`, or that index goes unused.
+ */
+const DIVESTED_TYPE = 33;
+const divestedAntiJoin = (applicationExpr, companies) => `
+       LEFT JOIN db_new_application.dashboard_items AS divested
+              ON divested.application = ${applicationExpr}
+             AND divested.type = :divestedType
+             AND divested.organisation_id = :organisationId
+             ${companies.length ? 'AND divested.representative_id IN (:companies)' : ''}`;
+
+// db_uspto.documentid is latin1; dashboard_items.application is utf8mb4.
+const DOC_APPNO_AS_DASHBOARD =
+  'CONVERT(documentid.appno_doc_num USING utf8mb4) COLLATE utf8mb4_general_ci';
+
+const filingDates = (applications, year, { excludeDivested = false, companies = [] } = {}) => {
+  const repl = { applications, year };
+  let join = '';
+  let where = '';
+  if (excludeDivested) {
+    repl.divestedType = DIVESTED_TYPE;
+    repl.organisationId = 0;
+    if (companies.length) repl.companies = companies;
+    join = divestedAntiJoin(DOC_APPNO_AS_DASHBOARD, companies);
+    where = ' AND divested.application IS NULL';
+  }
+
+  return q.selectAll(
+    app(),
+    `SELECT documentid.appno_doc_num AS application, documentid.grant_doc_num AS patent,
+            documentid.status, documentid.appno_date
+       FROM db_uspto.documentid AS documentid${join}
+      WHERE documentid.appno_doc_num IN (:applications)
+        AND date_format(documentid.appno_date, '%Y') > :year
+        AND documentid.grant_doc_num <> ''${where}
+      GROUP BY documentid.appno_doc_num`,
+    repl
+  );
+};
+
+/**
+ * The same dates from the bibliographic grant index, for applications the
+ * assignment corpus does not carry. A number can be missing from documentid
+ * entirely, or be there without a grant number; either way it still belongs on
+ * the chart, so the original API ran this second pass over the leftovers.
+ */
+const filingDatesFallback = (
+  applications, year, { excludeDivested = false, companies = [] } = {}
+) => {
+  const repl = { applications, year };
+  let join = '';
+  let where = '';
+  if (excludeDivested) {
+    repl.divestedType = DIVESTED_TYPE;
+    repl.organisationId = 0;
+    if (companies.length) repl.companies = companies;
+    // application_grant.appno_doc_num is already utf8mb4_general_ci, the same
+    // as dashboard_items.application, so this side needs no conversion at all.
+    join = divestedAntiJoin('ag.appno_doc_num', companies);
+    where = ' AND divested.application IS NULL';
+  }
+
+  return q.selectAll(
+    app(),
+    `SELECT ag.appno_doc_num AS application, ag.grant_doc_num AS patent,
+            0 AS status, ag.appno_date
+       FROM db_patent_application_bibliographic.application_grant AS ag${join}
+      WHERE ag.appno_doc_num IN (:applications)
+        AND date_format(ag.appno_date, '%Y') > :year${where}
+      GROUP BY ag.appno_doc_num`,
+    repl
+  );
+};
+
+/**
+ * Patent term extensions, in days. A patent whose prosecution was delayed by
+ * the office gets that time back, so its term runs past the usual twenty years
+ * and it stays on the chart longer.
+ */
+const termExtensions = (applications) =>
   q.selectAll(
     app(),
-    `SELECT assets.company_id, assets.organisation_id,
-            documentid.appno_doc_num AS application, documentid.grant_doc_num AS patent,
-            documentid.status, documentid.appno_date
-       FROM db_new_application.assets AS assets
-       INNER JOIN db_uspto.documentid AS documentid
-               ON CONVERT(assets.appno_doc_num USING latin1) = documentid.appno_doc_num
-      WHERE documentid.appno_doc_num IN (:applications)
-      GROUP BY assets.company_id, assets.organisation_id, documentid.appno_doc_num`,
+    `SELECT appno_doc_num, extension
+       FROM db_patent_application_bibliographic.grant_extension
+      WHERE appno_doc_num IN (:applications)`,
     { applications }
   );
 
@@ -222,6 +324,8 @@ module.exports = {
   abandonedByYear,
   lifeSpan,
   filingDates,
+  filingDatesFallback,
+  termExtensions,
   eventsForApplication,
   resolveApplication,
   publicationDates,

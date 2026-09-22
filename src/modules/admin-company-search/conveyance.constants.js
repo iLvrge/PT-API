@@ -40,11 +40,18 @@ const CONVEYANCE_TYPES = [
   'restatedsecurity', 'security',
 ].map((name) => ({ name, id: name }));
 
-/** The shorter list the console offers when retyping a transaction. */
+/**
+ * The shorter list the console offers when retyping a transaction.
+ *
+ * `id` is the name, as for CONVEYANCE_TYPES: the console keys and selects its
+ * dropdown on `option.id` and posts that value back as the new type, which the
+ * retype route validates by name. Without it every option had an undefined key
+ * (one React warning per row) and the dropdown could never show its value.
+ */
 const CONVEYANCE_CHOICES = [
   'assignment', 'namechg', 'merger', 'other', 'security', 'correct',
   'missing', 'release', 'govern', 'employee', 'license',
-].map((name) => ({ name }));
+].map((name) => ({ name, id: name }));
 
 /** The CASE expression that turns the stored name into the console's number. */
 const ordinalCase = (column) =>

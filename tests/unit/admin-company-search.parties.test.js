@@ -1,126 +1,72 @@
 'use strict';
 
-// The cited-assignee and party grids in the admin console.
-//
-// Two separate problems. GET /admin/company/cited/:id existed but answered a
-// bare array, while the console reads `citedAssignees`, `organizations` and
-// `total_records` off the response — so the panel stayed empty and no error was
-// raised anywhere. The three party endpoints were missing outright (404).
-//
-// Both grids take sort_by / sort_direction / rows_per_page / current_page from
-// the query string, and the legacy handlers spliced all four straight into the
-// SQL; the ordering and paging is asserted here as well.
+/*
+ * The console's Lenders and Borrowers lists - GET /admin/all/transactions/:side.
+ *
+ * Both came back empty: the port read `:side` as a conveyance type and filtered
+ * `convey_ty = 'lenders'`, which matches nothing. The legacy handler built the
+ * lists from the parties on security agreements and releases, with a query the
+ * optimiser drove from a 12M-row full scan of assignee - five to seven minutes
+ * a click. The rewrite keeps the legacy shape and the legacy row set (33,644
+ * lenders, measured) and pins the plan with STRAIGHT_JOIN.
+ */
 
-jest.mock('../../src/modules/admin-company-search/admin-company-search.repository');
-jest.mock('../../src/db/tenant-connections');
-jest.mock('../../src/db/query');
+jest.mock('../../src/modules/admin-company-search/admin-company-search.repository', () => ({
+  partiesOnConveyances: jest.fn(),
+}));
 
-const repo = require('../../src/modules/admin-company-search/admin-company-search.repository');
-const tenants = require('../../src/db/tenant-connections');
-const q = require('../../src/db/query');
+const repository = require('../../src/modules/admin-company-search/admin-company-search.repository');
 const service = require('../../src/modules/admin-company-search/admin-company-search.service');
 
-const GRID = {
-  organisationId: 146, portfolios: [], sortBy: 'occurences', sortDirection: 'desc',
-  rowsPerPage: 10, currentPage: 0,
-};
-
-beforeEach(() => {
-  jest.clearAllMocks();
-  tenants.getConnection.mockResolvedValue({ name: 'tenant' });
-  q.selectAll.mockResolvedValue([{ company_id: 1 }, { company_id: 2 }]);
-  repo.citedAssigneesCount.mockResolvedValue(2336);
-  repo.citedAssigneesPage.mockResolvedValue([{ assignee_id: 110726 }]);
-  repo.partyNamesForCompanies.mockResolvedValue([{ partyName: 'Acme Inc' }]);
-  repo.rememberPartyNames.mockResolvedValue([]);
-  repo.partiesCount.mockResolvedValue(1376);
-  repo.partiesPage.mockResolvedValue([{ assignee_id: 11476976 }]);
+const row = (id, name, counter, extra = {}) => ({
+  assignor_and_assignee_id: id, name, counter, normalize_name: null, representative_company: null, ...extra,
 });
 
-describe('citedOrganisations', () => {
-  it('answers the three keys the console reads, not a bare array', async () => {
-    const result = await service.citedOrganisations(GRID);
-    expect(Array.isArray(result)).toBe(false);
-    expect(Object.keys(result).sort()).toEqual(['citedAssignees', 'organizations', 'total_records']);
-    expect(result.total_records).toBe(2336);
-    expect(result.citedAssignees).toHaveLength(1);
-  });
+describe('partiesForSide', () => {
+  beforeEach(() => repository.partiesOnConveyances.mockReset());
 
-  it('scopes to the chosen portfolio without consulting the tenant', async () => {
-    await service.citedOrganisations({ ...GRID, portfolios: [7] });
-    expect(tenants.getConnection).not.toHaveBeenCalled();
-    expect(repo.citedAssigneesCount).toHaveBeenCalledWith(
-      expect.objectContaining({ companyIds: [7] })
-    );
-  });
+  it('builds lenders from assignees on security and assignors on releases', async () => {
+    repository.partiesOnConveyances
+      .mockResolvedValueOnce([row(1, 'Bank A', 5), row(2, 'Bank B', 2)]) // security / assignee
+      .mockResolvedValueOnce([row(1, 'Bank A', 3)]); // release / assignor
 
-  it('falls back to every company in the tenant when no portfolio is chosen', async () => {
-    await service.citedOrganisations(GRID);
-    expect(repo.citedAssigneesCount).toHaveBeenCalledWith(
-      expect.objectContaining({ companyIds: [1, 2] })
-    );
-  });
+    const list = await service.partiesForSide('lenders');
 
-  it('answers empty when the customer has no tenant database', async () => {
-    tenants.getConnection.mockResolvedValue(null);
-    await expect(service.citedOrganisations(GRID)).resolves.toEqual({
-      citedAssignees: [], organizations: [], total_records: 0,
+    expect(repository.partiesOnConveyances).toHaveBeenCalledWith({
+      party: 'assignee', conveyanceTypes: ['security', 'restatedsecurity'],
     });
-    expect(repo.citedAssigneesCount).not.toHaveBeenCalled();
+    expect(repository.partiesOnConveyances).toHaveBeenCalledWith({
+      party: 'assignor', conveyanceTypes: ['release'],
+    });
+    // The same bank on both ends of a loan's life is one row, counts summed.
+    expect(list).toHaveLength(2);
+    expect(list.find((r) => r.assignor_and_assignee_id === 1)).toMatchObject({ id: 1, name: 'Bank A', counter: 8 });
+    expect(list.find((r) => r.assignor_and_assignee_id === 2)).toMatchObject({ id: 2, name: 'Bank B', counter: 2 });
   });
 
-  it('does not fetch a page when the count is zero', async () => {
-    repo.citedAssigneesCount.mockResolvedValue(0);
-    const result = await service.citedOrganisations(GRID);
-    expect(result.total_records).toBe(0);
-    expect(repo.citedAssigneesPage).not.toHaveBeenCalled();
+  it('sums counters that arrive as strings', async () => {
+    repository.partiesOnConveyances
+      .mockResolvedValueOnce([row(1, 'Bank A', '5')])
+      .mockResolvedValueOnce([row(1, 'Bank A', '3')]);
+    const [only] = await service.partiesForSide('lenders');
+    expect(only.counter).toBe(8);
   });
 
-  it('passes the paging and sorting through to the repository', async () => {
-    await service.citedOrganisations({ ...GRID, sortBy: 'domain', currentPage: 3 });
-    expect(repo.citedAssigneesPage).toHaveBeenCalledWith(
-      expect.objectContaining({ sortBy: 'domain', currentPage: 3, rowsPerPage: 10 })
-    );
-  });
-});
+  it('builds borrowers from assignors on security agreements only', async () => {
+    repository.partiesOnConveyances.mockResolvedValueOnce([row(9, 'Widget Co', 4)]);
 
-describe('parties', () => {
-  it('answers { list, total_records }', async () => {
-    const result = await service.parties({ ...GRID, savedLogos: false });
-    expect(Object.keys(result).sort()).toEqual(['list', 'total_records']);
-    expect(result.total_records).toBe(1376);
+    const list = await service.partiesForSide('borrowers');
+
+    expect(repository.partiesOnConveyances).toHaveBeenCalledTimes(1);
+    expect(repository.partiesOnConveyances).toHaveBeenCalledWith({
+      party: 'assignor', conveyanceTypes: ['security', 'restatedsecurity'],
+    });
+    // The borrowers grid reads a count_assets column the query does not produce.
+    expect(list).toEqual([expect.objectContaining({ name: 'Widget Co', counter: 4, count_assets: '0' })]);
   });
 
-  it('records newly seen party names on the shared view', async () => {
-    await service.parties({ ...GRID, savedLogos: false });
-    expect(repo.rememberPartyNames).toHaveBeenCalledWith(['Acme Inc']);
-  });
-
-  it('never writes when browsing a customer\'s saved logos', async () => {
-    await service.parties({ ...GRID, savedLogos: true });
-    expect(repo.rememberPartyNames).not.toHaveBeenCalled();
-    expect(repo.partiesPage).toHaveBeenCalledWith(expect.objectContaining({ savedLogos: true }));
-  });
-
-  it('answers empty when no party names come back', async () => {
-    repo.partyNamesForCompanies.mockResolvedValue([]);
-    await expect(service.parties({ ...GRID, savedLogos: false }))
-      .resolves.toEqual({ list: [], total_records: 0 });
-    expect(repo.partiesCount).not.toHaveBeenCalled();
-  });
-
-  it('drops blank names rather than querying for an empty string', async () => {
-    repo.partyNamesForCompanies.mockResolvedValue([
-      { partyName: 'Acme Inc' }, { partyName: '' }, { partyName: null },
-    ]);
-    await service.parties({ ...GRID, savedLogos: false });
-    expect(repo.partiesCount).toHaveBeenCalledWith(expect.objectContaining({ names: ['Acme Inc'] }));
-  });
-
-  it('does not fetch a page when the count is zero', async () => {
-    repo.partiesCount.mockResolvedValue(0);
-    await expect(service.parties({ ...GRID, savedLogos: false }))
-      .resolves.toEqual({ list: [], total_records: 0 });
-    expect(repo.partiesPage).not.toHaveBeenCalled();
+  it('rejects a side it does not know rather than running an empty query', async () => {
+    await expect(service.partiesForSide('security')).rejects.toMatchObject({ statusCode: 400 });
+    expect(repository.partiesOnConveyances).not.toHaveBeenCalled();
   });
 });

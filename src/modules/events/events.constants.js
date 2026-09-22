@@ -38,8 +38,16 @@ const ABANDONED_STATUSES = [
 // The style the charting client expects on every bar.
 const BAR_STYLE = 'stroke-width:1;stroke-color:#2196f3;fill-color:#1565C0;';
 
-// A US patent runs twenty years from its filing date.
+// A US utility patent runs twenty years from its filing date.
 const PATENT_TERM_YEARS = 20;
+
+// A design patent runs fifteen, not twenty. Its number carries a leading D
+// (D123456), which is how the life-span chart tells the two apart.
+const DESIGN_TERM_YEARS = 15;
+
+// Only assets filed within this window are charted, matching the rest of the
+// app: the original API derived it the same way, as a rolling 24 years.
+const LIFE_SPAN_YEAR_FLOOR = () => new Date().getFullYear() - 24;
 
 // The code marking an event that has not been recorded with the USPTO yet.
 const TO_RECORD_EVENT_CODE = '13';
@@ -56,6 +64,8 @@ module.exports = {
   ABANDONED_STATUSES,
   BAR_STYLE,
   PATENT_TERM_YEARS,
+  DESIGN_TERM_YEARS,
+  LIFE_SPAN_YEAR_FLOOR,
   TO_RECORD_EVENT_CODE,
   EXPIRY_CODES,
 };

@@ -6,7 +6,7 @@ const repo = require('../../src/modules/events/events.repository');
 const service = require('../../src/modules/events/events.service');
 const series = require('../../src/modules/events/events.lifespan');
 const icons = require('../../src/modules/events/events.icons');
-const { windowOf } = require('../../src/modules/events/events.constants');
+const { windowOf, PATENT_TERM_YEARS } = require('../../src/modules/events/events.constants');
 
 beforeEach(() => jest.clearAllMocks());
 
@@ -60,6 +60,37 @@ describe('events.lifespan.lifeSpan', () => {
   });
 });
 
+/*
+ * A patent's term is not a flat twenty years, and the life-span chart is
+ * entirely a picture of terms. Getting these wrong moves bars between years.
+ */
+describe('events.lifespan.expiryYear', () => {
+  it('runs twenty years from filing for a utility patent', () => {
+    expect(series.expiryYear({ appno_date: '2000-06-01', patent: '9446259' })).toBe(2020);
+  });
+
+  it('runs only fifteen for a design patent, which its D number marks', () => {
+    expect(series.expiryYear({ appno_date: '2000-06-01', patent: 'D123456' })).toBe(2015);
+  });
+
+  it('adds a term extension, in days, on top', () => {
+    // 2020-06-01 plus a year of extension lands in 2021.
+    expect(series.expiryYear({
+      appno_date: '2000-06-01', patent: '9446259', extensionDays: 365,
+    })).toBe(2021);
+  });
+
+  it('does not move the year when the extension stays inside it', () => {
+    expect(series.expiryYear({
+      appno_date: '2000-06-01', patent: '9446259', extensionDays: 30,
+    })).toBe(2020);
+  });
+
+  it('is null for an unusable filing date', () => {
+    expect(series.expiryYear({ appno_date: null, patent: '9446259' })).toBeNull();
+  });
+});
+
 describe('events.lifespan.yearlySeries', () => {
   it('opens with the charting header row', () => {
     const table = series.yearlySeries([]);
@@ -82,6 +113,172 @@ describe('events.lifespan.yearlySeries', () => {
   it('sums two rows for the same year', () => {
     const table = series.yearlySeries([{ year: 2010, count: 2 }, { year: 2010, count: 3 }]);
     expect(table[1][1]).toBe(5);
+  });
+});
+
+/**
+ * The panel hands this response straight to a Google ColumnChart, so it has to
+ * be a charting table. Returning the raw `{ year, count }` objects that
+ * events.lifespan produces made google.visualization throw "Column header row
+ * must be an array" on `chart[0]` and the Lifespan panel drew nothing - with
+ * the error surfacing only in the browser console, never in the API.
+ *
+ * Both routes feed the same Redux slice, so both are pinned here.
+ */
+describe('events.service life-span responses are charting tables', () => {
+  const thisYear = new Date().getFullYear();
+  // Filed recently enough that the term still has years left to draw.
+  const filedRecently = `${thisYear - 5}-06-01`;
+
+  const isTable = (rows) => {
+    expect(Array.isArray(rows)).toBe(true);
+    rows.forEach((row) => expect(Array.isArray(row)).toBe(true));
+    expect(rows[0][0]).toBe('year');
+  };
+
+  beforeEach(() => {
+    repo.filingDatesFallback.mockResolvedValue([]);
+    repo.termExtensions.mockResolvedValue([]);
+  });
+
+  it('opens with the four columns the panel is configured for', async () => {
+    repo.filingDates.mockResolvedValue([
+      { application: '111', patent: '9446259', appno_date: filedRecently },
+    ]);
+
+    const table = await service.lifeSpanForAssets(['111']);
+    isTable(table);
+    expect(table[0]).toEqual([
+      'year',
+      'count',
+      { type: 'string', role: 'style' },
+      { type: 'string', role: 'tooltip', p: { html: true } },
+    ]);
+    // Every bar carries its own tooltip text.
+    expect(table[1][3]).toMatch(/^Year: \d{4}\nPatents Alive: \d+$/);
+  });
+
+  /*
+   * The chart answers "how many of these will still be alive in future years",
+   * so the years already gone are not drawn. Charting the whole history put a
+   * hump over the past where production shows a curve decaying to zero.
+   */
+  it('charts only from the current year onward', async () => {
+    repo.filingDates.mockResolvedValue([
+      { application: '111', patent: '9446259', appno_date: filedRecently },
+    ]);
+
+    const table = await service.lifeSpanForAssets(['111']);
+    const years = table.slice(1).map((row) => row[0]);
+    expect(Math.min(...years)).toBeGreaterThanOrEqual(thisYear);
+    // ...and it decays: the term ends before the twenty years are up.
+    expect(Math.max(...years)).toBeLessThan(thisYear + PATENT_TERM_YEARS);
+  });
+
+  it('gives an asset whose term has already run out no bars at all', async () => {
+    repo.filingDates.mockResolvedValue([
+      { application: '111', patent: '9446259', appno_date: '1998-01-01' },
+    ]);
+
+    expect(await service.lifeSpanForAssets(['111'])).toEqual([]);
+  });
+
+  it('returns [] for an empty list without touching the database', async () => {
+    expect(await service.lifeSpanForAssets([])).toEqual([]);
+    expect(repo.filingDates).not.toHaveBeenCalled();
+  });
+
+  /*
+   * The assignment corpus does not carry every number. The original API ran a
+   * second pass over the leftovers against the bibliographic grant index;
+   * without it those assets silently vanish from the chart.
+   */
+  it('runs the grant-index pass over the applications the first did not find', async () => {
+    repo.filingDates.mockResolvedValue([
+      { application: '111', patent: '9446259', appno_date: filedRecently },
+    ]);
+    repo.filingDatesFallback.mockResolvedValue([
+      { application: '222', patent: '9446260', appno_date: filedRecently },
+    ]);
+
+    const table = await service.lifeSpanForAssets(['111', '222']);
+    expect(repo.filingDatesFallback).toHaveBeenCalledWith(
+      ['222'], expect.any(Number), expect.any(Object)
+    );
+    // Both assets are counted in the same years.
+    expect(table[1][1]).toBe(2);
+  });
+
+  it('skips the second pass when the first found everything', async () => {
+    repo.filingDates.mockResolvedValue([
+      { application: '111', patent: '9446259', appno_date: filedRecently },
+    ]);
+
+    await service.lifeSpanForAssets(['111']);
+    expect(repo.filingDatesFallback).not.toHaveBeenCalled();
+  });
+
+  /*
+   * An asset the organisation has already divested is not theirs to chart. The
+   * original API fetched the divested application numbers and excluded them;
+   * which layouts it did that for is not uniform, so each condition is pinned.
+   */
+  describe('divested assets', () => {
+    const askFor = async (selection) => {
+      repo.filingDates.mockResolvedValue([
+        { application: '111', patent: '9446259', appno_date: filedRecently },
+      ]);
+      await service.lifeSpanForAssets(['111'], selection);
+      return repo.filingDates.mock.calls[0][2];
+    };
+
+    it('leaves them out for an ordinary scoped layout', async () => {
+      expect(await askFor({ type: 'owned', companies: [859], tabs: [] }))
+        .toMatchObject({ excludeDivested: true, companies: [859] });
+    });
+
+    it('keeps them on the divested layout, which exists to show them', async () => {
+      expect(await askFor({ type: 'divested', companies: [859], tabs: [] }))
+        .toMatchObject({ excludeDivested: false });
+    });
+
+    it('keeps them on the assigned layout, which overlaps by design', async () => {
+      expect(await askFor({ type: 'assigned', companies: [859], tabs: [] }))
+        .toMatchObject({ excludeDivested: false });
+    });
+
+    it('keeps them when nothing scopes the list to an organisation', async () => {
+      expect(await askFor({ type: 'owned', companies: [], tabs: [] }))
+        .toMatchObject({ excludeDivested: false });
+    });
+
+    it('excludes them when only a tab is selected', async () => {
+      expect(await askFor({ type: 'owned', companies: [], tabs: [3] }))
+        .toMatchObject({ excludeDivested: true });
+    });
+
+    it('applies the same rule to the grant-index pass', async () => {
+      repo.filingDates.mockResolvedValue([]);
+      repo.filingDatesFallback.mockResolvedValue([
+        { application: '222', patent: '9446260', appno_date: filedRecently },
+      ]);
+
+      await service.lifeSpanForAssets(['222'], { type: 'owned', companies: [859], tabs: [] });
+      expect(repo.filingDatesFallback.mock.calls[0][2])
+        .toMatchObject({ excludeDivested: true, companies: [859] });
+    });
+  });
+
+  it('lifeSpanForSelection returns the same table shape', async () => {
+    repo.lifeSpan.mockResolvedValue([[
+      { application: '111', patent: '9446259', appno_date: filedRecently },
+    ]]);
+
+    const table = await service.lifeSpanForSelection({
+      type: 'acquired', companies: [9], tabs: [], customers: [], assignments: [],
+    });
+    isTable(table);
+    expect(table[1][0]).toBeGreaterThanOrEqual(thisYear);
   });
 });
 

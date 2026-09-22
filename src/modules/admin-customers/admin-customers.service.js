@@ -398,6 +398,75 @@ const entityFileByName = (fileName) => files.readEntityFile(fileName);
  * interpolated, so a value containing a quote and a semicolon ran as a second
  * command. It is an argument array now.
  */
+/**
+ * The console's Entities list — GET /admin/customers/customers/:id/:portfolios/3
+ * with no `suggestions` or `fixed_identicals`.
+ *
+ * The port answered this with a 202 and started the normalisation script,
+ * which is what the legacy handler did only when those two flags were sent;
+ * without them it returned the list. So the Entities button showed nothing.
+ *
+ * The repository groups by exact name; the legacy handler then folded names
+ * that differ only in case or surrounding space into one row, summing counts.
+ * That fold is kept - the grid shows one row per distinct party.
+ */
+const YEARS_OF_HISTORY = 24;
+const yearFloor = () => `${new Date().getFullYear() - YEARS_OF_HISTORY}-01-01`;
+
+const customerCompanyIds = async ({ organisationId, representativeIds }) => {
+  if (representativeIds && representativeIds.length) return representativeIds;
+  const tenant = await tenants.getConnection(Number(organisationId));
+  if (!tenant) return [];
+  const rows = await q.selectAll(
+    tenant, 'SELECT company_id FROM representative WHERE company_id > 0 GROUP BY company_id'
+  );
+  return rows.map((r) => r.company_id);
+};
+
+const entitiesForCustomer = async ({ organisationId, representativeIds }) => {
+  const companyIds = await customerCompanyIds({ organisationId, representativeIds });
+  if (!companyIds.length) return [];
+  return foldParties(await repository.entitiesForCustomer({ companyIds, yearFloor: yearFloor() }));
+};
+
+/**
+ * The console's Inventors list — the same route with type 1. Two sources, as
+ * before: inventors assigning to their employer on the customer's transactions,
+ * and inventors named on the customer's applications in the bibliographic
+ * databases. Fetched together; each takes 15–30 seconds for a large customer.
+ */
+const inventorsForCustomer = async ({ organisationId, representativeIds }) => {
+  const companyIds = await customerCompanyIds({ organisationId, representativeIds });
+  if (!companyIds.length) return [];
+  const scope = { companyIds, yearFloor: yearFloor() };
+  const [assignors, inventors] = await Promise.all([
+    repository.inventorAssignorsForCustomer(scope),
+    repository.bibliographicInventorsForCustomer(scope),
+  ]);
+  return foldParties([...assignors, ...inventors]);
+};
+
+/** One row per name, case- and space-insensitive, counts summed, sorted by name. */
+const foldParties = (rows) => {
+  const byName = new Map();
+  rows.forEach((row) => {
+    const key = String(row.name || '').trim().toLowerCase();
+    const seen = byName.get(key);
+    if (seen) { seen.counter += Number(row.counter); return; }
+    byName.set(key, {
+      id: row.assignor_and_assignee_id,
+      name: row.name,
+      normalize_name: row.normalize_name,
+      counter: Number(row.counter),
+      total_occurences: row.total_occurences,
+      representative_company: row.representativeCompany,
+      rf_id: row.rf_id,
+      flag: row.flag,
+    });
+  });
+  return [...byName.values()].sort((a, b) => (a.name > b.name ? 1 : b.name > a.name ? -1 : 0));
+};
+
 const normaliseNames = ({ organisationId, representativeIds, type, suggestions, fixedIdenticals }) => {
   runNodeScript('normalize_names.js', [
     organisationId,
@@ -535,6 +604,8 @@ module.exports = {
   entityFile,
   entityFileByName,
   normaliseNames,
+  entitiesForCustomer,
+  inventorsForCustomer,
   runFlagUpdate,
   runMissingConveyance,
   findMissingInventors,

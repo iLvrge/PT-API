@@ -333,18 +333,25 @@ module.exports = {
   '/admin/company/recent_transactions': {
     get: h.operation({
       tag: 'Admin assignments',
-      summary: 'Recently recorded transactions',
+      summary: 'Transactions carrying the most assets',
+      description:
+        'Ranked by how many documents the transaction covers, not by date - the name is '
+        + 'historical. Recording date only breaks ties.',
       params: [h.queryParam('limit', 'Rows to return, capped at 1000.', { type: 'integer' })],
-      ok: h.listResponse('Transactions, newest first.'),
+      ok: h.listResponse('Transactions, largest first.'),
       errors: E,
     }),
   },
   '/admin/all/transactions/{conveyanceType}': {
     get: h.operation({
       tag: 'Admin assignments',
-      summary: 'Transactions of one conveyance type',
-      params: [h.pathParam('conveyanceType', 'Conveyance type.', { type: 'string', example: 'security' })],
-      ok: h.listResponse('Transactions, newest first, capped at 1000.'),
+      summary: 'Lenders or borrowers across the whole corpus',
+      description:
+        'The path segment is the side, not a conveyance type: `lenders` returns the assignees on '
+        + 'security agreements merged with the assignors on releases; `borrowers` returns the '
+        + 'assignors on security agreements. Each row carries a transaction count.',
+      params: [h.pathParam('conveyanceType', "'lenders' or 'borrowers'.", { type: 'string', example: 'lenders' })],
+      ok: h.listResponse('Parties with transaction counts, one row per name.'),
       errors: E,
     }),
   },

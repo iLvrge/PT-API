@@ -157,16 +157,24 @@ const timeline = (organisationId, rfIds) =>
     { organisationId, rfIds }
   );
 
-/** Assets to attach to a share link built from a transaction list. */
+/**
+ * Assets to attach to a share link built from a transaction list.
+ *
+ * The CONVERT() goes on `doc`, not on `assets`: the filter is `doc.rf_id`, so
+ * doc is the driving table and `assets` is the one that has to be looked up by
+ * key. Converting `assets.appno_doc_num` hid its index and left MySQL hash-
+ * joining 12.6M rows for what is a handful of assets - the same inversion that
+ * stalled the life-span query in events.repository.
+ */
 const assetsForTransactions = (rfIds) =>
   q.selectAll(
     app(),
     `SELECT CASE WHEN patent = '' THEN application ELSE patent END AS asset,
             CASE WHEN patent = '' THEN 5 ELSE 4 END AS flag
        FROM (SELECT doc.appno_doc_num AS application, MAX(doc.grant_doc_num) AS patent
-               FROM assets
-               INNER JOIN db_uspto.documentid AS doc
-                       ON CONVERT(assets.appno_doc_num USING latin1) = doc.appno_doc_num
+               FROM db_uspto.documentid AS doc
+               INNER JOIN assets
+                       ON assets.appno_doc_num = CONVERT(doc.appno_doc_num USING utf8mb4)
               WHERE doc.rf_id IN (:rfIds)
               GROUP BY doc.rf_id, assets.appno_doc_num) AS temp`,
     { rfIds }

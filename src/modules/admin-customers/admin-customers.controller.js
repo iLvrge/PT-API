@@ -239,8 +239,18 @@ const entityFileByName = asyncHandler(async (req, res) => {
 
 /* -------------------------------------------------------- pipeline jobs */
 
+/*
+ * Two things share this route, as they did in the legacy handler: the console's
+ * Entities list (type 3, no flags) is answered from the database; a request
+ * carrying `suggestions` or `fixed_identicals` starts the normalisation script
+ * instead and is acknowledged with a 202. The port ran the script for both,
+ * so neither the Entities nor the Inventors button ever showed a list.
+ */
+const INVENTORS = '1';
+const ENTITIES = '3';
+
 const normaliseNames = asyncHandler(async (req, res) => {
-  service.normaliseNames({
+  const input = {
     organisationId: Number(req.params.id),
     representativeIds: req.params.representativeID
       ? parseList(req.params.representativeID, 'representativeID')
@@ -248,7 +258,17 @@ const normaliseNames = asyncHandler(async (req, res) => {
     type: req.params.type,
     suggestions: req.query.suggestions,
     fixedIdenticals: req.query.fixed_identicals,
-  });
+  };
+  const wantsList = input.suggestions === undefined && input.fixedIdenticals === undefined;
+  if (wantsList && String(input.type) === ENTITIES) {
+    res.status(200).json(await service.entitiesForCustomer(input));
+    return;
+  }
+  if (wantsList && String(input.type) === INVENTORS) {
+    res.status(200).json(await service.inventorsForCustomer(input));
+    return;
+  }
+  service.normaliseNames(input);
   res.status(202).json({ message: 'Normalisation started' });
 });
 

@@ -1,20 +1,46 @@
 'use strict';
 
 /**
- * The report tables behind GET /customers/run_query/:name/:query_no.
+ * The reports behind GET /customers/run_query/:name/:query_no.
  *
- * A query number selects a table and the column to read from it. Both come
- * from this map, never from the request, so nothing the caller sends reaches
- * the SQL as an identifier.
+ * A query number selects a stored procedure, the table it fills and the column
+ * to read back. All three come from this map, never from the request, so
+ * nothing the caller sends reaches the SQL as an identifier.
+ *
+ * `procedure` is the half that was missing: these tables are scratch space that
+ * only holds what the last run left there, so reading without calling first
+ * returns another user's rows or, far more often, nothing at all. Every one of
+ * these reports came back empty because of it.
+ *
+ * `withoutName` marks the two procedures that take (companyID, organisationID)
+ * only - they work from the company, not a typed-in name.
  */
 const REPORT_QUERIES = {
-  1: { table: 'db_uspto.list1', column: 'assignor_and_assignee_id', byName: true },
-  2: { table: 'db_uspto.list2', column: 'rf_id', byName: true },
-  3: { table: 'db_new_application.assets', column: '*', layoutId: 15 },
-  4: { table: 'db_uspto.table_b', column: 'appno_doc_num' },
-  5: { table: 'db_uspto.table_c', column: 'appno_doc_num' },
-  6: { table: 'db_new_application.assets', column: '*', layoutId: 1 },
-  7: { table: 'db_new_application.assets', column: '*', layoutId: 4 },
+  1: { procedure: 'routine_list1', table: 'db_uspto.list1', column: 'assignor_and_assignee_id', byName: true },
+  2: { procedure: 'routine_list2', table: 'db_uspto.list2', column: 'rf_id', byName: true },
+  3: { procedure: 'routine_tableA', table: 'db_new_application.assets', column: '*', layoutId: 15 },
+  4: { procedure: 'routine_tableB', table: 'db_uspto.table_b', column: 'appno_doc_num' },
+  5: { procedure: 'routine_tableC', table: 'db_uspto.table_c', column: 'appno_doc_num' },
+  6: {
+    procedure: 'routine_broken_title', withoutName: true,
+    table: 'db_new_application.assets', column: '*', layoutId: 1,
+  },
+  7: { procedure: 'routine_correct_details', table: 'db_new_application.assets', column: '*', layoutId: 4 },
+  /*
+   * Correct Chain was left out of the port entirely, so the console's eighth
+   * report 400'd.
+   *
+   * It reads db_new_application.assets at layout_id 99, which is what
+   * routine_correct_chain declares and writes. The legacy handler ran that
+   * procedure and then read db_uspto.table_c with no layout filter - it carried
+   * a `query_no === 8 ? 99` branch but placed it inside a condition that
+   * excluded 8, so the branch never ran and the report showed table_c's
+   * contents instead of its own. Following the procedure is the fix.
+   */
+  8: {
+    procedure: 'routine_correct_chain', withoutName: true,
+    table: 'db_new_application.assets', column: '*', layoutId: 99,
+  },
 };
 
 /**

@@ -19,17 +19,21 @@ const reportSchema = z.object({
     representative_name: z.string().min(1).max(300),
     // The report number selects a table from a fixed map; anything else is a
     // client error rather than an empty result.
-    query_no: z.coerce.number().int().min(1).max(7),
+    query_no: z.coerce.number().int().min(1).max(8),
   }),
-  // Both are bound into the report SQL. They were optional, so a request
-  // without them reached Sequelize and died with
-  // 'Named parameter ":companyId" has no value' — a 500 for what is a missing
-  // argument. The legacy handler hid this by defaulting to a hardcoded
-  // company_id 99999 / organisation_id 68 and looking the company up in an
-  // array of TDK subsidiaries pasted into the route file.
+  /*
+   * Both are bound into the report SQL, and both default rather than being
+   * required.
+   *
+   * Requiring them turned every click on the console's Run Queries screen into
+   * a 400: the client sends the representative name and the report number and
+   * nothing else. The defaults are the legacy handler's own - company 99999,
+   * organisation 68 - which is what these scratch tables are keyed by in
+   * practice. A caller that knows better can still pass them.
+   */
   query: z.object({
-    company_id: z.coerce.number().int().nonnegative(),
-    organisation_id: z.coerce.number().int().positive(),
+    company_id: z.coerce.number().int().nonnegative().default(99999),
+    organisation_id: z.coerce.number().int().positive().default(68),
   }),
 });
 const inventorSchema = z.object({

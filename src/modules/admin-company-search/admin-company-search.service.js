@@ -148,6 +148,25 @@ const normaliseCompanies = async ({ partyIds, ptabNames, normalizeName }) => {
 
 const lawFirms = ({ search }) => repository.lawFirms({ search: search ? booleanTerms(search) : null });
 const lawFirmCompanies = (lawFirmId) => repository.companiesForLawFirm(lawFirmId);
+
+/*
+ * The legacy connection.DEFAULT_YEAR: nothing executed more than 24 years ago
+ * counts towards a customer's correspondent list.
+ */
+const YEARS_OF_HISTORY = 24;
+const yearFloor = () => `${new Date().getFullYear() - YEARS_OF_HISTORY}-01-01`;
+
+/**
+ * A customer's law firms — GET /admin/company/law_firms/:id.
+ *
+ * `:id` is the customer. The port read it as a law_firm_id and answered with
+ * that firm's lawyers instead, so this list was wrong for every customer.
+ */
+const lawFirmsForCustomer = async ({ organisationId, portfolios }) => {
+  const companyIds = await companyIdsFor({ organisationId, portfolios });
+  if (!companyIds.length) return [];
+  return repository.lawFirmsForCustomer({ companyIds, yearFloor: yearFloor() });
+};
 const companyLawFirms = (partyId) => repository.lawFirmsForCompany(partyId);
 
 /**
@@ -190,6 +209,39 @@ const normaliseLawFirms = async ({ lawFirmIds, names, normalizeName }) => {
 
 const lawyers = ({ search }) => repository.lawyers({ search: search ? booleanTerms(search) : null });
 const lawyersForFirm = (lawFirmId) => repository.lawyersForFirm(lawFirmId);
+
+/**
+ * A customer's lawyers — GET /admin/company/lawyers/:id, `:id` the customer.
+ *
+ * The port read `:id` as a law_firm_id and answered with that firm's lawyers,
+ * an unrelated list for every customer. The grid reads two nested objects the
+ * flat query cannot produce - `representativelawyers` and `lawfirms` with its
+ * own `representativelawfirm` - so they are assembled here, null when there is
+ * no normalised name, which is what the cell renderers test for.
+ */
+const lawyersForCustomer = async ({ organisationId, portfolios }) => {
+  const companyIds = await companyIdsFor({ organisationId, portfolios });
+  if (!companyIds.length) return [];
+  const rows = await repository.lawyersForCustomer({ companyIds });
+  return rows.map((row) => ({
+    lawyer_id: row.lawyer_id,
+    name: row.name,
+    counter: Number(row.counter),
+    total_occurences: row.total_occurences,
+    representativelawyers: row.representative_lawyer_id == null ? null : {
+      representative_lawyer_id: row.representative_lawyer_id,
+      representative_name: row.lawyer_representative_name,
+    },
+    lawfirms: row.law_firm_id == null ? null : {
+      law_firm_id: row.law_firm_id,
+      law_firm_name: row.law_firm_name,
+      representativelawfirm: row.law_firm_representative_id == null ? null : {
+        representative_id: row.law_firm_representative_id,
+        representative_name: row.law_firm_representative_name,
+      },
+    },
+  }));
+};
 
 const normaliseLawyers = async ({ lawyerIds, normalizeName }) => {
   if (!normalizeName) throw ApiError.badRequest('A normalised name is required');
@@ -239,8 +291,41 @@ const updateAssignment = async ({ rfId, fields }) => {
 };
 
 const recentTransactions = (limit) => repository.recentTransactions(limit);
-const transactionsByConveyance = (conveyanceType) =>
-  repository.transactionsByConveyance(conveyanceType);
+/**
+ * The console's Lenders and Borrowers lists — GET /admin/all/transactions/:side.
+ *
+ * `:side` is 'lenders' or 'borrowers', not a conveyance type. The port read it
+ * as one and filtered `convey_ty = 'lenders'`, which matches nothing, so both
+ * lists came back empty.
+ *
+ * Lenders are the assignees on security agreements plus the assignors on
+ * releases (the same bank appears on both ends of a loan's life); the two are
+ * merged by party, transaction counts summed. Borrowers are the assignors on
+ * security agreements. `count_assets` is a placeholder the borrowers grid reads.
+ */
+const SECURITY = ['security', 'restatedsecurity'];
+const RELEASE = ['release'];
+
+const partiesForSide = async (side) => {
+  if (side === 'borrowers') {
+    const rows = await repository.partiesOnConveyances({ party: 'assignor', conveyanceTypes: SECURITY });
+    return rows.map((row) => ({ ...row, count_assets: '0' }));
+  }
+  if (side !== 'lenders') throw ApiError.badRequest(`Unknown side: ${side}`);
+
+  const [onSecurity, onRelease] = await Promise.all([
+    repository.partiesOnConveyances({ party: 'assignee', conveyanceTypes: SECURITY }),
+    repository.partiesOnConveyances({ party: 'assignor', conveyanceTypes: RELEASE }),
+  ]);
+
+  const byParty = new Map();
+  [...onSecurity, ...onRelease].forEach((row) => {
+    const seen = byParty.get(row.assignor_and_assignee_id);
+    if (seen) seen.counter += Number(row.counter);
+    else byParty.set(row.assignor_and_assignee_id, { id: row.assignor_and_assignee_id, ...row, counter: Number(row.counter) });
+  });
+  return [...byParty.values()];
+};
 
 /* ---------------------------------------------------------------- assets */
 
@@ -549,6 +634,8 @@ module.exports = {
   rememberAddress,
   normaliseCompanies,
   lawFirms,
+  lawFirmsForCustomer,
+  lawyersForCustomer,
   lawFirmCompanies,
   companyLawFirms,
   normaliseLawFirms,
@@ -558,7 +645,7 @@ module.exports = {
   rawAssignment,
   updateAssignment,
   recentTransactions,
-  transactionsByConveyance,
+  partiesForSide,
   partyAssets,
   companyMaintenance,
   citedOrganisations,

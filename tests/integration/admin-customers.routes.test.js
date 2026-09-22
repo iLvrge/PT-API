@@ -112,19 +112,36 @@ describe('GET /admin/customers/run_query/:name/:query_no', () => {
     expect(repo.findCustomer).not.toHaveBeenCalled();
   });
 
-  // company_id and organisation_id are bound into the report SQL. They used to
-  // be optional, so a request without them reached Sequelize and failed with
-  // 'Named parameter ":companyId" has no value' — a 500 for a missing argument.
-  it('400s when the bound parameters are missing, rather than 500', async () => {
-    const res = await auth(request(app).get('/admin/customers/run_query/Acme/1')).expect(400);
-    const fields = res.body.error.details.map((d) => d.field);
-    expect(fields).toEqual(expect.arrayContaining(['company_id', 'organisation_id']));
-    expect(repo.runReport).not.toHaveBeenCalled();
+  /*
+   * company_id and organisation_id are bound into the report SQL, so they must
+   * always reach the repository — but they default rather than being required.
+   *
+   * Requiring them made every click on the console's Run Queries screen a 400:
+   * that client sends the name and the report number and nothing else. The
+   * defaults are the legacy handler's own, 99999 / 68.
+   */
+  it('defaults the bound parameters when the client sends neither', async () => {
+    repo.runReport.mockResolvedValue([]);
+    await auth(request(app).get('/admin/customers/run_query/Acme/1')).expect(200);
+    expect(repo.runReport).toHaveBeenCalledWith(
+      expect.objectContaining({ companyId: 99999, organisationId: 68 })
+    );
   });
 
-  it('400s when only one of the two is given', async () => {
-    await auth(request(app).get('/admin/customers/run_query/Acme/1?company_id=9')).expect(400);
-    expect(repo.runReport).not.toHaveBeenCalled();
+  it('keeps the given half and defaults the other', async () => {
+    repo.runReport.mockResolvedValue([]);
+    await auth(request(app).get('/admin/customers/run_query/Acme/1?company_id=9')).expect(200);
+    expect(repo.runReport).toHaveBeenCalledWith(
+      expect.objectContaining({ companyId: 9, organisationId: 68 })
+    );
+  });
+
+  // Correct Chain. It was missing from the report map, so the console's eighth
+  // button was rejected as out of range.
+  it('accepts report 8', async () => {
+    repo.runReport.mockResolvedValue([]);
+    await auth(request(app).get('/admin/customers/run_query/Acme/8')).expect(200);
+    expect(repo.runReport).toHaveBeenCalledWith(expect.objectContaining({ queryNo: 8 }));
   });
 
   it('passes both through to the repository once given', async () => {
@@ -163,9 +180,10 @@ describe('pipeline jobs', () => {
   });
 
   it('passes named companies through as JSON, not shell text', async () => {
-    await auth(request(app).get('/admin/customers/customers/118/%5B9%2C10%5D/1')).expect(202);
+    // A plain type-1 request is the Inventors list now; the script needs a flag.
+    await auth(request(app).get('/admin/customers/customers/118/%5B9%2C10%5D/1?fixed_identicals=1')).expect(202);
     expect(jobs.runNodeScript).toHaveBeenCalledWith(
-      'normalize_names.js', [118, '[9,10]', '1', '', '']
+      'normalize_names.js', [118, '[9,10]', '1', '', '1']
     );
   });
 
@@ -236,5 +254,53 @@ describe('logs', () => {
 
   it('400s on a malformed companies list', async () => {
     await auth(request(app).get('/admin/customers/118/run_update_log?companies=oops')).expect(400);
+  });
+});
+
+/*
+ * GET /admin/customers/customers/:id/:portfolios/:type carries two things, as
+ * it did in the legacy handler: the console's Entities list (type 3, no flags)
+ * answered from the database, and the normalisation script, started when
+ * `suggestions` or `fixed_identicals` is sent. The port ran the script for
+ * both and answered 202, so the Entities button never showed a list.
+ */
+describe('customer entities', () => {
+  const entity = { assignor_and_assignee_id: 7, name: 'Avaya Inc', counter: '3', normalize_name: null,
+    representativeCompany: null, total_occurences: 9, rf_id: 1, flag: 1 };
+
+  beforeEach(() => { jobs.runNodeScript.mockClear(); repo.entitiesForCustomer.mockReset(); });
+
+  it('answers the entities list for type 3 without starting the script', async () => {
+    repo.entitiesForCustomer.mockResolvedValue([entity]);
+    const res = await auth(request(app).get('/admin/customers/customers/68/[859,864]/3')).expect(200);
+    expect(repo.entitiesForCustomer).toHaveBeenCalledWith(
+      expect.objectContaining({ companyIds: [859, 864] })
+    );
+    expect(res.body).toEqual([expect.objectContaining({ id: 7, name: 'Avaya Inc', counter: 3, total_occurences: 9 })]);
+    expect(jobs.runNodeScript).not.toHaveBeenCalled();
+  });
+
+  it('folds names differing only in case into one row, counts summed', async () => {
+    repo.entitiesForCustomer.mockResolvedValue([
+      entity, { ...entity, assignor_and_assignee_id: 8, name: 'AVAYA INC', counter: '2' },
+    ]);
+    const res = await auth(request(app).get('/admin/customers/customers/68/[859]/3')).expect(200);
+    expect(res.body).toHaveLength(1);
+    expect(res.body[0].counter).toBe(5);
+  });
+
+  it('still starts the script when normalisation flags are sent', async () => {
+    jobs.runNodeScript.mockResolvedValue({});
+    await auth(request(app).get('/admin/customers/customers/68/[859]/3?suggestions=1')).expect(202);
+    expect(repo.entitiesForCustomer).not.toHaveBeenCalled();
+    expect(jobs.runNodeScript).toHaveBeenCalled();
+  });
+
+  it('answers the inventors list for type 1 from both sources, folded together', async () => {
+    repo.inventorAssignorsForCustomer.mockResolvedValue([{ ...entity, name: 'Kevin James', counter: '4', flag: 1 }]);
+    repo.bibliographicInventorsForCustomer.mockResolvedValue([{ ...entity, assignor_and_assignee_id: 9, name: 'KEVIN JAMES', counter: '5', flag: 4, rf_id: 0 }]);
+    const res = await auth(request(app).get('/admin/customers/customers/68/[859]/1')).expect(200);
+    expect(res.body).toEqual([expect.objectContaining({ name: 'Kevin James', counter: 9 })]);
+    expect(jobs.runNodeScript).not.toHaveBeenCalled();
   });
 });

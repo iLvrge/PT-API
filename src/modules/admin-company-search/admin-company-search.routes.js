@@ -44,7 +44,9 @@ router.put('/company/:ID/search/address_with_transactions/:type', validate(entit
 router.get('/company/law_firms', controller.lawFirms);
 router.put('/company/law_firms', controller.normaliseLawFirms);
 router.get('/company/law_firms/:id/companies', validate(idSchema), controller.lawFirmCompanies);
-router.get('/company/law_firms/:id', validate(idSchema), controller.lawyersForFirm);
+// `:id` is the CUSTOMER. This answered with lawyersForFirm, which reads it as a
+// law_firm_id — an unrelated list for every customer.
+router.get('/company/law_firms/:id', validate(idSchema), controller.lawFirmsForCustomer);
 router.get('/company/:companyID/law_firms', controller.companyLawFirms);
 router.get('/company/:id/companies', validate(idSchema), controller.normalisationCandidates);
 router.put('/company/:id/company_selection', validate(idSchema), controller.setCompanySelection);
@@ -53,7 +55,9 @@ router.put('/company/:id/company_selection', validate(idSchema), controller.setC
 
 router.get('/company/lawyers', controller.lawyers);
 router.put('/company/lawyers', controller.normaliseLawyers);
-router.get('/company/lawyers/:id', validate(idSchema), controller.lawyersForFirm);
+// `:id` is the CUSTOMER, as for law_firms/:id above. This also answered with
+// lawyersForFirm — an unrelated list for every customer.
+router.get('/company/lawyers/:id', validate(idSchema), controller.lawyersForCustomer);
 
 /* ----------------------------------------------------------- assignments */
 

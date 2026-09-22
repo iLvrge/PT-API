@@ -12,11 +12,21 @@ const icons = require('./events.icons');
 const series = require('./events.lifespan');
 const {
   FIRST_WINDOW, SECOND_WINDOW, THIRD_WINDOW, BAR_STYLE, EXPIRY_CODES,
+  LIFE_SPAN_YEAR_FLOOR,
 } = require('./events.constants');
 
 const yearFloor = () => new Date().getFullYear() - 24;
 
 /* ------------------------------------------------------------- life span */
+
+/**
+ * Both life-span routes feed one Redux slice, which the panel hands straight to
+ * a Google ColumnChart, so the response is a charting *table* - not the list of
+ * `{ year, count }` objects the counting step produces. Returning those made
+ * google.visualization throw "Column header row must be an array" on row 0 and
+ * the panel drew nothing.
+ */
+const asChartTable = (assets) => series.lifeSpanTable(series.lifeSpan(assets));
 
 /** GET /events/tabs — the life span of everything in a selection. */
 const lifeSpanForSelection = async ({ type, companies, tabs, customers, assignments }) => {
@@ -29,13 +39,64 @@ const lifeSpanForSelection = async ({ type, companies, tabs, customers, assignme
   });
   // A CALL comes back as one result set per statement; the first holds the rows.
   const assets = Array.isArray(rows[0]) ? rows[0] : Object.values(rows[0] || {});
-  return series.lifeSpan(assets);
+  return asChartTable(assets);
 };
 
-/** The life span of an explicit asset list. */
-const lifeSpanForAssets = async (applications) => {
+/**
+ * Whether a life-span request should leave out the assets already divested.
+ *
+ * These are the original API's conditions, kept verbatim rather than tidied,
+ * because each one has a reason:
+ *  - `divested` is the layout that exists to *show* them, so it cannot hide
+ *    them; `missed_monetization` builds its list a different way entirely.
+ *  - `assigned` is what the organisation assigned away, which overlaps with
+ *    divestment by design.
+ *  - with no company and no tab selected the list is not scoped to an
+ *    organisation at all, so there is nothing to call divested relative to.
+ *
+ * Bank-mode's parallel exclusion (assets_with_bank_expired_status) is
+ * deliberately not implemented here - that path is being worked on separately.
+ */
+const excludesDivested = ({ type, companies, tabs }) => {
+  if (type === 'divested' || type === 'assigned' || type === 'missed_monetization') return false;
+  return companies.length > 0 || tabs.length > 0;
+};
+
+/**
+ * The life span of an explicit asset list.
+ *
+ * Two passes, as the original API had: the assignment corpus answers for most
+ * numbers, and the bibliographic grant index covers the ones it does not carry.
+ * Skipping the second pass silently drops those assets from the chart.
+ *
+ * Term extensions are then attached to the rows, because they move an asset's
+ * expiry year and so change which bars it is counted in.
+ */
+const lifeSpanForAssets = async (applications, { type, companies = [], tabs = [] } = {}) => {
   if (!applications.length) return [];
-  return series.lifeSpan(await repository.filingDates(applications));
+
+  const year = LIFE_SPAN_YEAR_FLOOR();
+  const options = { excludeDivested: excludesDivested({ type, companies, tabs }), companies };
+  const primary = await repository.filingDates(applications, year, options);
+
+  const found = new Set(primary.map((row) => `${row.application}`));
+  const remaining = applications.filter((application) => !found.has(`${application}`));
+  const fallback = remaining.length
+    ? await repository.filingDatesFallback(remaining, year, options)
+    : [];
+
+  const assets = [...primary, ...fallback];
+  if (!assets.length) return [];
+
+  const extensions = await repository.termExtensions(assets.map((row) => `${row.application}`));
+  const daysByApplication = new Map(
+    extensions.map((row) => [`${row.appno_doc_num}`, Number(row.extension) || 0])
+  );
+
+  return asChartTable(assets.map((row) => ({
+    ...row,
+    extensionDays: daysByApplication.get(`${row.application}`) || 0,
+  })));
 };
 
 /* ---------------------------------------------------------- abandonment */
