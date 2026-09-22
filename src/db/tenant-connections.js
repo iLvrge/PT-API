@@ -21,7 +21,47 @@ const q = require('./query');
 const logger = require('../utils/logger');
 
 const cache = new Map(); // orgId -> { sequelize, lastUsed }
-const DEFAULT_TTL_MS = 5 * 60 * 1000;
+
+/*
+ * How long an unused tenant connection is kept, and how many are kept at once.
+ *
+ * Opening one of these costs a full TCP and MySQL handshake against the
+ * customer's own database - around seven seconds through the tunnel used for
+ * local work. At the original five-minute TTL, a customer who paused for five
+ * minutes paid that again on their next click: the company list took 7.4s on
+ * a page load for no reason other than a reopened connection.
+ *
+ * So the bound is now on COUNT rather than on a short clock. Idle connections
+ * live half an hour, which covers a working session, and the cache holds at
+ * most MAX_CACHED tenants - the least recently used is closed when a new one
+ * would exceed that. Resource use stays capped however many customers are
+ * active, without charging an active user a handshake mid-session.
+ */
+const DEFAULT_TTL_MS = Number(process.env.TENANT_IDLE_MS) || 30 * 60 * 1000;
+const MAX_CACHED = Number(process.env.TENANT_MAX_CACHED) || 25;
+
+/*
+ * Recency counter for the LRU order, separate from the `lastUsed` clock the
+ * TTL uses. Date.now() only resolves to the millisecond, so several requests
+ * in the same tick carry identical timestamps and the "oldest" is then
+ * whichever the sort happens to put first - it evicted a tenant that had just
+ * been used. A counter always increases, so the order is exact.
+ */
+let useCounter = 0;
+
+/** Close the least recently used tenants until the cache is within MAX_CACHED. */
+const evictOverflow = async () => {
+  if (cache.size <= MAX_CACHED) return;
+  const byAge = [...cache.entries()].sort((a, b) => a[1].seq - b[1].seq);
+  const doomed = byAge.slice(0, cache.size - MAX_CACHED);
+  await Promise.all(
+    doomed.map(async ([orgId, entry]) => {
+      cache.delete(orgId);
+      await entry.sequelize.close().catch(() => {});
+      logger.info('evicted least recently used tenant connection', { orgId, cached: cache.size });
+    })
+  );
+};
 
 /** Load an organisation's connection credentials. Raw read from db_business. */
 const loadCredentials = (orgId) =>
@@ -44,6 +84,7 @@ const getConnection = async (orgId) => {
   const cached = cache.get(orgId);
   if (cached) {
     cached.lastUsed = Date.now();
+    cached.seq = ++useCounter;
     return cached.sequelize;
   }
 
@@ -73,7 +114,9 @@ const getConnection = async (orgId) => {
     return null;
   }
 
-  cache.set(orgId, { sequelize, lastUsed: Date.now() });
+  cache.set(orgId, { sequelize, lastUsed: Date.now(), seq: ++useCounter });
+  // Bound the cache by count here, where it grows, rather than on the timer.
+  await evictOverflow();
   return sequelize;
 };
 

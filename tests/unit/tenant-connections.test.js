@@ -86,4 +86,59 @@ describe('tenant-connections', () => {
     await tenant.getConnection(9);
     expect(q.selectOne).toHaveBeenCalledTimes(2);
   });
+
+  /*
+   * Opening a tenant connection costs a full handshake against the customer's
+   * own database - about seven seconds through the tunnel used for local work.
+   * The cache used to drop anything unused for five minutes, so a customer who
+   * paused mid-session paid that again on their next click. The bound is on how
+   * many tenants are held, not on a short clock.
+   */
+  describe('cache bound', () => {
+    const credsFor = (orgId) => ({
+      organisation_id: orgId, org_host: 'db.example', org_db: `db_${orgId}`, org_usr: 'u', org_pass: 'p',
+    });
+
+    it('keeps a connection that is idle for longer than the old five minutes', async () => {
+      q.selectOne.mockImplementation(async () => credsFor(9));
+      await tenant.getConnection(9);
+      mockClose.mockClear();
+
+      await tenant.evictIdle(); // default TTL, nothing is stale yet
+      expect(mockClose).not.toHaveBeenCalled();
+
+      // Served from cache: no second credential lookup.
+      q.selectOne.mockClear();
+      await tenant.getConnection(9);
+      expect(q.selectOne).not.toHaveBeenCalled();
+    });
+
+    it('closes the least recently used tenant once the cache is full', async () => {
+      process.env.TENANT_MAX_CACHED = '2';
+      jest.resetModules();
+      // Re-require BOTH: the reset module graph hands the new
+      // tenant-connections a new query mock, not the one held above.
+      const boundedQ = require('../../src/db/query');
+      const bounded = require('../../src/db/tenant-connections');
+      bounded._reset();
+      boundedQ.selectOne.mockImplementation(async (_db, _sql, repl) => credsFor(repl.orgId));
+
+      await bounded.getConnection(1);
+      await bounded.getConnection(2);
+      await bounded.getConnection(1); // 1 is now the most recently used
+      mockClose.mockClear();
+
+      await bounded.getConnection(3); // over the bound: 2 is the oldest
+      expect(mockClose).toHaveBeenCalledTimes(1);
+
+      // 1 and 3 are still cached; 2 has to be reopened.
+      boundedQ.selectOne.mockClear();
+      await bounded.getConnection(1);
+      await bounded.getConnection(3);
+      expect(boundedQ.selectOne).not.toHaveBeenCalled();
+
+      delete process.env.TENANT_MAX_CACHED;
+      jest.resetModules();
+    });
+  });
 });
