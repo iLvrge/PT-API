@@ -58,7 +58,10 @@ const getConnection = async (orgId) => {
     // org_host stores a hostname only, so tenants share the main server's port.
     port: env.db.port,
     dialect: 'mysql',
-    pool: { max: 5, min: 0, acquire: 30000, idle: 10000 },
+    // min 1 and the main pool's idle time: a tenant connection costs the same
+    // 2.5-5 s handshake as the main ones, and at min 0 / 10 s idle it was
+    // reopened for almost every click on a customer.
+    pool: { max: 5, min: 1, acquire: 30000, idle: env.db.pool.idle },
     logging: false,
   });
 

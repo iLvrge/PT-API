@@ -37,8 +37,14 @@ const lifeSpanForSelection = async ({ type, companies, tabs, customers, assignme
     customers,
     assignments,
   });
-  // A CALL comes back as one result set per statement; the first holds the rows.
-  const assets = Array.isArray(rows[0]) ? rows[0] : Object.values(rows[0] || {});
+  /*
+   * Sequelize hands a CALL's rows back as a flat array of row objects; only
+   * when the procedure emits several result sets is the first element itself
+   * an array. This used to take `Object.values` of the FIRST ROW instead - four
+   * cell values standing in for the whole asset list - so every lifespan chart
+   * came back empty, and the panel showed Google's "no data" boxes.
+   */
+  const assets = Array.isArray(rows[0]) ? rows[0] : rows;
   return asChartTable(assets);
 };
 

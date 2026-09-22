@@ -93,7 +93,11 @@ const env = {
       max: toInt(process.env.DB_POOL_MAX, 20),
       min: toInt(process.env.DB_POOL_MIN, 2),
       acquire: toInt(process.env.DB_POOL_ACQUIRE, 30000),
-      idle: toInt(process.env.DB_POOL_IDLE, 10000),
+      // Opening a connection costs 2.5-5 s over the tunnel to the database
+      // (measured: handshake 2.4 s, first query 0.6 s). At 10 s idle the pool
+      // dropped its connections between one admin click and the next, so a
+      // 43-row request took 7 s. Ten minutes keeps them warm across a session.
+      idle: toInt(process.env.DB_POOL_IDLE, 600000),
     },
     logging: toBool(process.env.DB_QUERY_LOG, false),
   },

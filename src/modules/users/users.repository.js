@@ -20,6 +20,7 @@ const listByOrganisation = (organisationId) =>
     connections.business,
     `SELECT u.user_id AS id, u.first_name, u.last_name, u.email_address,
             u.job_title, u.linkedin_url, u.username, u.type, u.status,
+            u.telephone, u.telephone1, u.role_id,
             u.created_at, r.name AS role_name
        FROM user AS u
        LEFT JOIN role AS r ON r.role_id = u.role_id

@@ -33,6 +33,11 @@ const toPublic = (row) => ({
   username: row.username ?? row.email_address,
   type: row.type,
   status: row.status ?? 0,
+  // The console's user grid shows both phone columns and derives its
+  // Admin/User toggle from role_id; the legacy list carried the phones too.
+  telephone: row.telephone ?? null,
+  telephone1: row.telephone1 ?? null,
+  role_id: row.role_id ?? null,
   role_name: row.role_name ?? null,
   created_at: row.created_at ?? null,
 });
