@@ -308,8 +308,18 @@ const stopMissingInventors = asyncHandler(async (req, res) => {
   );
 });
 
+/*
+ * The console sends `?company_id=<JSON array>` — the portfolio rows the user
+ * ticked before pressing Update. The port ignored it and rebuilt nothing at
+ * all, because it also named a script that does not exist.
+ */
 const publishCompanies = asyncHandler(async (req, res) => {
-  res.status(200).json(await service.publishCompanies(Number(req.params.organisation_id)));
+  res.status(200).json(
+    await service.publishCompanies(
+      Number(req.params.organisation_id),
+      parseList(req.query.company_id, 'company_id')
+    )
+  );
 });
 
 const publishAddresses = asyncHandler(async (req, res) => {

@@ -27,7 +27,15 @@
 const { z } = require('zod');
 
 const orgId = z.coerce.number().int().positive();
-const optionalId = z.union([z.coerce.number().int(), z.literal('')]).optional().default('');
+/*
+ * An id, or the empty string meaning "all of them".
+ *
+ * The empty literal has to come first: zod tries a union's options in order,
+ * and z.coerce.number() turns '' into 0, so with the number first an "all
+ * companies" request reached the script as `0` rather than the `""` the legacy
+ * handler passed.
+ */
+const optionalId = z.union([z.literal(''), z.coerce.number().int()]).optional().default('');
 const jsonArray = z.array(z.union([z.string(), z.number()])).default([]);
 
 const MINUTE = 60 * 1000;
@@ -46,26 +54,6 @@ const JOBS = {
     // Provisioning twice would create a second database for the same customer.
     dedupe: (p) => `org:${p.organisationId}`,
     sources: ['customer-data-migrator', 'uspto-data-sync'],
-  },
-
-  'customer.publish-companies': {
-    runtime: 'php',
-    script: 'update_client_companies.php',
-    description: "Publish a customer's companies to their own database.",
-    schema: z.object({ organisationId: orgId }),
-    args: (p) => [p.organisationId, ''],
-    timeoutMs: 30 * MINUTE,
-    attempts: 2,
-    dedupe: (p) => `org:${p.organisationId}`,
-    sources: [],
-    /*
-     * This script is in none of the three repositories — only
-     * update_client_companies_address.php is. The call has therefore always
-     * failed, silently, because the failure was logged and dropped. Enqueuing
-     * it now refuses immediately and says why, rather than queueing work that
-     * cannot run. Remove this line once the script is found or written.
-     */
-    missing: 'Not present in any pipeline repository; only update_client_companies_address.php exists.',
   },
 
   'customer.publish-addresses': {
@@ -133,8 +121,14 @@ const JOBS = {
       : [p.organisationId, p.companyId, p.extra]),
     timeoutMs: 60 * MINUTE,
     attempts: 2,
-    // The heaviest job here: a full rebuild for one customer. Never two at once.
-    dedupe: (p) => `org:${p.organisationId}`,
+    /*
+     * Keyed by company as well as organisation. This job serves two shapes:
+     * a whole-organisation rebuild (companyId '') and one company at a time,
+     * which the console's Update button sends one per ticked portfolio row.
+     * Keying on the organisation alone collapsed a ten-company selection onto
+     * a single job and dropped the other nine.
+     */
+    dedupe: (p) => `org:${p.organisationId}:company:${p.companyId}`,
     sources: ['customer-data-migrator', 'uspto-data-sync'],
   },
 

@@ -539,10 +539,47 @@ const flagInventors = async ({ organisationId, partyIds, flag }) => {
   return { updated: partyIds.length, flag: Number(flag) };
 };
 
-const publishCompanies = async (organisationId) => {
+/**
+ * GET /admin/customers/:id/publish — rebuild a customer's application data.
+ *
+ * This is the console's "Update" button, and the port had it wrong in three
+ * ways. It called `update_client_companies.php`, a script that exists in no
+ * pipeline repository and that the legacy handler never named — so the call
+ * failed on every invocation, silently, because the failure was logged and
+ * dropped. It also lost the two things the legacy handler did first: refusing
+ * when the customer has no users, and honouring the `company_id` selection.
+ *
+ * The console sends `?company_id=<JSON array>` — the portfolio rows the user
+ * ticked. Empty means the whole organisation, one job. A selection means one
+ * job per company, with the legacy handler's trailing "1".
+ */
+const publishCompanies = async (organisationId, companyIds = []) => {
   const org = await requireCustomer(organisationId);
-  await jobs.enqueue('customer.publish-companies', { organisationId });
-  return { message: 'UPDATED!', name: org.name };
+
+  // Rebuilding a customer's database before anyone can log into it is wasted
+  // work; the legacy handler said so rather than pretending to succeed.
+  const users = await repository.countUsersInOrganisation(organisationId);
+  if (!users) {
+    return { message: 'Please create a admin user first for this customer.', name: org.name };
+  }
+
+  if (!companyIds.length) {
+    const queued = await jobs.enqueue('company.build-application-data', {
+      organisationId, companyId: '',
+    });
+    return { message: 'UPDATED!', name: org.name, jobIds: [queued.id] };
+  }
+
+  const queued = [];
+  for (const companyId of companyIds) {
+    // Sequential so the ids come back in the order they were requested; the
+    // dedupe key is per company, so these do not collapse into one another.
+    const job = await jobs.enqueue('company.build-application-data', {
+      organisationId, companyId, extra: '1',
+    });
+    queued.push(job.id);
+  }
+  return { message: 'UPDATED!', name: org.name, jobIds: queued };
 };
 
 const publishAddresses = async (organisationId) => {

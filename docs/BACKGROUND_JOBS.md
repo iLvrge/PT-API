@@ -29,9 +29,14 @@ to ask "is it still going?", so a long job and a dead one looked identical — t
 same complaint that turned out to be behind several "the button does nothing"
 reports.
 
-**One job could never have worked.** `update_client_companies.php` is called by
-`publishCompanies`, and it does not exist in any of the three repositories. Only
-`update_client_companies_address.php` does. That call has always failed.
+**One endpoint was ported to a script that does not exist.** `publishCompanies`
+— the console's Update button — called `update_client_companies.php`. That file
+is in none of the three repositories, is in no repository's git history, and
+the legacy handler never named it. The legacy `/publish` route ran
+`create_data_for_company_db_application.php`, did two things first, and the
+port dropped both: it refused when the customer had no users, and it honoured
+the `?company_id=` selection the console sends, queueing one rebuild per ticked
+company. All three are restored; see "The publish endpoint" below.
 
 **The same script name means different things.** Every script present in more
 than one repository differs between them — different sizes, different contents:
@@ -115,30 +120,44 @@ at least visible.
 
 ## What needs a decision
 
-Four things surfaced while building this that code cannot settle:
+Three things surfaced while building this that code cannot settle:
 
-**1. `update_client_companies.php` does not exist.** `publishCompanies` has
-always called it and it has always failed. The job is declared and marked
-`missing`, so it now refuses with a 503 that says why instead of failing
-silently. Either the script needs writing, or the call should point at
-`update_client_companies_address.php`, or `publishCompanies` should go.
-
-**2. Every duplicated script differs between repositories.** Ten of the
+**1. Every duplicated script differs between repositories.** Ten of the
 seventeen exist in two or three checkouts, and no two copies are identical.
 `SCRIPT_PATH` picks one directory, so the deployed copy wins by accident. The
 catalogue's `sources` field lists where each was found; someone needs to decide
 which repository is authoritative and retire the rest.
 
-**3. `SCRIPT_PATH` points at `/var/www/html/scripts/`,** which exists only on
+**2. `SCRIPT_PATH` points at `/var/www/html/scripts/`,** which exists only on
 the server. Every job is therefore unrunnable on a developer machine — visible
 now at `GET /admin/jobs/catalogue`, where all eighteen report
 `runnable: false` with the reason. Previously this was silent.
 
-**4. The scripts connect as root.** `script_create_customer_db.php` opens
+**3. The scripts connect as root.** `script_create_customer_db.php` opens
 `mysqli("localhost", "root", getenv('DB_RT_PWD'))` and issues `CREATE DATABASE`
 and `CREATE USER`. That is why `DB_RT_PWD` has to be in the worker's
 environment, and it is worth deciding whether provisioning should keep those
 rights or move behind a narrower account.
+
+## The publish endpoint
+
+`GET /admin/customers/:id/publish` is the console's Update button, and it was
+the one endpoint the port got wrong rather than merely un-instrumented. What it
+does now, matching the legacy handler:
+
+1. Counts the customer's users. With none it answers *"Please create a admin
+   user first for this customer."* and queues nothing — rebuilding a database
+   nobody can log into is wasted work, and the port reported it as success.
+2. Reads `?company_id=<JSON array>`, which the console sends as the portfolio
+   rows the user ticked.
+3. No selection: one `company.build-application-data` job for the whole
+   organisation, argv `[orgId, ""]`.
+4. A selection: one job per company, argv `[orgId, companyId, "1"]`.
+
+The dedupe key for that job is `org:<id>:company:<id>` rather than the
+organisation alone. Keyed on the organisation, a ten-company selection would
+collapse onto one job and the other nine would be dropped silently — the same
+class of bug as the one being fixed.
 
 ## Operational notes
 

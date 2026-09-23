@@ -78,7 +78,6 @@ describe('job catalogue', () => {
   it('gives every customer-scoped rebuild a dedupe key', () => {
     const mustDedupe = [
       'customer.provision',
-      'customer.publish-companies',
       'customer.publish-addresses',
       'company.build-application-data',
       'family.build-for-customer',
@@ -95,13 +94,29 @@ describe('job catalogue', () => {
     });
   });
 
-  it('marks the one script that exists in no repository', () => {
-    // update_client_companies.php is called by publishCompanies and is present
-    // in none of the three pipeline checkouts; only the _address variant is.
-    expect(JOBS['customer.publish-companies'].missing).toEqual(expect.any(String));
-    // Nothing else claims to be missing.
+  /*
+   * Every declared script exists somewhere. The one that did not —
+   * update_client_companies.php, which publishCompanies called — was never a
+   * real script: the legacy handler ran create_data_for_company_db_application
+   * for that endpoint and never named the other. The job has been removed
+   * rather than left declared-but-broken.
+   */
+  it('declares no job whose script does not exist', () => {
     const missing = JOB_NAMES.filter((n) => JOBS[n].missing);
-    expect(missing).toEqual(['customer.publish-companies']);
+    expect(missing).toEqual([]);
+    expect(JOB_NAMES).not.toContain('customer.publish-companies');
+  });
+
+  it('serves both publish shapes from one job, keyed so neither collapses', () => {
+    const definition = jobDefinition('company.build-application-data');
+    const wholeOrg = definition.schema.parse({ organisationId: 68, companyId: '' });
+    const oneCompany = definition.schema.parse({ organisationId: 68, companyId: 859, extra: '1' });
+
+    // Keyed on the organisation alone, a ten-company selection collapsed onto
+    // one job and the other nine were dropped.
+    expect(definition.dedupe(wholeOrg)).not.toBe(definition.dedupe(oneCompany));
+    expect(definition.args(oneCompany)).toEqual([68, 859, '1']);
+    expect(definition.args(wholeOrg)).toEqual([68, '']);
   });
 
   it('records which repositories carry each script', () => {

@@ -68,12 +68,6 @@ describe('the environment a script receives', () => {
 });
 
 describe('deciding whether a job can run at all', () => {
-  it('refuses a job whose script is in no repository, by name', () => {
-    const result = checkRunnable('customer.publish-companies');
-    expect(result.ok).toBe(false);
-    expect(result.reason).toContain('update_client_companies.php');
-  });
-
   it('refuses everything when no script directory is configured', () => {
     const configured = env.jobs.scriptPath;
     env.jobs.scriptPath = '';

@@ -202,10 +202,54 @@ describe('pipeline jobs', () => {
     expect(repo.createInventorProcess).not.toHaveBeenCalled();
   });
 
-  it('publishes company changes', async () => {
-    const res = await auth(request(app).get('/admin/customers/118/publish')).expect(200);
-    expect(jobs.enqueue).toHaveBeenCalledWith('customer.publish-companies', { organisationId: 118 });
-    expect(res.body.message).toBe('UPDATED!');
+  /*
+   * The console's Update button. The port called update_client_companies.php,
+   * a script that exists in no pipeline repository and that the legacy handler
+   * never named — so this failed on every press, silently. It also dropped the
+   * user check and the company_id selection the legacy handler honoured.
+   */
+  describe('publish', () => {
+    beforeEach(() => repo.countUsersInOrganisation.mockResolvedValue(3));
+
+    it('rebuilds the whole organisation when nothing is selected', async () => {
+      const res = await auth(request(app).get('/admin/customers/118/publish')).expect(200);
+
+      expect(jobs.enqueue).toHaveBeenCalledWith('company.build-application-data', {
+        organisationId: 118, companyId: '',
+      });
+      expect(res.body.message).toBe('UPDATED!');
+    });
+
+    it('queues one rebuild per selected company', async () => {
+      await auth(request(app).get('/admin/customers/118/publish?company_id=%5B9%2C10%5D')).expect(200);
+
+      // One job each, with the legacy handler's trailing "1".
+      expect(jobs.enqueue).toHaveBeenCalledTimes(2);
+      expect(jobs.enqueue).toHaveBeenCalledWith('company.build-application-data', {
+        organisationId: 118, companyId: 9, extra: '1',
+      });
+      expect(jobs.enqueue).toHaveBeenCalledWith('company.build-application-data', {
+        organisationId: 118, companyId: 10, extra: '1',
+      });
+    });
+
+    it('refuses when the customer has no users, instead of rebuilding for nobody', async () => {
+      repo.countUsersInOrganisation.mockResolvedValue(0);
+
+      const res = await auth(request(app).get('/admin/customers/118/publish')).expect(200);
+
+      expect(res.body.message).toBe('Please create a admin user first for this customer.');
+      expect(jobs.enqueue).not.toHaveBeenCalled();
+    });
+
+    // validate() replaces req.query with its parsed output, and orgSchema
+    // declares only params — so the query survives. Worth holding in place.
+    it('still receives company_id after route validation', async () => {
+      await auth(request(app).get('/admin/customers/118/publish?company_id=%5B7%5D')).expect(200);
+      expect(jobs.enqueue).toHaveBeenCalledWith('company.build-application-data', {
+        organisationId: 118, companyId: 7, extra: '1',
+      });
+    });
   });
 });
 

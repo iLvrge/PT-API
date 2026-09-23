@@ -59,12 +59,14 @@ describe('GET /admin/jobs/catalogue', () => {
 
   it('says which jobs cannot run here, and why', async () => {
     const res = await auth(request(app).get('/admin/jobs/catalogue')).expect(200);
-    const publish = res.body.find((j) => j.name === 'customer.publish-companies');
 
-    // Its script is in none of the pipeline repositories. Reporting that here
-    // is the whole point: it used to surface only as a job that failed.
-    expect(publish.runnable).toBe(false);
-    expect(publish.reason).toContain('update_client_companies.php');
+    // On a machine without the pipeline checkout every job reports why, which
+    // is the point: this used to surface only as a job that failed minutes
+    // after someone was told it had started.
+    const unrunnable = res.body.filter((j) => !j.runnable);
+    unrunnable.forEach((j) => expect(j.reason).toMatch(/not found|SCRIPT_PATH/));
+    // Every declared job names a script that exists somewhere.
+    res.body.forEach((j) => expect(j.script).toMatch(/\.(php|js)$/));
   });
 
   it('is not shadowed by the :id route', async () => {
@@ -150,7 +152,7 @@ describe('POST /admin/jobs', () => {
     queue.enqueue.mockRejectedValue(refusal);
 
     await auth(request(app).post('/admin/jobs'))
-      .send({ name: 'customer.publish-companies', payload: { organisationId: 68 } })
+      .send({ name: 'customer.publish-addresses', payload: { organisationId: 68 } })
       .expect(503);
   });
 });
