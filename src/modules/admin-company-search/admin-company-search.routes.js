@@ -13,7 +13,7 @@ router.use(verifyToken, requireAdmin);
 
 const id = z.coerce.number().int().positive();
 const idSchema = z.object({ params: z.object({ id }) });
-const entitySchema = z.object({ params: z.object({ ID: id }) });
+const entitySchema = z.object({ params: z.object({ id: id }) });
 
 /* ------------------------------------------------------ company requests */
 
@@ -32,12 +32,12 @@ router.get('/company/search/:search', controller.searchCompanies);
 router.get('/company/representative/search/:name', controller.searchRepresentatives);
 router.get('/company/account/search/:name', controller.searchAccounts);
 
-router.get('/lawfirm/:ID/search/address', validate(entitySchema), controller.lawFirmAddresses);
-router.post('/lawfirm/:ID/search/address/all', validate(entitySchema), controller.searchLawFirmAddresses);
-router.get('/company/:ID/search/address/:type', validate(entitySchema), controller.partyAddresses);
-router.post('/company/:ID/search/address/all/:type', validate(entitySchema), controller.searchCompanyAddresses);
-router.get('/company/:ID/search/address_with_transactions/:type', validate(entitySchema), controller.addressesWithTransactions);
-router.put('/company/:ID/search/address_with_transactions/:type', validate(entitySchema), controller.rememberAddress);
+router.get('/lawfirm/:id/search/address', validate(entitySchema), controller.lawFirmAddresses);
+router.post('/lawfirm/:id/search/address/all', validate(entitySchema), controller.searchLawFirmAddresses);
+router.get('/company/:id/search/address/:type', validate(entitySchema), controller.partyAddresses);
+router.post('/company/:id/search/address/all/:type', validate(entitySchema), controller.searchCompanyAddresses);
+router.get('/company/:id/search/address_with_transactions/:type', validate(entitySchema), controller.addressesWithTransactions);
+router.put('/company/:id/search/address_with_transactions/:type', validate(entitySchema), controller.rememberAddress);
 
 /* ------------------------------------------------------------- law firms */
 
@@ -47,7 +47,7 @@ router.get('/company/law_firms/:id/companies', validate(idSchema), controller.la
 // `:id` is the CUSTOMER. This answered with lawyersForFirm, which reads it as a
 // law_firm_id — an unrelated list for every customer.
 router.get('/company/law_firms/:id', validate(idSchema), controller.lawFirmsForCustomer);
-router.get('/company/:companyID/law_firms', controller.companyLawFirms);
+router.get('/company/:company_id/law_firms', controller.companyLawFirms);
 router.get('/company/:id/companies', validate(idSchema), controller.normalisationCandidates);
 router.put('/company/:id/company_selection', validate(idSchema), controller.setCompanySelection);
 
@@ -67,16 +67,16 @@ router.get('/company/assignments/:id', validate(idSchema), controller.correspond
 router.get('/company/raw/assignments/:id', validate(idSchema), controller.rawCorrespondence);
 router.put('/company/raw/assignments/:id', validate(idSchema), controller.updateAssignment);
 router.get('/company/transactions/:id', controller.transactions);
-router.get('/company/transactions/:id/:representativeID', controller.transactions);
-router.put('/company/transactions/:customerID', controller.retypeTransaction);
+router.get('/company/transactions/:id/:representative_id', controller.transactions);
+router.put('/company/transactions/:id', controller.retypeTransaction);
 router.get('/company/lenders/:id/companies', controller.lenderCompanies);
 router.get('/company/recent_transactions', controller.recentTransactions);
-router.get('/all/transactions/:conveyanceType', controller.transactionsByConveyance);
+router.get('/all/transactions/:conveyance_type', controller.transactionsByConveyance);
 
 /* ------------------------------------------------------------ assets */
 
-router.get('/company/assets/:entityID', controller.partyAssets);
-router.get('/company/:representativeID/event_maintainence', controller.companyMaintenance);
+router.get('/company/assets/:entity_id', controller.partyAssets);
+router.get('/company/:representative_id/event_maintainence', controller.companyMaintenance);
 
 /* ------------------------------------------------------------- cited */
 
@@ -85,7 +85,7 @@ router.get('/company/report', controller.representativeReports);
 router.get('/company/lender', controller.searchLenders);
 router.get('/company/law_firms/:id/normalize_lawfirms', validate(idSchema), controller.lawFirmNormalisationCandidates);
 router.get('/company/family/:id', validate(idSchema), controller.runFamilyAssets);
-router.get('/company/family/:id/:representativeID', validate(idSchema), controller.runFamilyAssets);
+router.get('/company/family/:id/:representative_id', validate(idSchema), controller.runFamilyAssets);
 router.get('/company/get_counter_cited_organisations_and_logo', controller.citedCounters);
 router.get('/company/parties/all/:id', validate(idSchema), controller.parties);
 router.get('/company/saved_logo/parties/all/:id', validate(idSchema), controller.savedLogoParties);

@@ -12,6 +12,29 @@ const cors = require('cors');
 const rateLimit = require('express-rate-limit');
 const { env } = require('../config/env');
 const ApiError = require('../utils/api-error');
+const problem = require('../utils/problem');
+
+/**
+ * What a limiter answers when it trips.
+ *
+ * express-rate-limit sends this itself rather than passing an error down the
+ * chain, so without a handler here a 429 would be the one response in the API
+ * that is not a problem document. `Retry-After` is set explicitly: the
+ * standard headers carry the reset time, but a client that only knows
+ * RFC 7807 and RFC 6585 looks for this one.
+ */
+const limitHandler = (req, res) => {
+  const retryAfter = Math.max(1, Math.ceil(env.security.rateLimit.windowMs / 1000));
+  res.setHeader('Retry-After', retryAfter);
+  res.status(429).type(problem.MEDIA_TYPE).json(problem.build({
+    status: 429,
+    title: problem.TYPES.RATE_LIMITED.title,
+    type: problem.uri(problem.TYPES.RATE_LIMITED.slug),
+    detail: `Rate limit exceeded. Retry in ${retryAfter} seconds.`,
+    instance: req.originalUrl ? req.originalUrl.split('?')[0] : undefined,
+    requestId: req.id,
+  }));
+};
 
 const corsMiddleware = cors({
   origin(origin, callback) {
@@ -31,6 +54,7 @@ const globalLimiter = rateLimit({
   standardHeaders: true,
   legacyHeaders: false,
   skip: () => env.isTest,
+  handler: limitHandler,
 });
 
 // Stricter limiter for auth endpoints (login, password reset, code verification).
@@ -40,7 +64,7 @@ const authLimiter = rateLimit({
   standardHeaders: true,
   legacyHeaders: false,
   skip: () => env.isTest,
-  message: { error: { message: 'Too many attempts, please try again later.' } },
+  handler: limitHandler,
 });
 
 /**
@@ -57,6 +81,7 @@ const publicLimiter = rateLimit({
   standardHeaders: true,
   legacyHeaders: false,
   skip: () => env.isTest,
+  handler: limitHandler,
 });
 
 module.exports = {

@@ -13,8 +13,8 @@ const guard = [verifyToken, attachTenant];
 // Mounted at /category_products.
 router.get('/', guard, controller.listCategories);
 router.post('/', guard, validate(schema.createSchema), controller.create);
-router.get('/:categoryId/products', guard, validate(schema.categoryIdSchema), controller.listProducts);
-router.delete('/products/:productId', guard, validate(schema.productIdSchema), controller.removeProduct);
-router.delete('/:categoryId', guard, validate(schema.categoryIdSchema), controller.removeCategory);
+router.get('/:category_id/products', guard, validate(schema.categoryIdSchema), controller.listProducts);
+router.delete('/products/:product_id', guard, validate(schema.productIdSchema), controller.removeProduct);
+router.delete('/:category_id', guard, validate(schema.categoryIdSchema), controller.removeCategory);
 
 module.exports = router;

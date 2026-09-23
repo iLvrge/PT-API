@@ -1,0 +1,44 @@
+# Linting for the OpenAPI document.
+#
+#   npm run lint:api
+#
+# The document is built by requiring src/docs/openapi.js, so the lint runs over
+# the same object the app serves at /docs.json rather than a hand-kept copy.
+#
+# tests/integration/docs-coverage.test.js already checks the spec against the
+# live Express router in both directions. This checks the spec against the
+# OpenAPI specification itself: parameter declarations that do not match their
+# path, request bodies nested one level too deep, JSON Schema members that were
+# valid in 3.0 and are not in 3.1. It caught all three when the document was
+# moved to 3.1.
+
+extends:
+  - recommended
+
+apis:
+  patentrack:
+    root: ./build/openapi.json
+
+rules:
+  # Two paths that differ only in what their parameter is called are the same
+  # URL described twice. Four are left, and they are not a naming problem: the
+  # position genuinely carries two different things depending on the method —
+  # GET /comments/{subject_type} reads a type, PUT /comments/{id} reads a
+  # comment id. Fixing that means changing the URLs, which breaks both
+  # front ends, so it is queued behind the `jobs` resource rather than
+  # suppressed here. Kept as a warning so the count cannot grow unnoticed.
+  no-identical-paths: warn
+
+  # Literal segments competing with parameters at the same position, e.g.
+  # /companies/search/{search_name} against /companies/{company_id}/users.
+  # Express resolves these by declaration order and the routes file is
+  # explicit about it, so they work — but a generated client cannot tell them
+  # apart, which is worth knowing about rather than hiding.
+  no-ambiguous-paths: warn
+
+  # The spec serves Swagger UI, which does not need every schema referenced.
+  no-unused-components: off
+
+  # Descriptions are carried on the operations; a tag-level description repeats
+  # what the tag list already says.
+  tag-description: off

@@ -12,7 +12,7 @@
 const h = require('../helpers');
 
 const E = { ...h.AUTH_ERRORS, 403: h.errorResponse('Admin access required.') };
-const entityParam = h.numericPathParam('ID', 'Party (assignor/assignee) id.');
+const entityParam = h.numericPathParam('id', 'Party (assignor/assignee) id.');
 const idParam = h.numericPathParam('id', 'Record id.');
 
 const search = (summary, description, params) => ({
@@ -50,7 +50,7 @@ module.exports = {
 
   /* ------------------------------------------------------------- searching */
 
-  '/admin/company/search/all/': {
+  '/admin/company/search/all': {
     get: h.operation({
       tag: 'Admin search',
       summary: 'Search companies from the grid filter',
@@ -104,26 +104,26 @@ module.exports = {
 
   /* ------------------------------------------------------------- addresses */
 
-  '/admin/lawfirm/{ID}/search/address': {
+  '/admin/lawfirm/{id}/search/address': {
     get: h.operation({
       tag: 'Admin search',
       summary: "A law firm's recorded addresses",
-      params: [h.numericPathParam('ID', 'Law firm id.')],
+      params: [h.numericPathParam('id', 'Law firm id.')],
       ok: h.listResponse('Addresses, most-used first.'),
       errors: E,
     }),
   },
-  '/admin/lawfirm/{ID}/search/address/all': {
+  '/admin/lawfirm/{id}/search/address/all': {
     post: h.operation({
       tag: 'Admin search',
       summary: 'Find law firms at a set of addresses',
-      params: [h.numericPathParam('ID', 'Law firm id, for context.')],
+      params: [h.numericPathParam('id', 'Law firm id, for context.')],
       body: h.formBody({ 'address[]': { type: 'string', description: 'Repeatable address field.' } }),
       ok: h.listResponse('Matching law firms.'),
       errors: E,
     }),
   },
-  '/admin/company/{ID}/search/address/{type}': {
+  '/admin/company/{id}/search/address/{type}': {
     get: h.operation({
       tag: 'Admin search',
       summary: "A party's recorded addresses",
@@ -136,7 +136,7 @@ module.exports = {
       errors: E,
     }),
   },
-  '/admin/company/{ID}/search/address/all/{type}': {
+  '/admin/company/{id}/search/address/all/{type}': {
     post: h.operation({
       tag: 'Admin search',
       summary: 'Find companies at a set of addresses',
@@ -147,7 +147,7 @@ module.exports = {
       errors: E,
     }),
   },
-  '/admin/company/{ID}/search/address_with_transactions/{type}': {
+  '/admin/company/{id}/search/address_with_transactions/{type}': {
     get: h.operation({
       tag: 'Admin search',
       summary: "A party's addresses, with the transaction each came from",
@@ -164,7 +164,7 @@ module.exports = {
         properties: { address1: { type: 'string' }, address2: { type: 'string' } },
       }),
       ok: h.jsonResponse('The transaction, or null when the address was never used.', {
-        type: 'object', nullable: true,
+        type: ['object', 'null'],
       }),
       errors: E,
     }),
@@ -217,11 +217,11 @@ module.exports = {
       errors: E,
     }),
   },
-  '/admin/company/{companyID}/law_firms': {
+  '/admin/company/{company_id}/law_firms': {
     get: h.operation({
       tag: 'Admin law firms',
       summary: "A company's law firms",
-      params: [h.numericPathParam('companyID', 'Party id.')],
+      params: [h.numericPathParam('company_id', 'Party id.')],
       ok: h.listResponse('Law firms with their transaction counts.'),
       errors: E,
     }),
@@ -342,7 +342,7 @@ module.exports = {
       errors: E,
     }),
   },
-  '/admin/all/transactions/{conveyanceType}': {
+  '/admin/all/transactions/{conveyance_type}': {
     get: h.operation({
       tag: 'Admin assignments',
       summary: 'Lenders or borrowers across the whole corpus',
@@ -350,7 +350,7 @@ module.exports = {
         'The path segment is the side, not a conveyance type: `lenders` returns the assignees on '
         + 'security agreements merged with the assignors on releases; `borrowers` returns the '
         + 'assignors on security agreements. Each row carries a transaction count.',
-      params: [h.pathParam('conveyanceType', "'lenders' or 'borrowers'.", { type: 'string', example: 'lenders' })],
+      params: [h.pathParam('conveyance_type', "'lenders' or 'borrowers'.", { type: 'string', example: 'lenders' })],
       ok: h.listResponse('Parties with transaction counts, one row per name.'),
       errors: E,
     }),
@@ -358,20 +358,20 @@ module.exports = {
 
   /* ---------------------------------------------------------------- assets */
 
-  '/admin/company/assets/{entityID}': {
+  '/admin/company/assets/{entity_id}': {
     get: h.operation({
       tag: 'Admin search',
       summary: "A party's assets",
-      params: [h.numericPathParam('entityID', 'Party id.')],
+      params: [h.numericPathParam('entity_id', 'Party id.')],
       ok: h.listResponse('Assets.'),
       errors: E,
     }),
   },
-  '/admin/company/{representativeID}/event_maintainence': {
+  '/admin/company/{representative_id}/event_maintainence': {
     get: h.operation({
       tag: 'Admin search',
       summary: "A company's maintenance-fee events",
-      params: [h.numericPathParam('representativeID', 'Company id.')],
+      params: [h.numericPathParam('representative_id', 'Company id.')],
       ok: h.listResponse('Events.'),
       errors: E,
     }),
@@ -388,14 +388,13 @@ module.exports = {
         + 'every successful call; the throw was swallowed by an empty catch and no response was '
         + 'ever sent, leaving the request open until the client gave up.',
       params: [h.numericPathParam('id', 'Organisation id.')],
-      body: h.formBody({
-        type: 'object',
-        required: ['assignee_id', 'organisation_id'],
-        properties: {
+      body: h.formBody(
+        {
           assignee_id: h.jsonArrayField('Assignee ids.', '[1,2]'),
           organisation_id: { type: 'integer' },
         },
-      }),
+        ['assignee_id', 'organisation_id']
+      ),
       ok: h.objectResponse('How many were moved.'),
       errors: E,
     }),
@@ -613,13 +612,13 @@ module.exports = {
       errors: E,
     }),
   },
-  '/admin/company/family/{id}/{representativeID}': {
+  '/admin/company/family/{id}/{representative_id}': {
     get: h.operation({
       tag: 'Admin jobs',
       summary: 'Rebuild asset families for chosen companies',
       params: [
         h.numericPathParam('id', 'Organisation id.'),
-        h.pathParam('representativeID', 'JSON array of company ids, e.g. [1,2].'),
+        h.pathParam('representative_id', 'JSON array of company ids, e.g. [1,2].'),
         h.queryParam('retrievedAll', 'Rebuild everything rather than only what is missing.',
           { type: 'string' }),
       ],
@@ -648,36 +647,35 @@ module.exports = {
       ok: h.objectResponse('The grid rows and its option lists.'),
       errors: E,
     }),
-  },
-  '/admin/company/transactions/{id}/{representativeID}': {
-    get: h.operation({
-      tag: 'Admin assignments',
-      summary: 'The conveyance-text grid, scoped to chosen companies',
-      params: [
-        h.numericPathParam('id', 'Organisation id.'),
-        h.pathParam('representativeID', 'JSON array of company ids, e.g. [55].'),
-      ],
-      ok: h.objectResponse('The grid rows and its option lists.'),
-      errors: E,
-    }),
-  },
-  '/admin/company/transactions/{customerID}': {
+    // Shares the URL with the GET above; it used to be a second path entry
+    // whose parameter was called customer_id, describing the same endpoint twice.
     put: h.operation({
       tag: 'Admin assignments',
       summary: 'Retype one transaction',
       description:
         'Writes to representative_assignment_conveyance, which overlays the USPTO typing rather '
         + 'than replacing it. Only a conveyance type in the fixed set is accepted.',
-      params: [h.numericPathParam('customerID', 'Organisation id.')],
-      body: h.formBody({
-        type: 'object',
-        required: ['rf_id', 'convey_ty'],
-        properties: {
+      params: [h.numericPathParam('id', 'Organisation id.')],
+      body: h.formBody(
+        {
           rf_id: { type: 'integer' },
           convey_ty: { type: 'string', example: 'security' },
         },
-      }),
+        ['rf_id', 'convey_ty']
+      ),
       ok: h.objectResponse('What was written.'),
+      errors: E,
+    }),
+  },
+  '/admin/company/transactions/{id}/{representative_id}': {
+    get: h.operation({
+      tag: 'Admin assignments',
+      summary: 'The conveyance-text grid, scoped to chosen companies',
+      params: [
+        h.numericPathParam('id', 'Organisation id.'),
+        h.pathParam('representative_id', 'JSON array of company ids, e.g. [55].'),
+      ],
+      ok: h.objectResponse('The grid rows and its option lists.'),
       errors: E,
     }),
   },
@@ -701,14 +699,13 @@ module.exports = {
         'Writes `status` on the chosen companies inside that customer\'s own database. An empty '
         + 'list is refused rather than updating every company.',
       params: [h.numericPathParam('id', 'Organisation id.')],
-      body: h.formBody({
-        type: 'object',
-        required: ['representative_id', 'status'],
-        properties: {
+      body: h.formBody(
+        {
           representative_id: h.jsonArrayField('Company ids.', '[1,2]'),
           status: { type: 'integer', enum: [0, 1] },
         },
-      }),
+        ['representative_id', 'status']
+      ),
       ok: h.objectResponse('How many rows were updated.'),
       errors: { ...E, 503: h.errorResponse('Organisation database is unavailable.') },
     }),

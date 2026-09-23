@@ -93,13 +93,13 @@ const searchLawFirmAddresses = asyncHandler(async (req, res) => {
 /* -------------------------------------------------------------- addresses */
 
 const lawFirmAddresses = asyncHandler(async (req, res) => {
-  res.status(200).json(await service.lawFirmAddresses(Number(req.params.ID)));
+  res.status(200).json(await service.lawFirmAddresses(Number(req.params.id)));
 });
 
 const partyAddresses = asyncHandler(async (req, res) => {
   res.status(200).json(
     await service.partyAddresses({
-      partyId: Number(req.params.ID),
+      partyId: Number(req.params.id),
       // flag 2 asks for the bibliographic applicant record instead.
       applicant: String(req.query.flag) === '2',
     })
@@ -107,13 +107,13 @@ const partyAddresses = asyncHandler(async (req, res) => {
 });
 
 const addressesWithTransactions = asyncHandler(async (req, res) => {
-  res.status(200).json(await service.addressesWithTransactions(Number(req.params.ID)));
+  res.status(200).json(await service.addressesWithTransactions(Number(req.params.id)));
 });
 
 const rememberAddress = asyncHandler(async (req, res) => {
   res.status(200).json(
     await service.rememberAddress({
-      partyId: Number(req.params.ID),
+      partyId: Number(req.params.id),
       address1: req.body.address1,
       address2: req.body.address2,
     })
@@ -171,7 +171,7 @@ const lawFirmCompanies = asyncHandler(async (req, res) => {
 });
 
 const companyLawFirms = asyncHandler(async (req, res) => {
-  res.status(200).json(await service.companyLawFirms(Number(req.params.companyID)));
+  res.status(200).json(await service.companyLawFirms(Number(req.params.company_id)));
 });
 
 const normaliseLawFirms = asyncHandler(async (req, res) => {
@@ -256,17 +256,17 @@ const recentTransactions = asyncHandler(async (req, res) => {
 // `:conveyanceType` is really the side — 'lenders' or 'borrowers'. The route
 // keeps its legacy name; the console hard-codes it.
 const transactionsByConveyance = asyncHandler(async (req, res) => {
-  res.status(200).json(await service.partiesForSide(req.params.conveyanceType));
+  res.status(200).json(await service.partiesForSide(req.params.conveyance_type));
 });
 
 /* ---------------------------------------------------------------- assets */
 
 const partyAssets = asyncHandler(async (req, res) => {
-  res.status(200).json(await service.partyAssets(Number(req.params.entityID)));
+  res.status(200).json(await service.partyAssets(Number(req.params.entity_id)));
 });
 
 const companyMaintenance = asyncHandler(async (req, res) => {
-  res.status(200).json(await service.companyMaintenance(Number(req.params.representativeID)));
+  res.status(200).json(await service.companyMaintenance(Number(req.params.representative_id)));
 });
 
 /* ----------------------------------------------------------------- cited */
@@ -341,7 +341,7 @@ const runFamilyAssets = asyncHandler(async (req, res) => {
   res.status(202).json(
     service.runFamilyAssets({
       customerId: Number(req.params.id),
-      representativeIds: parseList(req.params.representativeID, 'representativeID'),
+      representativeIds: parseList(req.params.representative_id, 'representativeID'),
       retrieveAll: req.query.retrievedAll,
     })
   );
@@ -387,7 +387,7 @@ const transactions = asyncHandler(async (req, res) => {
   res.status(200).json(
     await service.transactionsFor({
       organisationId: Number(req.params.id),
-      portfolios: parseList(req.params.representativeID ?? req.query.portfolios, 'portfolios'),
+      portfolios: parseList(req.params.representative_id ?? req.query.portfolios, 'portfolios'),
     })
   );
 });

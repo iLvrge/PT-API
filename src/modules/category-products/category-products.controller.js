@@ -8,7 +8,7 @@ const listCategories = asyncHandler(async (req, res) => {
 });
 
 const listProducts = asyncHandler(async (req, res) => {
-  res.status(200).json(await service.listProducts(req.tenant, req.params.categoryId));
+  res.status(200).json(await service.listProducts(req.tenant, req.params.category_id));
 });
 
 const create = asyncHandler(async (req, res) => {
@@ -16,11 +16,11 @@ const create = asyncHandler(async (req, res) => {
 });
 
 const removeCategory = asyncHandler(async (req, res) => {
-  res.status(200).json(await service.removeCategory(req.tenant, req.params.categoryId));
+  res.status(200).json(await service.removeCategory(req.tenant, req.params.category_id));
 });
 
 const removeProduct = asyncHandler(async (req, res) => {
-  res.status(200).json(await service.removeProduct(req.tenant, req.params.productId));
+  res.status(200).json(await service.removeProduct(req.tenant, req.params.product_id));
 });
 
 module.exports = { listCategories, listProducts, create, removeCategory, removeProduct };

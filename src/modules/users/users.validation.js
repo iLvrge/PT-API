@@ -21,7 +21,7 @@ const createUserSchema = z.object({
 
 // A password change carries only the password; a profile edit carries the rest.
 const updateUserSchema = z.object({
-  params: z.object({ id: orgIdParam, userId: z.coerce.number().int().positive() }),
+  params: z.object({ id: orgIdParam, user_id: z.coerce.number().int().positive() }),
   body: z.union([
     z.object({ password: z.string().min(6, 'password must be at least 6 characters') }),
     z.object({
@@ -42,7 +42,7 @@ const listUsersSchema = z.object({
 const deleteUserSchema = z.object({
   params: z.object({
     id: orgIdParam,
-    userId: z.coerce.number().int().positive(),
+    user_id: z.coerce.number().int().positive(),
   }),
 });
 

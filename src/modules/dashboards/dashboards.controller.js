@@ -56,7 +56,7 @@ const assignorParties = asyncHandler(async (req, res) => {
 });
 
 const inventorParty = asyncHandler(async (req, res) => {
-  res.status(200).json(await service.inventorParty(Number(req.params.inventorID)));
+  res.status(200).json(await service.inventorParty(Number(req.params.inventor_id)));
 });
 
 const parties = asyncHandler(async (req, res) => {

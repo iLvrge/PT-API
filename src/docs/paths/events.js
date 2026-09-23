@@ -45,29 +45,29 @@ module.exports = {
       errors: E,
     }),
   },
-  '/events/tabs/{tabID}': tabLifeSpan(
+  '/events/tabs/{tab_id}': tabLifeSpan(
     'Life span of the assets on one activity tab',
-    [h.numericPathParam('tabID', 'Activity tab id.')]
+    [h.numericPathParam('tab_id', 'Activity tab id.')]
   ),
-  '/events/tabs/{tabID}/companies/{companyID}': tabLifeSpan(
+  '/events/tabs/{tab_id}/companies/{company_id}': tabLifeSpan(
     "Life span of one company's assets on a tab",
-    [h.numericPathParam('tabID', 'Activity tab id.'), h.numericPathParam('companyID', 'Representative id.')]
+    [h.numericPathParam('tab_id', 'Activity tab id.'), h.numericPathParam('company_id', 'Representative id.')]
   ),
-  '/events/tabs/{tabID}/companies/{companyID}/customers/{customerID}': tabLifeSpan(
+  '/events/tabs/{tab_id}/companies/{company_id}/customers/{customer_id}': tabLifeSpan(
     'Life span narrowed to one counterparty',
     [
-      h.numericPathParam('tabID', 'Activity tab id.'),
-      h.numericPathParam('companyID', 'Representative id.'),
-      h.numericPathParam('customerID', 'Counterparty id.'),
+      h.numericPathParam('tab_id', 'Activity tab id.'),
+      h.numericPathParam('company_id', 'Representative id.'),
+      h.numericPathParam('customer_id', 'Counterparty id.'),
     ]
   ),
-  '/events/tabs/{tabID}/companies/{representativeID}/customers/{customerID}/transactions/{rfID}': tabLifeSpan(
+  '/events/tabs/{tab_id}/companies/{representative_id}/customers/{customer_id}/transactions/{rf_id}': tabLifeSpan(
     'Life span narrowed to one transaction',
     [
-      h.numericPathParam('tabID', 'Activity tab id.'),
-      h.numericPathParam('representativeID', 'Representative id.'),
-      h.numericPathParam('customerID', 'Counterparty id.'),
-      h.numericPathParam('rfID', 'Transaction id.'),
+      h.numericPathParam('tab_id', 'Activity tab id.'),
+      h.numericPathParam('representative_id', 'Representative id.'),
+      h.numericPathParam('customer_id', 'Counterparty id.'),
+      h.numericPathParam('rf_id', 'Transaction id.'),
     ]
   ),
 
@@ -134,7 +134,7 @@ module.exports = {
     }),
   },
 
-  '/events/assets/status/{applicationNumber}': {
+  '/events/assets/status/{application_number}': {
     get: h.operation({
       tag: 'Events',
       summary: 'Prosecution timeline for one asset',
@@ -142,29 +142,29 @@ module.exports = {
         'Filing, publication and grant dates come from whichever index holds them: the '
         + 'publication index while pending, the grant index once issued, the assignment corpus '
         + 'as a last resort.',
-      params: [assetParam('applicationNumber', 'Application number.'), counterParam],
+      params: [assetParam('application_number', 'Application number.'), counterParam],
       ok: h.objectResponse('Dates and the status history.'),
       errors: E,
     }),
   },
-  '/events/assets/transactions/{rfID}': {
+  '/events/assets/transactions/{rf_id}': {
     get: h.operation({
       tag: 'Events',
       summary: 'The assets on one transaction',
-      params: [h.numericPathParam('rfID', 'Transaction (reel-frame) id.')],
+      params: [h.numericPathParam('rf_id', 'Transaction (reel-frame) id.')],
       ok: h.objectResponse('The assets and the icons they draw.'),
       errors: E,
     }),
   },
 
-  '/events/{applicationNumber}': {
+  '/events/{application_number}': {
     get: h.operation({
       tag: 'Events',
       summary: 'Maintenance-fee history for one asset',
       description:
         'Returns each event with its icon set, and whether the patent has expired. A number the '
         + 'maintenance table does not key on is resolved through the assignment corpus first.',
-      params: [assetParam('applicationNumber', 'Application or patent number.'), counterParam],
+      params: [assetParam('application_number', 'Application or patent number.'), counterParam],
       ok: h.jsonResponse('The history.', {
         type: 'object',
         properties: {
@@ -187,13 +187,13 @@ module.exports = {
       errors: E,
     }),
   },
-  '/events/{applicationNumber}/{patentNumber}': {
+  '/events/{application_number}/{patent_number}': {
     get: h.operation({
       tag: 'Events',
       summary: 'Maintenance-fee history, given both numbers',
       params: [
-        assetParam('applicationNumber', 'Application number.'),
-        assetParam('patentNumber', 'Patent number, used to resolve the application.'),
+        assetParam('application_number', 'Application number.'),
+        assetParam('patent_number', 'Patent number, used to resolve the application.'),
         counterParam,
       ],
       ok: h.objectResponse('The history.'),

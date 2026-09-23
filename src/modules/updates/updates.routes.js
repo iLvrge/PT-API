@@ -8,6 +8,6 @@ const controller = require('./updates.controller');
 const router = express.Router();
 
 // Mounted at /.
-router.get('/updates/:companyName', [verifyToken, attachTenant], controller.counters);
+router.get('/updates/:company_name', [verifyToken, attachTenant], controller.counters);
 
 module.exports = router;

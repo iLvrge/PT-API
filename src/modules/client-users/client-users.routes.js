@@ -14,8 +14,8 @@ const guard = [verifyToken, attachTenant];
 router.get('/', guard, controller.list);
 router.post('/', guard, validate(schema.createSchema), controller.create);
 router.post('/invite', verifyToken, controller.invite);
-router.put('/:userId', guard, validate(schema.updateSchema), controller.update);
+router.put('/:user_id', guard, validate(schema.updateSchema), controller.update);
 router.delete('/', guard, validate(schema.listQuerySchema), controller.removeMany);
-router.delete('/:userId', guard, validate(schema.userIdSchema), controller.removeOne);
+router.delete('/:user_id', guard, validate(schema.userIdSchema), controller.removeOne);
 
 module.exports = router;

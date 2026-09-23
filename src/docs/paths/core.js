@@ -55,7 +55,7 @@ module.exports = {
       errors: {
         400: h.errorResponse('Missing username or password.'),
         401: h.errorResponse('Unknown user, wrong password, or the account is disabled.'),
-        429: h.errorResponse('Too many sign-in attempts from this address.'),
+        429: h.RATE_LIMITED,
         500: h.errorResponse('Unexpected server error.'),
       },
       public: true,
@@ -82,7 +82,7 @@ module.exports = {
       errors: {
         400: h.errorResponse('Missing username or password.'),
         401: h.errorResponse('Unknown user or wrong password.'),
-        429: h.errorResponse('Too many sign-in attempts from this address.'),
+        429: h.RATE_LIMITED,
         500: h.errorResponse('Unexpected server error.'),
       },
       public: true,
@@ -96,7 +96,7 @@ module.exports = {
       ok: h.jsonResponse('The profile.', h.ref('Profile')),
     }),
   },
-  '/errors/{type}/{companyName}': {
+  '/errors/{type}/{company_name}': {
     get: h.operation({
       tag: 'Companies',
       summary: 'Data-quality counts for a company (placeholder)',
@@ -108,7 +108,7 @@ module.exports = {
         + 'request open.',
       params: [
         h.pathParam('type', "Either 'count' or 'list'."),
-        h.pathParam('companyName', 'Company name; currently ignored.'),
+        h.pathParam('company_name', 'Company name; currently ignored.'),
       ],
       ok: h.objectResponse('Zeroed counts, or empty lists.'),
       errors: h.AUTH_ERRORS,

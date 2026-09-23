@@ -19,7 +19,7 @@ const counters = asyncHandler(async (req, res) => {
 });
 
 const detail = asyncHandler(async (req, res) => {
-  res.status(200).json(await service.detail(Number(req.params.transactionId)));
+  res.status(200).json(await service.detail(Number(req.params.transaction_id)));
 });
 
 module.exports = { counters, detail };

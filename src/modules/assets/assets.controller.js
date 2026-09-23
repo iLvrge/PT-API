@@ -55,7 +55,7 @@ const cpcCellAssets = asyncHandler(async (req, res) => {
     await service.cpcCellAssets({
       ...selectionFrom(req),
       year: req.params.year,
-      cpcCode: req.params.cpcCode,
+      cpcCode: req.params.cpc_code,
     })
   );
 });
@@ -72,7 +72,7 @@ const illustration = asyncHandler(async (req, res) => {
 
 const outsource = asyncHandler(async (req, res) => {
   const url = await service.outsourceUrl({
-    patentNumber: req.params.patentNumber,
+    patentNumber: req.params.patent_number,
     type: req.params.type,
     flag: req.query.flag,
   });
@@ -82,7 +82,7 @@ const outsource = asyncHandler(async (req, res) => {
 });
 
 const download = asyncHandler(async (req, res) => {
-  res.status(200).json({ link: await service.downloadLink(Number(req.params.itemID)) });
+  res.status(200).json({ link: await service.downloadLink(Number(req.params.item_id)) });
 });
 
 const move = asyncHandler(async (req, res) => {

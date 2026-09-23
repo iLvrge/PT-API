@@ -13,7 +13,7 @@ const guard = [verifyToken, attachTenant];
 // Mounted at /professionals.
 router.get('/', guard, controller.list);
 router.post('/', guard, validate(schema.createSchema), controller.create);
-router.put('/:professionalId', guard, validate(schema.updateSchema), controller.update);
-router.delete('/:professionalId', guard, validate(schema.professionalIdSchema), controller.remove);
+router.put('/:professional_id', guard, validate(schema.updateSchema), controller.update);
+router.delete('/:professional_id', guard, validate(schema.professionalIdSchema), controller.remove);
 
 module.exports = router;

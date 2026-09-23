@@ -14,13 +14,13 @@ const guard = [verifyToken, attachMicrosoftTokens];
 router.get('/me', guard, controller.me);
 router.get('/team', guard, controller.team);
 router.post('/team', guard, controller.createTeam);
-router.post('/channel/:teamID', guard, controller.createChannel);
-router.get('/channel/:teamID/:name', guard, controller.findChannel);
+router.post('/channel/:team_id', guard, controller.createChannel);
+router.get('/channel/:team_id/:name', guard, controller.findChannel);
 
-router.get('/:teamId/channels/:channelId/filesFolder', guard, controller.filesFolder);
-router.post('/:teamId/channels/:channelId/messages', guard, controller.sendMessage);
-router.get('/:teamId/channels/:channelId/messages', guard, controller.channelMessages);
-router.get('/:teamId/channels', guard, controller.listChannels);
-router.get('/:teamId/users', guard, controller.listMembers);
+router.get('/:team_id/channels/:channel_id/filesFolder', guard, controller.filesFolder);
+router.post('/:team_id/channels/:channel_id/messages', guard, controller.sendMessage);
+router.get('/:team_id/channels/:channel_id/messages', guard, controller.channelMessages);
+router.get('/:team_id/channels', guard, controller.listChannels);
+router.get('/:team_id/users', guard, controller.listMembers);
 
 module.exports = router;

@@ -27,7 +27,7 @@ const EMPTY_COUNT = { title: 0, address: 0, other: 0 };
 const EMPTY_LIST = { invent: [], assign: [], corr: [], address: [], security: [] };
 
 router.get(
-  '/errors/:type/:companyName',
+  '/errors/:type/:company_name',
   verifyToken,
   asyncHandler(async (req, res) => {
     const { type } = req.params;

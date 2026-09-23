@@ -10,7 +10,7 @@ const app = startTestServer();
 describe('docs and request logging', () => {
   it('serves the raw OpenAPI spec at /docs.json', async () => {
     const res = await request(app).get('/docs.json').expect(200);
-    expect(res.body.openapi).toBe('3.0.3');
+    expect(res.body.openapi).toBe('3.1.0');
     expect(res.body.info.title).toMatch(/PatenTrack/);
     expect(res.body.paths['/admin/keywords']).toBeDefined();
   });

@@ -15,10 +15,10 @@ const addressBody = z.object({
 
 const createSchema = z.object({ body: addressBody });
 const updateSchema = z.object({
-  params: z.object({ addressId: z.coerce.number().int().positive() }),
+  params: z.object({ address_id: z.coerce.number().int().positive() }),
   body: addressBody.partial(),
 });
-const addressIdSchema = z.object({ params: z.object({ addressId: z.coerce.number().int().positive() }) });
-const lawfirmIdSchema = z.object({ params: z.object({ lawfirmId: z.coerce.number().int().positive() }) });
+const addressIdSchema = z.object({ params: z.object({ address_id: z.coerce.number().int().positive() }) });
+const lawfirmIdSchema = z.object({ params: z.object({ lawfirm_id: z.coerce.number().int().positive() }) });
 
 module.exports = { createSchema, updateSchema, addressIdSchema, lawfirmIdSchema };

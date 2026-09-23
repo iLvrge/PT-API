@@ -24,13 +24,13 @@ const companiesWithChildren = asyncHandler(async (req, res) => {
   res.status(200).json(await service.companiesWithChildren(req.tenant));
 });
 const updateCompany = asyncHandler(async (req, res) => {
-  res.status(200).json(await service.updateCompany(req.tenant, Number(req.params.companyID), req.body));
+  res.status(200).json(await service.updateCompany(req.tenant, Number(req.params.company_id), req.body));
 });
 const summary = asyncHandler(async (req, res) => {
   res.status(200).json(await service.summary(req.tenant, req.auth.orgId));
 });
 const companyChildren = asyncHandler(async (req, res) => {
-  res.status(200).json(await service.companyChildren(req.tenant, Number(req.params.companyID)));
+  res.status(200).json(await service.companyChildren(req.tenant, Number(req.params.company_id)));
 });
 const companyUsers = asyncHandler(async () => {
   // Requires the Slack workspace integration, not yet ported to v2.
@@ -55,10 +55,10 @@ const addLawfirmMappings = asyncHandler(async (req, res) => {
   );
 });
 const removeLawfirmMapping = asyncHandler(async (req, res) => {
-  res.status(200).json(await service.removeLawfirmMapping(req.tenant, Number(req.params.companyLawfirmId)));
+  res.status(200).json(await service.removeLawfirmMapping(req.tenant, Number(req.params.company_lawfirm_id)));
 });
 const search = asyncHandler(async (req, res) => {
-  res.status(200).json(await service.search(req.params.searchName));
+  res.status(200).json(await service.search(req.params.search_name));
 });
 const addGroup = asyncHandler(async (req, res) => {
   res.status(200).json(await service.addGroup(req.tenant, req.body.group_name));

@@ -11,7 +11,7 @@ const createSchema = z.object({
 });
 
 const updateSchema = z.object({
-  params: z.object({ collectionId: z.coerce.number().int().positive() }),
+  params: z.object({ collection_id: z.coerce.number().int().positive() }),
   body: z.object({
     collection_name: z.string().trim().min(1).optional(),
     companies: z.string().optional(),
@@ -19,7 +19,7 @@ const updateSchema = z.object({
 });
 
 const collectionIdSchema = z.object({
-  params: z.object({ collectionId: z.coerce.number().int().positive() }),
+  params: z.object({ collection_id: z.coerce.number().int().positive() }),
 });
 
 module.exports = { createSchema, updateSchema, collectionIdSchema };

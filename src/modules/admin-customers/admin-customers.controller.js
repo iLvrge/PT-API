@@ -46,7 +46,7 @@ const updateCustomer = asyncHandler(async (req, res) => {
 });
 
 const deleteCustomer = asyncHandler(async (req, res) => {
-  res.status(200).json(await service.deleteCustomer(Number(req.params.organisation_id)));
+  res.status(200).json(await service.deleteCustomer(Number(req.params.id)));
 });
 
 const setLogo = asyncHandler(async (req, res) => {
@@ -88,7 +88,7 @@ const updateAdminUser = asyncHandler(async (req, res) => {
 const deleteCustomerUser = asyncHandler(async (req, res) => {
   res.status(200).json(
     await service.deleteCustomerUser({
-      organisationId: Number(req.params.orgId),
+      organisationId: Number(req.params.org_id),
       userId: Number(req.params.user_id),
     })
   );
@@ -252,8 +252,8 @@ const ENTITIES = '3';
 const normaliseNames = asyncHandler(async (req, res) => {
   const input = {
     organisationId: Number(req.params.id),
-    representativeIds: req.params.representativeID
-      ? parseList(req.params.representativeID, 'representativeID')
+    representativeIds: req.params.representative_id
+      ? parseList(req.params.representative_id, 'representativeID')
       : [],
     type: req.params.type,
     suggestions: req.query.suggestions,
@@ -323,7 +323,7 @@ const createTree = asyncHandler(async (req, res) => {
 const retrieveCitedPatents = asyncHandler(async (req, res) => {
   res.status(202).json(
     await service.retrieveCitedPatents({
-      customerId: Number(req.params.customerID),
+      customerId: Number(req.params.customer_id),
       companies: req.query.companies,
       type: req.query.type,
     })
@@ -333,8 +333,8 @@ const retrieveCitedPatents = asyncHandler(async (req, res) => {
 const retrieveCitedPatentDomains = asyncHandler(async (req, res) => {
   res.status(202).json(
     await service.retrieveCitedPatentDomains({
-      customerId: Number(req.params.customerID),
-      apiName: req.params.apiName,
+      customerId: Number(req.params.customer_id),
+      apiName: req.params.api_name,
       assignees: req.query.assignees,
     })
   );

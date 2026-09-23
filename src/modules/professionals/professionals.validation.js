@@ -15,7 +15,7 @@ const createSchema = z.object({
 });
 
 const updateSchema = z.object({
-  params: z.object({ professionalId: z.coerce.number().int().positive() }),
+  params: z.object({ professional_id: z.coerce.number().int().positive() }),
   body: z.object({
     first_name: z.string().trim().optional(),
     last_name: z.string().trim().optional(),
@@ -28,7 +28,7 @@ const updateSchema = z.object({
 });
 
 const professionalIdSchema = z.object({
-  params: z.object({ professionalId: z.coerce.number().int().positive() }),
+  params: z.object({ professional_id: z.coerce.number().int().positive() }),
 });
 
 module.exports = { createSchema, updateSchema, professionalIdSchema };

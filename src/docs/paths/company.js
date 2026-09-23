@@ -6,7 +6,7 @@ const h = require('../helpers');
 const E = h.TENANT_ERRORS;
 
 module.exports = {
-  '/companies/': {
+  '/companies': {
     get: h.operation({
       tag: 'Companies',
       summary: 'Companies with their subsidiaries',
@@ -87,11 +87,11 @@ module.exports = {
     }),
   },
 
-  '/companies/search/{searchName}': {
+  '/companies/search/{search_name}': {
     get: h.operation({
       tag: 'Companies',
       summary: 'Search the company corpus by name',
-      params: [h.pathParam('searchName', 'Name fragment to search for.')],
+      params: [h.pathParam('search_name', 'Name fragment to search for.')],
       ok: h.listResponse('Matching companies.'),
     }),
   },
@@ -146,22 +146,22 @@ module.exports = {
     }),
   },
 
-  '/companies/lawfirm/{companyLawfirmId}': {
+  '/companies/lawfirm/{company_lawfirm_id}': {
     delete: h.operation({
       tag: 'Companies',
       summary: 'Remove a company/law-firm link',
-      params: [h.numericPathParam('companyLawfirmId', 'Link id.')],
+      params: [h.numericPathParam('company_lawfirm_id', 'Link id.')],
       ok: h.objectResponse('Removed.'),
       errors: E,
       extraResponses: { 404: h.errorResponse('No such link.') },
     }),
   },
 
-  '/companies/{companyID}': {
+  '/companies/{company_id}': {
     put: h.operation({
       tag: 'Companies',
       summary: 'Rename or restatus a company',
-      params: [h.numericPathParam('companyID', 'Representative id.')],
+      params: [h.numericPathParam('company_id', 'Representative id.')],
       body: h.jsonBody({
         type: 'object',
         properties: {
@@ -176,23 +176,23 @@ module.exports = {
     }),
   },
 
-  '/companies/{companyID}/list': {
+  '/companies/{company_id}/list': {
     get: h.operation({
       tag: 'Companies',
       summary: "One company's subsidiaries",
-      params: [h.numericPathParam('companyID', 'Representative id.')],
+      params: [h.numericPathParam('company_id', 'Representative id.')],
       ok: h.listResponse('Subsidiaries.'),
       errors: E,
     }),
   },
 
-  '/companies/{companyID}/users': {
+  '/companies/{company_id}/users': {
     get: h.operation({
       tag: 'Companies',
       summary: 'Users attached to a company',
       description:
         'Not yet ported — the legacy implementation depended on the messaging tier. Returns 501.',
-      params: [h.numericPathParam('companyID', 'Representative id.')],
+      params: [h.numericPathParam('company_id', 'Representative id.')],
       ok: h.listResponse('Users.'),
       errors: E,
       extraResponses: { 501: h.errorResponse('Not implemented yet.') },
@@ -200,21 +200,21 @@ module.exports = {
   },
 
   /* ----------------------------------------------------------------- tabs */
-  '/tabs/{tabID}': {
+  '/tabs/{tab_id}': {
     get: h.operation({
       tag: 'Tabs',
       summary: 'Companies active on one activity tab',
-      params: [h.numericPathParam('tabID', 'Activity tab id.')],
+      params: [h.numericPathParam('tab_id', 'Activity tab id.')],
       ok: h.listResponse('Companies with transaction and asset totals.'),
       errors: E,
     }),
   },
-  '/tabs/{tabID}/customers': {
+  '/tabs/{tab_id}/customers': {
     get: h.operation({
       tag: 'Tabs',
       summary: 'Counterparties on a tab across several companies',
       params: [
-        h.numericPathParam('tabID', 'Activity tab id.'),
+        h.numericPathParam('tab_id', 'Activity tab id.'),
         h.jsonArrayQuery('companiesIds', 'Representative ids. Required.'),
         ...h.paginationParams,
       ],
@@ -222,41 +222,41 @@ module.exports = {
       errors: E,
     }),
   },
-  '/tabs/{tabID}/companies/{companyID}': {
+  '/tabs/{tab_id}/companies/{company_id}': {
     get: h.operation({
       tag: 'Tabs',
       summary: "One company's counterparties on a tab",
       params: [
-        h.numericPathParam('tabID', 'Activity tab id.'),
-        h.numericPathParam('companyID', 'Representative id.'),
+        h.numericPathParam('tab_id', 'Activity tab id.'),
+        h.numericPathParam('company_id', 'Representative id.'),
         ...h.paginationParams,
       ],
       ok: h.listResponse('Counterparties.'),
       errors: E,
     }),
   },
-  '/tabs/{tabID}/companies/{companyID}/customers/{customerID}': {
+  '/tabs/{tab_id}/companies/{company_id}/customers/{customer_id}': {
     get: h.operation({
       tag: 'Tabs',
       summary: 'Transactions between a company and one counterparty',
       params: [
-        h.numericPathParam('tabID', 'Activity tab id.'),
-        h.pathParam('companyID', 'Representative id, or a JSON array of them.'),
-        h.numericPathParam('customerID', 'Counterparty id.'),
+        h.numericPathParam('tab_id', 'Activity tab id.'),
+        h.pathParam('company_id', 'Representative id, or a JSON array of them.'),
+        h.numericPathParam('customer_id', 'Counterparty id.'),
       ],
       ok: h.listResponse('Transactions.'),
       errors: E,
     }),
   },
-  '/tabs/{tabID}/companies/{companyID}/customers/{customerID}/transactions/{rfID}': {
+  '/tabs/{tab_id}/companies/{company_id}/customers/{customer_id}/transactions/{rf_id}': {
     get: h.operation({
       tag: 'Tabs',
       summary: 'Assets covered by one transaction',
       params: [
-        h.numericPathParam('tabID', 'Activity tab id.'),
-        h.pathParam('companyID', 'Representative id, or a JSON array of them.'),
-        h.numericPathParam('customerID', 'Counterparty id.'),
-        h.numericPathParam('rfID', 'Transaction (reel-frame) id.'),
+        h.numericPathParam('tab_id', 'Activity tab id.'),
+        h.pathParam('company_id', 'Representative id, or a JSON array of them.'),
+        h.numericPathParam('customer_id', 'Counterparty id.'),
+        h.numericPathParam('rf_id', 'Transaction (reel-frame) id.'),
       ],
       ok: h.listResponse('Assets.'),
       errors: E,
@@ -264,7 +264,7 @@ module.exports = {
   },
 
   /* ----------------------------------------------------------------- tree */
-  '/tree/': {
+  '/tree': {
     get: h.operation({
       tag: 'Tree',
       summary: 'Portfolio tree: tab → counterparty → transaction → assets',

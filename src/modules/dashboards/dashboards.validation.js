@@ -28,7 +28,7 @@ const assignorPartiesSchema = z.object({
 });
 
 const inventorSchema = z.object({
-  params: z.object({ inventorID: z.coerce.number().int().nonnegative() }),
+  params: z.object({ inventor_id: z.coerce.number().int().nonnegative() }),
 });
 
 const partiesSchema = z.object({

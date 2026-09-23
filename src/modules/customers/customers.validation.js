@@ -30,7 +30,7 @@ const assignmentsSchema = z.object({
 });
 
 const rfIdSchema = z.object({
-  params: z.object({ rfID: z.coerce.number().int().positive() }),
+  params: z.object({ rf_id: z.coerce.number().int().positive() }),
   query: z.object({ layout: z.string().optional() }),
 });
 

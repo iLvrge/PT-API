@@ -69,7 +69,7 @@ const create = async ({ orgId, userId, type, assets, transactions }) => {
 /** Re-share a single asset out of an existing link, as its own link. */
 const shareOneAsset = async ({ code, asset }) => {
   const source = await repository.byCode(code);
-  if (!source) throw ApiError.notFound('Unknown share code');
+  if (!source) throw ApiError.notFound('Unknown share code', 'UNKNOWN_SHARE_CODE');
   return create({
     orgId: source.organisation_id,
     userId: source.user_id,
@@ -83,12 +83,12 @@ const shareOneAsset = async ({ code, asset }) => {
 const assets = async (code, type) => {
   if (Number(type) === 9) {
     const row = await repository.dashboardSelection(code);
-    if (!row) throw ApiError.notFound('Invalid url');
+    if (!row) throw ApiError.notFound('Invalid url', 'UNKNOWN_SHARE_CODE');
     return { list: row, total_records: 0, logo: await repository.organisationLogo(code) };
   }
 
   const rows = await repository.assetRows(code, type);
-  if (!rows.length) throw ApiError.notFound('Invalid url');
+  if (!rows.length) throw ApiError.notFound('Invalid url', 'UNKNOWN_SHARE_CODE');
 
   const { grants, applications } = splitAssets(rows);
   const list = grants.length || applications.length
@@ -101,7 +101,7 @@ const assets = async (code, type) => {
 /** The illustration JSON for one asset on a share link. */
 const assetIllustration = async ({ code, asset }) => {
   const share = await repository.coversAsset(code, asset);
-  if (!share) throw ApiError.notFound('Invalid url');
+  if (!share) throw ApiError.notFound('Invalid url', 'UNKNOWN_SHARE_CODE');
   return illustrationJson({ asset, orgId: share.organisation_id, userId: share.user_id });
 };
 
@@ -118,7 +118,7 @@ const assetIllustration = async ({ code, asset }) => {
 const firstIllustration = async (code) => {
   const share = await repository.byCodeWithAssets(code);
   if (!share || !share.share_lists.length) {
-    throw ApiError.notFound('Invalid url');
+    throw ApiError.notFound('Invalid url', 'UNKNOWN_SHARE_CODE');
   }
 
   const first = share.share_lists[0];

@@ -14,7 +14,7 @@ const tenantAuth = [verifyToken, attachTenant];
 
 // Mounted at /dashboards.
 router.get('/', auth, validate(schemas.tilesSchema), controller.tiles);
-router.get('/parties/inventor/:inventorID', auth, validate(schemas.inventorSchema), controller.inventorParty);
+router.get('/parties/inventor/:inventor_id', auth, validate(schemas.inventorSchema), controller.inventorParty);
 
 router.post('/collateral', auth, validate(schemas.collateralSchema), controller.collateral);
 router.post('/parties/assignor', tenantAuth, validate(schemas.assignorPartiesSchema), controller.assignorParties);

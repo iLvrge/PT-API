@@ -130,7 +130,7 @@ module.exports = {
     }),
   },
 
-  '/documents/': {
+  '/documents': {
     get: h.operation({
       tag: 'Documents',
       summary: 'Documents in the tenant store',

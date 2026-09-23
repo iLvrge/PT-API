@@ -37,12 +37,12 @@ const list = asyncHandler(async (req, res) => {
 });
 
 const item = asyncHandler(async (req, res) => {
-  res.status(200).json(await service.item(String(req.params.rfId).trim()));
+  res.status(200).json(await service.item(String(req.params.rf_id).trim()));
 });
 
 const standalone = asyncHandler(async (req, res) => {
   res.status(200).json(
-    await service.standalone({ orgId: req.auth.orgId, groupId: Number(req.params.groupId) })
+    await service.standalone({ orgId: req.auth.orgId, groupId: Number(req.params.group_id) })
   );
 });
 
@@ -50,9 +50,9 @@ const standaloneFiltered = asyncHandler(async (req, res) => {
   res.status(200).json(
     await service.standaloneFiltered({
       orgId: req.auth.orgId,
-      groupId: Number(req.params.groupId),
-      from: req.params.startDate,
-      to: req.params.endDate,
+      groupId: Number(req.params.group_id),
+      from: req.params.start_date,
+      to: req.params.end_date,
       scrollRight: req.params.scroll === 'right',
     })
   );
@@ -62,9 +62,9 @@ const searchFiltered = asyncHandler(async (req, res) => {
   res.status(200).json(
     await service.searchFiltered({
       orgId: req.auth.orgId,
-      groupId: Number(req.params.groupId),
-      from: req.params.startDate,
-      to: req.params.endDate,
+      groupId: Number(req.params.group_id),
+      from: req.params.start_date,
+      to: req.params.end_date,
       // This endpoint encodes the scroll direction as 1 (right) / 0 (left).
       scrollRight: String(req.params.scroll) === '1',
     })
@@ -73,7 +73,7 @@ const searchFiltered = asyncHandler(async (req, res) => {
 
 const byTab = asyncHandler(async (req, res) => {
   res.status(200).json(
-    await service.byTab({ orgId: req.auth.orgId, tab: Number(req.params.groupId) })
+    await service.byTab({ orgId: req.auth.orgId, tab: Number(req.params.group_id) })
   );
 });
 
@@ -85,7 +85,7 @@ const drillDown = asyncHandler(async (req, res) => {
       organisation: req.params.organisation,
       name: req.params.name,
       depth: Number(req.params.depth) || 0,
-      groupId: Number(req.params.groupId),
+      groupId: Number(req.params.group_id),
     })
   );
 });

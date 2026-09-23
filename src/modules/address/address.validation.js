@@ -24,11 +24,11 @@ const createAddressSchema = z.object({
 });
 
 const updateAddressSchema = z.object({
-  params: z.object({ addressId: z.coerce.number().int().positive() }),
+  params: z.object({ address_id: z.coerce.number().int().positive() }),
   body: z.object(addressFields),
 });
 
-const addressIdSchema = z.object({ params: z.object({ addressId: z.coerce.number().int().positive() }) });
+const addressIdSchema = z.object({ params: z.object({ address_id: z.coerce.number().int().positive() }) });
 const companiesQuerySchema = z.object({ query: z.object({ companies: z.string().optional() }) });
 
 module.exports = { createAddressSchema, updateAddressSchema, addressIdSchema, companiesQuerySchema };

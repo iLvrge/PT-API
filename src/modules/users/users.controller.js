@@ -19,12 +19,12 @@ const create = asyncHandler(async (req, res) => {
 });
 
 const update = asyncHandler(async (req, res) => {
-  const result = await service.update(req.params.id, req.params.userId, req.body);
+  const result = await service.update(req.params.id, req.params.user_id, req.body);
   res.status(200).json(result);
 });
 
 const remove = asyncHandler(async (req, res) => {
-  const result = await service.remove(req.params.id, req.params.userId);
+  const result = await service.remove(req.params.id, req.params.user_id);
   res.status(200).json(result);
 });
 

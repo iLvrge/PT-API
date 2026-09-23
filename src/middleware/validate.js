@@ -28,7 +28,7 @@ const validate = (schema) => (req, res, next) => {
       field: i.path.join('.').replace(/^(body|params|query)\./, ''),
       message: i.message,
     }));
-    return next(ApiError.badRequest('Validation failed', details));
+    return next(ApiError.badRequest('Validation failed', details, 'VALIDATION'));
   }
 
   if (result.data.body) req.body = result.data.body;

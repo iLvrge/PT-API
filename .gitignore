@@ -15,3 +15,4 @@ app_log.log
 # package-lock.json
 # v2 test/build artifacts
 coverage
+build/

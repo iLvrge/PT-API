@@ -42,7 +42,7 @@ const assetTypeAssignments = asyncHandler(async (req, res) => {
 });
 
 const assignmentAssets = asyncHandler(async (req, res) => {
-  res.status(200).json(await service.assignmentAssets(req.params.rfID, req.query.layout));
+  res.status(200).json(await service.assignmentAssets(req.params.rf_id, req.query.layout));
 });
 
 const assetTypeAssets = asyncHandler(async (req, res) => {
@@ -284,12 +284,12 @@ const customerType = asyncHandler(async (req, res) => {
 });
 
 const parentParties = asyncHandler(async (req, res) => {
-  res.status(200).json(await service.parentParties(req.tenant, req.params.parentCompany, req.params.tabId));
+  res.status(200).json(await service.parentParties(req.tenant, req.params.parent_company, req.params.tab_id));
 });
 
 const parentCollections = asyncHandler(async (req, res) => {
   res.status(200).json(
-    await service.parentCollections(req.params.parentCompany, req.params.name, req.params.tabId)
+    await service.parentCollections(req.params.parent_company, req.params.name, req.params.tab_id)
   );
 });
 

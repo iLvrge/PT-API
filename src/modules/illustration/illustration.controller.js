@@ -15,13 +15,13 @@ const parseCompanies = (raw) => {
 };
 
 const byReelFrame = asyncHandler(async (req, res) => {
-  res.status(200).json(await service.forReelFrame(req.params.reelFrame));
+  res.status(200).json(await service.forReelFrame(req.params.reel_frame));
 });
 
 const byApplication = asyncHandler(async (req, res) => {
   res.status(200).json(
     await service.forApplication({
-      applicationNumber: req.params.applicationNumber,
+      applicationNumber: req.params.application_number,
       companies: parseCompanies(req.query.companies),
       bankMode: Number(req.auth.orgType) === 2,
     })

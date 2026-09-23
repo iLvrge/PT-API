@@ -4,14 +4,14 @@ const { z } = require('zod');
 
 const subjectTypeParam = z.string().trim().min(1);
 
-const listSchema = z.object({ params: z.object({ subjectType: subjectTypeParam }) });
+const listSchema = z.object({ params: z.object({ subject_type: subjectTypeParam }) });
 
 const getBySubjectSchema = z.object({
-  params: z.object({ subjectType: subjectTypeParam, subject: z.string().trim().min(1) }),
+  params: z.object({ subject_type: subjectTypeParam, subject: z.string().trim().min(1) }),
 });
 
 const createSchema = z.object({
-  params: z.object({ subjectType: subjectTypeParam }),
+  params: z.object({ subject_type: subjectTypeParam }),
   body: z.object({
     subject: z.union([z.string(), z.number()]),
     comment: z.string().trim().min(1, 'comment is required'),
@@ -21,7 +21,7 @@ const createSchema = z.object({
 });
 
 const commentIdSchema = z.object({
-  params: z.object({ ID: z.coerce.number().int().positive() }),
+  params: z.object({ id: z.coerce.number().int().positive() }),
   body: z.object({ comment: z.string().trim().min(1, 'comment is required').optional() }),
 });
 

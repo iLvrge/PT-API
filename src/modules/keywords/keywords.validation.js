@@ -9,12 +9,12 @@ const createKeywordSchema = z.object({
 });
 
 const updateKeywordSchema = z.object({
-  params: z.object({ keywordId: idParam }),
+  params: z.object({ keyword_id: idParam }),
   body: z.object({ keyword: z.string().trim().min(1, 'keyword is required') }),
 });
 
 const keywordIdSchema = z.object({
-  params: z.object({ keywordId: idParam }),
+  params: z.object({ keyword_id: idParam }),
 });
 
 module.exports = { createKeywordSchema, updateKeywordSchema, keywordIdSchema };

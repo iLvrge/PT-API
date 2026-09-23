@@ -22,7 +22,7 @@ const setTeam = asyncHandler(async (req, res) => {
 });
 
 const userInfo = asyncHandler(async (req, res) => {
-  res.status(200).json(await service.userInfo({ token: req.slackToken, userId: req.params.userId }));
+  res.status(200).json(await service.userInfo({ token: req.slackToken, userId: req.params.user_id }));
 });
 
 const users = asyncHandler(async (req, res) => {
@@ -65,7 +65,7 @@ const sendMessage = asyncHandler(async (req, res) => {
 const message = asyncHandler(async (req, res) => {
   res.status(200).json(
     await service.message({
-      token: req.slackToken, channelId: req.params.channelID, messageId: req.params.messageID,
+      token: req.slackToken, channelId: req.params.channel_id, messageId: req.params.message_id,
     })
   );
 });
@@ -73,14 +73,14 @@ const message = asyncHandler(async (req, res) => {
 const deleteMessage = asyncHandler(async (req, res) => {
   res.status(200).json(
     await service.deleteMessage({
-      token: req.slackToken, channelId: req.params.channelID, messageId: req.params.messageID,
+      token: req.slackToken, channelId: req.params.channel_id, messageId: req.params.message_id,
     })
   );
 });
 
 const conversation = asyncHandler(async (req, res) => {
   res.status(200).json(
-    await service.conversation({ token: req.slackToken, channelId: req.params.channelID })
+    await service.conversation({ token: req.slackToken, channelId: req.params.channel_id })
   );
 });
 

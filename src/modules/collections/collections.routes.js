@@ -12,7 +12,7 @@ const guard = [verifyToken, attachTenant];
 
 router.get('/collections', guard, controller.list);
 router.post('/collections', guard, validate(schema.createSchema), controller.create);
-router.put('/collections/:collectionId', guard, validate(schema.updateSchema), controller.update);
-router.delete('/collections/:collectionId', guard, validate(schema.collectionIdSchema), controller.remove);
+router.put('/collections/:collection_id', guard, validate(schema.updateSchema), controller.update);
+router.delete('/collections/:collection_id', guard, validate(schema.collectionIdSchema), controller.remove);
 
 module.exports = router;

@@ -71,8 +71,8 @@ const yearlyAbandonment = asyncHandler(async (req, res) => {
 
 const eventsForAsset = asyncHandler(async (req, res) => {
   const result = await service.eventsForAsset({
-    applicationNumber: req.params.applicationNumber,
-    patentNumber: req.params.patentNumber,
+    applicationNumber: req.params.application_number,
+    patentNumber: req.params.patent_number,
   });
   if (req.query.counter !== undefined) {
     return res.status(200).type('text/plain').send(`${result.events.length}`);
@@ -81,7 +81,7 @@ const eventsForAsset = asyncHandler(async (req, res) => {
 });
 
 const assetStatus = asyncHandler(async (req, res) => {
-  const result = await service.assetStatus(req.params.applicationNumber);
+  const result = await service.assetStatus(req.params.application_number);
   if (req.query.counter !== undefined) {
     return res.status(200).type('text/plain').send(`${result.status.length}`);
   }
@@ -104,20 +104,20 @@ const assetToRecordDetail = asyncHandler(async (req, res) => {
 });
 
 const transactionAssets = asyncHandler(async (req, res) => {
-  res.status(200).json(await service.transactionAssets(Number(req.params.rfID)));
+  res.status(200).json(await service.transactionAssets(Number(req.params.rf_id)));
 });
 
 /* ---------------------------------------------------- tab-scoped life spans */
 
 const tabLifeSpan = asyncHandler(async (req, res) => {
-  const companies = req.params.companyID || req.params.representativeID;
+  const companies = req.params.company_id || req.params.representative_id;
   res.status(200).json(
     await service.lifeSpanForSelection({
       type: req.query.type,
       companies: companies ? [Number(companies)] : [],
-      tabs: [Number(req.params.tabID)],
-      customers: req.params.customerID ? [Number(req.params.customerID)] : [],
-      assignments: req.params.rfID ? [Number(req.params.rfID)] : [],
+      tabs: [Number(req.params.tab_id)],
+      customers: req.params.customer_id ? [Number(req.params.customer_id)] : [],
+      assignments: req.params.rf_id ? [Number(req.params.rf_id)] : [],
     })
   );
 });

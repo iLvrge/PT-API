@@ -11,6 +11,7 @@
  */
 
 const ApiError = require('../utils/api-error');
+const problem = require('../utils/problem');
 const logger = require('../utils/logger');
 const sentry = require('../config/sentry');
 
@@ -25,12 +26,15 @@ const normalise = (err) => {
     case 'SequelizeValidationError':
     case 'SequelizeUniqueConstraintError': {
       const details = (err.errors || []).map((e) => ({ field: e.path, message: e.message }));
-      const status = err.name === 'SequelizeUniqueConstraintError' ? 409 : 400;
-      return new ApiError(status, 'Validation failed', { details });
+      const unique = err.name === 'SequelizeUniqueConstraintError';
+      return new ApiError(unique ? 409 : 400, 'Validation failed', {
+        details,
+        type: unique ? 'CONFLICT' : 'VALIDATION',
+      });
     }
     case 'JsonWebTokenError':
     case 'TokenExpiredError':
-      return ApiError.unauthorized('Invalid or expired token');
+      return ApiError.unauthorized('Invalid or expired token', 'INVALID_TOKEN');
     case 'SequelizeDatabaseError':
     case 'SequelizeConnectionError':
       return ApiError.internal('A database error occurred');
@@ -62,12 +66,13 @@ const errorHandler = (err, req, res, next) => {
   // unreachable tenant DB — keep their client-safe message.
   const clientMessage = apiError.isOperational ? apiError.message : 'Internal server error';
 
-  res.status(apiError.statusCode).json({
-    error: {
-      message: clientMessage,
-      ...(apiError.details ? { details: apiError.details } : {}),
-    },
-  });
+  // application/problem+json is what tells a generic client this body is an
+  // error and not data. The body carries the pre-7807 `error` envelope too, so
+  // callers that read error.message keep working until they migrate.
+  res
+    .status(apiError.statusCode)
+    .type(problem.MEDIA_TYPE)
+    .json(problem.fromApiError(apiError, req, { detail: clientMessage }));
 };
 
 module.exports = { notFound, errorHandler };

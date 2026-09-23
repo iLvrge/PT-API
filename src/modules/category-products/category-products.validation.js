@@ -9,7 +9,7 @@ const createSchema = z.object({
   }),
 });
 
-const categoryIdSchema = z.object({ params: z.object({ categoryId: z.coerce.number().int().positive() }) });
-const productIdSchema = z.object({ params: z.object({ productId: z.coerce.number().int().positive() }) });
+const categoryIdSchema = z.object({ params: z.object({ category_id: z.coerce.number().int().positive() }) });
+const productIdSchema = z.object({ params: z.object({ product_id: z.coerce.number().int().positive() }) });
 
 module.exports = { createSchema, categoryIdSchema, productIdSchema };

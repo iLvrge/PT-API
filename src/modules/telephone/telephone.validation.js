@@ -15,7 +15,7 @@ const listTelephoneSchema = z.object({
 });
 
 const telephoneIdSchema = z.object({
-  params: z.object({ telephoneId: z.coerce.number().int().positive() }),
+  params: z.object({ telephone_id: z.coerce.number().int().positive() }),
 });
 
 module.exports = { createTelephoneSchema, listTelephoneSchema, telephoneIdSchema };

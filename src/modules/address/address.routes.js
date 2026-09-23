@@ -14,7 +14,7 @@ const guard = [verifyToken, attachTenant];
 router.get('/address/companies', guard, validate(schema.companiesQuerySchema), controller.listCompanies);
 router.get('/address', guard, validate(schema.companiesQuerySchema), controller.list);
 router.post('/address', guard, validate(schema.createAddressSchema), controller.create);
-router.put('/address/:addressId', guard, validate(schema.updateAddressSchema), controller.update);
-router.delete('/address/:addressId', guard, validate(schema.addressIdSchema), controller.remove);
+router.put('/address/:address_id', guard, validate(schema.updateAddressSchema), controller.update);
+router.delete('/address/:address_id', guard, validate(schema.addressIdSchema), controller.remove);
 
 module.exports = router;

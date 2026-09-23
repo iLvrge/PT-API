@@ -16,6 +16,6 @@ const guard = [verifyToken, attachTenant];
 
 router.get('/telephone', guard, validate(schema.listTelephoneSchema), controller.list);
 router.post('/telephone', guard, validate(schema.createTelephoneSchema), controller.create);
-router.delete('/telephone/:telephoneId', guard, validate(schema.telephoneIdSchema), controller.remove);
+router.delete('/telephone/:telephone_id', guard, validate(schema.telephoneIdSchema), controller.remove);
 
 module.exports = router;

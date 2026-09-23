@@ -16,7 +16,7 @@ const T = h.TENANT_ERRORS;
 const SHARE_ERRORS = {
   400: h.errorResponse('Invalid or malformed code.'),
   404: h.errorResponse('No share link with that code.'),
-  429: h.errorResponse('Too many requests — share codes are rate limited.'),
+  429: h.RATE_LIMITED,
   500: h.errorResponse('Unexpected server error.'),
 };
 
@@ -74,56 +74,56 @@ module.exports = {
       errors: T,
     }),
   },
-  '/transactions/{transactionId}': {
+  '/transactions/{transaction_id}': {
     get: h.operation({
       tag: 'Counters',
       summary: 'Everything recorded on one transaction',
-      params: [h.numericPathParam('transactionId', 'Transaction (reel-frame) id.')],
+      params: [h.numericPathParam('transaction_id', 'Transaction (reel-frame) id.')],
       ok: h.jsonResponse('Parties, the assignment record and the assets.', {
         type: 'object',
         properties: {
           assignees: { type: 'array', items: { type: 'object' } },
           assignors: { type: 'array', items: { type: 'object' } },
-          assignments: { type: 'object', nullable: true },
+          assignments: { type: ['object', 'null'] },
           patent: { type: 'array', items: { type: 'object' } },
         },
       }),
       errors: E,
     }),
   },
-  '/updates/{companyName}': {
+  '/updates/{company_name}': {
     get: h.operation({
       tag: 'Counters',
       summary: 'Weekly, monthly and quarterly change counters',
       description:
         'Pass 0 to sum across the whole organisation. The literal string "undefined" falls back to '
         + "the organisation's own name, which the dashboard client relies on.",
-      params: [h.pathParam('companyName', 'Company name, or 0 for the whole organisation.')],
+      params: [h.pathParam('company_name', 'Company name, or 0 for the whole organisation.')],
       ok: h.objectResponse('Counters, all zero when the company has none.'),
       errors: T,
     }),
   },
 
   /* ------------------------------------------------------- illustrations */
-  '/connection/{reelFrame}': {
+  '/connection/{reel_frame}': {
     get: h.operation({
       tag: 'Illustrations',
       summary: 'Assignment diagram for a reel-frame',
       description:
         'This endpoint was unauthenticated in the legacy app; it now requires a token.',
-      params: [h.pathParam('reelFrame', 'Reel and frame, e.g. 45231-0812.', {
+      params: [h.pathParam('reel_frame', 'Reel and frame, e.g. 45231-0812.', {
         type: 'string', pattern: '^\\d+-\\d+$', example: '45231-0812',
       })],
       ok: h.jsonResponse('The diagram, or {} when the reel-frame is unknown.', h.ref('Illustration')),
       errors: E,
     }),
   },
-  '/connection/asset/{applicationNumber}': {
+  '/connection/asset/{application_number}': {
     get: h.operation({
       tag: 'Illustrations',
       summary: 'Diagram of the transaction that misnamed an application',
       params: [
-        h.pathParam('applicationNumber', 'Application number.'),
+        h.pathParam('application_number', 'Application number.'),
         h.jsonArrayQuery('companies', 'Representative ids. Required — without one the result is {}.'),
       ],
       ok: h.jsonResponse('The diagram, or {}.', h.ref('Illustration')),
@@ -242,7 +242,7 @@ module.exports = {
   },
 
   /* ----------------------------------------------------------- timelines */
-  '/timeline/': {
+  '/timeline': {
     get: h.operation({
       tag: 'Timelines',
       summary: 'Recorded transactions, filtered',
@@ -259,17 +259,17 @@ module.exports = {
       errors: T,
     }),
   },
-  '/timeline/item/{rfId}': {
+  '/timeline/item/{rf_id}': {
     get: h.operation({
       tag: 'Timelines',
       summary: 'The parties on one transaction',
       description: 'Skips the property list, which the timeline never draws.',
-      params: [h.numericPathParam('rfId', 'Transaction (reel-frame) id.')],
+      params: [h.numericPathParam('rf_id', 'Transaction (reel-frame) id.')],
       ok: h.objectResponse('Assignors, assignees, the assignment record and any release.'),
       errors: E,
     }),
   },
-  '/timeline/standalone/{groupId}': {
+  '/timeline/standalone/{group_id}': {
     get: h.operation({
       tag: 'Timelines',
       summary: 'Points in one conveyance group',
@@ -277,7 +277,7 @@ module.exports = {
         'Groups: 0 employee assignments, 1 acquisitions, 2 security and release, 3 everything '
         + 'else. This endpoint was unauthenticated in the legacy app and always served '
         + "organisation 11; it now requires a token and is scoped to the caller's organisation.",
-      params: [h.numericPathParam('groupId', 'Conveyance group, 0-3.')],
+      params: [h.numericPathParam('group_id', 'Conveyance group, 0-3.')],
       ok: h.jsonResponse('Points and the group colour.', {
         type: 'object',
         properties: {
@@ -288,47 +288,47 @@ module.exports = {
       errors: T,
     }),
   },
-  '/timeline/standalone/filter/{groupId}/{startDate}/{endDate}/{scroll}': {
+  '/timeline/standalone/filter/{group_id}/{start_date}/{end_date}/{scroll}': {
     get: h.operation({
       tag: 'Timelines',
       summary: 'A conveyance group over a date window',
       description:
         'Widens the window around the given range, narrowing it until the result is drawable.',
       params: [
-        h.numericPathParam('groupId', 'Conveyance group, 0-3.'),
-        h.pathParam('startDate', 'Window start.', { type: 'string', format: 'date', example: '2020-01-01' }),
-        h.pathParam('endDate', 'Window end.', { type: 'string', format: 'date', example: '2020-12-31' }),
+        h.numericPathParam('group_id', 'Conveyance group, 0-3.'),
+        h.pathParam('start_date', 'Window start.', { type: 'string', format: 'date', example: '2020-01-01' }),
+        h.pathParam('end_date', 'Window end.', { type: 'string', format: 'date', example: '2020-12-31' }),
         h.pathParam('scroll', 'Which edge to walk: "right" or "left".', { type: 'string', enum: ['left', 'right'] }),
       ],
       ok: h.objectResponse('Items, assignors, assignees and the window extent.'),
       errors: T,
     }),
   },
-  '/timeline/filter/search/{groupId}/{startDate}/{endDate}/{scroll}': {
+  '/timeline/filter/search/{group_id}/{start_date}/{end_date}/{scroll}': {
     get: h.operation({
       tag: 'Timelines',
       summary: 'The searchable variant of the filtered timeline',
       description: 'Same window search; this variant encodes the scroll direction as 1 or 0.',
       params: [
-        h.numericPathParam('groupId', 'Conveyance group, 0-3.'),
-        h.pathParam('startDate', 'Window start.', { type: 'string', format: 'date', example: '2020-01-01' }),
-        h.pathParam('endDate', 'Window end.', { type: 'string', format: 'date', example: '2020-12-31' }),
+        h.numericPathParam('group_id', 'Conveyance group, 0-3.'),
+        h.pathParam('start_date', 'Window start.', { type: 'string', format: 'date', example: '2020-01-01' }),
+        h.pathParam('end_date', 'Window end.', { type: 'string', format: 'date', example: '2020-12-31' }),
         h.pathParam('scroll', '1 scrolls right, anything else scrolls left.', { type: 'string', enum: ['0', '1'] }),
       ],
       ok: h.objectResponse('Bucketed parties, the window extent and the group labels.'),
       errors: T,
     }),
   },
-  '/timeline/{groupId}': {
+  '/timeline/{group_id}': {
     get: h.operation({
       tag: 'Timelines',
       summary: 'Points on one activity tab',
-      params: [h.numericPathParam('groupId', 'Activity tab id. Tab 8 draws surnames only.')],
+      params: [h.numericPathParam('group_id', 'Activity tab id. Tab 8 draws surnames only.')],
       ok: h.objectResponse('Points and the tab colour.'),
       errors: T,
     }),
   },
-  '/timeline/{organisation}/{name}/{depth}/{groupId}': {
+  '/timeline/{organisation}/{name}/{depth}/{group_id}': {
     get: h.operation({
       tag: 'Timelines',
       summary: 'Drill into a company, party, transaction or asset',
@@ -336,7 +336,7 @@ module.exports = {
         h.pathParam('organisation', 'Company name, as recorded in the tenant database.'),
         h.pathParam('name', 'What to drill into: a party name, transaction id or asset number.'),
         h.numericPathParam('depth', '0 company, 1 party, 2 transaction, 3 asset.'),
-        h.numericPathParam('groupId', 'Activity tab id. Tab 9 draws surnames only.'),
+        h.numericPathParam('group_id', 'Activity tab id. Tab 9 draws surnames only.'),
       ],
       ok: h.objectResponse('Points and the depth colour.'),
       errors: T,
@@ -345,7 +345,7 @@ module.exports = {
   },
 
   /* ----------------------------------------------------------- icons */
-  '/events_icons/': {
+  '/events_icons': {
     get: h.operation({
       tag: 'Event icons',
       summary: 'Every event flag icon',
@@ -356,11 +356,11 @@ module.exports = {
       errors: E,
     }),
   },
-  '/events_icons/{eventId}': {
+  '/events_icons/{event_id}': {
     get: h.operation({
       tag: 'Event icons',
       summary: 'One event flag icon',
-      params: [h.numericPathParam('eventId', 'Event id. The set is not contiguous.')],
+      params: [h.numericPathParam('event_id', 'Event id. The set is not contiguous.')],
       ok: { description: 'The SVG.', content: { 'image/svg+xml': { schema: { type: 'string' } } } },
       errors: E,
       extraResponses: { 404: h.errorResponse('That event has no icon.') },

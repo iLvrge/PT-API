@@ -7,7 +7,7 @@ const h = require('../helpers');
 const E = h.TENANT_ERRORS;
 
 module.exports = {
-  '/users/': {
+  '/users': {
     get: h.operation({
       tag: 'Users',
       summary: 'List users in the caller organisation',
@@ -31,11 +31,11 @@ module.exports = {
       errors: E,
     }),
   },
-  '/users/{userId}': {
+  '/users/{user_id}': {
     put: h.operation({
       tag: 'Users',
       summary: 'Update a user',
-      params: [h.numericPathParam('userId', 'User id.')],
+      params: [h.numericPathParam('user_id', 'User id.')],
       body: h.jsonBody(h.ref('NewUser'), false),
       ok: h.jsonResponse('Updated.', h.ref('User')),
       errors: E,
@@ -44,7 +44,7 @@ module.exports = {
     delete: h.operation({
       tag: 'Users',
       summary: 'Delete a user',
-      params: [h.numericPathParam('userId', 'User id.')],
+      params: [h.numericPathParam('user_id', 'User id.')],
       ok: h.objectResponse('Deleted.'),
       errors: E,
       extraResponses: { 404: h.errorResponse('No such user.') },

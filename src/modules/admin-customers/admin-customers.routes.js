@@ -49,8 +49,8 @@ router.get('/customers/run_query/:representative_name/:query_no', validate(repor
 router.get('/patents/:asset', controller.assetIllustration);
 router.get('/customers/static_file/read_entity_file', controller.entityFileByName);
 router.get('/customers/read_static_file/read_entity_file/:id/:portfolios/:type', controller.entityFile);
-router.get('/customers/retrieve_cited_patents/:customerID', controller.retrieveCitedPatents);
-router.get('/customers/retrieve_cited_patents_domain/:customerID/:apiName', controller.retrieveCitedPatentDomains);
+router.get('/customers/retrieve_cited_patents/:customer_id', controller.retrieveCitedPatents);
+router.get('/customers/retrieve_cited_patents_domain/:customer_id/:api_name', controller.retrieveCitedPatentDomains);
 router.post('/customers/retrieve_cited_patents_logo', controller.retrieveCitedPatentLogos);
 
 /* -------------------------------------------------------------- customers */
@@ -61,7 +61,7 @@ router.post('/customers', controller.createCustomer);
 router.put('/customers', controller.updateCustomer);
 
 router.get('/customers/:id', validate(idSchema), controller.customer);
-router.delete('/customers/:organisation_id', validate(orgSchema), controller.deleteCustomer);
+router.delete('/customers/:id', validate(idSchema), controller.deleteCustomer);
 router.put('/customers/:id/logo', validate(idSchema), controller.setLogo);
 
 router.get('/customers/:organisation_id/buttons', validate(orgSchema), controller.listSwitches);
@@ -80,7 +80,7 @@ router.get('/customers/:id/reclassify-log', validate(idSchema), controller.recla
 router.delete('/customers/:id/reclassify-log', validate(idSchema), controller.clearReclassifyLogs);
 
 router.get('/customers/customers/:id/:type', validate(idSchema), controller.normaliseNames);
-router.get('/customers/customers/:id/:representativeID/:type', validate(idSchema), controller.normaliseNames);
+router.get('/customers/customers/:id/:representative_id/:type', validate(idSchema), controller.normaliseNames);
 
 router.get('/customers/:organisation_id/create_tree', validate(orgSchema), controller.createTree);
 router.get('/customers/:organisation_id/flag_automatic', validate(orgSchema), controller.runFlagUpdate);
@@ -96,7 +96,7 @@ router.get('/customers/:organisation_id/:representative_id/find_inventor', valid
 router.get('/users', controller.listAdminUsers);
 router.post('/users', controller.createAdminUser);
 router.put('/users/:user_id', controller.updateAdminUser);
-router.delete('/users/:orgId/:user_id', controller.deleteCustomerUser);
+router.delete('/users/:org_id/:user_id', controller.deleteCustomerUser);
 
 // The remaining legacy endpoints in admin_customers.js are covered elsewhere:
 // customer companies, reports, users and patents are the same reads the

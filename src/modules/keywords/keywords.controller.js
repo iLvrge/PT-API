@@ -12,11 +12,11 @@ const create = asyncHandler(async (req, res) => {
 });
 
 const update = asyncHandler(async (req, res) => {
-  res.status(200).json(await service.update(req.params.keywordId, req.body.keyword));
+  res.status(200).json(await service.update(req.params.keyword_id, req.body.keyword));
 });
 
 const remove = asyncHandler(async (req, res) => {
-  res.status(200).json(await service.remove(req.params.keywordId));
+  res.status(200).json(await service.remove(req.params.keyword_id));
 });
 
 module.exports = { list, create, update, remove };

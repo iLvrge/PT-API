@@ -11,7 +11,9 @@
     "lint:fix": "eslint src tests --fix",
     "start": "env-cmd node --trace-deprecation app.js",
     "start:v2": "node src/server.js",
-    "dev:v2": "node --watch src/server.js"
+    "dev:v2": "node --watch src/server.js",
+    "build:openapi": "node scripts/build-openapi.js",
+    "lint:api": "node scripts/build-openapi.js && redocly lint"
   },
   "keywords": [],
   "author": "",
@@ -67,6 +69,7 @@
     "zod": "^4.5.2"
   },
   "devDependencies": {
+    "@redocly/cli": "^2.54.2",
     "eslint": "^10.9.1",
     "jest": "^30.5.0",
     "supertest": "^7.2.2"

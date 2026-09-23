@@ -6,6 +6,7 @@ const ApiError = require('../../src/utils/api-error');
 const mockRes = () => {
   const res = {};
   res.status = jest.fn().mockReturnValue(res);
+  res.type = jest.fn().mockReturnValue(res);
   res.json = jest.fn().mockReturnValue(res);
   return res;
 };
@@ -16,9 +17,37 @@ describe('error-handler', () => {
     const res = mockRes();
     errorHandler(ApiError.badRequest('nope', [{ field: 'a', message: 'bad' }]), req, res, () => {});
     expect(res.status).toHaveBeenCalledWith(400);
-    expect(res.json).toHaveBeenCalledWith({
-      error: { message: 'nope', details: [{ field: 'a', message: 'bad' }] },
+    expect(res.type).toHaveBeenCalledWith('application/problem+json');
+    const body = res.json.mock.calls[0][0];
+    // RFC 7807 members...
+    expect(body).toMatchObject({
+      title: 'Bad Request',
+      status: 400,
+      detail: 'nope',
+      instance: '/x',
+      errors: [{ field: 'a', message: 'bad' }],
     });
+    expect(body.type).toMatch(/\/errors\/bad-request$/);
+    // ...and the pre-7807 envelope, still in the same body for the existing clients.
+    expect(body.error).toEqual({
+      message: 'nope',
+      details: [{ field: 'a', message: 'bad' }],
+    });
+  });
+
+  it('names the failure mode when a call site asked for one', () => {
+    const res = mockRes();
+    errorHandler(ApiError.notFound('Unknown share code', 'UNKNOWN_SHARE_CODE'), req, res, () => {});
+    const body = res.json.mock.calls[0][0];
+    expect(body.type).toMatch(/\/errors\/unknown-share-code$/);
+    expect(body.title).toBe('Unknown Share Code');
+    expect(body.status).toBe(404);
+  });
+
+  it('falls back to the status when no failure mode was named', () => {
+    const res = mockRes();
+    errorHandler(ApiError.notFound('no such asset'), req, res, () => {});
+    expect(res.json.mock.calls[0][0].type).toMatch(/\/errors\/not-found$/);
   });
 
   it('maps SequelizeValidationError to 400 with field details', () => {
@@ -26,7 +55,9 @@ describe('error-handler', () => {
     const err = { name: 'SequelizeValidationError', errors: [{ path: 'last_name', message: 'cannot be null' }] };
     errorHandler(err, req, res, () => {});
     expect(res.status).toHaveBeenCalledWith(400);
+    expect(res.json.mock.calls[0][0].errors[0].field).toBe('last_name');
     expect(res.json.mock.calls[0][0].error.details[0].field).toBe('last_name');
+    expect(res.json.mock.calls[0][0].type).toMatch(/\/errors\/validation-error$/);
   });
 
   it('maps SequelizeUniqueConstraintError to 409', () => {
@@ -45,6 +76,7 @@ describe('error-handler', () => {
     const res = mockRes();
     errorHandler(new Error('DB password is foo'), req, res, () => {});
     expect(res.status).toHaveBeenCalledWith(500);
+    expect(res.json.mock.calls[0][0].detail).toBe('Internal server error');
     expect(res.json.mock.calls[0][0].error.message).toBe('Internal server error');
   });
 
@@ -90,5 +122,31 @@ describe('validate middleware — parameter merging', () => {
     const req = { params: { id: 'abc' }, body: {}, query: {} };
     const next = run(schema, req);
     expect(next.mock.calls[0][0]).toMatchObject({ statusCode: 400 });
+  });
+});
+
+describe('deprecation headers (RFC 8594)', () => {
+  const { deprecated, SUNSET } = require('../../src/middleware/deprecation');
+
+  it('announces the deprecation on the response itself', () => {
+    const headers = {};
+    const res = { setHeader: (k, v) => { headers[k] = v; } };
+    const next = jest.fn();
+
+    deprecated({ reason: 'Use the header instead.', successor: '/docs#tag/Slack' })({}, res, next);
+
+    expect(headers.Deprecation).toBe('true');
+    expect(headers.Sunset).toBe(SUNSET.toUTCString());
+    expect(headers.Link).toBe('</docs#tag/Slack>; rel="successor-version"');
+    expect(headers.Warning).toBe('299 - "Use the header instead."');
+    // The endpoint still runs: this is notice, not removal.
+    expect(next).toHaveBeenCalled();
+  });
+
+  it('keeps the Warning header parseable when the reason quotes something', () => {
+    const headers = {};
+    const res = { setHeader: (k, v) => { headers[k] = v; } };
+    deprecated({ reason: 'Send "x-slack-token" instead.' })({}, res, () => {});
+    expect(headers.Warning).toBe(`299 - "Send 'x-slack-token' instead."`);
   });
 });

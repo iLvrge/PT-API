@@ -63,11 +63,11 @@ const keywordPaths = {
       errors: { ...h.AUTH_ERRORS, 403: h.errorResponse('Admin access required.') },
     }),
   },
-  '/admin/keywords/{keywordId}': {
+  '/admin/keywords/{keyword_id}': {
     put: h.operation({
       tag: 'Admin lists',
       summary: 'Rename a keyword',
-      params: [h.numericPathParam('keywordId', 'Keyword id.')],
+      params: [h.numericPathParam('keyword_id', 'Keyword id.')],
       body: h.jsonBody(h.ref('ListItemInput')),
       ok: h.jsonResponse('Updated.', h.ref('ListItem')),
       errors: { ...h.AUTH_ERRORS, 403: h.errorResponse('Admin access required.') },
@@ -76,7 +76,7 @@ const keywordPaths = {
     delete: h.operation({
       tag: 'Admin lists',
       summary: 'Delete a keyword',
-      params: [h.numericPathParam('keywordId', 'Keyword id.')],
+      params: [h.numericPathParam('keyword_id', 'Keyword id.')],
       ok: h.jsonResponse('Deleted.', {
         type: 'object',
         properties: { id: { type: 'integer' }, deleted: { type: 'boolean' } },
@@ -113,7 +113,7 @@ module.exports = {
     }),
   },
 
-  '/admin/customers/{id}/users/{userId}': {
+  '/admin/customers/{id}/users/{user_id}': {
     put: h.operation({
       tag: 'Admin users',
       summary: 'Update a user, or change their password',
@@ -125,7 +125,7 @@ module.exports = {
         + 'and the divergence is logged.',
       params: [
         h.numericPathParam('id', 'Organisation id.'),
-        h.numericPathParam('userId', 'User id.'),
+        h.numericPathParam('user_id', 'User id.'),
       ],
       body: h.jsonBody({
         oneOf: [
@@ -160,7 +160,7 @@ module.exports = {
       summary: 'Delete a user from a customer organisation',
       params: [
         h.numericPathParam('id', 'Organisation id.'),
-        h.numericPathParam('userId', 'User id.'),
+        h.numericPathParam('user_id', 'User id.'),
       ],
       ok: h.objectResponse('Deleted.'),
       errors: { ...h.AUTH_ERRORS, 403: h.errorResponse('Admin access required.') },

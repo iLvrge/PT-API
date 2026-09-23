@@ -29,7 +29,7 @@ const create = asyncHandler(async (req, res) => {
 
 const update = asyncHandler(async (req, res) => {
   const companies = parseCompanies(req.body.companies);
-  const result = await service.update(req.tenant, req.params.collectionId, {
+  const result = await service.update(req.tenant, req.params.collection_id, {
     collection_name: req.body.collection_name,
     companies,
   });
@@ -37,7 +37,7 @@ const update = asyncHandler(async (req, res) => {
 });
 
 const remove = asyncHandler(async (req, res) => {
-  res.status(200).json(await service.remove(req.tenant, req.params.collectionId));
+  res.status(200).json(await service.remove(req.tenant, req.params.collection_id));
 });
 
 module.exports = { list, create, update, remove };

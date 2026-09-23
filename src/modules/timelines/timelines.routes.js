@@ -12,13 +12,13 @@ const guard = [verifyToken, attachTenant];
 
 const isoDate = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'expected YYYY-MM-DD');
 
-const groupSchema = z.object({ params: z.object({ groupId: z.coerce.number().int() }) });
-const rfIdSchema = z.object({ params: z.object({ rfId: z.coerce.number().int().positive() }) });
+const groupSchema = z.object({ params: z.object({ group_id: z.coerce.number().int() }) });
+const rfIdSchema = z.object({ params: z.object({ rf_id: z.coerce.number().int().positive() }) });
 const filterSchema = z.object({
   params: z.object({
-    groupId: z.coerce.number().int(),
-    startDate: isoDate,
-    endDate: isoDate,
+    group_id: z.coerce.number().int(),
+    start_date: isoDate,
+    end_date: isoDate,
     scroll: z.string().max(10),
   }),
 });
@@ -27,14 +27,14 @@ const drillSchema = z.object({
     organisation: z.string().min(1).max(300),
     name: z.string().min(1).max(300),
     depth: z.coerce.number().int().min(0).max(3),
-    groupId: z.coerce.number().int(),
+    group_id: z.coerce.number().int(),
   }),
 });
 
 // Mounted at /timeline. Literal-prefixed paths come before the parameterised
 // ones so /:groupId and /:organisation/... cannot shadow them.
 router.get('/', guard, controller.list);
-router.get('/item/:rfId', verifyToken, validate(rfIdSchema), controller.item);
+router.get('/item/:rf_id', verifyToken, validate(rfIdSchema), controller.item);
 
 // The /standalone endpoints ran under the legacy `addToken` middleware, which
 // performed NO authentication and hardcoded userId 9 / organisation 11 — so
@@ -42,11 +42,11 @@ router.get('/item/:rfId', verifyToken, validate(rfIdSchema), controller.item);
 // token here and are scoped to the caller's own organisation. If the standalone
 // timeline is meant to be a public embed, re-open it deliberately and take the
 // demo organisation id from configuration rather than from an auth helper.
-router.get('/standalone/filter/:groupId/:startDate/:endDate/:scroll', guard, validate(filterSchema), controller.standaloneFiltered);
-router.get('/standalone/:groupId', guard, validate(groupSchema), controller.standalone);
+router.get('/standalone/filter/:group_id/:start_date/:end_date/:scroll', guard, validate(filterSchema), controller.standaloneFiltered);
+router.get('/standalone/:group_id', guard, validate(groupSchema), controller.standalone);
 
-router.get('/filter/search/:groupId/:startDate/:endDate/:scroll', guard, validate(filterSchema), controller.searchFiltered);
-router.get('/:groupId', guard, validate(groupSchema), controller.byTab);
-router.get('/:organisation/:name/:depth/:groupId', guard, validate(drillSchema), controller.drillDown);
+router.get('/filter/search/:group_id/:start_date/:end_date/:scroll', guard, validate(filterSchema), controller.searchFiltered);
+router.get('/:group_id', guard, validate(groupSchema), controller.byTab);
+router.get('/:organisation/:name/:depth/:group_id', guard, validate(drillSchema), controller.drillDown);
 
 module.exports = router;

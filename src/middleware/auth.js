@@ -52,20 +52,20 @@ const resetAuthCache = () => authCache.clear();
 const verifyToken = asyncHandler(async (req, res, next) => {
   const header = req.headers.authorization || '';
   const bearer = header.startsWith('Bearer ') ? header.slice(7) : req.headers['x-auth-token'];
-  if (!bearer) throw ApiError.unauthorized('Missing authentication token');
+  if (!bearer) throw ApiError.unauthorized('Missing authentication token', 'INVALID_TOKEN');
 
   let payload;
   try {
     payload = jwt.verify(bearer, env.auth.secret);
   } catch (_err) {
-    throw ApiError.unauthorized('Invalid or expired token');
+    throw ApiError.unauthorized('Invalid or expired token', 'INVALID_TOKEN');
   }
 
   const user = await cached(
     `user:${payload.id}:${payload.orgId}`,
     () => usersRepository.findActiveById(payload.id, payload.orgId)
   );
-  if (!user) throw ApiError.unauthorized('User is not authorized to access this resource');
+  if (!user) throw ApiError.unauthorized('User is not authorized to access this resource', 'INVALID_TOKEN');
 
   // req is unique per request; no concurrent writer exists here.
   // eslint-disable-next-line require-atomic-updates
@@ -85,7 +85,7 @@ const verifyToken = asyncHandler(async (req, res, next) => {
 const requireAdmin = asyncHandler(async (req, res, next) => {
   if (!req.auth) throw ApiError.unauthorized();
   const isAdmin = await cached(`admin:${req.auth.userId}`, () => usersRepository.isAdmin(req.auth.userId));
-  if (!isAdmin) throw ApiError.forbidden('Admin access required');
+  if (!isAdmin) throw ApiError.forbidden('Admin access required', 'ADMIN_REQUIRED');
   next();
 });
 

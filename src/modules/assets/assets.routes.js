@@ -13,26 +13,26 @@ const guard = [verifyToken, attachTenant];
 const cpcCellSchema = z.object({
   params: z.object({
     year: z.string().regex(/^\d{4}$/, 'expected a four-digit year'),
-    cpcCode: z.string().min(1).max(30),
+    cpc_code: z.string().min(1).max(30),
   }),
 });
 const assetSchema = z.object({ params: z.object({ asset: z.string().min(1).max(50) }) });
 const outsourceSchema = z.object({
   params: z.object({
-    patentNumber: z.string().min(1).max(50),
+    patent_number: z.string().min(1).max(50),
     type: z.enum(['0', '1']),
   }),
 });
-const itemSchema = z.object({ params: z.object({ itemID: z.coerce.number().int().positive() }) });
+const itemSchema = z.object({ params: z.object({ item_id: z.coerce.number().int().positive() }) });
 
 // Mounted at /. Literal segments are declared before the parameterised
 // /assets/:asset so it cannot swallow them.
 router.get('/assets', verifyToken, controller.list);
-router.get('/assets/download/:itemID', verifyToken, validate(itemSchema), controller.download);
+router.get('/assets/download/:item_id', verifyToken, validate(itemSchema), controller.download);
 
 router.post('/assets/categories_products', guard, controller.grantYears);
 router.post('/assets/cpc', guard, controller.cpcBreakdown);
-router.post('/assets/cpc/:year/:cpcCode', guard, validate(cpcCellSchema), controller.cpcCellAssets);
+router.post('/assets/cpc/:year/:cpc_code', guard, validate(cpcCellSchema), controller.cpcCellAssets);
 router.post('/assets/move', verifyToken, controller.move);
 router.post('/assets/validate', verifyToken, controller.validate);
 router.post('/assets/assets_for_sale', guard, controller.listForSale);
@@ -40,12 +40,12 @@ router.delete('/assets/rollback', verifyToken, controller.rollback);
 
 // GET /assets/:patentNumber/:type/outsource had no authentication at all in the
 // legacy app — its middleware array was left empty. It requires a token here.
-router.get('/assets/:patentNumber/:type/outsource', verifyToken, validate(outsourceSchema), controller.outsource);
+router.get('/assets/:patent_number/:type/outsource', verifyToken, validate(outsourceSchema), controller.outsource);
 router.get('/assets/:asset', verifyToken, validate(assetSchema), controller.illustration);
 
 // Slack file sharing — pending the messaging tier.
 router.get(
-  '/assets/:patentNumber/files/:channelID/slack/:token',
+  '/assets/:patent_number/files/:channel_id/slack/:token',
   verifyToken,
   controller.notPorted('Slack file sharing')
 );

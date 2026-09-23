@@ -18,8 +18,18 @@ const openapi = require('../../src/docs/openapi');
 
 const HTTP_METHODS = ['get', 'post', 'put', 'delete', 'patch'];
 
-/** Express `/a/:b` → OpenAPI `/a/{b}`. */
-const toOpenApiPath = (path) => path.replace(/:([A-Za-z0-9_]+)/g, '{$1}');
+/**
+ * Express `/a/:b` → OpenAPI `/a/{b}`.
+ *
+ * A trailing slash is dropped. `router.get('/')` under `app.use('/users', …)`
+ * compiles to `/users/`, and Express serves `/users` and `/users/` alike, so
+ * documenting the slashed form described a second path that is really the same
+ * one — which is what `no-path-trailing-slash` flags.
+ */
+const toOpenApiPath = (path) => {
+  const mapped = path.replace(/:([A-Za-z0-9_]+)/g, '{$1}');
+  return mapped.length > 1 ? mapped.replace(/\/$/, '') : mapped;
+};
 
 /** Recover a router's mount prefix from the regexp Express compiled for it. */
 const mountPrefix = (layer) => {
@@ -84,8 +94,8 @@ describe('OpenAPI coverage', () => {
 });
 
 describe('OpenAPI document', () => {
-  it('is a valid 3.0 document with the pieces Swagger UI needs', () => {
-    expect(openapi.openapi).toMatch(/^3\.0/);
+  it('is a valid 3.1 document with the pieces Swagger UI needs', () => {
+    expect(openapi.openapi).toMatch(/^3\.1/);
     expect(openapi.info.title).toBeTruthy();
     expect(openapi.components.securitySchemes.bearerAuth.scheme).toBe('bearer');
     expect(openapi.security).toEqual([{ bearerAuth: [] }]);
@@ -102,6 +112,52 @@ describe('OpenAPI document', () => {
           if (!op.tags || !op.tags.length) faults.push(`${where}: no tag`);
           const success = Object.keys(op.responses).some((code) => code.startsWith('2'));
           if (!success) faults.push(`${where}: no 2xx response`);
+        });
+    });
+    expect(faults).toEqual([]);
+  });
+
+  /*
+   * The global limiter sits in front of every route, so 429 is a property of
+   * the API rather than of particular endpoints. It used to be documented on
+   * ten operations out of 358, which is how a caller ends up discovering the
+   * limit by having their last rows silently render as zeros.
+   */
+  it('tells every operation it can be rate limited, and how long to wait', () => {
+    const faults = [];
+    Object.entries(openapi.paths).forEach(([path, operations]) => {
+      Object.entries(operations)
+        .filter(([method]) => HTTP_METHODS.includes(method))
+        .forEach(([method, op]) => {
+          const where = `${method.toUpperCase()} ${path}`;
+          const limited = op.responses[429];
+          if (!limited) faults.push(`${where}: no 429`);
+          else if (!limited.headers || !limited.headers['Retry-After']) {
+            faults.push(`${where}: 429 without Retry-After`);
+          }
+        });
+    });
+    expect(faults).toEqual([]);
+  });
+
+  it('describes errors as RFC 7807 problem documents', () => {
+    const problem = openapi.components.schemas.Problem;
+    expect(problem).toBeTruthy();
+    expect(problem.required).toEqual(expect.arrayContaining(['type', 'title', 'status']));
+
+    const faults = [];
+    Object.entries(openapi.paths).forEach(([path, operations]) => {
+      Object.entries(operations)
+        .filter(([method]) => HTTP_METHODS.includes(method))
+        .forEach(([method, op]) => {
+          Object.entries(op.responses)
+            .filter(([code]) => code.startsWith('4') || code.startsWith('5'))
+            .forEach(([code, response]) => {
+              if (!response.content) return; // 501 stubs carry no body
+              if (!response.content['application/problem+json']) {
+                faults.push(`${method.toUpperCase()} ${path} ${code}: not problem+json`);
+              }
+            });
         });
     });
     expect(faults).toEqual([]);
@@ -139,6 +195,6 @@ describe('OpenAPI document', () => {
     expect(openapi.paths['/health'].get.security).toEqual([]);
     expect(openapi.paths['/share/{code}/{type}'].get.security).toEqual([]);
     // Everything else inherits the document-level requirement.
-    expect(openapi.paths['/companies/'].get.security).toBeUndefined();
+    expect(openapi.paths['/companies'].get.security).toBeUndefined();
   });
 });

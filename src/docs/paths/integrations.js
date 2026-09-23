@@ -36,8 +36,16 @@ const deprecatedToken = h.pathParam(
 const ms = ({ summary, description, params = [], body, ok, tag = 'Microsoft Teams' }) =>
   h.operation({ tag, summary, description, params: [...msHeaders, ...params], body, ok, errors: MS_ERRORS });
 
-const slack = ({ summary, description, params = [], body, ok }) =>
-  h.operation({
+/**
+ * A Slack operation.
+ *
+ * Any operation still taking the token in the path is marked deprecated, so
+ * Swagger UI strikes it through and a generated client warns on it. It goes on
+ * working — the flag is the notice, not the removal.
+ */
+const slack = ({ summary, description, params = [], body, ok }) => {
+  const inPath = params.some((p) => p && p.in === 'path' && p.name === 'token');
+  return h.operation({
     tag: 'Slack',
     summary,
     description,
@@ -45,7 +53,13 @@ const slack = ({ summary, description, params = [], body, ok }) =>
     body,
     ok,
     errors: E,
+    deprecated: inPath
+      ? 'Takes the Slack token as a path segment, which writes a credential into access logs, '
+        + 'proxy logs and browser history. Send it in the x-slack-token header instead. This form '
+        + 'is removed in 3.0.0.'
+      : undefined,
   });
+};
 
 module.exports = {
   /* ------------------------------------------------------ Microsoft Teams */
@@ -58,7 +72,7 @@ module.exports = {
       description: 'Records the team against the organisation the first time it is seen.',
       ok: h.jsonResponse('The team id, or null.', {
         type: 'object',
-        properties: { message: { type: 'string' }, teamId: { type: 'string', nullable: true } },
+        properties: { message: { type: 'string' }, teamId: { type: ['string', 'null'] } },
       }),
     }),
     post: ms({
@@ -68,10 +82,10 @@ module.exports = {
       }),
     }),
   },
-  '/microsoft/channel/{teamID}': {
+  '/microsoft/channel/{team_id}': {
     post: ms({
       summary: 'Find or create a private channel',
-      params: [h.pathParam('teamID', 'Teams team id.')],
+      params: [h.pathParam('team_id', 'Teams team id.')],
       body: h.jsonBody({
         type: 'object',
         required: ['name'],
@@ -82,47 +96,47 @@ module.exports = {
       }),
     }),
   },
-  '/microsoft/channel/{teamID}/{name}': {
+  '/microsoft/channel/{team_id}/{name}': {
     get: ms({
       summary: 'Find a private channel by name',
-      params: [h.pathParam('teamID', 'Teams team id.'), h.pathParam('name', 'Channel display name.')],
+      params: [h.pathParam('team_id', 'Teams team id.'), h.pathParam('name', 'Channel display name.')],
       ok: h.jsonResponse('The channel id, or null.', {
-        type: 'object', properties: { channelId: { type: 'string', nullable: true } },
+        type: 'object', properties: { channelId: { type: ['string', 'null'] } },
       }),
     }),
   },
-  '/microsoft/{teamId}/channels': {
+  '/microsoft/{team_id}/channels': {
     get: ms({
       summary: 'Every private channel in the team',
-      params: [h.pathParam('teamId', 'Teams team id.')],
+      params: [h.pathParam('team_id', 'Teams team id.')],
       ok: h.listResponse('Channels.'),
     }),
   },
-  '/microsoft/{teamId}/users': {
+  '/microsoft/{team_id}/users': {
     get: ms({
       summary: 'Team members',
-      params: [h.pathParam('teamId', 'Teams team id.')],
+      params: [h.pathParam('team_id', 'Teams team id.')],
       ok: h.listResponse('Members.'),
     }),
   },
-  '/microsoft/{teamId}/channels/{channelId}/filesFolder': {
+  '/microsoft/{team_id}/channels/{channel_id}/filesFolder': {
     get: ms({
       summary: "A channel's SharePoint file folder",
       description: 'Graph reports a new channel\'s folder as not ready for a few seconds; this retries.',
-      params: [h.pathParam('teamId', 'Teams team id.'), h.pathParam('channelId', 'Channel id.')],
+      params: [h.pathParam('team_id', 'Teams team id.'), h.pathParam('channel_id', 'Channel id.')],
       ok: h.jsonResponse('The folder.', { type: 'object', properties: { folder: { type: 'object' } } }),
     }),
   },
-  '/microsoft/{teamId}/channels/{channelId}/messages': {
+  '/microsoft/{team_id}/channels/{channel_id}/messages': {
     get: ms({
       summary: 'Channel messages and members',
-      params: [h.pathParam('teamId', 'Teams team id.'), h.pathParam('channelId', 'Channel id.')],
+      params: [h.pathParam('team_id', 'Teams team id.'), h.pathParam('channel_id', 'Channel id.')],
       ok: h.objectResponse('Messages and users.'),
     }),
     post: ms({
       summary: 'Post a message to a channel',
       description: 'Accepts an optional `file` attachment as multipart/form-data.',
-      params: [h.pathParam('teamId', 'Teams team id.'), h.pathParam('channelId', 'Channel id.')],
+      params: [h.pathParam('team_id', 'Teams team id.'), h.pathParam('channel_id', 'Channel id.')],
       body: {
         required: true,
         content: {
@@ -156,7 +170,7 @@ module.exports = {
         h.queryParam('redirect_uri', 'Must match the one used to obtain the code.'),
       ],
       ok: h.objectResponse('The Slack tokens, and a session token when the workspace is known.'),
-      errors: { 400: h.errorResponse('Slack rejected the code.'), 429: h.errorResponse('Rate limited.') },
+      errors: { 400: h.errorResponse('Slack rejected the code.'), 429: h.RATE_LIMITED },
       public: true,
     }),
   },
@@ -169,7 +183,7 @@ module.exports = {
         h.queryParam('redirect_uri', 'Must match the one used to obtain the code.'),
       ],
       ok: h.objectResponse('The Slack tokens.'),
-      errors: { 400: h.errorResponse('Slack rejected the code.'), 429: h.errorResponse('Rate limited.') },
+      errors: { 400: h.errorResponse('Slack rejected the code.'), 429: h.RATE_LIMITED },
       public: true,
     }),
   },
@@ -192,10 +206,10 @@ module.exports = {
       errors: h.TENANT_ERRORS,
     }),
   },
-  '/slacks/user/info/{token}/{userId}': {
+  '/slacks/user/info/{token}/{user_id}': {
     get: slack({
       summary: 'One Slack user',
-      params: [deprecatedToken, h.pathParam('userId', 'Slack user id.')],
+      params: [deprecatedToken, h.pathParam('user_id', 'Slack user id.')],
       ok: h.objectResponse('The user.'),
     }),
   },
@@ -245,22 +259,22 @@ module.exports = {
       ok: h.objectResponse('The Slack response.'),
     }),
   },
-  '/slacks/conversations/message/{token}/{channelID}/{messageID}': {
+  '/slacks/conversations/message/{token}/{channel_id}/{message_id}': {
     get: slack({
       summary: 'One message',
-      params: [deprecatedToken, h.pathParam('channelID', 'Channel id.'), h.pathParam('messageID', 'Message timestamp.')],
+      params: [deprecatedToken, h.pathParam('channel_id', 'Channel id.'), h.pathParam('message_id', 'Message timestamp.')],
       ok: h.listResponse('The message.'),
     }),
     delete: slack({
       summary: 'Delete a message',
-      params: [deprecatedToken, h.pathParam('channelID', 'Channel id.'), h.pathParam('messageID', 'Message timestamp.')],
+      params: [deprecatedToken, h.pathParam('channel_id', 'Channel id.'), h.pathParam('message_id', 'Message timestamp.')],
       ok: h.objectResponse('Deleted.'),
     }),
   },
-  '/slacks/conversations/history/{token}/{channelID}': {
+  '/slacks/conversations/history/{token}/{channel_id}': {
     get: slack({
       summary: 'Channel history and users',
-      params: [deprecatedToken, h.pathParam('channelID', 'Channel id.')],
+      params: [deprecatedToken, h.pathParam('channel_id', 'Channel id.')],
       ok: h.objectResponse('Messages and users.'),
     }),
   },

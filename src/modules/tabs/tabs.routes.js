@@ -9,10 +9,10 @@ const router = express.Router();
 const guard = [verifyToken, attachTenant];
 
 // Mounted at /tabs. Literal segments before parameterised ones.
-router.get('/:tabID/companies/:companyID/customers/:customerID/transactions/:rfID', guard, controller.transactionAssets);
-router.get('/:tabID/companies/:companyID/customers/:customerID', guard, controller.customerTransactions);
-router.get('/:tabID/customers', guard, controller.customers);
-router.get('/:tabID/companies/:companyID', guard, controller.companyCustomers);
-router.get('/:tabID', guard, controller.companies);
+router.get('/:tab_id/companies/:company_id/customers/:customer_id/transactions/:rf_id', guard, controller.transactionAssets);
+router.get('/:tab_id/companies/:company_id/customers/:customer_id', guard, controller.customerTransactions);
+router.get('/:tab_id/customers', guard, controller.customers);
+router.get('/:tab_id/companies/:company_id', guard, controller.companyCustomers);
+router.get('/:tab_id', guard, controller.companies);
 
 module.exports = router;

@@ -31,7 +31,7 @@ const createChannel = asyncHandler(async (req, res) => {
   res.status(200).json(
     await service.createChannel({
       tokens: req.microsoft,
-      teamId: req.params.teamID,
+      teamId: req.params.team_id,
       name: req.body.name,
       description: req.body.description,
     })
@@ -41,7 +41,7 @@ const createChannel = asyncHandler(async (req, res) => {
 const findChannel = asyncHandler(async (req, res) => {
   res.status(200).json(
     await service.findChannel({
-      tokens: req.microsoft, teamId: req.params.teamID, name: req.params.name,
+      tokens: req.microsoft, teamId: req.params.team_id, name: req.params.name,
     })
   );
 });
@@ -49,7 +49,7 @@ const findChannel = asyncHandler(async (req, res) => {
 const filesFolder = asyncHandler(async (req, res) => {
   res.status(200).json({
     folder: await service.filesFolder({
-      tokens: req.microsoft, teamId: req.params.teamId, channelId: req.params.channelId,
+      tokens: req.microsoft, teamId: req.params.team_id, channelId: req.params.channel_id,
     }),
   });
 });
@@ -58,8 +58,8 @@ const sendMessage = asyncHandler(async (req, res) => {
   res.status(200).json(
     await service.sendMessage({
       tokens: req.microsoft,
-      teamId: req.params.teamId,
-      channelId: req.params.channelId,
+      teamId: req.params.team_id,
+      channelId: req.params.channel_id,
       text: req.body.text,
       remoteFiles: parseList(req.body.remote_file, 'remote_file'),
       user: req.body.user,
@@ -71,17 +71,17 @@ const sendMessage = asyncHandler(async (req, res) => {
 const channelMessages = asyncHandler(async (req, res) => {
   res.status(200).json(
     await service.channelMessages({
-      tokens: req.microsoft, teamId: req.params.teamId, channelId: req.params.channelId,
+      tokens: req.microsoft, teamId: req.params.team_id, channelId: req.params.channel_id,
     })
   );
 });
 
 const listChannels = asyncHandler(async (req, res) => {
-  res.status(200).json(await service.listChannels({ tokens: req.microsoft, teamId: req.params.teamId }));
+  res.status(200).json(await service.listChannels({ tokens: req.microsoft, teamId: req.params.team_id }));
 });
 
 const listMembers = asyncHandler(async (req, res) => {
-  res.status(200).json(await service.listMembers({ tokens: req.microsoft, teamId: req.params.teamId }));
+  res.status(200).json(await service.listMembers({ tokens: req.microsoft, teamId: req.params.team_id }));
 });
 
 module.exports = {

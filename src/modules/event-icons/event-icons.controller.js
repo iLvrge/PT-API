@@ -9,7 +9,7 @@ const all = asyncHandler(async (req, res) => {
 });
 
 const byId = asyncHandler(async (req, res) => {
-  const svg = service.byId(req.params.eventId);
+  const svg = service.byId(req.params.event_id);
   if (svg === null) throw ApiError.notFound('No icon for that event');
   res.status(200).type('image/svg+xml').send(svg);
 });

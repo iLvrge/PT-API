@@ -89,6 +89,11 @@ module.exports = {
       errors: E,
     }),
   },
+  /*
+   * GET and DELETE were two path entries differing only in what the parameter
+   * was called — the same URL described twice, which is not a valid OpenAPI
+   * document and made a generated client carry two methods for one endpoint.
+   */
   '/admin/customers/{id}': {
     get: h.operation({
       tag: 'Admin customers',
@@ -98,9 +103,6 @@ module.exports = {
       errors: E,
       extraResponses: notFound,
     }),
-  },
-
-  '/admin/customers/{organisation_id}': {
     delete: h.operation({
       tag: 'Admin customers',
       summary: 'Delete a customer that was never provisioned',
@@ -108,7 +110,7 @@ module.exports = {
         'Refuses once the customer has a tenant database, since that would orphan it. The legacy '
         + 'version deleted on a column the table does not have, inside a transaction it never '
         + 'closed.',
-      params: [orgParam('organisation_id')],
+      params: [orgParam()],
       ok: h.objectResponse('Deleted.'),
       errors: E,
       extraResponses: {
@@ -213,14 +215,16 @@ module.exports = {
         + 'the conveyance alone, since the original type is not recoverable. An empty list is '
         + 'refused rather than running an unbounded UPDATE.',
       params: [orgParam()],
-      body: h.formBody({
-        type: 'object',
-        required: ['inventors', 'flag'],
-        properties: {
+      // formBody takes (properties, required) and wraps them itself. Passing a
+      // whole schema here produced properties.properties.inventors — a body
+      // schema that documented two fields called `type` and `properties`.
+      body: h.formBody(
+        {
           inventors: h.jsonArrayField('assignor_and_assignee ids.', '[1,2]'),
           flag: { type: 'integer', enum: [0, 1] },
         },
-      }),
+        ['inventors', 'flag']
+      ),
     }),
   },
   '/admin/customers/{organisation_id}/{representative_id}/find_inventor': {
@@ -383,12 +387,12 @@ module.exports = {
       status: 202,
     }),
   },
-  '/admin/customers/customers/{id}/{representativeID}/{type}': {
+  '/admin/customers/customers/{id}/{representative_id}/{type}': {
     get: job({
       summary: 'Rebuild the entity suggestions for named companies',
       params: [
         orgParam(),
-        h.pathParam('representativeID', 'JSON array of company ids.', { type: 'string', example: '[9]' }),
+        h.pathParam('representative_id', 'JSON array of company ids.', { type: 'string', example: '[9]' }),
         h.pathParam('type', 'Entity type.'),
       ],
       status: 202,
@@ -428,23 +432,23 @@ module.exports = {
       params: [orgParam('organisation_id'), h.numericPathParam('representative_id', 'Company id.')],
     }),
   },
-  '/admin/customers/retrieve_cited_patents/{customerID}': {
+  '/admin/customers/retrieve_cited_patents/{customer_id}': {
     get: job({
       summary: 'Retrieve the assignees of cited patents',
       params: [
-        h.numericPathParam('customerID', 'Organisation id.'),
+        h.numericPathParam('customer_id', 'Organisation id.'),
         h.jsonArrayQuery('companies', 'Company ids.', '[]'),
         h.queryParam('type', 'Retrieval type.'),
       ],
       status: 202,
     }),
   },
-  '/admin/customers/retrieve_cited_patents_domain/{customerID}/{apiName}': {
+  '/admin/customers/retrieve_cited_patents_domain/{customer_id}/{api_name}': {
     get: job({
       summary: 'Look up assignee domains',
       params: [
-        h.numericPathParam('customerID', 'Organisation id.'),
-        h.pathParam('apiName', 'Which lookup provider to use.'),
+        h.numericPathParam('customer_id', 'Organisation id.'),
+        h.pathParam('api_name', 'Which lookup provider to use.'),
         h.queryParam('assignees', 'Assignee names.'),
       ],
       status: 202,
@@ -514,7 +518,7 @@ module.exports = {
       extraResponses: { 404: h.errorResponse('No such administrator.') },
     }),
   },
-  '/admin/users/{orgId}/{user_id}': {
+  '/admin/users/{org_id}/{user_id}': {
     delete: h.operation({
       tag: 'Admin users',
       summary: 'Delete a customer user',
@@ -523,7 +527,7 @@ module.exports = {
         + 'business row goes first because it is the one that grants access; if the tenant row '
         + 'then fails, the response says so rather than leaving the user signed in.',
       params: [
-        h.numericPathParam('orgId', 'Organisation id.'),
+        h.numericPathParam('org_id', 'Organisation id.'),
         h.numericPathParam('user_id', 'User id.'),
       ],
       ok: h.objectResponse('Deleted, with a note if the tenant row survived.'),

@@ -40,11 +40,11 @@ module.exports = {
       errors: E,
     }),
   },
-  '/telephone/{telephoneId}': {
+  '/telephone/{telephone_id}': {
     delete: h.operation({
       tag: 'Telephone',
       summary: 'Delete a telephone number',
-      params: [h.numericPathParam('telephoneId', 'Telephone id.')],
+      params: [h.numericPathParam('telephone_id', 'Telephone id.')],
       ok: h.objectResponse('Deleted.'),
       errors: E,
       extraResponses: notFound('telephone number'),
@@ -73,11 +73,11 @@ module.exports = {
       errors: E,
     }),
   },
-  '/lawfirm/{lawfirmId}': {
+  '/lawfirm/{lawfirm_id}': {
     put: h.operation({
       tag: 'Law firms',
       summary: 'Rename a law firm',
-      params: [h.numericPathParam('lawfirmId', 'Law firm id.')],
+      params: [h.numericPathParam('lawfirm_id', 'Law firm id.')],
       body: h.jsonBody({ type: 'object', properties: { name: { type: 'string' } } }),
       ok: h.objectResponse('Updated.'),
       errors: E,
@@ -86,7 +86,7 @@ module.exports = {
     delete: h.operation({
       tag: 'Law firms',
       summary: 'Delete a law firm',
-      params: [h.numericPathParam('lawfirmId', 'Law firm id.')],
+      params: [h.numericPathParam('lawfirm_id', 'Law firm id.')],
       ok: h.objectResponse('Deleted.'),
       errors: E,
       extraResponses: notFound('law firm'),
@@ -110,20 +110,20 @@ module.exports = {
       errors: E,
     }),
   },
-  '/lawfirm_address/{lawfirmId}': {
+  '/lawfirm_address/{lawfirm_id}': {
     get: h.operation({
       tag: 'Law firms',
       summary: "One law firm's addresses",
-      params: [h.numericPathParam('lawfirmId', 'Law firm id.')],
+      params: [h.numericPathParam('lawfirm_id', 'Law firm id.')],
       ok: h.listResponse('Addresses.'),
       errors: E,
     }),
   },
-  '/lawfirm_address/{addressId}': {
+  '/lawfirm_address/{address_id}': {
     put: h.operation({
       tag: 'Law firms',
       summary: 'Update a law firm address',
-      params: [h.numericPathParam('addressId', 'Address id.')],
+      params: [h.numericPathParam('address_id', 'Address id.')],
       body: h.jsonBody(h.ref('AddressInput'), false),
       ok: h.objectResponse('Updated.'),
       errors: E,
@@ -132,7 +132,7 @@ module.exports = {
     delete: h.operation({
       tag: 'Law firms',
       summary: 'Delete a law firm address',
-      params: [h.numericPathParam('addressId', 'Address id.')],
+      params: [h.numericPathParam('address_id', 'Address id.')],
       ok: h.objectResponse('Deleted.'),
       errors: E,
       extraResponses: notFound('address'),
@@ -166,11 +166,11 @@ module.exports = {
       errors: E,
     }),
   },
-  '/address/{addressId}': {
+  '/address/{address_id}': {
     put: h.operation({
       tag: 'Addresses',
       summary: 'Update a company address',
-      params: [h.numericPathParam('addressId', 'Address id.')],
+      params: [h.numericPathParam('address_id', 'Address id.')],
       body: h.jsonBody(h.ref('AddressInput'), false),
       ok: h.objectResponse('Updated.'),
       errors: E,
@@ -179,7 +179,7 @@ module.exports = {
     delete: h.operation({
       tag: 'Addresses',
       summary: 'Delete a company address',
-      params: [h.numericPathParam('addressId', 'Address id.')],
+      params: [h.numericPathParam('address_id', 'Address id.')],
       ok: h.objectResponse('Deleted.'),
       errors: E,
       extraResponses: notFound('address'),
@@ -187,7 +187,7 @@ module.exports = {
   },
 
   /* ---------------------------------------------------- category products */
-  '/category_products/': {
+  '/category_products': {
     get: h.operation({
       tag: 'Categories',
       summary: 'List product categories',
@@ -211,30 +211,30 @@ module.exports = {
       errors: E,
     }),
   },
-  '/category_products/{categoryId}': {
+  '/category_products/{category_id}': {
     delete: h.operation({
       tag: 'Categories',
       summary: 'Delete a category',
-      params: [h.numericPathParam('categoryId', 'Category id.')],
+      params: [h.numericPathParam('category_id', 'Category id.')],
       ok: h.objectResponse('Deleted.'),
       errors: E,
       extraResponses: notFound('category'),
     }),
   },
-  '/category_products/{categoryId}/products': {
+  '/category_products/{category_id}/products': {
     get: h.operation({
       tag: 'Categories',
       summary: 'Products in a category',
-      params: [h.numericPathParam('categoryId', 'Category id.')],
+      params: [h.numericPathParam('category_id', 'Category id.')],
       ok: h.listResponse('Products.'),
       errors: E,
     }),
   },
-  '/category_products/products/{productId}': {
+  '/category_products/products/{product_id}': {
     delete: h.operation({
       tag: 'Categories',
       summary: 'Delete a product',
-      params: [h.numericPathParam('productId', 'Product id.')],
+      params: [h.numericPathParam('product_id', 'Product id.')],
       ok: h.objectResponse('Deleted.'),
       errors: E,
       extraResponses: notFound('product'),
@@ -265,11 +265,11 @@ module.exports = {
       errors: E,
     }),
   },
-  '/collections/{collectionId}': {
+  '/collections/{collection_id}': {
     put: h.operation({
       tag: 'Collections',
       summary: 'Rename a collection or replace its companies',
-      params: [h.numericPathParam('collectionId', 'Collection id.')],
+      params: [h.numericPathParam('collection_id', 'Collection id.')],
       body: h.jsonBody({
         type: 'object',
         properties: { name: { type: 'string' }, companies: h.jsonArrayField('Company ids.') },
@@ -281,7 +281,7 @@ module.exports = {
     delete: h.operation({
       tag: 'Collections',
       summary: 'Delete a collection',
-      params: [h.numericPathParam('collectionId', 'Collection id.')],
+      params: [h.numericPathParam('collection_id', 'Collection id.')],
       ok: h.objectResponse('Deleted.'),
       errors: E,
       extraResponses: notFound('collection'),
@@ -289,7 +289,7 @@ module.exports = {
   },
 
   /* -------------------------------------------------------- professionals */
-  '/professionals/': {
+  '/professionals': {
     get: h.operation({
       tag: 'Professionals',
       summary: 'List professionals',
@@ -305,11 +305,11 @@ module.exports = {
       errors: E,
     }),
   },
-  '/professionals/{professionalId}': {
+  '/professionals/{professional_id}': {
     put: h.operation({
       tag: 'Professionals',
       summary: 'Update a professional',
-      params: [h.numericPathParam('professionalId', 'Professional id.')],
+      params: [h.numericPathParam('professional_id', 'Professional id.')],
       body: h.jsonBody(h.ref('ProfessionalInput'), false),
       ok: h.objectResponse('Updated.'),
       errors: E,
@@ -318,7 +318,7 @@ module.exports = {
     delete: h.operation({
       tag: 'Professionals',
       summary: 'Delete a professional',
-      params: [h.numericPathParam('professionalId', 'Professional id.')],
+      params: [h.numericPathParam('professional_id', 'Professional id.')],
       ok: h.objectResponse('Deleted.'),
       errors: E,
       extraResponses: notFound('professional'),
@@ -326,11 +326,11 @@ module.exports = {
   },
 
   /* ------------------------------------------------------------- comments */
-  '/comments/{subjectType}': {
+  '/comments/{subject_type}': {
     get: h.operation({
       tag: 'Comments',
       summary: 'List comments of one subject type',
-      params: [h.numericPathParam('subjectType', 'Subject type id.')],
+      params: [h.numericPathParam('subject_type', 'Subject type id.')],
       ok: h.listResponse('Comments.'),
       errors: E,
     }),
@@ -338,7 +338,7 @@ module.exports = {
       tag: 'Comments',
       summary: 'Post a comment',
       description: 'Accepts an optional `file` attachment as multipart/form-data.',
-      params: [h.numericPathParam('subjectType', 'Subject type id.')],
+      params: [h.numericPathParam('subject_type', 'Subject type id.')],
       body: {
         required: true,
         content: {
@@ -360,23 +360,23 @@ module.exports = {
       errors: E,
     }),
   },
-  '/comments/{subjectType}/{subject}': {
+  '/comments/{subject_type}/{subject}': {
     get: h.operation({
       tag: 'Comments',
       summary: 'Comments on one subject',
       params: [
-        h.numericPathParam('subjectType', 'Subject type id.'),
+        h.numericPathParam('subject_type', 'Subject type id.'),
         h.pathParam('subject', 'Subject identifier.'),
       ],
       ok: h.listResponse('Comments.'),
       errors: E,
     }),
   },
-  '/comments/{ID}': {
+  '/comments/{id}': {
     put: h.operation({
       tag: 'Comments',
       summary: 'Edit a comment',
-      params: [h.numericPathParam('ID', 'Comment id.')],
+      params: [h.numericPathParam('id', 'Comment id.')],
       body: h.jsonBody({ type: 'object', properties: { comment: { type: 'string' } } }),
       ok: h.objectResponse('Updated.'),
       errors: E,
@@ -385,7 +385,7 @@ module.exports = {
     delete: h.operation({
       tag: 'Comments',
       summary: 'Delete a comment',
-      params: [h.numericPathParam('ID', 'Comment id.')],
+      params: [h.numericPathParam('id', 'Comment id.')],
       ok: h.objectResponse('Deleted.'),
       errors: E,
       extraResponses: notFound('comment'),

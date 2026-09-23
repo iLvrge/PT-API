@@ -78,13 +78,13 @@ module.exports = {
     }),
   },
 
-  '/assets/cpc/{year}/{cpcCode}': {
+  '/assets/cpc/{year}/{cpc_code}': {
     post: h.operation({
       tag: 'Assets',
       summary: 'The assets inside one breakdown cell',
       params: [
         h.pathParam('year', 'Filing year.', { type: 'string', example: '2018' }),
-        h.pathParam('cpcCode', 'CPC code, at the same granularity as `range`.', {
+        h.pathParam('cpc_code', 'CPC code, at the same granularity as `range`.', {
           type: 'string', example: 'H04L',
         }),
       ],
@@ -112,7 +112,7 @@ module.exports = {
     }),
   },
 
-  '/assets/{patentNumber}/{type}/outsource': {
+  '/assets/{patent_number}/{type}/outsource': {
     get: h.operation({
       tag: 'Assets',
       summary: 'Link into USPTO Assignment Center',
@@ -120,7 +120,7 @@ module.exports = {
         'This route had no authentication at all in the legacy app — its middleware array was '
         + 'empty. It requires a token here.',
       params: [
-        h.pathParam('patentNumber', 'Asset number, or a transaction id when type is 0.'),
+        h.pathParam('patent_number', 'Asset number, or a transaction id when type is 0.'),
         h.pathParam('type', '1 for an asset, 0 for a recorded transaction.', {
           type: 'string', enum: ['0', '1'],
         }),
@@ -133,14 +133,14 @@ module.exports = {
     }),
   },
 
-  '/assets/download/{itemID}': {
+  '/assets/download/{item_id}': {
     get: h.operation({
       tag: 'Assets',
       summary: 'Where a recorded assignment PDF lives',
       description:
         'Returns the CDN copy when we mirrored the document, otherwise the USPTO link. The legacy '
         + 'route downloaded the PDF onto the API server first; this only resolves the location.',
-      params: [h.numericPathParam('itemID', 'Transaction (reel-frame) id.')],
+      params: [h.numericPathParam('item_id', 'Transaction (reel-frame) id.')],
       ok: h.jsonResponse('The link.', {
         type: 'object', properties: { link: { type: 'string' } },
       }),
@@ -213,14 +213,14 @@ module.exports = {
   },
 
   /* ------------------------------------------------- not ported yet (501) */
-  '/assets/{patentNumber}/files/{channelID}/slack/{token}': {
+  '/assets/{patent_number}/files/{channel_id}/slack/{token}': {
     get: h.operation({
       tag: 'Assets (pending)',
       summary: 'Share an asset\'s files to Slack',
       description: 'Declared for completeness; answers 501 until the messaging tier is ported.',
       params: [
-        h.pathParam('patentNumber', 'Asset number.'),
-        h.pathParam('channelID', 'Slack channel id.'),
+        h.pathParam('patent_number', 'Asset number.'),
+        h.pathParam('channel_id', 'Slack channel id.'),
         h.pathParam('token', 'Slack token.'),
       ],
       ok: h.objectResponse('Not reached yet.'),

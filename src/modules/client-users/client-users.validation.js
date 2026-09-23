@@ -17,7 +17,7 @@ const createSchema = z.object({
 });
 
 const updateSchema = z.object({
-  params: z.object({ userId: z.coerce.number().int().positive() }),
+  params: z.object({ user_id: z.coerce.number().int().positive() }),
   body: z.object({
     first_name: z.string().trim().optional(),
     last_name: z.string().trim().optional(),
@@ -33,7 +33,7 @@ const updateSchema = z.object({
   }),
 });
 
-const userIdSchema = z.object({ params: z.object({ userId: z.coerce.number().int().positive() }) });
+const userIdSchema = z.object({ params: z.object({ user_id: z.coerce.number().int().positive() }) });
 const listQuerySchema = z.object({ query: z.object({ list: z.string().optional() }) });
 
 module.exports = { createSchema, updateSchema, userIdSchema, listQuerySchema };

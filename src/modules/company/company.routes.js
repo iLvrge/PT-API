@@ -17,15 +17,15 @@ router.get('/maintainence_assets', verifyToken, controller.maintainenceAssets);
 router.get('/lawfirm', guard, controller.lawfirmMappings);
 router.post('/lawfirm', guard, controller.addLawfirmMappings);
 // The legacy delete path had no ':' so the id never bound (always 402); fixed.
-router.delete('/lawfirm/:companyLawfirmId', guard, controller.removeLawfirmMapping);
-router.get('/search/:searchName', verifyToken, controller.search);
+router.delete('/lawfirm/:company_lawfirm_id', guard, controller.removeLawfirmMapping);
+router.get('/search/:search_name', verifyToken, controller.search);
 router.post('/group', guard, controller.addGroup);
 router.post('/', guard, controller.createCompanies);
 router.delete('/subcompanies', guard, controller.deleteSubcompanies);
 router.delete('/', guard, controller.deleteCompanies);
 router.get('/', guard, controller.companiesWithChildren);
-router.get('/:companyID/list', guard, controller.companyChildren);
-router.get('/:companyID/users', guard, controller.companyUsers);
-router.put('/:companyID', guard, controller.updateCompany);
+router.get('/:company_id/list', guard, controller.companyChildren);
+router.get('/:company_id/users', guard, controller.companyUsers);
+router.put('/:company_id', guard, controller.updateCompany);
 
 module.exports = router;

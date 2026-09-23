@@ -24,7 +24,7 @@ const selection = {
 };
 
 module.exports = {
-  '/dashboards/': {
+  '/dashboards': {
     get: h.operation({
       tag: 'Dashboards',
       summary: 'Dashboard tiles',
@@ -147,14 +147,14 @@ module.exports = {
     }),
   },
 
-  '/dashboards/parties/inventor/{inventorID}': {
+  '/dashboards/parties/inventor/{inventor_id}': {
     get: h.operation({
       tag: 'Dashboards',
       summary: 'Map an inventor to a counterparty record',
       description:
         'Tries eight orderings of the name parts, since USPTO records spell inventors '
         + 'inconsistently.',
-      params: [h.numericPathParam('inventorID', 'Inventor party id.')],
+      params: [h.numericPathParam('inventor_id', 'Inventor party id.')],
       ok: h.objectResponse('The matched party, or {} when none matched.'),
     }),
   },

@@ -24,7 +24,7 @@ const create = asyncHandler(async (req, res) => {
 });
 
 const update = asyncHandler(async (req, res) => {
-  await service.update(req.tenant, req.auth.userId, req.auth.orgId, req.params.userId, req.body);
+  await service.update(req.tenant, req.auth.userId, req.auth.orgId, req.params.user_id, req.body);
   res.status(200).send('Updated successfully');
 });
 
@@ -36,10 +36,10 @@ const removeMany = asyncHandler(async (req, res) => {
 });
 
 const removeOne = asyncHandler(async (req, res) => {
-  if (Number(req.params.userId) === req.auth.userId) {
+  if (Number(req.params.user_id) === req.auth.userId) {
     throw ApiError.badRequest('You cannot delete your own account');
   }
-  await service.deleteUsers(req.tenant, req.auth.userId, [req.params.userId]);
+  await service.deleteUsers(req.tenant, req.auth.userId, [req.params.user_id]);
   res.status(200).send('User deleted.');
 });
 

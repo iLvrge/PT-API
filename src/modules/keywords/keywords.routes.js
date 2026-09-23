@@ -12,7 +12,7 @@ router.use(verifyToken, requireAdmin);
 
 router.get('/keywords', controller.list);
 router.post('/keywords', validate(schema.createKeywordSchema), controller.create);
-router.put('/keywords/:keywordId', validate(schema.updateKeywordSchema), controller.update);
-router.delete('/keywords/:keywordId', validate(schema.keywordIdSchema), controller.remove);
+router.put('/keywords/:keyword_id', validate(schema.updateKeywordSchema), controller.update);
+router.delete('/keywords/:keyword_id', validate(schema.keywordIdSchema), controller.remove);
 
 module.exports = router;

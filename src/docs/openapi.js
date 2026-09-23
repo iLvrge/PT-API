@@ -1,7 +1,7 @@
 'use strict';
 
 /**
- * The OpenAPI 3.0 document, served interactively at GET /docs and as JSON at
+ * The OpenAPI 3.1 document, served interactively at GET /docs and as JSON at
  * GET /docs.json.
  *
  * The paths are split per surface under ./paths so each file stays readable.
@@ -27,17 +27,54 @@ const adminCustomers = require('./paths/admin-customers');
 const events = require('./paths/events');
 const adminCompanySearch = require('./paths/admin-company-search');
 
-const errorSchema = {
+/**
+ * The error body: an RFC 7807 problem document.
+ *
+ * `error` is the pre-7807 envelope, kept beside the standard members so the
+ * existing clients keep working while they migrate. It will be removed in the
+ * next major version; new consumers should read `title`, `detail` and
+ * `errors[]`. See ERRORS.md for the catalogue of `type` URIs.
+ */
+const problemSchema = {
   type: 'object',
+  required: ['type', 'title', 'status'],
   properties: {
+    type: {
+      type: 'string',
+      format: 'uri',
+      description: 'Stable identifier for this failure mode.',
+      example: 'https://api.patentrack.com/errors/validation-error',
+    },
+    title: { type: 'string', example: 'Validation Error' },
+    status: { type: 'integer', example: 400 },
+    detail: {
+      type: 'string',
+      description: 'What went wrong, in terms the caller can act on.',
+      example: 'companies must be a JSON array',
+    },
+    instance: {
+      type: 'string',
+      description: 'The path that produced this problem.',
+      example: '/customers/due_dilligence/assets',
+    },
+    requestId: { type: 'string', description: 'Echoes the X-Request-Id header.' },
+    errors: {
+      type: 'array',
+      description: 'Present on validation failures; names each offending field.',
+      items: {
+        type: 'object',
+        properties: { field: { type: 'string' }, message: { type: 'string' } },
+      },
+    },
     error: {
       type: 'object',
+      deprecated: true,
+      description: 'The pre-RFC-7807 envelope. Removed in the next major version.',
       properties: {
         message: { type: 'string' },
-        requestId: { type: 'string', description: 'Echoes the X-Request-Id header.' },
+        requestId: { type: 'string' },
         details: {
           type: 'array',
-          description: 'Present on validation failures; names each offending field.',
           items: {
             type: 'object',
             properties: { field: { type: 'string' }, message: { type: 'string' } },
@@ -49,7 +86,9 @@ const errorSchema = {
 };
 
 const schemas = {
-  Error: errorSchema,
+  Problem: problemSchema,
+  // Kept as an alias so any path file still naming `Error` resolves.
+  Error: problemSchema,
 
   Credentials: {
     type: 'object',
@@ -225,10 +264,10 @@ const tags = [
 ];
 
 const openapi = {
-  openapi: '3.0.3',
+  openapi: '3.1.0',
   info: {
     title: 'PatenTrack API (v2)',
-    version: '2.0.0',
+    version: '2.1.0',
     description: [
       'Layered rewrite of the PatenTrack API: routes → controller → service → repository,',
       'with raw SQL for reads and Sequelize models for writes.',
@@ -241,8 +280,34 @@ const openapi = {
       'which has not been ported yet. They are listed so nothing looks silently missing.',
       '',
       'Array parameters are JSON encoded as strings, e.g. `companies=[9,10]`, matching what the',
-      'existing client sends.',
+      'existing client sends. That is deliberate, not an oversight: it is the shape the browser',
+      'clients already build, and changing it would break them for no functional gain.',
+      '',
+      '### Errors',
+      '',
+      'Every failure answers `application/problem+json` (RFC 7807): `type`, `title`, `status`,',
+      '`detail`, `instance`, plus `requestId` and, on validation failures, `errors[]`. The `type`',
+      'is the stable identifier — match on it, never on `detail`, which is written for people.',
+      'The old `{ error: { message, ... } }` envelope is still included in the same body so the',
+      'existing clients keep working; it is deprecated and goes away in 3.0.0.',
+      '',
+      '### Rate limits',
+      '',
+      'Every request passes a limiter, so any operation can answer 429 with `Retry-After`.',
+      'Sign-in and the token-free Share endpoints have their own tighter limits.',
+      '',
+      '### Versioning and deprecation',
+      '',
+      'The version above is the contract, not the deployment. Breaking changes — removing an',
+      'endpoint or field, renaming a path segment, changing an error `type`, or making a',
+      'previously optional parameter required — only ship in a major version. Adding an optional',
+      'parameter, adding a response field, or documenting a status the code already returned are',
+      'not breaking.',
+      '',
+      'An endpoint on its way out is marked `deprecated` here and answers the `Deprecation` and',
+      '`Sunset` headers (RFC 8594). It keeps working for at least one major version after that.',
     ].join('\n'),
+    license: { name: 'Proprietary — PatenTrack', url: 'https://patentrack.com' },
   },
   servers: [{ url: '/', description: 'This host' }],
   tags,
@@ -277,5 +342,38 @@ const openapi = {
     ...adminCompanySearch,
   },
 };
+
+/**
+ * Give every operation an operationId.
+ *
+ * It is what a code generator names the method it builds, so without one an
+ * SDK ends up with `getUsers1`, `getUsers2` and so on. Derived from the method
+ * and path rather than written by hand so it cannot fall out of step: the path
+ * is the thing that has to stay unique anyway.
+ */
+const assignOperationIds = (spec) => {
+  const methods = ['get', 'post', 'put', 'delete', 'patch'];
+  const used = new Set();
+  Object.entries(spec.paths).forEach(([path, item]) => {
+    methods.forEach((method) => {
+      const op = item[method];
+      if (!op || op.operationId) return;
+      const segments = path
+        .split('/')
+        .filter(Boolean)
+        .map((s) => (s.startsWith('{') ? `by_${s.slice(1, -1)}` : s));
+      let id = [method, ...segments].join('_').replace(/[^A-Za-z0-9_]/g, '_');
+      // Two paths differing only in a parameter's name collide here; the
+      // suffix keeps the ids unique without inventing a new naming scheme.
+      let n = 2;
+      const base = id;
+      while (used.has(id)) { id = `${base}_${n}`; n += 1; }
+      used.add(id);
+      op.operationId = id;
+    });
+  });
+};
+
+assignOperationIds(openapi);
 
 module.exports = openapi;

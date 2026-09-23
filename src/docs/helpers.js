@@ -88,16 +88,54 @@ const objectResponse = (description) => jsonResponse(description, { type: 'objec
 const listResponse = (description, items = { type: 'object' }) =>
   jsonResponse(description, arrayOf(items));
 
+/**
+ * An error response.
+ *
+ * Errors are served as RFC 7807 problem documents. The media type is
+ * `application/problem+json`, which is what makes a generic client treat the
+ * body as an error rather than as data.
+ */
 const errorResponse = (description) => ({
   description,
-  content: { 'application/json': { schema: ref('Error') } },
+  content: { 'application/problem+json': { schema: ref('Problem') } },
 });
+
+/**
+ * The 429 every operation can answer.
+ *
+ * `globalLimiter` is mounted on every request in app.js, so this is not a
+ * property of particular endpoints — it applies to all of them, and the spec
+ * said so on ten. `Retry-After` tells the caller how long to wait instead of
+ * making them guess.
+ */
+const RATE_LIMITED = {
+  ...errorResponse('Rate limit exceeded. Retry after the interval in the Retry-After header.'),
+  headers: {
+    'Retry-After': {
+      description: 'Seconds to wait before retrying.',
+      schema: { type: 'integer', example: 900 },
+    },
+    'RateLimit-Limit': {
+      description: 'Requests permitted in the current window.',
+      schema: { type: 'integer', example: 300 },
+    },
+    'RateLimit-Remaining': {
+      description: 'Requests left in the current window.',
+      schema: { type: 'integer', example: 0 },
+    },
+    'RateLimit-Reset': {
+      description: 'Seconds until the window resets.',
+      schema: { type: 'integer', example: 900 },
+    },
+  },
+};
 
 // Attached to every authenticated operation so the failure modes are visible
 // in the UI rather than discovered by trial.
 const AUTH_ERRORS = {
   400: errorResponse('Validation failed. The body names the offending fields.'),
   401: errorResponse('Missing, malformed or expired bearer token.'),
+  429: RATE_LIMITED,
   500: errorResponse('Unexpected server error.'),
 };
 
@@ -118,15 +156,19 @@ const TENANT_ERRORS = {
  * @param {object} [spec.errors] which error set applies
  * @param {object} [spec.extraResponses] e.g. 404
  * @param {boolean} [spec.public] true when no token is required
+ * @param {string} [spec.deprecated] why, and what to use instead
  */
 const operation = ({
   tag, summary, description, params, body, ok, errors = AUTH_ERRORS, extraResponses = {},
-  public: isPublic = false, status = 200,
+  public: isPublic = false, status = 200, deprecated,
 }) => {
   const op = {
     tags: [tag],
     summary,
-    responses: { [status]: ok, ...errors, ...extraResponses },
+    // 429 is merged in here rather than left to each `errors` set: the global
+    // limiter runs in front of every route, including the public ones and the
+    // health probes, so no operation is exempt.
+    responses: { [status]: ok, 429: RATE_LIMITED, ...errors, ...extraResponses },
   };
   if (description) op.description = description;
   if (params && params.length) op.parameters = params;
@@ -134,6 +176,10 @@ const operation = ({
   if (isPublic) {
     op.security = [];
     delete op.responses[401];
+  }
+  if (deprecated) {
+    op.deprecated = true;
+    op.description = `**Deprecated.** ${deprecated}${description ? `\n\n${description}` : ''}`;
   }
   return op;
 };
@@ -158,4 +204,5 @@ module.exports = {
   operation,
   AUTH_ERRORS,
   TENANT_ERRORS,
+  RATE_LIMITED,
 };

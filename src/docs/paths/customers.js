@@ -87,11 +87,11 @@ module.exports = {
       errors: E,
     }),
   },
-  '/customers/asset_types/assignments/{rfID}': {
+  '/customers/asset_types/assignments/{rf_id}': {
     get: h.operation({
       tag: 'Customers',
       summary: 'Assets covered by one assignment',
-      params: [h.numericPathParam('rfID', 'Transaction (reel-frame) id.'), layout],
+      params: [h.numericPathParam('rf_id', 'Transaction (reel-frame) id.'), layout],
       ok: h.listResponse('Assets.'),
       errors: E,
     }),
@@ -195,7 +195,7 @@ module.exports = {
     get: h.operation({
       tag: 'Customers',
       summary: 'Law firms across the selection',
-      params: [companies, h.queryParam('rfID', 'Restrict to one transaction.', { type: 'integer' })],
+      params: [companies, h.queryParam('rf_id', 'Restrict to one transaction.', { type: 'integer' })],
       ok: h.listResponse('Law firms.'),
       errors: E,
     }),
@@ -257,26 +257,26 @@ module.exports = {
     }),
   },
 
-  '/customers/{parentCompany}/parties/{tabId}': {
+  '/customers/{parent_company}/parties/{tab_id}': {
     get: h.operation({
       tag: 'Customers',
       summary: "Counterparties under a parent company's tab",
       params: [
-        h.pathParam('parentCompany', 'Parent company name.'),
-        h.numericPathParam('tabId', 'Activity tab id.'),
+        h.pathParam('parent_company', 'Parent company name.'),
+        h.numericPathParam('tab_id', 'Activity tab id.'),
       ],
       ok: h.listResponse('Counterparties.'),
       errors: E,
     }),
   },
-  '/customers/{parentCompany}/{name}/collections/{tabId}': {
+  '/customers/{parent_company}/{name}/collections/{tab_id}': {
     get: h.operation({
       tag: 'Customers',
       summary: 'Transactions between a parent company and one counterparty',
       params: [
-        h.pathParam('parentCompany', 'Parent company name.'),
+        h.pathParam('parent_company', 'Parent company name.'),
         h.pathParam('name', 'Counterparty name.'),
-        h.numericPathParam('tabId', 'Activity tab id.'),
+        h.numericPathParam('tab_id', 'Activity tab id.'),
       ],
       ok: h.listResponse('Transactions.'),
     }),

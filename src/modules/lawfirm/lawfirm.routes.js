@@ -12,7 +12,7 @@ const guard = [verifyToken, attachTenant];
 
 router.get('/lawfirm', guard, validate(schema.listLawfirmSchema), controller.list);
 router.post('/lawfirm', guard, validate(schema.createLawfirmSchema), controller.create);
-router.put('/lawfirm/:lawfirmId', guard, validate(schema.updateLawfirmSchema), controller.update);
-router.delete('/lawfirm/:lawfirmId', guard, validate(schema.lawfirmIdSchema), controller.remove);
+router.put('/lawfirm/:lawfirm_id', guard, validate(schema.updateLawfirmSchema), controller.update);
+router.delete('/lawfirm/:lawfirm_id', guard, validate(schema.lawfirmIdSchema), controller.remove);
 
 module.exports = router;
