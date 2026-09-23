@@ -105,15 +105,23 @@ const assetIllustration = async ({ code, asset }) => {
   return illustrationJson({ asset, orgId: share.organisation_id, userId: share.user_id });
 };
 
-/** The illustration JSON for the first asset on a share link. */
+/**
+ * The illustration JSON for the first asset on a share link.
+ *
+ * Looked up by code alone. This used to call assetRows(code, 1), and the
+ * second argument there is the *share's* type — 0 for a standard link, 2 for a
+ * sample one — not the asset's. No share has ever been created with type 1
+ * (the live table holds 89 type 2, 16 type 9 and 7 type 0), so the filter
+ * matched nothing and this endpoint answered 404 for every link that has ever
+ * existed.
+ */
 const firstIllustration = async (code) => {
-  const rows = await repository.assetRows(code, 1);
-  if (!rows.length) throw ApiError.notFound('Invalid url');
+  const share = await repository.byCodeWithAssets(code);
+  if (!share || !share.share_lists.length) {
+    throw ApiError.notFound('Invalid url');
+  }
 
-  const first = rows[0];
-  const share = await repository.coversAsset(code, first.asset);
-  if (!share) throw ApiError.notFound('Invalid url');
-
+  const first = share.share_lists[0];
   return illustrationJson({
     asset: first.asset,
     // asset_type 0 (a granted patent) is requested with flag 1.

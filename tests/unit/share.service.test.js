@@ -174,16 +174,42 @@ describe('share.service illustration proxying', () => {
   });
 
   it('requests flag 1 for a granted patent and 0 for an application', async () => {
-    repo.coversAsset.mockResolvedValue({ organisation_id: 118, user_id: 5 });
     backgroundJob.illustrationJson.mockResolvedValue('');
 
-    repo.assetRows.mockResolvedValue([{ asset: '999', type: 4 }]);
+    repo.byCodeWithAssets.mockResolvedValue({
+      organisation_id: 118, user_id: 5, share_lists: [{ asset: '999', type: 4 }],
+    });
     await service.firstIllustration('abc123');
     expect(backgroundJob.illustrationJson).toHaveBeenCalledWith(expect.objectContaining({ flag: 1 }));
 
-    repo.assetRows.mockResolvedValue([{ asset: '111', type: 5 }]);
+    repo.byCodeWithAssets.mockResolvedValue({
+      organisation_id: 118, user_id: 5, share_lists: [{ asset: '111', type: 5 }],
+    });
     await service.firstIllustration('abc123');
     expect(backgroundJob.illustrationJson).toHaveBeenLastCalledWith(expect.objectContaining({ flag: 0 }));
+  });
+
+  /*
+   * This endpoint used to look the share up as assetRows(code, 1). That second
+   * argument is the share's own type - 0 standard, 2 sample - and no share has
+   * ever been created as type 1, so it answered 404 for every link in
+   * existence. Look it up by code alone.
+   */
+  it('finds a share whatever type it was created as', async () => {
+    backgroundJob.illustrationJson.mockResolvedValue('{"box":[]}');
+    repo.byCodeWithAssets.mockResolvedValue({
+      organisation_id: 68, user_id: 4, type: 2, share_lists: [{ asset: '12288087', type: 4 }],
+    });
+    await expect(service.firstIllustration('1eg7o8')).resolves.toBe('{"box":[]}');
+    expect(repo.assetRows).not.toHaveBeenCalled();
+  });
+
+  it('404s when the code is unknown or the link covers nothing', async () => {
+    repo.byCodeWithAssets.mockResolvedValue(null);
+    await expect(service.firstIllustration('nope')).rejects.toMatchObject({ statusCode: 404 });
+
+    repo.byCodeWithAssets.mockResolvedValue({ organisation_id: 68, user_id: 4, share_lists: [] });
+    await expect(service.firstIllustration('empty')).rejects.toMatchObject({ statusCode: 404 });
   });
 });
 
