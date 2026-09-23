@@ -15,6 +15,26 @@ const { Sequelize } = require('sequelize');
 const { env } = require('../config/env');
 const logger = require('../utils/logger');
 
+/**
+ * How much a GROUP_CONCAT may hold before the server silently cuts it.
+ *
+ * The server's default is 1024 bytes — about 113 application numbers. Several
+ * queries here concatenate an asset list per group and read it back apart
+ * again, and past that length the tail was dropped mid-number with no warning
+ * and no error. In the CPC breakdown that meant the service believed assets
+ * were unclassified when they were not, so the second pass re-queried them and
+ * the chart counted them twice. The value is per session, so it is set on each
+ * connection as the pool opens it.
+ */
+const GROUP_CONCAT_MAX_LEN = 1024 * 1024;
+
+/** Session settings every connection needs, main pools and tenant pools alike. */
+const sessionHooks = {
+  afterConnect: async (connection) => {
+    await connection.promise().query(`SET SESSION group_concat_max_len = ${GROUP_CONCAT_MAX_LEN}`);
+  },
+};
+
 const common = {
   host: env.db.host,
   port: env.db.port,
@@ -22,6 +42,7 @@ const common = {
   pool: env.db.pool,
   logging: env.db.logging ? (sql) => logger.debug('sql', { sql }) : false,
   define: { timestamps: false, freezeTableName: true },
+  hooks: sessionHooks,
 };
 
 const make = (dbName) => new Sequelize(dbName, env.db.user, env.db.password, common);
@@ -93,4 +114,6 @@ const closeAll = async () => {
   await Promise.all(Object.values(connections).map((s) => s.close().catch(() => {})));
 };
 
-module.exports = { Sequelize, connections, ping, warmUp, closeAll };
+module.exports = {
+  Sequelize, connections, ping, warmUp, closeAll, sessionHooks, GROUP_CONCAT_MAX_LEN,
+};

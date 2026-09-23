@@ -189,12 +189,72 @@ const assetsForSale = ({ orgId, list }) => {
 
 /* -------------------------------------------------------------------- CPC */
 
-const cpcBreakdown = ({ list, scope, range, bySection, yearClause, years, missedMonetization, fallback }) => {
-  const repl = { list };
+/**
+ * The asset list the CPC queries run over, as a row constructor they join.
+ *
+ * Not `IN (:list)`. The membership test degrades sharply once the list passes
+ * a few thousand values - MySQL's range optimiser runs out of its memory
+ * budget, drops the index on the tested column and scans instead. Measured
+ * against the live data, same query, same assets:
+ *
+ *     assets    IN (:list)              joined row constructor
+ *      1,000    2,275 ms /   875 ms     349 ms /   348 ms
+ *      5,000    3,677 ms / 1,076 ms   1,204 ms / 1,164 ms
+ *     15,000  205,244 ms / 179,053 ms  5,005 ms / 8,140 ms
+ *
+ * Three minutes at fifteen thousand is the shape of the failure this replaces:
+ * no error, just a request that never comes back. The test customer selects
+ * about five thousand assets, where the two are close; larger customers are
+ * where it matters.
+ *
+ * Two columns, so the breakdown can join whichever matches the indexed column
+ * on the other side and never has to convert that column: `appno` in latin1
+ * (db_uspto.documentid, patent_cpc.application_number) and `appno_utf8` in
+ * utf8mb4_general_ci (application_grant, application_publication). See
+ * COLLATION.md.
+ *
+ * The values are spliced in rather than bound: a bound array becomes an `IN`
+ * list, the very thing being removed. They are safe to splice - an application
+ * number is digits and letters, and anything else is stripped here before it
+ * reaches the SQL. Duplicates are dropped so a join can never multiply a row
+ * that a membership test matched once.
+ */
+const assetListFromValues = (list) => {
+  const clean = [...new Set(
+    list.map((value) => String(value).replace(/[^A-Za-z0-9_-]/g, '')).filter(Boolean)
+  )];
+  if (!clean.length) {
+    // An empty CTE still has to declare its columns, or the joins below fail
+    // to parse. No row can match it, which is what an empty list means.
+    return {
+      assetList: `SELECT CONVERT('' USING latin1) AS appno,
+      CAST('' AS CHAR CHARACTER SET utf8mb4) COLLATE utf8mb4_general_ci AS appno_utf8
+      WHERE 1 = 0`,
+      assetReplacements: {},
+    };
+  }
+  const rows = clean.map((value) => `ROW('${value}')`).join(',');
+  return {
+    assetList: `SELECT CONVERT(column_0 USING latin1) AS appno,
+      CAST(column_0 AS CHAR CHARACTER SET utf8mb4) COLLATE utf8mb4_general_ci AS appno_utf8
+      FROM (VALUES ${rows}) AS asset_values`,
+    assetReplacements: {},
+  };
+};
+
+const cpcBreakdown = ({
+  assetList, assetReplacements, scope, range, bySection, yearClause, years,
+  missedMonetization, fallback,
+}) => {
+  const repl = { ...(assetReplacements || {}) };
   if (scope.length) repl.scopeList = scope;
   repl.date = years;
   const build = fallback ? cpcSql.fallbackBreakdown : cpcSql.primaryBreakdown;
-  return q.selectAll(app(), build({ range, scope, bySection, yearClause, missedMonetization }), repl);
+  return q.selectAll(
+    app(),
+    build({ range, scope, bySection, yearClause, missedMonetization, assetList }),
+    repl
+  );
 };
 
 const cpcDefinitions = (codes) =>
@@ -205,8 +265,10 @@ const cpcDefinitions = (codes) =>
     { codes }
   );
 
-const assetsInCpcCell = ({ list, year, cpcCode, range }) =>
-  q.selectAll(app(), cpcSql.assetsInCpcCell(range), { list, year, cpcCode });
+const assetsInCpcCell = ({ assetList, assetReplacements, year, cpcCode, range }) =>
+  q.selectAll(app(), cpcSql.assetsInCpcCell(range, assetList), {
+    ...(assetReplacements || {}), year, cpcCode,
+  });
 
 /* ------------------------------------------------------ single asset info */
 
@@ -299,6 +361,7 @@ module.exports = {
   lawFirmNames,
   applicationsByLawFirm,
   selectionAssets,
+  assetListFromValues,
   assetsForSale,
   cpcBreakdown,
   cpcDefinitions,

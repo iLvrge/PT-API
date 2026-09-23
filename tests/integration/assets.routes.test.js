@@ -70,8 +70,10 @@ describe('POST /assets/cpc/:year/:cpcCode', () => {
       .expect(200);
 
     expect(repo.assetsInCpcCell).toHaveBeenCalledWith(
-      expect.objectContaining({ year: '2018', cpcCode: 'H04L', list: ['111'] })
+      expect.objectContaining({ year: '2018', cpcCode: 'H04L' })
     );
+    // The cell query joins the asset list rather than testing membership.
+    expect(repo.assetListFromValues).toHaveBeenCalledWith(['111']);
     expect(res.body.list).toHaveLength(1);
   });
 

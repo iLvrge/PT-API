@@ -16,7 +16,7 @@
 
 const { Sequelize } = require('sequelize');
 const { env } = require('../config/env');
-const { connections } = require('./index');
+const { connections, sessionHooks } = require('./index');
 const q = require('./query');
 const logger = require('../utils/logger');
 
@@ -104,6 +104,9 @@ const getConnection = async (orgId) => {
     // reopened for almost every click on a customer.
     pool: { max: 5, min: 1, acquire: 30000, idle: env.db.pool.idle },
     logging: false,
+    // Tenant queries concatenate lists too, so they need the same session
+    // settings the main pools get.
+    hooks: sessionHooks,
   });
 
   try {

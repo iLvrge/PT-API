@@ -99,16 +99,23 @@ const cpcBreakdown = async (input) => {
   const {
     range, scope, years, dataType, otherMode, orgId, type,
   } = input;
-
   let assets = await resolveAssets(input);
   if (!assets.length) {
     assets = await assetsFromSelection({ ...input, otherMode, orgId });
   }
   if (!assets.length) return { list: [], group: [], sales: [] };
 
+  /*
+   * An organisation lists a handful of assets for sale at most (three, for the
+   * test customer), so the whole set is fetched and narrowed here rather than
+   * asking the database to test several thousand numbers against it.
+   */
+  const selected = otherMode ? null : new Set(assets);
   const sales = otherMode
     ? [...assets]
-    : (await repository.assetsForSale({ orgId, list: assets })).map((r) => `${r.appno_doc_num}`);
+    : (await repository.assetsForSale({ orgId }))
+      .map((r) => `${r.appno_doc_num}`)
+      .filter((number) => selected.has(number));
 
   const yearClause = years.length ? 'IN (:date)' : '>= :date';
   const common = {
@@ -121,7 +128,9 @@ const cpcBreakdown = async (input) => {
     missedMonetization: type === MISSED_MONETIZATION,
   };
 
-  const primary = await repository.cpcBreakdown({ ...common, list: assets, fallback: false });
+  const primary = await repository.cpcBreakdown({
+    ...common, ...repository.assetListFromValues(assets), fallback: false,
+  });
 
   // Anything the first pass did not classify gets a second look.
   const classified = new Set();
@@ -131,7 +140,9 @@ const cpcBreakdown = async (input) => {
   const remaining = assets.filter((asset) => !classified.has(asset));
 
   const fallback = remaining.length
-    ? await repository.cpcBreakdown({ ...common, list: remaining, fallback: true })
+    ? await repository.cpcBreakdown({
+      ...common, ...repository.assetListFromValues(remaining), fallback: true,
+    })
     : [];
 
   /*
@@ -186,7 +197,11 @@ const cpcCellAssets = async (input) => {
   if (!assets.length) assets = await assetsFromSelection(input);
   if (!assets.length) return { list: [] };
 
-  return { list: await repository.assetsInCpcCell({ list: assets, year, cpcCode, range }) };
+  return {
+    list: await repository.assetsInCpcCell({
+      ...repository.assetListFromValues(assets), year, cpcCode, range,
+    }),
+  };
 };
 
 /* ------------------------------------------------------------ single asset */

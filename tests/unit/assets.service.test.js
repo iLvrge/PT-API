@@ -41,33 +41,59 @@ describe('assets.cpc.sql', () => {
     return found;
   };
 
-  it('binds only list, scopeList and date', () => {
+  const assetList = "SELECT 'a' AS appno, 'a' AS appno_utf8";
+
+  it('binds only scopeList and date', () => {
     [
-      cpcSql.primaryBreakdown({ range: 3, scope: ['H04'], bySection: false, yearClause: 'IN (:date)', missedMonetization: false }),
-      cpcSql.primaryBreakdown({ range: 3, scope: [], bySection: false, yearClause: '>= :date', missedMonetization: true }),
-      cpcSql.fallbackBreakdown({ range: 1, scope: ['H'], bySection: true, yearClause: '>= :date', missedMonetization: false }),
-      cpcSql.fallbackBreakdown({ range: 5, scope: [], bySection: false, yearClause: '>= :date', missedMonetization: true }),
+      cpcSql.primaryBreakdown({ range: 3, scope: ['H04'], bySection: false, yearClause: 'IN (:date)', missedMonetization: false, assetList }),
+      cpcSql.primaryBreakdown({ range: 3, scope: [], bySection: false, yearClause: '>= :date', missedMonetization: true, assetList }),
+      cpcSql.fallbackBreakdown({ range: 1, scope: ['H'], bySection: true, yearClause: '>= :date', missedMonetization: false, assetList }),
+      cpcSql.fallbackBreakdown({ range: 5, scope: [], bySection: false, yearClause: '>= :date', missedMonetization: true, assetList }),
     ].forEach((sql) => {
       [...boundNames(sql)].forEach((name) => {
-        expect(['list', 'scopeList', 'date']).toContain(name);
+        expect(['scopeList', 'date']).toContain(name);
       });
     });
   });
 
+  it('joins the asset list instead of testing membership against it', () => {
+    [
+      cpcSql.primaryBreakdown({ range: 3, scope: [], bySection: false, yearClause: '>= :date', missedMonetization: false, assetList }),
+      cpcSql.primaryBreakdown({ range: 3, scope: [], bySection: false, yearClause: '>= :date', missedMonetization: true, assetList }),
+      cpcSql.fallbackBreakdown({ range: 3, scope: [], bySection: false, yearClause: '>= :date', missedMonetization: false, assetList }),
+      cpcSql.fallbackBreakdown({ range: 3, scope: [], bySection: false, yearClause: '>= :date', missedMonetization: true, assetList }),
+      cpcSql.assetsInCpcCell(3, assetList),
+    ].forEach((sql) => {
+      expect(sql.startsWith('WITH asset_list AS (')).toBe(true);
+      expect(sql).toContain(assetList);
+      expect(sql).not.toContain('IN (:list)');
+      expect(sql).toContain('asset_list');
+    });
+  });
+
+  it('gives the missed-monetization pass its own alias per membership test', () => {
+    // The grant row is reached through grant_doc_num, so its application number
+    // need not be the one that matched on the classification side — one shared
+    // alias would quietly equate them.
+    const sql = cpcSql.primaryBreakdown({ range: 3, scope: [], bySection: false, yearClause: '>= :date', missedMonetization: true, assetList });
+    expect(sql).toContain('asset_list AS cpc_asset');
+    expect(sql).toContain('asset_list AS grant_asset');
+  });
+
   it('omits the scope filter when nothing was scoped', () => {
-    const scoped = cpcSql.primaryBreakdown({ range: 3, scope: ['H04'], bySection: false, yearClause: '>= :date' });
-    const open = cpcSql.primaryBreakdown({ range: 3, scope: [], bySection: false, yearClause: '>= :date' });
+    const scoped = cpcSql.primaryBreakdown({ range: 3, scope: ['H04'], bySection: false, yearClause: '>= :date', assetList });
+    const open = cpcSql.primaryBreakdown({ range: 3, scope: [], bySection: false, yearClause: '>= :date', assetList });
     expect(scoped).toContain(':scopeList');
     expect(open).not.toContain(':scopeList');
   });
 
   it('scopes by section when the caller already had a list', () => {
-    const sql = cpcSql.primaryBreakdown({ range: 1, scope: ['H'], bySection: true, yearClause: '>= :date' });
+    const sql = cpcSql.primaryBreakdown({ range: 1, scope: ['H'], bySection: true, yearClause: '>= :date', assetList });
     expect(sql).toContain('AND section IN (:scopeList)');
   });
 
   it('queries only the application side for missed monetization', () => {
-    const sql = cpcSql.primaryBreakdown({ range: 3, scope: [], bySection: false, yearClause: '>= :date', missedMonetization: true });
+    const sql = cpcSql.primaryBreakdown({ range: 3, scope: [], bySection: false, yearClause: '>= :date', missedMonetization: true, assetList });
     expect(sql).not.toContain('UNION');
     expect(sql).toContain('db_patent_application_bibliographic.patent_cpc');
   });
@@ -151,7 +177,9 @@ describe('assets.service.cpcBreakdown', () => {
     const res = await service.cpcBreakdown({ ...input, list: ['111', '222'], total: 2 });
 
     expect(repo.cpcBreakdown).toHaveBeenCalledTimes(2);
-    expect(repo.cpcBreakdown.mock.calls[1][0]).toMatchObject({ list: ['222'], fallback: true });
+    expect(repo.cpcBreakdown.mock.calls[1][0]).toMatchObject({ fallback: true });
+    // The second pass covers only what the first did not classify.
+    expect(repo.assetListFromValues).toHaveBeenLastCalledWith(['222']);
     expect(res.list).toHaveLength(2);
   });
 

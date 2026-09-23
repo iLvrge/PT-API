@@ -90,6 +90,31 @@ describe('builder SQL shapes', () => {
     const { template } = actual.defaultAssets({ companies: [9], tabs: [], customers: [], assignments: [], bankMode: false });
     expect(template).toContain('activity_parties_transactions');
   });
+
+  it('defaultAssets reduces the assets table before joining it', () => {
+    // One row per transaction that touched an asset - 57,949 of them behind
+    // 4,273 applications for the test customer. Joining that fan-out and
+    // grouping afterwards took five times as long as grouping first.
+    const { template } = actual.defaultAssets({ companies: [9], tabs: [], customers: [], assignments: [], bankMode: false });
+    const grouped = template.indexOf('GROUP BY assets.appno_doc_num');
+    const joined = template.indexOf('INNER JOIN');
+    expect(grouped).toBeGreaterThan(-1);
+    expect(joined).toBeGreaterThan(grouped);
+  });
+
+  it('defaultAssets settles an application that was granted mid-history', () => {
+    // Where some of an application's rows carry the grant number and its
+    // earlier ones are empty, an ungrouped column returned whichever the join
+    // reached first, so the asset showed as granted or pending run to run.
+    const { template } = actual.defaultAssets({ companies: [9], tabs: [], customers: [], assignments: [], bankMode: false });
+    expect(template).toContain('MAX(assets.grant_doc_num) AS grant_doc_num');
+  });
+
+  it('defaultAssets converts the latin1 side of the join, never the indexed column', () => {
+    const { template } = actual.defaultAssets({ companies: [9], tabs: [], customers: [], assignments: [], bankMode: false });
+    expect(template).toContain('CONVERT(did.appno_doc_num USING utf8mb4) COLLATE utf8mb4_0900_ai_ci');
+    expect(template).not.toContain('CONVERT(assets.appno_doc_num');
+  });
 });
 
 describe('layoutAssets branch selection', () => {
@@ -139,5 +164,56 @@ describe('layoutAssets branch selection', () => {
     expect(template).toContain('STRING_COLUMNS');
     expect(repl.tabs).toEqual([17, 1, 6]);
     expect(res.total_records).toBe(1);
+  });
+});
+
+describe('countAndList', () => {
+  const q = require('../../src/db/query');
+  const opts = { column: 'asset', direction: 'DESC', limit: 10, offset: 0 };
+
+  afterEach(() => { jest.restoreAllMocks(); });
+
+  it('runs the count and the page together, not one after the other', async () => {
+    // Both evaluate the same template, and the template is the whole cost -
+    // 11 s to count and 12 s to page the same list. Sequentially the request
+    // took 23 s to do 12 s of work.
+    const started = [];
+    let release;
+    const gate = new Promise((resolve) => { release = resolve; });
+    jest.spyOn(q, 'selectValue').mockImplementation(async () => {
+      started.push('count');
+      await gate;
+      return 2;
+    });
+    jest.spyOn(q, 'selectAll').mockImplementation(async () => {
+      started.push('page');
+      // The page query starts before the count has returned, or this hangs.
+      release();
+      return [{ asset: '1' }];
+    });
+
+    const res = await actual.countAndList('SELECT STRING_COLUMNS FROM t', {}, opts);
+    expect(started).toEqual(['count', 'page']);
+    expect(res).toEqual({ list: [{ asset: '1' }], total_records: 2 });
+  });
+
+  it('reports an empty list when the count comes back zero', async () => {
+    jest.spyOn(q, 'selectValue').mockResolvedValue(0);
+    jest.spyOn(q, 'selectAll').mockResolvedValue([]);
+    expect(await actual.countAndList('SELECT STRING_COLUMNS FROM t', {}, opts))
+      .toEqual({ list: [], total_records: 0 });
+  });
+
+  it('pages when a limit is given and asks for everything when it is zero', async () => {
+    jest.spyOn(q, 'selectValue').mockResolvedValue(1);
+    const selectAll = jest.spyOn(q, 'selectAll').mockResolvedValue([]);
+
+    await actual.countAndList('SELECT STRING_COLUMNS FROM t', {}, { ...opts, limit: 25, offset: 50 });
+    // (connection, sql, replacements)
+    expect(selectAll.mock.calls[0][2]).toMatchObject({ offset: 50, limit: 25 });
+    expect(selectAll.mock.calls[0][1]).toContain('LIMIT :offset, :limit');
+
+    await actual.countAndList('SELECT STRING_COLUMNS FROM t', {}, { ...opts, limit: 0 });
+    expect(selectAll.mock.calls[1][1]).not.toContain('LIMIT');
   });
 });
