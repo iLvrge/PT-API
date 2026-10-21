@@ -1,10 +1,7 @@
 'use strict';
 
 jest.mock('../../src/modules/company/company.repository');
-jest.mock('../../src/utils/php-jobs', () => ({
-  runPhpScript: jest.fn().mockResolvedValue({}),
-  runPhpScriptBackground: jest.fn(),
-}));
+jest.mock('../../src/jobs/queue', () => ({ enqueue: jest.fn().mockResolvedValue({ id: 'job-1' }) }));
 
 const repo = require('../../src/modules/company/company.repository');
 const service = require('../../src/modules/company/company.service');

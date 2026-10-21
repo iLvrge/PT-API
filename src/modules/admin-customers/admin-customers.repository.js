@@ -130,6 +130,22 @@ const assignUuid = (organisationId) =>
     { replacements: { organisationId }, logging: false }
   );
 
+/**
+ * How many users a customer has.
+ *
+ * Publishing rebuilds the customer's own database, which is pointless — and
+ * was reported as a silent success — before anyone exists to log into it. The
+ * legacy handler counted first and said so; the port dropped the check.
+ */
+const countUsersInOrganisation = (organisationId) =>
+  q.selectValue(
+    connections.business,
+    'SELECT COUNT(user_id) AS c FROM user WHERE organisation_id = :organisationId',
+    { organisationId },
+    'c',
+    0
+  );
+
 /* ----------------------------------------------------------- admin users */
 
 const listAdminUsers = () =>
@@ -712,6 +728,7 @@ module.exports = {
   findUserInOrganisation,
   destroyBusinessUser,
   runReport,
+  countUsersInOrganisation,
   entitiesForCustomer,
   inventorAssignorsForCustomer,
   bibliographicInventorsForCustomer,

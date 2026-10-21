@@ -18,7 +18,7 @@ jest.mock('../../src/modules/documents/documents.repository');
 jest.mock('../../src/db/tenant-connections');
 jest.mock('../../src/db/query');
 jest.mock('../../src/utils/google');
-jest.mock('../../src/utils/php-jobs');
+jest.mock('../../src/jobs/queue');
 
 const searchRepo = require('../../src/modules/admin-company-search/admin-company-search.repository');
 const customersRepo = require('../../src/modules/admin-customers/admin-customers.repository');

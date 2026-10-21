@@ -2,7 +2,7 @@
 
 const ApiError = require('../../utils/api-error');
 const repository = require('./company.repository');
-const { runPhpScript, runPhpScriptBackground } = require('../../utils/php-jobs');
+const jobs = require('../../jobs/queue');
 
 const DEFAULT_YEAR = () => new Date().getFullYear() - 24;
 
@@ -310,11 +310,14 @@ const addGroup = async (tenant, groupName) => {
 const now = () => new Date().toISOString().slice(0, 19).replace('T', ' ');
 
 const triggerCompanyRebuild = async (orgId, companyId, extraArg) => {
-  await runPhpScript('add_representative_rfids.php', [orgId, companyId]);
-  runPhpScriptBackground(
-    'create_data_for_company_db_application.php',
-    extraArg !== undefined ? [orgId, companyId, extraArg] : [orgId, companyId]
-  );
+  // Both queued. The first used to be awaited inside the request, so adding a
+  // company blocked on a pipeline script that can run for half an hour.
+  await jobs.enqueue('company.add-representative-rfids', {
+    organisationId: orgId, companyId,
+  });
+  await jobs.enqueue('company.build-application-data', {
+    organisationId: orgId, companyId, extra: extraArg,
+  });
 };
 
 /**
@@ -336,7 +339,9 @@ const createCompanies = async (tenant, auth, { name, parent_company }) => {
   const representativeIds = requests.filter((r) => r.representative_id > 0).map((r) => r.representative_id);
 
   if (accounts.length) {
-    runPhpScriptBackground('transferred_data_from_one_account_to_another_accounts.php', [auth.orgId, accounts.join(',')]);
+    await jobs.enqueue('customer.transfer-accounts', {
+      organisationId: auth.orgId, accountIds: accounts,
+    });
   }
 
   let companyList = [];
@@ -498,7 +503,7 @@ const deleteCompanies = async (tenant, auth, { companies, type }) => {
       await triggerCompanyRebuild(auth.orgId, company.company_id);
     }
   } else {
-    runPhpScriptBackground('create_data_for_company_db_application.php', [auth.orgId, '']);
+    await jobs.enqueue('company.build-application-data', { organisationId: auth.orgId, companyId: '' });
   }
   return { deleted: deleteIds };
 };
@@ -536,7 +541,7 @@ const deleteSubcompanies = async (tenant, auth, companies) => {
       await triggerCompanyRebuild(auth.orgId, company.company_id, 1);
     }
   } else {
-    runPhpScriptBackground('create_data_for_company_db_application.php', [auth.orgId, '']);
+    await jobs.enqueue('company.build-application-data', { organisationId: auth.orgId, companyId: '' });
   }
   return { deleted: ids };
 };

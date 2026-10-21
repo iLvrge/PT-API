@@ -3,13 +3,13 @@
 jest.mock('../../src/modules/users/users.repository');
 jest.mock('../../src/db/tenant-connections');
 jest.mock('../../src/modules/admin-company-search/admin-company-search.repository');
-jest.mock('../../src/utils/php-jobs');
+jest.mock('../../src/jobs/queue');
 
 const request = require('supertest');
 const jwt = require('jsonwebtoken');
 const usersRepo = require('../../src/modules/users/users.repository');
 const repo = require('../../src/modules/admin-company-search/admin-company-search.repository');
-const jobs = require('../../src/utils/php-jobs');
+const jobs = require('../../src/jobs/queue');
 const { startTestServer } = require('../helpers/server');
 const { env } = require('../../src/config/env');
 
@@ -21,7 +21,7 @@ beforeEach(() => {
   jest.clearAllMocks();
   usersRepo.findActiveById.mockResolvedValue({ user_id: 5, organisation_id: 3, type: 9 });
   usersRepo.isAdmin.mockResolvedValue(true);
-  jobs.runNodeScript.mockResolvedValue({ stdout: '', stderr: '' });
+  jobs.enqueue.mockResolvedValue({ id: 'job-1' });
 });
 
 describe('admin access', () => {
@@ -225,7 +225,7 @@ describe('cited assignee logos', () => {
     await auth(request(app).put('/admin/company/assignees/logos'))
       .send({ assignee_id: '[1,2]', type: 'download' })
       .expect(200);
-    expect(jobs.runNodeScript).toHaveBeenCalledWith('download_assignees_logos.js', ['[1,2]']);
+    expect(jobs.enqueue).toHaveBeenCalledWith('cited.download-assignee-logos', { assigneeIds: [1, 2] });
   });
 
   it('cannot be talked into running something else', async () => {
@@ -233,9 +233,12 @@ describe('cited assignee logos', () => {
       .send({ assignee_id: '["1\\";touch /tmp/pwned;#"]', type: 'download' })
       .expect(200);
     // The crafted value is one argument to the script, not shell syntax.
-    expect(jobs.runNodeScript).toHaveBeenCalledWith(
-      'download_assignees_logos.js', ['["1\\";touch /tmp/pwned;#"]']
-    );
+    // The crafted value is data in the payload. It cannot name a script: the
+    // job name does that, from a fixed catalogue, so there is no argv for it
+    // to escape into.
+    expect(jobs.enqueue).toHaveBeenCalledWith('cited.download-assignee-logos', {
+      assigneeIds: ['1";touch /tmp/pwned;#'],
+    });
   });
 
   it('400s on an unknown action', async () => {

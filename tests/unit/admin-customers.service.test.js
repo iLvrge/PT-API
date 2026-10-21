@@ -3,13 +3,13 @@
 jest.mock('../../src/modules/admin-customers/admin-customers.repository');
 jest.mock('../../src/modules/admin-customers/admin-customers.files');
 jest.mock('../../src/db/tenant-connections');
-jest.mock('../../src/utils/php-jobs');
+jest.mock('../../src/jobs/queue');
 jest.mock('../../src/utils/uploads');
 
 const repo = require('../../src/modules/admin-customers/admin-customers.repository');
 const files = require('../../src/modules/admin-customers/admin-customers.files');
 const tenants = require('../../src/db/tenant-connections');
-const jobs = require('../../src/utils/php-jobs');
+const jobs = require('../../src/jobs/queue');
 const uploads = require('../../src/utils/uploads');
 const service = require('../../src/modules/admin-customers/admin-customers.service');
 
@@ -18,8 +18,7 @@ const transaction = () => ({ commit: jest.fn().mockResolvedValue(), rollback: je
 beforeEach(() => {
   jest.clearAllMocks();
   repo.connections = { business: { transaction: jest.fn().mockResolvedValue(transaction()) } };
-  jobs.runPhpScript.mockResolvedValue({ stdout: '', stderr: '' });
-  jobs.runNodeScript.mockResolvedValue({ stdout: '', stderr: '' });
+  jobs.enqueue.mockResolvedValue({ id: 'job-1', deduped: false });
 });
 
 describe('createCustomer', () => {
@@ -36,7 +35,7 @@ describe('createCustomer', () => {
 
     await service.createCustomer({ companyName: 'New Co', organisationType: 1 });
     expect(repo.assignUuid).toHaveBeenCalledWith(500);
-    expect(jobs.runPhpScript).toHaveBeenCalledWith('script_create_customer_db.php', [500]);
+    expect(jobs.enqueue).toHaveBeenCalledWith('customer.provision', { organisationId: 500 });
   });
 
   it('rejects a blank name', async () => {
@@ -46,7 +45,7 @@ describe('createCustomer', () => {
   it('still answers when provisioning fails to start', async () => {
     repo.findCustomerByName.mockResolvedValue(null);
     repo.createCustomer.mockResolvedValue({ toJSON: () => ({ organisation_id: 500 }) });
-    jobs.runPhpScript.mockRejectedValue(new Error('script missing'));
+    jobs.enqueue.mockRejectedValue(new Error('script missing'));
 
     await expect(service.createCustomer({ companyName: 'New Co' })).resolves.toMatchObject({
       organisation_id: 500,
@@ -181,14 +180,21 @@ describe('normaliseNames', () => {
       suggestions: 'yes',
       fixedIdenticals: 'no',
     });
-    expect(jobs.runNodeScript).toHaveBeenCalledWith(
-      'normalize_names.js', [118, '[9,10]', '1', 'yes', 'no']
-    );
+    // The script name is no longer chosen by the caller: the job name selects
+    // it from the catalogue, and these values are only ever a payload.
+    expect(jobs.enqueue).toHaveBeenCalledWith('names.normalise', {
+      organisationId: 118,
+      representativeIds: [9, 10],
+      type: '1',
+      suggestions: 'yes',
+      fixedIdenticals: 'no',
+    });
   });
 
   it('sends an empty array when no companies were named', () => {
     service.normaliseNames({ organisationId: 118, type: '1' });
-    expect(jobs.runNodeScript).toHaveBeenCalledWith('normalize_names.js', [118, '[]', '1', '', '']);
+    expect(jobs.enqueue).toHaveBeenCalledWith('names.normalise',
+      expect.objectContaining({ organisationId: 118, representativeIds: [], type: '1' }));
   });
 });
 
@@ -197,19 +203,19 @@ describe('runFlagUpdate', () => {
 
   it('uses the batch script for several companies', async () => {
     await service.runFlagUpdate({ organisationId: 118, companyIds: [9, 10] });
-    expect(jobs.runPhpScript).toHaveBeenCalledWith(
-      'run_script_for_update_flag.php', [118, '[9,10]']
-    );
+    expect(jobs.enqueue).toHaveBeenCalledWith('repair.update-flag-bulk', {
+      organisationId: 118, companyIds: [9, 10],
+    });
   });
 
   it('uses the single-company script for one', async () => {
     await service.runFlagUpdate({ organisationId: 118, companyIds: [9] });
-    expect(jobs.runPhpScript).toHaveBeenCalledWith('update_flag.php', [118, 9]);
+    expect(jobs.enqueue).toHaveBeenCalledWith('repair.update-flag', { organisationId: 118, companyId: 9 });
   });
 
   it('runs across the whole organisation when none are named', async () => {
     await service.runFlagUpdate({ organisationId: 118, companyIds: [] });
-    expect(jobs.runPhpScript).toHaveBeenCalledWith('update_flag.php', [118, '']);
+    expect(jobs.enqueue).toHaveBeenCalledWith('repair.update-flag', { organisationId: 118, companyId: '' });
   });
 
   it('404s for an unknown customer', async () => {

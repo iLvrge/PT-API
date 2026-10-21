@@ -8,7 +8,7 @@
 const xml2js = require('xml2js');
 const ApiError = require('../../utils/api-error');
 const logger = require('../../utils/logger');
-const { runPhpScript } = require('../../utils/php-jobs');
+const jobs = require('../../jobs/queue');
 const epo = require('./family.epo');
 const parser = require('./family.parser');
 const files = require('./family.files');
@@ -115,8 +115,10 @@ const familyForApplication = async (applicationNumber) => {
 
   // Persisting the family to our own tables is a background job; a failure
   // there must not lose the response.
-  runPhpScript('assets_family_single.js', [asset]).catch((err) =>
-    logger.warn('family persist job failed', { asset, error: err.message }));
+  // Queued, not spawned: this used to be a detached child process whose
+  // failure was logged and forgotten, with no way to ask whether it ran.
+  jobs.enqueue('family.persist-asset', { asset }).catch((err) =>
+    logger.warn('family persist job could not be queued', { asset, error: err.message }));
 
   return parser.parseFamily(parsed, {
     asset: number,

@@ -5,7 +5,7 @@ jest.mock('../../src/db/tenant-connections');
 jest.mock('../../src/modules/family/family.repository');
 jest.mock('../../src/modules/family/family.epo');
 jest.mock('../../src/modules/family/family.files');
-jest.mock('../../src/utils/php-jobs');
+jest.mock('../../src/jobs/queue');
 
 const request = require('supertest');
 const jwt = require('jsonwebtoken');
@@ -13,7 +13,7 @@ const usersRepo = require('../../src/modules/users/users.repository');
 const repo = require('../../src/modules/family/family.repository');
 const epo = require('../../src/modules/family/family.epo');
 const files = require('../../src/modules/family/family.files');
-const phpJobs = require('../../src/utils/php-jobs');
+const phpJobs = require('../../src/jobs/queue');
 const { startTestServer } = require('../helpers/server');
 const { env } = require('../../src/config/env');
 
@@ -49,7 +49,7 @@ beforeEach(() => {
   usersRepo.findActiveById.mockResolvedValue({ user_id: 5, organisation_id: 118, type: 0 });
   files.readCachedFamily.mockResolvedValue(null);
   files.writeCachedFamily.mockResolvedValue(undefined);
-  phpJobs.runPhpScript.mockResolvedValue(undefined);
+  phpJobs.enqueue.mockResolvedValue({ id: 'job-1' });
 });
 
 describe('GET /family/list/:grantNumber', () => {
@@ -134,7 +134,7 @@ describe('GET /family/:applicationNumber', () => {
     repo.findDocument.mockResolvedValue({ appno_doc_num: '13456789', grant_doc_num: '9446259' });
     repo.grantFor.mockResolvedValue({ grant_doc_num: '9446259' });
     epo.familyXml.mockResolvedValue(FAMILY_XML);
-    phpJobs.runPhpScript.mockRejectedValue(new Error('script missing'));
+    phpJobs.enqueue.mockRejectedValue(new Error('script missing'));
 
     const res = await auth(request(app).get('/family/US9446259')).expect(200);
     expect(res.body).toHaveLength(1);

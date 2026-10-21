@@ -13,7 +13,9 @@
     "start:v2": "node src/server.js",
     "dev:v2": "node --watch src/server.js",
     "build:openapi": "node scripts/build-openapi.js",
-    "lint:api": "node scripts/build-openapi.js && redocly lint"
+    "lint:api": "node scripts/build-openapi.js && redocly lint",
+    "worker": "node src/jobs/worker.js",
+    "worker:dev": "node --watch src/jobs/worker.js"
   },
   "keywords": [],
   "author": "",
@@ -31,6 +33,7 @@
     "bcrypt": "^5.1.0",
     "body-parser": "^1.19.0",
     "buffer": "^4.9.2",
+    "bullmq": "^6.3.8",
     "cors": "^2.8.5",
     "csv-stringify": "^5.6.0",
     "env-cmd": "^10.1.0",
@@ -44,6 +47,7 @@
     "googleapis": "^66.0.0",
     "helmet": "^8.3.0",
     "html-entities": "^2.3.2",
+    "ioredis": "^6.0.0",
     "isomorphic-fetch": "^3.0.0",
     "jsdom": "^16.4.0",
     "jsonwebtoken": "^9.0.0",

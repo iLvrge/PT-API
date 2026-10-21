@@ -5,13 +5,18 @@
 // /company/law_firms/:id/normalize_lawfirms and the /company/family/:id pair.
 
 jest.mock('../../src/modules/admin-company-search/admin-company-search.repository');
-jest.mock('../../src/utils/php-jobs');
+jest.mock('../../src/jobs/queue');
 
 const repo = require('../../src/modules/admin-company-search/admin-company-search.repository');
-const jobs = require('../../src/utils/php-jobs');
+const jobs = require('../../src/jobs/queue');
 const service = require('../../src/modules/admin-company-search/admin-company-search.service');
 
-beforeEach(() => jest.clearAllMocks());
+beforeEach(() => {
+  jest.clearAllMocks();
+  // The auto-mock resolves undefined, and the services read the queued
+  // job's id to hand back to the caller.
+  jobs.enqueue.mockResolvedValue({ id: 'job-1', deduped: false });
+});
 
 describe('searchLenders', () => {
   it('does not touch the corpus when no search term is given', async () => {
@@ -28,29 +33,40 @@ describe('searchLenders', () => {
 });
 
 describe('runFamilyAssets', () => {
-  it('starts the rebuild in the background and acknowledges immediately', () => {
-    const result = service.runFamilyAssets({ customerId: 146, retrieveAll: '0' });
-    expect(jobs.runPhpScriptBackground).toHaveBeenCalledWith(
-      'assets_family.php', ['146', '[]', '0']
-    );
-    expect(result).toEqual({ message: 'Run assets family' });
+  it('starts the rebuild in the background and acknowledges immediately', async () => {
+    const result = await service.runFamilyAssets({ customerId: 146, retrieveAll: '0' });
+    expect(jobs.enqueue).toHaveBeenCalledWith('family.build-for-customer', {
+      customerId: 146, representativeIds: [], retrieveAll: '0',
+    });
+    expect(result).toEqual({ message: 'Run assets family', jobId: 'job-1' });
   });
 
-  it('passes the chosen companies as a JSON array argument, never a shell string', () => {
-    service.runFamilyAssets({ customerId: 146, representativeIds: [1, 2], retrieveAll: '1' });
-    const [, args] = jobs.runPhpScriptBackground.mock.calls[0];
-    expect(args).toEqual(['146', '[1,2]', '1']);
-    args.forEach((a) => expect(typeof a).toBe('string'));
+  it('passes the chosen companies as payload data, never a shell string', async () => {
+    await service.runFamilyAssets({ customerId: 146, representativeIds: [1, 2], retrieveAll: '1' });
+    const [name, payload] = jobs.enqueue.mock.calls[0];
+    expect(name).toBe('family.build-for-customer');
+    expect(payload).toEqual({ customerId: 146, representativeIds: [1, 2], retrieveAll: '1' });
   });
 
-  it('says so when it was scoped to particular companies', () => {
-    const result = service.runFamilyAssets({ customerId: 146, representativeIds: [1] });
+  it('says so when it was scoped to particular companies', async () => {
+    const result = await service.runFamilyAssets({ customerId: 146, representativeIds: [1] });
     expect(result.message).toBe('Run assets family with representatives');
   });
 
-  it('does not wait for the job — the rebuild takes minutes', () => {
-    const result = service.runFamilyAssets({ customerId: 146 });
-    expect(result).not.toBeInstanceOf(Promise);
+  /*
+   * The rebuild takes minutes, so the request must not wait for it. It now
+   * awaits the enqueue — a Redis write — rather than returning synchronously,
+   * which is what lets it hand back a job id. The property that matters is
+   * unchanged and is what this asserts: the script is never run here.
+   */
+  it('waits only for the job to be queued, never for the rebuild', async () => {
+    const runner = require('../../src/jobs/runner');
+    const result = await service.runFamilyAssets({ customerId: 146 });
+
+    expect(jobs.enqueue).toHaveBeenCalledTimes(1);
+    expect(result.jobId).toBe('job-1');
+    // enqueue is mocked, so nothing should have reached the runner.
+    expect(typeof runner.runJob).toBe('function');
   });
 });
 

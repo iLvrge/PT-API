@@ -165,6 +165,31 @@ const env = {
     staticFilesUrl: (process.env.STATIC_FILES_URL || '').replace(/\/$/, ''),
   },
 
+  /*
+   * Background jobs: the queue they sit in, and the scripts they run.
+   *
+   * `inline` runs a job in the calling process instead of queueing it. Tests
+   * use it, and so does a developer with no Redis — the alternative is every
+   * job silently doing nothing, which is what the previous fire-and-forget
+   * runner did on any machine without SCRIPT_PATH.
+   */
+  jobs: {
+    redisUrl: process.env.REDIS_URL || 'redis://127.0.0.1:6379',
+    queueName: process.env.JOBS_QUEUE_NAME || 'pt-jobs',
+    // Accepts 1/yes as well as true: this is a switch people set by hand, and
+    // the shared toBool only recognises the literal string "true".
+    inline: ['1', 'true', 'yes'].includes(String(process.env.JOBS_INLINE).toLowerCase())
+      || process.env.NODE_ENV === 'test',
+    // How many scripts one worker runs at once. These are heavy: a rebuild can
+    // hold a customer's database for an hour, so the default is deliberately
+    // small rather than the queue's own default of 1-per-call with no ceiling.
+    concurrency: toInt(process.env.JOBS_CONCURRENCY, 3),
+    // Completed and failed jobs are kept so the console can show what happened.
+    keepCompleted: toInt(process.env.JOBS_KEEP_COMPLETED, 500),
+    keepFailed: toInt(process.env.JOBS_KEEP_FAILED, 1000),
+    scriptPath: process.env.SCRIPT_PATH || '',
+  },
+
   // Microsoft Teams integration.
   microsoft: {
     tenantId: process.env.MICROSOFT_TENANT_ID,
