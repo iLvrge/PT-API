@@ -35,6 +35,23 @@ describe('the environment a script receives', () => {
     expect(e.STATIC_PATH_URL).toBe('https://static.example');
   });
 
+  it('tells the scripts to connect as the database account, not as the login user', () => {
+    // pm2 and systemd put the OS login name in USER, and dotenv does not overwrite
+    // a variable that is already set. The API reads DB_USER first for that reason;
+    // the scripts have to be handed the same account the API uses.
+    process.env.DB_USER = 'the_database_account';
+    process.env.USER = 'deploy_user';
+
+    expect(scriptEnv().DB_USER).toBe('the_database_account');
+  });
+
+  it('still falls back to USER when only the older USER= setting exists', () => {
+    delete process.env.DB_USER;
+    process.env.USER = 'legacy_account';
+
+    expect(scriptEnv().DB_USER).toBe('legacy_account');
+  });
+
   it('prefers an explicit DB_RT_PWD over falling back to PASSWORD', () => {
     process.env.PASSWORD = 'app-password';
     process.env.DB_RT_PWD = 'root-password';

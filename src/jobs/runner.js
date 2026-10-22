@@ -16,7 +16,7 @@
 const { execFile } = require('child_process');
 const fs = require('fs');
 const path = require('path');
-const { env } = require('../config/env');
+const { env, dbUser } = require('../config/env');
 const logger = require('../utils/logger');
 const { jobDefinition } = require('./catalogue');
 
@@ -35,7 +35,10 @@ const { jobDefinition } = require('./catalogue');
 const scriptEnv = () => ({
   ...process.env,
   DB_HOST: process.env.HOST,
-  DB_USER: process.env.USER,
+  // dbUser(), not process.env.USER: USER is the operating-system login name that every
+  // shell, pm2 and systemd set, so on a server the scripts would try to connect to MySQL
+  // as the person who started the worker. The API avoids the same trap the same way.
+  DB_USER: dbUser(),
   DB_PASSWORD: process.env.PASSWORD,
   // The PHP scripts connect as root with this password; several read only it.
   DB_RT_PWD: process.env.DB_RT_PWD || process.env.PASSWORD,
